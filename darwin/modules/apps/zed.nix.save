@@ -1,0 +1,28 @@
+let
+  appName   = "Zed.app";
+  caskName  = "zed";
+  targetDir = "/Applications/Productivity";
+  iCloudDir = "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/Apps/zed";
+in
+
+{
+  # Install Zed via Homebrew into the right folder
+  homebrew.casks = [
+    { name = caskName; args = { appdir = targetDir; };}
+  ];
+
+  # Ensure target directory exists before linking
+  system.activationScripts.createZedAppDir.text = ''
+    mkdir -p "$\{targetDir\}"
+  '';
+
+  # Optional: sync preferences and support files to iCloud
+  system.activationScripts.linkZedPrefs.text = ''
+    set -euo pipefail
+    mkdir -p "$\{iCloudDir\}"
+    # Link app data and prefs
+    ln -sf "$\{iCloudDir\}" "$HOME/Library/Application Support/Zed"
+    ln -sf "$\{iCloudDir\}/Preferences.plist" "$HOME/Library/Preferences/com.zed.Zed.plist" || true\
+  '';
+}
+}

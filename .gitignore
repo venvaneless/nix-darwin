@@ -1,0 +1,7 @@
+# -------- macOS junk --------
+.DS_Store
+._*
+
+# -------- nix build outputs (local) --------
+result
+result-*

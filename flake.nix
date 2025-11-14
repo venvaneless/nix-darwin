@@ -1,0 +1,47 @@
+# /Users/ven/dotfiles/nix/flake.nix
+{
+  description = "Ven’s setup";
+
+  nixConfig = {
+    allow-dirty = true;
+  };
+
+  inputs = {
+    nixpkgs.url        = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    darwin.url         = "github:LnL7/nix-darwin";
+    home-manager.url   = "github:nix-community/home-manager";
+
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    nix-homebrew.url   = "github:zhaofengli/nix-homebrew";
+  };
+
+  outputs = inputs@{ self, nixpkgs, darwin, home-manager, nix-homebrew, ... }:
+  let
+    system = "aarch64-darwin";
+    pkgs   = import nixpkgs { inherit system; };
+  in
+  {
+    # --- macOS system configuration (nix-darwin) ---
+    darwinConfigurations.macbook = darwin.lib.darwinSystem {
+      inherit system;
+      specialArgs = { inherit inputs nix-homebrew home-manager; };
+      modules = [
+        ./darwin/index.nix
+      ];
+    };
+
+    # --- Stand-alone Home Manager (optional) ---
+    homeConfigurations.ven =
+      home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
+        modules = [
+          ./shared/services/home-manager-standalone.nix
+        ];
+      };
+
+    # --- Flake apps ---
+    # Empty. No Zed update scripts anymore.
+    apps.${system} = { };
+  };
+}

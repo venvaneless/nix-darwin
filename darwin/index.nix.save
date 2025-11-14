@@ -1,0 +1,61 @@
+# DARWIN: MAIN MODULE
+# =========================
+# This file defines the full macOS (nix-darwin) + Home Manager configuration
+# for Ven’s MacBook system.
+
+{ config, pkgs, lib, home-manager, ... }:
+
+{
+  # ----- Primary user -----
+  system.primaryUser = "ven";
+
+  # ----- System-wide configuration -----
+  # Everything below runs under nix-darwin context and may require root
+  # (via `sudo -E darwin-rebuild switch`). These handle system paths,
+  # Homebrew, launchd services, and Applications folder installs.
+
+  imports = [
+    # === System-level modules ===
+    ./modules/system/base.nix
+    ./modules/system/homebrew.nix
+    ./modules/terminal/shell.nix
+    ./modules/services/nix-homebrew.nix
+
+    # === App modules (system-wide) ===
+    ./modules/apps/apps.nix
+    # ./modules/apps/brew-uninstall.nix
+    # ./modules/apps/uninstall.nix
+
+    # --- Enable Home Manager integration ---
+    home-manager.darwinModules.home-manager
+  ];
+
+  # Make Home Manager CLI globally available
+  environment.systemPackages = [
+    home-manager.packages.${pkgs.system}.default
+  ];
+
+  # ----- Home Manager configuration -----
+  # Everything below runs as the normal user (no sudo needed).
+  # Handles dotfiles, shells, themes, per-user packages, etc.
+
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+
+    users.ven = {
+      home = {
+        username = "ven";
+        homeDirectory = lib.mkForce "/Users/ven";
+        stateVersion = "25.11";
+      };
+
+      imports = [
+        # === Home Manager modules (per-user) ===
+        ../shared/home/index.nix
+        ./modules/terminal/zsh.nix
+      ];
+    };
+  };
+}
+
