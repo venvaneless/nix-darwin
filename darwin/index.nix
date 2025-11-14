@@ -5,7 +5,7 @@
 
 {
   config = {
-  system.stateVersion = "6";
+  system.stateVersion = 6;
     system.primaryUser = "ven";
 
     # === Debug flare test ===
