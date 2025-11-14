@@ -12,5 +12,6 @@
   imports = [
     ./generations-cleanup.nix
     ./rsync-all.nix
+    ./ven-proof.nix
   ];
 }
