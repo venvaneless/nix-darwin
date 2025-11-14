@@ -1,5 +1,4 @@
 # /Users/ven/dotfiles/nix/darwin/index.nix
-# VEN_DEBUG_MARKER_FINAL
 
 { config, pkgs, lib, inputs, ... }:
 
@@ -9,14 +8,9 @@
   system.stateVersion = lib.mkForce 6;
 
   # ===== DEBUG ACTIVATION TEST =====
-  system.activationScripts.venDebug.text = ''
-    echo ">>> VEN: The flake is ALIVE at $(date)" > /tmp/ven-activation-proof
-  '';
-
-  # ===== SYSTEM ETC PROOF FILE =====
-  environment.etc."ven-flake-proof".text = ''
-    FLAKE IS ALIVE
-    COMMIT = ${config.system.nixpkgs.release or "unknown"}
+  # This runs as part of the main activation script via extraActivation.
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
+    echo ">>> VEN: extraActivation hook at $(date)" > /tmp/ven-activation-proof
   '';
 
   imports = [

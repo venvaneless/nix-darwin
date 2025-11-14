@@ -2,11 +2,11 @@
 #
 # SYSTEM: GENERATIONS CLEANUP
 # ============================================================
-# Runs cleanup-generations.sh during every darwin-rebuild switch.
+# Runs cleanup-generations during every darwin activation.
 # Embedded with writeShellScriptBin so it always works under root.
 # ============================================================
 
-{ config, lib, pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   cleanupScript = pkgs.writeShellScriptBin "cleanup-generations" ''
@@ -45,8 +45,11 @@ let
   '';
 in
 {
-  config.system.activationScripts.cleanupGenerations.text = ''
+  # IMPORTANT:
+  # - No "config." prefix
+  # - Hook into a *real* activation slot: extraActivation
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
     echo ">>> Running cleanup-generations (system)"
-    ${cleanupScript}/bin/cleanup-generations
+    ${cleanupScript}/bin/cleanup-generations || echo "cleanup-generations failed (ignored)"
   '';
 }

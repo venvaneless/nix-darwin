@@ -1,4 +1,5 @@
 # /Users/ven/dotfiles/nix/darwin/modules/services/ven-proof.nix
+
 { config, lib, ... }:
 
 let
@@ -8,7 +9,8 @@ let
     else config.system.configurationRevision;
 in
 {
-  system.activationScripts.venProof.text = ''
+  # Append to the global extraActivation script
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
     echo "FLAKE IS ALIVE" > /etc/ven-flake-proof
     echo "COMMIT = ${rev}" >> /etc/ven-flake-proof
   '';
