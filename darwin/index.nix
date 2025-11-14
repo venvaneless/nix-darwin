@@ -16,6 +16,13 @@
   {
     system.primaryUser = "ven";
 
+    # VEN_DEBUG_FLARE
+
+      {
+        system.activationScripts.venDebug.text = ''
+          echo ">>> VEN: The flake is ALIVE at $(date)"
+        '';
+
     imports = [
       # --- Shared cross-platform Home Manager integration ---
       ../shared/services/home-manager.nix
