@@ -1,16 +1,14 @@
 { config, pkgs, lib, home-manager, ... }:
 
 {
-  config = {
-    # ----- Primary user -----
-    system.primaryUser = "ven";
-    system.stateVersion = 6;
+	config = {
+  system.primaryUser = "ven";
+  system.stateVersion = lib.mkForce 6;
 
-    # ----- Debug test -----
-    system.activationScripts.testScript.text = ''
-      echo "Activation test executed at $(date)" > /tmp/ven-activation-proof
-    '';
-  };
+  system.activationScripts.testScript.text = ''
+    echo "Activation test executed at $(date)" > /tmp/ven-activation-proof
+  '';
+};
 
   imports = [
     # --- system first ---
