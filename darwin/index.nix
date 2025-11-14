@@ -1,14 +1,19 @@
-{ config, pkgs, lib, home-manager, ... }:
+# /Users/ven/dotfiles/nix/darwin/index.nix
+
+{ config, pkgs, lib, ... }:
 
 {
-	config = {
-  system.primaryUser = "ven";
-  system.stateVersion = lib.mkForce 6;
+  config = {
+    # ----- Primary user -----
+    system.primaryUser = "ven";
+    system.stateVersion = lib.mkForce 6;
 
-  system.activationScripts.testScript.text = ''
-    echo "Activation test executed at $(date)" > /tmp/ven-activation-proof
-  '';
-};
+    # ----- Debug test -----
+    # If activation runs at all, this file MUST appear.
+    system.activationScripts.testScript.text = ''
+      echo "Activation test executed at $(date)" > /tmp/ven-activation-proof
+    '';
+  };
 
   imports = [
     # --- system first ---
@@ -22,5 +27,4 @@
     # --- home-manager last ---
     ../shared/services/home-manager.nix
   ];
-
 }
