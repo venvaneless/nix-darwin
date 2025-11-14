@@ -12,6 +12,12 @@
     echo "Activation test executed at $(date)" > /tmp/ven-activation-proof
   '';
 
+  # === PROOF FILE: this is the undeniable part ===
+     environment.etc."ven-flake-proof".text = ''
+       FLAKE IS ALIVE
+       COMMIT = ${config.system.nixpkgs.release or "unknown"}
+     '';
+
   imports = [
     # --- system first ---
     ./modules/system/base.nix
