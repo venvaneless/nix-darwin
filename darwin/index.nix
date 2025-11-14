@@ -12,11 +12,16 @@
   };
 
   imports = [
+    # --- system first ---
     ./modules/system/base.nix
     ./modules/system/homebrew.nix
     ./modules/terminal/shell.nix
     ./modules/services/nix-homebrew.nix
     ./modules/services/script-services.nix
     ./modules/apps/apps.nix
+
+    # --- home-manager last ---
+    ../shared/services/home-manager.nix
   ];
+
 }
