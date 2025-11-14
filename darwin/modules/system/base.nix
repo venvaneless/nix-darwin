@@ -7,7 +7,7 @@
   # and commands for the "nix-darwin" etc.
   # ============================================================
 
-  { config, pkgs, ... }:
+  { config, pkgs, lib, inputs, ... }:
 
   {
     # --- Core system identity ---
@@ -27,6 +27,7 @@
 
     # --- Global system packages ---
     environment.systemPackages = with pkgs; [
+    	inputs.darwin.packages.${pkgs.system}.darwin-rebuild
       nh
       home-manager
       nixd
