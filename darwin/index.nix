@@ -9,10 +9,16 @@
     system.primaryUser = "ven";
 
     # === Debug flare test ===
-    system.activationScripts.venDebug.text = ''
-      echo ">>> VEN: The flake is ALIVE at $(date)"
-    '';
-  };
+        system.activationScripts.venDebug.text = ''
+          echo ">>> VEN: The flake is ALIVE at $(date)"
+        '';
+
+        # === PROOF FILE: this is the undeniable part ===
+        environment.etc."ven-flake-proof".text = ''
+          FLAKE IS ALIVE
+          COMMIT = ${config.system.nixpkgs.release or "unknown"}
+        '';
+      };
 
   imports = [
     ../shared/services/home-manager.nix
