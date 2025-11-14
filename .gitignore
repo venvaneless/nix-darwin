@@ -5,3 +5,6 @@
 # -------- nix build outputs (local) --------
 result
 result-*
+
+
+.flake.lock.override
