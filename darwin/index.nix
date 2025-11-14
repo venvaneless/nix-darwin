@@ -1,4 +1,5 @@
 # /Users/ven/dotfiles/nix/darwin/index.nix
+# VEN_DEBUG_MARKER_FINAL
 
 # DARWIN: MAIN MODULE
 # =========================
