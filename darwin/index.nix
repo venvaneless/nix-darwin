@@ -4,6 +4,7 @@
   config = {
     # ----- Primary user -----
     system.primaryUser = "ven";
+    system.stateVersion = 6;
 
     # ----- Debug test -----
     system.activationScripts.testScript.text = ''
