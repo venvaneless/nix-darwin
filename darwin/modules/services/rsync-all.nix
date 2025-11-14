@@ -7,7 +7,7 @@
 # you maintain outside Nix.
 # ============================================================
 
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 let
   rsyncScript = pkgs.writeShellScriptBin "rsync-all" ''
@@ -19,22 +19,22 @@ let
     echo "▶ Running all app backup scripts…"
 
     for script in "$SCRIPT_DIR"/rsync-*.sh; do
-        [ "$script" = "$SCRIPT_DIR/rsync-all.sh" ] && continue
+      [ "$script" = "$SCRIPT_DIR/rsync-all.sh" ] && continue
 
-        if [ -x "$script" ]; then
-            echo "----------------------------------------"
-            echo "Running: $(basename "$script")"
-            "$script"
-        else
-            echo "Skipping $script (not executable)"
-        fi
+      if [ -x "$script" ]; then
+        echo "----------------------------------------"
+        echo "Running: $(basename "$script")"
+        "$script"
+      else
+        echo "Skipping $script (not executable)"
+      fi
     done
 
     echo "✔ All backup scripts complete."
   '';
 in
 {
-  system.activationScripts.rsyncAll.text = ''
+  config.system.activationScripts.rsyncAll.text = ''
     echo "Running system rsync all..."
     ${rsyncScript}/bin/rsync-all
   '';

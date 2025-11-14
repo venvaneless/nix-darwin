@@ -17,20 +17,20 @@ let
     days=30d
     profile="/nix/var/nix/profiles/system"
 
-    AWK="$(command -v awk)"
     echo "=== Cleaning old nix-darwin generations ==="
 
     gens=$(nix-env --list-generations --profile "$profile" 2>/dev/null \
-      | "$AWK" '{print $1}' \
-      | sort -n)
+      | awk '{print $1}' | sort -n)
 
     total=$(echo "$gens" | wc -l | tr -d ' ')
     echo "Total generations: $total"
 
     if [ "$total" -gt "$keep" ]; then
       remove=$(echo "$gens" | head -n -"$keep")
+
       echo "Removing:"
       echo "$remove"
+
       for g in $remove; do
         nix-env --delete-generations "$g" --profile "$profile" || true
       done
@@ -40,11 +40,12 @@ let
 
     echo "Running nix-collect-garbage --delete-older-than $days"
     nix-collect-garbage --delete-older-than "$days" || true
+
     echo "=== Cleanup complete ==="
   '';
 in
 {
-  system.activationScripts.cleanupGenerations.text = ''
+  config.system.activationScripts.cleanupGenerations.text = ''
     echo ">>> Running cleanup-generations (system)"
     ${cleanupScript}/bin/cleanup-generations
   '';
