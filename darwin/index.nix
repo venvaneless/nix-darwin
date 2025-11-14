@@ -17,8 +17,6 @@
     system.primaryUser = "ven";
 
     # VEN_DEBUG_FLARE
-
-      {
         system.activationScripts.venDebug.text = ''
           echo ">>> VEN: The flake is ALIVE at $(date)"
         '';
