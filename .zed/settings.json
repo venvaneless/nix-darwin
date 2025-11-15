@@ -1,8 +1,0 @@
-{
-  "languages": {
-    "Nix": {
-      "show_whitespaces": "none",
-      "soft_wrap": "editor_width"
-    }
-  }
-}
