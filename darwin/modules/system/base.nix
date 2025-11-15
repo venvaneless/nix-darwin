@@ -31,6 +31,5 @@
       nh
       home-manager
       nixd
-      nil
     ];
   }
