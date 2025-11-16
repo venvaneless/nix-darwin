@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SRC="/Users/ven/dotfiles/apps/zed"
-DEST="/Users/ven/iCloudDocs/backup/apps/zed"
+DEST="/Users/ven/iCloudDocs/my-system/01-app-data/zed"
 
 CHANGES=$(rsync -avh --delete --dry-run "$SRC/" "$DEST/" | grep -v '/$' | wc -l)
 

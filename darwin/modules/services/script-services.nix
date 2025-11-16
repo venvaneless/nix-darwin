@@ -10,9 +10,8 @@
 
 {
   imports = [
-    # Temporarily disabled for debugging:
     ./generations-cleanup.nix
-    # ./rsync-all.nix
+    ./rsync-all.nix
 
     # Proof-only module
     # ./ven-proof.nix
