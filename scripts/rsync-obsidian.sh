@@ -5,8 +5,8 @@ set -euo pipefail
 
 # SOURCE: Obsidian iCloud vaults (REAL LOCATION)
 # ------------------------------------------------------------
-SRC="/Users/ven/Library/Mobile Documents/iCloud~md~obsidian/Documents"
-DEST="/Users/ven/iCloudDocs/my-system/01-app-data/obsidian"
+SRC="/Users/ven/dotfiles/apps/obsidian"
+DEST="/Users/ven/Library/Mobile Documents/iCloud~md~obsidian/Documents"
 
 echo "▶ Obsidian backup starting…"
 
