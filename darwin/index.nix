@@ -1,6 +1,6 @@
 # /Users/ven/dotfiles/nix/darwin/index.nix
 
-{ config, pkgs, lib, inputs, ... }:
+{ lib, ... }:
 
 {
   # ----- Primary user -----
