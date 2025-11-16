@@ -24,14 +24,26 @@ let
   # Docker CLI (nix-homebrew default on Apple Silicon)
   dockerBin = "/usr/local/bin/docker";
 
+  # ----- Environment variables for Vaultwarden -----
+  envVars = [
+    "-e" "WEBSOCKET_ENABLED=true"
+    "-e" "ENABLE_DB_WAL=false"
+    "-e" "ROCKET_LIMITS={forms=\"64KiB\"}"
+    "-e" "PASSWORD_ITERATIONS=100000"
+    "-e" "PASSWORD_HINTS=true"
+  ];
 
-  # Shell command: start existing container or create it
+  # Convert env list to string
+  envString = lib.concatStringsSep " " envVars;
+
+  # ----- Shell command: start or create container -----
   vaultwardenCommand =
     "${dockerBin} start ${appName} || " +
     "${dockerBin} run -d " +
       "--name ${appName} " +
       "-p 8080:80 " +
       "-v ${dataDir}:/data " +
+      "${envString} " +
       "vaultwarden/server:latest";
 
 in
@@ -43,9 +55,7 @@ in
     chmod 700 "${dataDir}"
   '';
 
-  # ----- Launchd daemon: manage Vaultwarden container -----
-  # This assumes Docker Desktop is running (managed by docker.nix).
-  # If Docker isn't ready at first, KeepAlive causes retries.
+  # ----- Launchd daemon -----
   launchd.daemons.vaultwarden = {
     serviceConfig = {
       Label = "com.ven.vaultwarden";
