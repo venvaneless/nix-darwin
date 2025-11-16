@@ -22,6 +22,8 @@
     ./modules/services/script-services.nix
     ./modules/apps/apps.nix
 
-
+    # --- docker ---
+    ./modules/services/docker.nix
+    ./modules/services/vaultwarden.nix
   ];
 }
