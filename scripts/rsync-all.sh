@@ -9,8 +9,9 @@ SCRIPT_DIR="/Users/ven/dotfiles/nix/scripts"
 # Add or remove entries here to control what rsync-all runs
 # ------------------------------------------------------------
 ENABLED_SCRIPTS=(
-  # "rsync-zed.sh"
-  "rsync-obsidian.sh"   ← disabled because commented out
+  "rsync-zed.sh"
+  "rsync-obsidian.sh"
+  "rsync-vaultwarden.sh"
 )
 
 echo "▶ Running selected backup scripts…"

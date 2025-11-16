@@ -1,10 +1,10 @@
-# /Users/ven/dotfiles/nix/scripts/rsync-zed.sh
+# /Users/ven/dotfiles/nix/scripts/rsync-vaultwarden.sh
 
 #!/bin/bash
 set -euo pipefail
 
-SRC="/Users/ven/dotfiles/apps/zed"
-DEST="/Users/ven/iCloudDocs/my-system/01-app_data/zed"
+SRC="/Users/ven/dotfiles/containers/vaultwarden"
+DEST="/Users/ven/iCloudDocs/my-system/04-containers/vaultwarden"
 
 echo "▶ Zed backup starting…"
 
@@ -44,4 +44,4 @@ echo "$DRY_OUTPUT"
 echo "→ Syncing now…"
 rsync -avh --delete "$SRC/" "$DEST/"
 
-echo "✔ Zed backup completed."
+echo "✔ Vaultwarden backup completed."
