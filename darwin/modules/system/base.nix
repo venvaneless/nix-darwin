@@ -28,9 +28,10 @@
     # --- Global system packages ---
     environment.systemPackages = with pkgs; [
     	inputs.darwin.packages.${pkgs.system}.darwin-rebuild
-      nh
-      home-manager
-      nixd
-      nil
+     git-crypt
+     nh
+     home-manager
+     nixd
+     nil
     ];
   }
