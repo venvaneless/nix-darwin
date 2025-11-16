@@ -1,21 +1,36 @@
+# /Users/ven/dotfiles/nix/scripts/rsync-all.sh
+
 #!/bin/bash
 set -euo pipefail
 
 SCRIPT_DIR="/Users/ven/dotfiles/nix/scripts"
 
-echo "▶ Running all app backup scripts…"
+# ENABLED SCRIPTS (only these run)
+# Add or remove entries here to control what rsync-all runs
+# ------------------------------------------------------------
+ENABLED_SCRIPTS=(
+  # "rsync-zed.sh"
+  "rsync-obsidian.sh"   ← disabled because commented out
+)
 
-for script in "$SCRIPT_DIR"/rsync-*.sh; do
-    # Skip this script itself if the name matches
-    [ "$script" = "$SCRIPT_DIR/rsync-all.sh" ] && continue
+echo "▶ Running selected backup scripts…"
 
-    if [ -x "$script" ]; then
-        echo "----------------------------------------"
-        echo "Running: $(basename "$script")"
-        "$script"
-    else
-        echo "Skipping $script (not executable)"
+for script_name in "${ENABLED_SCRIPTS[@]}"; do
+    script="$SCRIPT_DIR/$script_name"
+
+    if [ ! -f "$script" ]; then
+        echo "Skipping $script_name (does not exist)"
+        continue
     fi
+
+    if [ ! -x "$script" ]; then
+        echo "Skipping $script_name (not executable)"
+        continue
+    fi
+
+    echo "----------------------------------------"
+    echo "Running: $script_name"
+    "$script"
 done
 
-echo "✔ All backup scripts complete."
+echo "✔ Selected backup scripts complete."
