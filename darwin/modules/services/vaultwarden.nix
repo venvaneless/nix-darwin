@@ -22,7 +22,8 @@ let
   dataDir        = "${containersRoot}/${appName}";
 
   # Docker CLI (nix-homebrew default on Apple Silicon)
-  dockerBin = "/opt/homebrew/bin/docker";
+  dockerBin = "/usr/local/bin/docker";
+
 
   # Shell command: start existing container or create it
   vaultwardenCommand =
