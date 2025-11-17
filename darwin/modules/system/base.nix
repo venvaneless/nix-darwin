@@ -34,5 +34,6 @@
      nginx
      nixd
      nil
+     pandoc
     ];
   }
