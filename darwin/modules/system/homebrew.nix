@@ -15,7 +15,7 @@
     global.autoUpdate = true;
     onActivation.cleanup = "uninstall";
     
-    packages = [
+    brews = [
         "nginx"
       ];
 
