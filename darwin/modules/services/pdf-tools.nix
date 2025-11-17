@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/system/pdf-tools.nix
+# /Users/ven/dotfiles/nix/darwin/modules/services/pdf-tools.nix
 #
 # PDF + Konvertierungswerkzeuge
 # ===========================================
