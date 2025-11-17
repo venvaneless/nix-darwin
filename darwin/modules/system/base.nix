@@ -35,5 +35,6 @@
      nixd
      nil
      pandoc
+     wkhtmltopdf
     ];
   }
