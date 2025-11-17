@@ -31,11 +31,12 @@
      git-crypt
      nh
      home-manager
+     miller
      nginx
      nixd
      nil
      pandoc
      texliveSmall
-     libreoffice
+     weasyprint
     ];
   }
