@@ -13,7 +13,11 @@
     enable = true;
 
     global.autoUpdate = true;
-    onActivation.cleanup = "uninstall"; # safe again
+    onActivation.cleanup = "uninstall";
+    
+    packages = [
+        "nginx"
+      ];
 
     # --- Declarative apps (casks) ---
     casks = [
