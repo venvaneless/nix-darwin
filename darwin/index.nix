@@ -20,6 +20,7 @@
     ./modules/terminal/shell.nix
     ./modules/services/nix-homebrew.nix
     ./modules/services/script-services.nix
+    ./modules/services/pdf-tools.nix
     ./modules/apps/apps.nix
 
     # --- docker ---
