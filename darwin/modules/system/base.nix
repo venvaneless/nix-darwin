@@ -31,6 +31,7 @@
      git-crypt
      nh
      home-manager
+     nginx
      nixd
      nil
     ];
