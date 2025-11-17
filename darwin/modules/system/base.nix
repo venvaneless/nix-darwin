@@ -35,6 +35,7 @@
      nixd
      nil
      pandoc
-     wkhtmltopdf
+     texliveSmall
+     libreoffice
     ];
   }
