@@ -31,12 +31,13 @@
      git-crypt
      nh
      home-manager
-     miller
      nginx
      nixd
      nil
      pandoc
      texliveSmall
-     weasyprint
+     python3
+     python3Packages.pandas
+     python3Packages.reportlab
     ];
   }
