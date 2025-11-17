@@ -27,12 +27,12 @@
 
     # --- Global system packages ---
     environment.systemPackages = with pkgs; [
-    	inputs.darwin.packages.${pkgs.system}.darwin-rebuild
-     git-crypt
-     nh
-     home-manager
-     nginx
-     nixd
-     nil
+    inputs.darwin.packages.${pkgs.system}.darwin-rebuild
+    git-crypt
+    nh
+    home-manager
+    nginx
+    nixd
+    nil
     ];
   }
