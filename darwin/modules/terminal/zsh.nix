@@ -18,8 +18,9 @@
 
     initContent = ''
       # Ensure Nix paths visible
+      # (PATH is already set correctly in zshenv.local — don't override here)
       if [[ ":$PATH:" != *":/run/current-system/sw/bin:"* ]]; then
-        export PATH="/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH"
+        :
       fi
 
       # Load nix-daemon environment
@@ -63,10 +64,11 @@
     };
   };
 
+  # Correct PATH order for Apple Silicon
   home.sessionPath = [
+    "/opt/homebrew/bin"
     "$HOME/.local/bin"
     "/usr/local/bin"
-    "/opt/homebrew/bin"
   ];
 
   # Automatically import submodules under ./zsh/
