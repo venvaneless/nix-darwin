@@ -1,6 +1,6 @@
 # /Users/ven/dotfiles/nix/darwin/modules/terminal/shell.nix
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # ============================================================
@@ -11,14 +11,15 @@
     pkgs.nix
   ];
 
+  # Hard override PATH so nix-daemon.sh cannot reintroduce /usr/local/bin
   environment.variables = {
-  NIX_PROFILES =
-       "/nix/var/nix/profiles/default /run/current-system/sw /Users/ven/.nix-profile";
- 
-     PATH = lib.mkForce "/opt/homebrew/bin:/opt/homebrew/sbin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/Users/ven/.nix-profile/bin";
-   };
+    NIX_PROFILES =
+      "/nix/var/nix/profiles/default /run/current-system/sw /Users/ven/.nix-profile";
 
-  # EARLY-GLOBAL PATH FIX (CORRECT M1 HOME-BREW PREFIX FIRST)
+    PATH = lib.mkForce "/opt/homebrew/bin:/opt/homebrew/sbin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/Users/ven/.nix-profile/bin";
+  };
+
+  # EARLY-GLOBAL PATH FIX (correct Apple Silicon prefix)
   environment.etc."zshenv.local".text = ''
     unset __ETC_PROFILE_NIX_SOURCED
 
@@ -27,10 +28,10 @@
       . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
     fi
 
-    # Correct PATH order for Apple Silicon
-    export PATH="/opt/homebrew/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:$PATH"
+    # Ensure PATH starts with ARM Homebrew (do NOT append $PATH)
+    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/Users/ven/.nix-profile/bin"
 
-    # ZDOTDIR for modular Zsh setup
+    # Modular zsh directory
     export ZDOTDIR="$HOME/dotfiles/zsh"
   '';
 
