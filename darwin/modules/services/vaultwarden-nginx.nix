@@ -1,50 +1,52 @@
 # /Users/ven/dotfiles/nix/darwin/modules/services/vaultwarden-nginx.nix
 #
-# NGINX VIA HOMEBREW (DECLARATIVE CONFIG)
+# HOMEBREW NGINX REVERSE PROXY FOR VAULTWARDEN
+# ============================================================
+# - Uses Homebrew-installed nginx binary
+# - Generates a self-signed cert at:
+#       ~/dotfiles/ssl/vaultwarden/
+# - Writes nginx.conf to:
+#       /opt/homebrew/etc/nginx/nginx.conf
+# - Proxies:
+#       https://vaultwarden.local  →  http://127.0.0.1:8080
 # ============================================================
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   certDir = "/Users/ven/dotfiles/ssl/vaultwarden";
-  cert    = "${certDir}/cert.pem";
-  key     = "${certDir}/key.pem";
+  cert    = "${certDir}/vaultwarden.local.pem";
+  key     = "${certDir}/vaultwarden.local-key.pem";
 
   nginxConf = ''
-    worker_processes 1;
+    worker_processes  1;
 
     events {
-      worker_connections 1024;
+      worker_connections  1024;
     }
 
     http {
-      include mime.types;
-      default_type application/octet-stream;
-      sendfile on;
-      keepalive_timeout 65;
+      include       mime.types;
+      default_type  application/octet-stream;
+      sendfile      on;
+      keepalive_timeout  65;
 
       server {
         listen 443 ssl;
         server_name vaultwarden.local;
 
-        ssl_certificate      /Users/ven/dotfiles/ssl/vaultwarden/vaultwarden.local.pem;
-        ssl_certificate_key  /Users/ven/dotfiles/ssl/vaultwarden/vaultwarden.local-key.pem;
+        ssl_certificate      ${cert};
+        ssl_certificate_key  ${key};
 
         location / {
           proxy_pass http://127.0.0.1:8080;
-
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
 
           proxy_set_header Upgrade $http_upgrade;
-
-          if ($http_upgrade != "") {
-            proxy_set_header Connection "upgrade";
-          } else {
-            proxy_set_header Connection "close";
-          }
+          proxy_set_header Connection $connection_upgrade;
         }
       }
 
@@ -55,12 +57,11 @@ let
       }
     }
   '';
+
 in
 {
-  # ❌ Remove this if still present
-  # environment.etc."opt/homebrew/etc/nginx/nginx.conf".text = nginxConf;
 
-  # CERT GENERATOR
+  # Generate certs once
   system.activationScripts.vaultwardenCert.text = ''
     mkdir -p ${certDir}
 
@@ -74,37 +75,30 @@ in
     fi
   '';
 
-  # NGINX CONFIG INSTALLER — FIXED VERSION
+  # Write nginx.conf
   system.activationScripts.installNginxConf.text = ''
+    echo "Installing nginx.conf to /opt/homebrew/etc/nginx/nginx.conf ..."
     mkdir -p /opt/homebrew/etc/nginx
-
-    echo "Installing nginx.conf into Homebrew prefix..."
     cat > /opt/homebrew/etc/nginx/nginx.conf <<EOF
 ${nginxConf}
 EOF
   '';
 
-  launchd.daemons.nginx = {
-     serviceConfig = {
-       Label = "homebrew.mxcl.nginx";
- 
-       ProgramArguments = [
-         "/opt/homebrew/opt/nginx/bin/nginx"
-         "-c"
-         "/opt/homebrew/etc/nginx/nginx.conf"
-         "-g"
-         "daemon off;"
-       ];
- 
-       RunAtLoad = true;
-       KeepAlive = true;
-       WorkingDirectory = "/opt/homebrew";
-     };
-   };
-   
-   
-  # Optional message
-  system.activationScripts.vaultwardenNginxMessage.text = ''
-    echo ">> Restarting nginx recommended: brew services restart nginx"
-  '';
+  # Homebrew nginx launchd service
+  launchd.daemons.nginx-vaultwarden = {
+    serviceConfig = {
+      Label = "homebrew.vaultwarden.nginx";
+
+      ProgramArguments = [
+        "/opt/homebrew/opt/nginx/bin/nginx"
+        "-c"
+        "/opt/homebrew/etc/nginx/nginx.conf"
+        "-g"
+        "daemon off;"
+      ];
+
+      RunAtLoad = true;
+      KeepAlive = true;
+    };
+  };
 }
