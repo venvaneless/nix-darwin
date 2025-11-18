@@ -45,7 +45,13 @@ let
           proxy_set_header X-Forwarded-Proto $scheme;
 
           proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection $connection_upgrade;
+          
+          # Correct standard nginx logic
+          if ($http_upgrade != "") {
+              proxy_set_header Connection "upgrade";
+          } else {
+              proxy_set_header Connection "close";
+          }
         }
       }
 
