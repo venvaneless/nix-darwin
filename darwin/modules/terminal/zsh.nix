@@ -68,7 +68,6 @@
   home.sessionPath = [
     "/opt/homebrew/bin"
     "$HOME/.local/bin"
-    "/usr/local/bin"
   ];
 
   # Automatically import submodules under ./zsh/
