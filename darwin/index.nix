@@ -11,8 +11,7 @@
   # This runs as part of the main activation script via extraActivation.
 
   imports = [
-  	# --- home-manager last ---
-   ../shared/services/home-manager.nix
+  
 
     # --- system modules ---
     ./modules/system/base.nix
@@ -27,5 +26,8 @@
     ./modules/services/docker.nix
     ./modules/services/vaultwarden.nix
     ./modules/services/vaultwarden-nginx.nix
+    
+   	# --- home-manager last ---
+    ../shared/services/home-manager.nix
   ];
 }
