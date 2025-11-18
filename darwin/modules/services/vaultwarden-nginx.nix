@@ -27,8 +27,8 @@ let
         listen 443 ssl;
         server_name vaultwarden.local;
 
-        ssl_certificate      ${cert};
-        ssl_certificate_key  ${key};
+        ssl_certificate      /Users/ven/dotfiles/ssl/vaultwarden/vaultwarden.local.pem;
+        ssl_certificate_key  /Users/ven/dotfiles/ssl/vaultwarden/vaultwarden.local-key.pem;
 
         location / {
           proxy_pass http://127.0.0.1:8080;
