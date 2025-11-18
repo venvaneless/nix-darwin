@@ -3,21 +3,24 @@
 # HOMEBREW NGINX REVERSE PROXY FOR VAULTWARDEN
 # ============================================================
 # - Uses Homebrew-installed nginx binary
-# - Generates a self-signed cert at:
+# - Generates mkcert certificates at:
 #       ~/dotfiles/ssl/vaultwarden/
 # - Writes nginx.conf to:
 #       /opt/homebrew/etc/nginx/nginx.conf
 # - Proxies:
 #       https://vaultwarden.local  →  http://127.0.0.1:8080
+# - Forces ALL IP access to redirect properly to the hostname
 # ============================================================
 
 { config, pkgs, lib, ... }:
 
 let
+  # ----- Certificate directory paths -----
   certDir = "/Users/ven/dotfiles/ssl/vaultwarden";
   cert    = "${certDir}/vaultwarden.local.pem";
   key     = "${certDir}/vaultwarden.local-key.pem";
 
+  # ----- nginx.conf content -----
   nginxConf = ''
     worker_processes  1;
 
@@ -31,6 +34,18 @@ let
       sendfile      on;
       keepalive_timeout  65;
 
+      # ----- Redirect ALL HTTP (IP or hostname) to HTTPS -----
+      # Handles:
+      #   http://192.168.x.x
+      #   http://vaultwarden.local
+      #   http://anything
+      server {
+        listen 80 default_server;
+        server_name _;
+        return 301 https://vaultwarden.local$request_uri;
+      }
+
+      # ----- HTTPS: Vaultwarden reverse proxy -----
       server {
         listen 443 ssl;
         server_name vaultwarden.local;
@@ -49,33 +64,29 @@ let
           proxy_set_header Connection $connection_upgrade;
         }
       }
-
-      server {
-        listen 80;
-        server_name vaultwarden.local;
-        return 301 https://vaultwarden.local$request_uri;
-      }
     }
   '';
 
 in
 {
-
-  # Generate certs once
+  # ============================================================
+  # Generate mkcert certificates (once)
+  # ============================================================
   system.activationScripts.vaultwardenCert.text = ''
     mkdir -p ${certDir}
 
     if [ ! -f "${cert}" ] || [ ! -f "${key}" ]; then
-      echo "Generating self-signed certificate for vaultwarden.local..."
-      ${pkgs.openssl}/bin/openssl req -x509 -nodes -newkey rsa:2048 \
-        -keyout "${key}" \
-        -out "${cert}" \
-        -subj "/CN=vaultwarden.local" \
-        -days 365
+      echo "Generating mkcert certificate for vaultwarden.local ..."
+      ${pkgs.mkcert}/bin/mkcert \
+        -cert-file ${cert} \
+        -key-file ${key} \
+        vaultwarden.local
     fi
   '';
 
-  # Write nginx.conf
+  # ============================================================
+  # Install nginx.conf
+  # ============================================================
   system.activationScripts.installNginxConf.text = ''
     echo "Installing nginx.conf to /opt/homebrew/etc/nginx/nginx.conf ..."
     mkdir -p /opt/homebrew/etc/nginx
@@ -84,7 +95,9 @@ ${nginxConf}
 EOF
   '';
 
+  # ============================================================
   # Homebrew nginx launchd service
+  # ============================================================
   launchd.daemons.nginx-vaultwarden = {
     serviceConfig = {
       Label = "homebrew.vaultwarden.nginx";
