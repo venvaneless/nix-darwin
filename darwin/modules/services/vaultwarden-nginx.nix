@@ -63,7 +63,7 @@ let
 in
 {
   # Write nginx.conf via Nix -> Homebrew will use it
-  environment.etc."nginx/nginx.conf".text = nginxConf;
+  environment.etc."opt/homebrew/etc/nginx/nginx.conf".text = nginxConf;
 
   # Generate self-signed cert (once)
   system.activationScripts.vaultwardenCert.text = ''
