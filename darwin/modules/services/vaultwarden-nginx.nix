@@ -84,6 +84,25 @@ ${nginxConf}
 EOF
   '';
 
+  launchd.daemons.nginx = {
+     serviceConfig = {
+       Label = "homebrew.mxcl.nginx";
+ 
+       ProgramArguments = [
+         "/opt/homebrew/opt/nginx/bin/nginx"
+         "-c"
+         "/opt/homebrew/etc/nginx/nginx.conf"
+         "-g"
+         "daemon off;"
+       ];
+ 
+       RunAtLoad = true;
+       KeepAlive = true;
+       WorkingDirectory = "/opt/homebrew";
+     };
+   };
+   
+   
   # Optional message
   system.activationScripts.vaultwardenNginxMessage.text = ''
     echo ">> Restarting nginx recommended: brew services restart nginx"
