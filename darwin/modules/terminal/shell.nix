@@ -12,9 +12,11 @@
   ];
 
   environment.variables = {
-    NIX_PROFILES =
-      "/nix/var/nix/profiles/default /run/current-system/sw /Users/ven/.nix-profile";
-  };
+  NIX_PROFILES =
+       "/nix/var/nix/profiles/default /run/current-system/sw /Users/ven/.nix-profile";
+ 
+     PATH = lib.mkForce "/opt/homebrew/bin:/opt/homebrew/sbin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/Users/ven/.nix-profile/bin";
+   };
 
   # EARLY-GLOBAL PATH FIX (CORRECT M1 HOME-BREW PREFIX FIRST)
   environment.etc."zshenv.local".text = ''
