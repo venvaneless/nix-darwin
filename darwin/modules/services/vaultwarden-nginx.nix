@@ -29,9 +29,6 @@ let
       sendfile on;
       keepalive_timeout 65;
 
-      # ============================================================
-      # HTTPS reverse proxy for Vaultwarden
-      # ============================================================
       server {
         listen 443 ssl;
         server_name vaultwarden.local;
@@ -52,7 +49,6 @@ let
         }
       }
 
-      # Redirect HTTP to HTTPS
       server {
         listen 80;
         server_name vaultwarden.local;
@@ -62,10 +58,10 @@ let
   '';
 in
 {
-  # Write nginx.conf via Nix -> Homebrew will use it
-  environment.etc."opt/homebrew/etc/nginx/nginx.conf".text = nginxConf;
+  # ❌ REMOVE THIS — wrong path, never worked
+  # environment.etc."opt/homebrew/etc/nginx/nginx.conf".text = nginxConf;
 
-  # Generate self-signed cert (once)
+  # ✔ KEEP THIS — it generates your self-signed cert ONE time
   system.activationScripts.vaultwardenCert.text = ''
     mkdir -p ${certDir}
 
@@ -79,7 +75,16 @@ in
     fi
   '';
 
-  # Friendly reminder after rebuild
+  # ✔ ADD THIS — this writes the nginx.conf correctly under the real brew prefix
+  system.activationScripts.installNginxConf.text = ''
+    mkdir -p /opt/homebrew/etc/nginx
+
+    echo "Installing vaultwarden nginx.conf into Homebrew prefix..."
+    cat > /opt/homebrew/etc/nginx/nginx.conf <<'EOF'
+${nginxConf}
+EOF
+  '';
+
   system.activationScripts.vaultwardenNginxMessage.text = ''
     echo ">> Restarting nginx recommended:   brew services restart nginx"
   '';
