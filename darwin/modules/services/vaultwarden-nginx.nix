@@ -84,11 +84,11 @@ in
   # ✔ ADD THIS — this writes the nginx.conf correctly under the real brew prefix
   system.activationScripts.installNginxConf.text = ''
     mkdir -p /opt/homebrew/etc/nginx
-
-    echo "Installing vaultwarden nginx.conf into Homebrew prefix..."
-    cat > /opt/homebrew/etc/nginx/nginx.conf <<'EOF'
-${nginxConf}
-EOF
+  
+    echo "Installing nginx.conf into Homebrew prefix..."
+    cat > /opt/homebrew/etc/nginx/nginx.conf <<EOF
+  ${nginxConf}
+  EOF
   '';
 
   system.activationScripts.vaultwardenNginxMessage.text = ''
