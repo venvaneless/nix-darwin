@@ -29,7 +29,7 @@
     fi
 
     # Ensure PATH starts with ARM Homebrew (do NOT append $PATH)
-    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/Users/ven/.nix-profile/bin"
+    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin:/Users/ven/.nix-profile/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
     # Modular zsh directory
     export ZDOTDIR="$HOME/dotfiles/zsh"
