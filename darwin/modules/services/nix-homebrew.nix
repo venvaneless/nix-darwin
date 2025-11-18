@@ -17,7 +17,7 @@ in
   nix-homebrew = {
     enable = true;
     user = "ven";
-    enableRosetta = true;
+    enableRosetta = false;
     autoMigrate = true;
   };
 }
