@@ -22,7 +22,7 @@ let
   dataDir        = "${containersRoot}/${appName}";
 
   # Docker CLI (nix-homebrew default on Apple Silicon)
-  dockerBin = "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
+  dockerBin = "/usr/local/bin/docker";
 
   # ----- Environment variables for Vaultwarden -----
   envVars = [
@@ -41,7 +41,7 @@ let
     "${dockerBin} start ${appName} || " +
     "${dockerBin} run -d " +
       "--name ${appName} " +
-      "-p 8080:80 -p 8222:80 " +
+      "-p 8080:80 " +
       "-v ${dataDir}:/data " +
       "${envString} " +
       "vaultwarden/server:latest";
