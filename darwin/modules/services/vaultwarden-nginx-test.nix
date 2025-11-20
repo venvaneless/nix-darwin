@@ -92,7 +92,7 @@ EOF
 
   # Homebrew nginx launchd service
   launchd.daemons.nginx-vaultwarden = {
-    serviceConfig = {y<≤≤≤≤≤≤≤≤≤≤≤≤≤≤≤≤
+    serviceConfig = {
       Label = "homebrew.vaultwarden.nginx";
 
       ProgramArguments = [
