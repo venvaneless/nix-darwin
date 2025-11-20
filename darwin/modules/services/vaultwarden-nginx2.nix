@@ -24,14 +24,14 @@ let
       server {
         listen 80;
         server_name vaultwarden.local;
-        return 301 https://vaultwarden.local$request_uri;
+        return 301 https://vaultwarden.local\$request_uri;
       }
 
       # HTTP → HTTPS for IP
       server {
         listen 80;
         server_name 192.168.2.125;
-        return 301 https://192.168.2.125$request_uri;
+        return 301 https://192.168.2.125\$request_uri;
       }
 
       # Main HTTPS block
