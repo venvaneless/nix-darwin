@@ -1,4 +1,16 @@
-# /Users/ven/dotfiles/nix/darwin/modules/services/vaultwarden-nginx.nix
+# /Users/ven/dotfiles/nix/darwin/modules/services/vaultwarden-nginx-test.nix
+#
+# HOMEBREW NGINX REVERSE PROXY FOR VAULTWARDEN
+# ============================================================
+# - Uses Homebrew-installed nginx binary
+# - Uses mkcert to generate a TLS cert for:
+#       vaultwarden.local  AND  192.168.2.125
+# - Cert is stored at:
+#       ~/dotfiles/ssl/vaultwarden/vaultwarden.local+ip.pem
+#       ~/dotfiles/ssl/vaultwarden/vaultwarden.local+ip-key.pem
+# - Writes nginx.conf to:
+#       /opt/homebrew/etc/nginx/nginx.conf
+# ============================================================
 
 { config, pkgs, lib, ... }:
 
