@@ -8,17 +8,17 @@ let
   key     = "${certDir}/vaultwarden.local-key.pem";
 
   nginxConf = ''
-    worker_processes  1;
+    worker_processes 1;
 
     events {
-      worker_connections  1024;
+      worker_connections 1024;
     }
 
     http {
-      include       mime.types;
-      default_type  application/octet-stream;
-      sendfile      on;
-      keepalive_timeout  65;
+      include mime.types;
+      default_type application/octet-stream;
+      sendfile on;
+      keepalive_timeout 65;
 
       # HTTP → HTTPS for hostname
       server {
@@ -33,12 +33,13 @@ let
         server_name 192.168.2.125;
         return 301 https://192.168.2.125\$request_uri;
       }
-      
+
+      # FIXED: nginx map block (no Nix string-breaking quotes)
       map \$http_upgrade \$connection_upgrade {
-          default upgrade;
-          ''      close;
-        }
-        
+        default upgrade;
+        ""      close;
+      }
+
       # Main HTTPS block
       server {
         listen 443 ssl;
@@ -51,7 +52,6 @@ let
         location / {
           proxy_pass http://127.0.0.1:8080;
 
-          # Escaped so Nix/ShellCheck won't choke
           proxy_set_header Host              \$host;
           proxy_set_header X-Real-IP         \$remote_addr;
           proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
@@ -62,7 +62,6 @@ let
       }
     }
   '';
-
 in
 {
   system.activationScripts.extraActivation.text = lib.mkAfter ''
