@@ -23,8 +23,8 @@
 
 let
   certDir = "/Users/ven/dotfiles/ssl/vaultwarden";
-  cert    = "${certDir}/vaultwarden.local+ip.pem";
-  key     = "${certDir}/vaultwarden.local+ip-key.pem";
+  cert    = "${certDir}/vaultwarden.local.pem";
+  key     = "${certDir}/vaultwarden.local-key.pem";
 
   nginxConf = ''
     worker_processes  1;
@@ -103,6 +103,13 @@ in
 ${nginxConf}
 EOF
   '';
+  
+  system.activationScripts.vaultwardenDebug.text = ''
+      echo ">>> [vaultwarden-nginx2] activation is running"
+      echo ">>> [vaultwarden-nginx2] cert = ${cert}"
+      echo ">>> [vaultwarden-nginx2] key  = ${key}"
+      date > /tmp/vaultwarden-nginx2-activation.log
+    '';
 
   launchd.daemons.nginx-vaultwarden = {
     serviceConfig = {
