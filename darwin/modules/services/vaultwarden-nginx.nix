@@ -96,21 +96,20 @@ in
     in
     ''
       mkdir -p "${certDir'}"
-
+  
       if [ ! -f /usr/local/bin/vaultwarden-mkcert ]; then
         echo ">> Creating mkcert wrapper..."
-
+  
         cat > /usr/local/bin/vaultwarden-mkcert <<EOF
-        
-    #!/bin/bash
-    ${mkcert} \
-    	-cert-file "${cert'}" \
-     -key-file "${key'}" \
-     vaultwarden.local 192.168.2.125
-     EOF
-
-    chmod +x /usr/local/bin/vaultwarden-mkcert
-      echo ">> Run manually: sudo vaultwarden-mkcert"
+  #!/bin/bash
+  ${mkcert} \
+    -cert-file "${cert'}" \
+    -key-file "${key'}" \
+    vaultwarden.local 192.168.2.125
+  EOF
+  
+        chmod +x /usr/local/bin/vaultwarden-mkcert
+        echo ">> Run manually: sudo vaultwarden-mkcert"
       fi
     '';
 
