@@ -1,19 +1,4 @@
 # /Users/ven/dotfiles/nix/darwin/modules/services/vaultwarden-nginx2.nix
-#
-# HOMEBREW NGINX REVERSE PROXY FOR VAULTWARDEN
-# ============================================================
-# - Uses Homebrew-installed nginx binary
-# - Uses mkcert to generate a TLS cert for:
-#       vaultwarden.local  AND  192.168.2.125
-# - Cert is stored at:
-#       ~/dotfiles/ssl/vaultwarden/vaultwarden.local.pem
-#       ~/dotfiles/ssl/vaultwarden/vaultwarden.local-key.pem
-# - Writes nginx.conf to:
-#       /opt/homebrew/etc/nginx/nginx.conf
-# - Proxies:
-#       HTTPS  →  http://127.0.0.1:8080  (Vaultwarden container)
-# - HTTP (80) redirects to HTTPS
-# ============================================================
 
 { config, pkgs, lib, ... }:
 
@@ -49,7 +34,7 @@ let
         return 301 https://192.168.2.125$request_uri;
       }
 
-      # Main HTTPS server block
+      # Main HTTPS block
       server {
         listen 443 ssl;
         listen [::]:443 ssl;
@@ -60,44 +45,43 @@ let
 
         location / {
           proxy_pass http://127.0.0.1:8080;
-          proxy_set_header Host              $host;
-          proxy_set_header X-Real-IP         $remote_addr;
-          proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header Upgrade           $http_upgrade;
-          proxy_set_header Connection        $connection_upgrade;
+
+          # Escaped so Nix/ShellCheck won't choke
+          proxy_set_header Host              \$host;
+          proxy_set_header X-Real-IP         \$remote_addr;
+          proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto \$scheme;
+          proxy_set_header Upgrade           \$http_upgrade;
+          proxy_set_header Connection        \$connection_upgrade;
         }
       }
     }
   '';
+
 in
 {
-  # Single, real nix-darwin activation hook
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> [vaultwarden-nginx2] activation starting"
-    echo ">>> [vaultwarden-nginx2] cert = ${cert}"
-    echo ">>> [vaultwarden-nginx2] key  = ${key}"
+    echo ">>> [vaultwarden-nginx2] Activation start"
+    echo ">>> [vaultwarden-nginx2] cert path = ${cert}"
+    echo ">>> [vaultwarden-nginx2] key  path = ${key}"
 
     mkdir -p "${certDir}"
 
-    # Generate cert only if missing
     if [ ! -f "${cert}" ] || [ ! -f "${key}" ]; then
-      echo ">>> [vaultwarden-nginx2] Creating certificate via mkcert..."
+      echo ">>> [vaultwarden-nginx2] Running mkcert"
       "${pkgs.mkcert}/bin/mkcert" \
         -cert-file "${cert}" \
         -key-file  "${key}" \
         vaultwarden.local 192.168.2.125
     else
-      echo ">>> [vaultwarden-nginx2] Certificate already exists, skipping mkcert"
+      echo ">>> [vaultwarden-nginx2] Cert already exists"
     fi
 
-    echo ">>> [vaultwarden-nginx2] Installing nginx.conf"
+    echo ">>> [vaultwarden-nginx2] Writing nginx.conf"
     mkdir -p /opt/homebrew/etc/nginx
     cat > /opt/homebrew/etc/nginx/nginx.conf <<EOF
 ${nginxConf}
 EOF
-
-    echo ">>> [vaultwarden-nginx2] Done."
   '';
 
   launchd.daemons.nginx-vaultwarden = {
