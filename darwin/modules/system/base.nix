@@ -31,6 +31,8 @@
     git-crypt
     nh
     home-manager
+    mkcert
+    nssTools
     nginx
     nixd
     nil
