@@ -6,17 +6,13 @@
 # - Uses mkcert to generate a TLS cert for:
 #       vaultwarden.local  AND  192.168.2.125
 # - Cert is stored at:
-#       ~/dotfiles/ssl/vaultwarden/vaultwarden.local+ip.pem
-#       ~/dotfiles/ssl/vaultwarden/vaultwarden.local+ip-key.pem
+#       ~/dotfiles/ssl/vaultwarden/vaultwarden.local.pem
+#       ~/dotfiles/ssl/vaultwarden/vaultwarden.local-key.pem
 # - Writes nginx.conf to:
 #       /opt/homebrew/etc/nginx/nginx.conf
 # - Proxies:
 #       HTTPS  →  http://127.0.0.1:8080  (Vaultwarden container)
-# - HTTP (80) redirects everything to HTTPS on vaultwarden.local
-#   so:
-#       http://192.168.2.125        → https://vaultwarden.local/...
-#       http://vaultwarden.local    → https://vaultwarden.local/...
-#       https://192.168.2.125       → valid TLS (same cert), hits Vaultwarden
+# - HTTP (80) redirects to HTTPS
 # ============================================================
 
 { config, pkgs, lib, ... }:
@@ -74,42 +70,35 @@ let
       }
     }
   '';
-
 in
 {
-  # ----- Generate certs with mkcert -----
-  system.activationScripts.vaultwardenCert.text = ''
-    echo ">>> vaultwardenCert: ensuring mkcert certs"
+  # Single, real nix-darwin activation hook
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
+    echo ">>> [vaultwarden-nginx2] activation starting"
+    echo ">>> [vaultwarden-nginx2] cert = ${cert}"
+    echo ">>> [vaultwarden-nginx2] key  = ${key}"
 
     mkdir -p "${certDir}"
 
-    # If new files needed, generate them
+    # Generate cert only if missing
     if [ ! -f "${cert}" ] || [ ! -f "${key}" ]; then
-      echo ">>> Creating certificate via mkcert..."
+      echo ">>> [vaultwarden-nginx2] Creating certificate via mkcert..."
       "${pkgs.mkcert}/bin/mkcert" \
         -cert-file "${cert}" \
-        -key-file "${key}" \
+        -key-file  "${key}" \
         vaultwarden.local 192.168.2.125
     else
-      echo ">>> Certificate already exists, skipping"
+      echo ">>> [vaultwarden-nginx2] Certificate already exists, skipping mkcert"
     fi
-  '';
 
-  # ----- Install nginx.conf -----
-  system.activationScripts.installNginxConf.text = ''
-    echo ">>> Installing nginx.conf"
+    echo ">>> [vaultwarden-nginx2] Installing nginx.conf"
     mkdir -p /opt/homebrew/etc/nginx
     cat > /opt/homebrew/etc/nginx/nginx.conf <<EOF
 ${nginxConf}
 EOF
+
+    echo ">>> [vaultwarden-nginx2] Done."
   '';
-  
-  system.activationScripts.vaultwardenDebug.text = ''
-      echo ">>> [vaultwarden-nginx2] activation is running"
-      echo ">>> [vaultwarden-nginx2] cert = ${cert}"
-      echo ">>> [vaultwarden-nginx2] key  = ${key}"
-      date > /tmp/vaultwarden-nginx2-activation.log
-    '';
 
   launchd.daemons.nginx-vaultwarden = {
     serviceConfig = {
