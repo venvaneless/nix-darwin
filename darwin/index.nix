@@ -25,7 +25,7 @@
     # --- docker ---
     ./modules/services/docker.nix
     ./modules/services/vaultwarden.nix
-    ./modules/services/vaultwarden-nginx-test.nix
+    ./modules/services/vaultwarden-nginx-test2.nix
     # ./modules/services/vaultwarden-nginx.nix
 
    	# --- home-manager last ---
