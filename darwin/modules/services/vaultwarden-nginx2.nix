@@ -33,7 +33,12 @@ let
         server_name 192.168.2.125;
         return 301 https://192.168.2.125\$request_uri;
       }
-
+      
+      map \$http_upgrade \$connection_upgrade {
+          default upgrade;
+          ''      close;
+        }
+        
       # Main HTTPS block
       server {
         listen 443 ssl;
