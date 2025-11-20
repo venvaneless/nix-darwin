@@ -42,10 +42,10 @@ let
       # ----- HTTP → HTTPS redirect (catch-all) -----
       # Any http://192.168.2.125 or http://vaultwarden.local
       # gets redirected to https://vaultwarden.local
+      
       server {
         listen 80 default_server;
         server_name _;
-
         return 301 https://vaultwarden.local$request_uri;
       }
 
@@ -53,16 +53,16 @@ let
       # Serves BOTH:
       #   - https://vaultwarden.local
       #   - https://192.168.2.125
+      
       server {
         listen 443 ssl;
         server_name vaultwarden.local 192.168.2.125;
 
         ssl_certificate      ${cert};
         ssl_certificate_key  ${key};
-
+        
         # You can tighten SSL settings later if you want,
         # but default nginx SSL is fine for LAN use.
-
         location / {
           proxy_pass http://127.0.0.1:8080;
 
@@ -87,17 +87,32 @@ in
   # NOTE: if your LAN IP ever changes, you must:
   #   1) delete these two files
   #   2) run `drs` so this script regenerates them with the new IP.
-  system.activationScripts.vaultwardenCert.text = ''
-    mkdir -p ${certDir}
+  system.activationScripts.vaultwardenCert.text =
+    let
+      certDir' = certDir;
+      cert'    = cert;
+      key'     = key;
+      mkcert   = "${pkgs.mkcert}/bin/mkcert";
+    in
+    ''
+      mkdir -p "${certDir'}"
 
-    if [ ! -f "${cert}" ] || [ ! -f "${key}" ]; then
-      echo "Generating mkcert certificate for vaultwarden.local and 192.168.2.125..."
-      "${pkgs.mkcert}/bin/mkcert" \
-        -cert-file "${cert}" \
-        -key-file "${key}" \
-        vaultwarden.local 192.168.2.125
-    fi
-  '';
+      if [ ! -f /usr/local/bin/vaultwarden-mkcert ]; then
+        echo ">> Creating mkcert wrapper..."
+
+        cat > /usr/local/bin/vaultwarden-mkcert <<EOF
+        
+    #!/bin/bash
+    ${mkcert} \
+    	-cert-file "${cert'}" \
+     -key-file "${key'}" \
+     vaultwarden.local 192.168.2.125
+     EOF
+
+    chmod +x /usr/local/bin/vaultwarden-mkcert
+      echo ">> Run manually: sudo vaultwarden-mkcert"
+      fi
+    '';
 
   # ----- Write nginx.conf from the template above -----
   system.activationScripts.installNginxConf.text = ''
@@ -107,6 +122,7 @@ in
 ${nginxConf}
 EOF
   '';
+
 
   # ----- Homebrew nginx launchd service -----
   launchd.daemons.nginx-vaultwarden = {
