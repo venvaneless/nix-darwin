@@ -6,7 +6,7 @@ set -euo pipefail
 SRC="/Users/ven/dotfiles/containers/vaultwarden"
 DEST="/Users/ven/iCloudDocs/my-system/04-containers/vaultwarden"
 
-echo "▶ Zed backup starting…"
+echo "▶ Vaultwarden backup starting…"
 
 # ------------------------------------------------------------
 # 1. Ensure the source exists
