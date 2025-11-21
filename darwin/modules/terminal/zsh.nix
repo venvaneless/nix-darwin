@@ -61,8 +61,10 @@
       drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#ven";
       drhb = "home-manager build --flake /Users/ven/dotfiles/nix#ven";
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
-      gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage.sh";
-      gsnp = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage-and-push.sh";
+      gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/nix-git-stage.sh";
+      gsnp = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/nix-git-stage-and-push.sh";
+      gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage.sh";
+      gsdp = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage-push.sh";
     };
   };
 
