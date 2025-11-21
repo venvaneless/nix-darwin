@@ -62,6 +62,7 @@
       drhb = "home-manager build --flake /Users/ven/dotfiles/nix#ven";
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
       gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage.sh";
+      gsnp = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage-and-push.sh";
     };
   };
 
