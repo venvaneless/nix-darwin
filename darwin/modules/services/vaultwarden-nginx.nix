@@ -23,32 +23,46 @@
 
 let
   certDir = "/Users/ven/dotfiles/ssl/vaultwarden";
-  cert    = "${certDir}/vaultwarden.local+ip.pem";
-  key     = "${certDir}/vaultwarden.local+ip-key.pem";
+  cert    = "${certDir}/vaultwarden.local.pem";
+  key     = "${certDir}/vaultwarden.local-key.pem";
 
   nginxConf = ''
-    worker_processes  1;
+    worker_processes 1;
 
     events {
-      worker_connections  1024;
+      worker_connections 1024;
     }
 
     http {
-      include       mime.types;
-      default_type  application/octet-stream;
-      sendfile      on;
-      keepalive_timeout  65;
+      include mime.types;
+      default_type application/octet-stream;
+      sendfile on;
+      keepalive_timeout 65;
 
-      # Redirect everything HTTP → HTTPS
+      # HTTP → HTTPS for hostname
       server {
-        listen 80 default_server;
-        server_name _;
-        return 301 https://vaultwarden.local$request_uri;
+        listen 80;
+        server_name vaultwarden.local;
+        return 301 https://vaultwarden.local\$request_uri;
       }
 
-      # Main HTTPS server block
+      # HTTP → HTTPS for IP
+      server {
+        listen 80;
+        server_name 192.168.2.125;
+        return 301 https://192.168.2.125\$request_uri;
+      }
+
+      # FIXED: nginx map block (no Nix string-breaking quotes)
+      map \$http_upgrade \$connection_upgrade {
+        default upgrade;
+        ""      close;
+      }
+
+      # Main HTTPS block
       server {
         listen 443 ssl;
+        listen [::]:443 ssl;
         server_name vaultwarden.local 192.168.2.125;
 
         ssl_certificate      ${cert};
@@ -56,40 +70,37 @@ let
 
         location / {
           proxy_pass http://127.0.0.1:8080;
-          proxy_set_header Host              $host;
-          proxy_set_header X-Real-IP         $remote_addr;
-          proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header Upgrade           $http_upgrade;
-          proxy_set_header Connection        $connection_upgrade;
+
+          proxy_set_header Host              \$host;
+          proxy_set_header X-Real-IP         \$remote_addr;
+          proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto \$scheme;
+          proxy_set_header Upgrade           \$http_upgrade;
+          proxy_set_header Connection        \$connection_upgrade;
         }
       }
     }
   '';
-
 in
 {
-  # ----- Generate certs with mkcert -----
-  system.activationScripts.vaultwardenCert.text = ''
-    echo ">>> vaultwardenCert: ensuring mkcert certs"
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
+    echo ">>> [vaultwarden-nginx2] Activation start"
+    echo ">>> [vaultwarden-nginx2] cert path = ${cert}"
+    echo ">>> [vaultwarden-nginx2] key  path = ${key}"
 
     mkdir -p "${certDir}"
 
-    # If new files needed, generate them
     if [ ! -f "${cert}" ] || [ ! -f "${key}" ]; then
-      echo ">>> Creating certificate via mkcert..."
+      echo ">>> [vaultwarden-nginx2] Running mkcert"
       "${pkgs.mkcert}/bin/mkcert" \
         -cert-file "${cert}" \
-        -key-file "${key}" \
+        -key-file  "${key}" \
         vaultwarden.local 192.168.2.125
     else
-      echo ">>> Certificate already exists, skipping"
+      echo ">>> [vaultwarden-nginx2] Cert already exists"
     fi
-  '';
 
-  # ----- Install nginx.conf -----
-  system.activationScripts.installNginxConf.text = ''
-    echo ">>> Installing nginx.conf"
+    echo ">>> [vaultwarden-nginx2] Writing nginx.conf"
     mkdir -p /opt/homebrew/etc/nginx
     cat > /opt/homebrew/etc/nginx/nginx.conf <<EOF
 ${nginxConf}
