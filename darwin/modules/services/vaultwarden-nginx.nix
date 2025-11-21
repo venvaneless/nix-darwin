@@ -84,23 +84,23 @@ let
 in
 {
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> [vaultwarden-nginx2] Activation start"
-    echo ">>> [vaultwarden-nginx2] cert path = ${cert}"
-    echo ">>> [vaultwarden-nginx2] key  path = ${key}"
+    echo ">>> [vaultwarden-nginx] Activation start"
+    echo ">>> [vaultwarden-nginx] cert path = ${cert}"
+    echo ">>> [vaultwarden-nginx] key  path = ${key}"
 
     mkdir -p "${certDir}"
 
     if [ ! -f "${cert}" ] || [ ! -f "${key}" ]; then
-      echo ">>> [vaultwarden-nginx2] Running mkcert"
+      echo ">>> [vaultwarden-nginx] Running mkcert"
       "${pkgs.mkcert}/bin/mkcert" \
         -cert-file "${cert}" \
         -key-file  "${key}" \
         vaultwarden.local 192.168.2.125
     else
-      echo ">>> [vaultwarden-nginx2] Cert already exists"
+      echo ">>> [vaultwarden-nginx] Cert already exists"
     fi
 
-    echo ">>> [vaultwarden-nginx2] Writing nginx.conf"
+    echo ">>> [vaultwarden-nginx] Writing nginx.conf"
     mkdir -p /opt/homebrew/etc/nginx
     cat > /opt/homebrew/etc/nginx/nginx.conf <<EOF
 ${nginxConf}
