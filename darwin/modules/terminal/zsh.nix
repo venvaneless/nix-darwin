@@ -61,11 +61,15 @@
       drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#ven";
       drhb = "home-manager build --flake /Users/ven/dotfiles/nix#ven";
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
-      gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/nix-git-stage.sh";
-      gsnp = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/nix-git-stage-and-push.sh";
-      gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage.sh";
-      gsdp = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage-push.sh";
+      gsn = "/Users/ven/dotfiles/nix-repo-test.sh";
+      gsnn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
+      gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
     };
+  };
+
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
   };
 
   # Correct PATH order for Apple Silicon
