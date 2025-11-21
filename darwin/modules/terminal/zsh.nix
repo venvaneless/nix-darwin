@@ -65,7 +65,6 @@
       gsnp = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/nix-git-stage-and-push.sh";
       gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage.sh";
       gsdp = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage-push.sh";
-      gsdt = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-stage-test.sh";
     };
   };
 
