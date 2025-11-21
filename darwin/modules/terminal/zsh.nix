@@ -64,6 +64,7 @@
       gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
       gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
       
+      # TEST SCRIPTS
       gsnt = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo-test.sh";
       gsdt = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo-test.sh";
     };
