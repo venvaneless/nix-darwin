@@ -3,73 +3,85 @@
 # DOCKER: ALL-IN-ONE MODULE
 # ============================================================
 # Imports:
-#   - docker.nix (installs Docker Desktop)
+#   - docker.nix (installs Docker Desktop & keeps it running)
 #   - vaultwarden.nix (custom Vaultwarden container)
 #   - vaultwarden-nginx.nix (reverse proxy for Vaultwarden)
 #
 # Provides:
-#   - mkContainer: template for universal containers
+#   - mkContainer: builds per-container activation + launchd jobs
 #   - Declarative storage under:
 #         /Users/ven/dotfiles/containers/<clean-name>
-#   - launchd auto-start + KeepAlive for all containers
+#   - launchd auto-start + KeepAlive for all universal containers
 #   - Runner scripts using: docker start || docker run -d
-#   - services.dockerContainers list to enable/disable containers
 #
-# Vaultwarden stays separate and untouched.
+# IMPORTANT:
+#   - Vaultwarden remains fully separate and is NOT managed
+#     by mkContainer.
+#   - You enable/disable universal containers by editing the
+#     `containerDefs` list below.
 # ============================================================
 
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 let
-  # ----- Paths -----
+  # ----- Base paths -----
   containersRoot = "/Users/ven/dotfiles/containers";
+  dockerBin      = "/usr/local/bin/docker";
 
-  # Docker CLI (stable universal macOS path)
-  dockerBin = "/usr/local/bin/docker";
-
-  # ------------------------------------------------------------
-  # Sanitize container names
-  # ------------------------------------------------------------
+  # ----- Name sanitizer -----
+  # Converts arbitrary container name to a safe, lowercase folder name.
   cleanName = name:
     lib.replaceStrings
       [ " " "-" "_" "/" ":" "." "," "'" "\"" "(" ")" "[" "]" "{" "}" "@" "#" "$" "%" "^" "&" "*" "+" "=" ]
       [ ""  ""  ""  ""  ""  ""  ""  ""  ""   ""   ""   ""   ""   ""   ""   ""   ""   ""   ""   ""   ""   ]
       (lib.toLower name);
 
-  # ------------------------------------------------------------
-  # mkContainer: Defines metadata for one universal container
-  # ------------------------------------------------------------
+  # ----- Universal container builder -----
+  # Takes a single container definition and produces Nix config
+  # fragments for:
+  #   - system.activationScripts.ensure-<name>-data
+  #   - launchd.daemons.docker-<name>
+  #
+  # Container definition shape:
+  #   {
+  #     name         = "redis";
+  #     image        = "redis:latest";
+  #     ports        = [ "6379:6379" ];
+  #     extraVolumes = [ "/host/path:/container/path" ];
+  #     extraArgs    = [ "--some-flag" "value" ];
+  #   }
   mkContainer = { name, image, ports ? [], extraVolumes ? [], extraArgs ? [] }:
     let
       cName   = cleanName name;
       dataDir = "${containersRoot}/${cName}";
 
-      # Port mapping e.g. "6379:6379"
+      # Ports: ["6379:6379"] → "-p 6379:6379 -p ..."
       portArgs =
         lib.concatStringsSep " "
           (map (p: "-p ${p}") ports);
 
-      # Volume mapping: OPTION A = 1 (map folder directly)
+      # Volumes:
+      #   A = 1 → /Users/ven/dotfiles/containers/<name>:/data
       volumeArgs =
         "-v ${dataDir}:/data "
         + lib.concatStringsSep " "
             (map (v: "-v ${v}") extraVolumes);
 
-      # Extra flags
+      # Extra arguments, if any
       args = lib.concatStringsSep " " extraArgs;
 
-      # Create the unified runner script
+      # Runner script for this container
       runner = pkgs.writeShellScript "run-${cName}" ''
         #!/bin/bash
         set -euo pipefail
 
-        # Auto-create data directory if missing
+        # Ensure data directory exists
         mkdir -p "${dataDir}"
         chmod 700 "${dataDir}"
 
-        # Try starting container OR create it
-        ${dockerBin} start ${cName} || \
-        ${dockerBin} run -d \
+        # Start existing container OR create it
+        "${dockerBin}" start ${cName} || \
+        "${dockerBin}" run -d \
           --name ${cName} \
           ${portArgs} \
           ${volumeArgs} \
@@ -78,13 +90,13 @@ let
       '';
     in
     {
-      # ----- Activation: ensure folder exists -----
+      # Ensure data dir exists at activation time
       system.activationScripts."ensure-${cName}-data".text = ''
         mkdir -p "${dataDir}"
         chmod 700 "${dataDir}"
       '';
 
-      # ----- Launchd: keep container alive -----
+      # Launchd daemon: auto-start and keep alive
       launchd.daemons."docker-${cName}" = {
         serviceConfig = {
           Label = "com.ven.docker.${cName}";
@@ -95,40 +107,35 @@ let
       };
     };
 
-in
-{
-  # ============================================================
-  # Imports: Docker Desktop + Vaultwarden + Vaultwarden NGINX
-  # ============================================================
-  imports = [
-    ./docker.nix
-    ./vaultwarden.nix
-    ./vaultwarden-nginx.nix
+  # ----- Declarative list of universal containers -----
+  #
+  # Turn containers ON/OFF here by commenting them in/out.
+  #
+  # Each imported file (e.g. ./redis.nix) must return a simple
+  # attribute set with fields:
+  #   - name         (string, required)
+  #   - image        (string, required)
+  #   - ports        (optional list of strings)
+  #   - extraVolumes (optional list of strings)
+  #   - extraArgs    (optional list of strings)
+  #
+  containerDefs = [
+    # Example (uncomment when you create these files):
+    # (import ./redis.nix)
+    # (import ./postgres.nix)
   ];
 
-  # ============================================================
-  # Declarative container list (you control ON/OFF here)
-  # ============================================================
-  options = {
-    services.dockerContainers = lib.mkOption {
-      type = lib.types.listOf lib.types.attrs;
-      default = [];
-      description = ''
-        List of universal container metadata:
-        
-        services.dockerContainers = [
-          (import ./redis.nix)
-          (import ./postgres.nix)
-        ];
-      '';
-    };
-  };
+  # Build per-container fragments
+  containerFragments = map mkContainer containerDefs;
 
-  # ============================================================
-  # Apply mkContainer to every entry in services.dockerContainers
-  # ============================================================
-  config = let
-    universal = map mkContainer config.services.dockerContainers;
-  in
-    lib.mkMerge universal;
-}
+in
+  # Merge:
+  #  - imports (Docker Desktop + Vaultwarden + NGINX)
+  #  - one fragment per universal container
+  ({
+    imports = [
+      ./docker.nix
+      ./vaultwarden.nix
+      ./vaultwarden-nginx.nix
+    ];
+  } // lib.mkMerge containerFragments)
