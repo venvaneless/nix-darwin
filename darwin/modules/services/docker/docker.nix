@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/services/docker.nix
+# /Users/ven/dotfiles/nix/darwin/modules/services/docker/docker.nix
 #
 # DOCKER: DARWIN SERVICE
 # ============================================================
