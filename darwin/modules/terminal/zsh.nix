@@ -62,7 +62,7 @@
       drhb = "home-manager build --flake /Users/ven/dotfiles/nix#ven";
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
       
-      # GIT SCRIPTS
+      # GIT SCRIPTS - ALL
       gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
       gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
       
