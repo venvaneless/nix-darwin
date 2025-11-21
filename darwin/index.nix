@@ -24,9 +24,6 @@
 
     # --- docker ---
     ./modules/services/docker/docker-all.nix
-    # ./modules/services/docker/docker.nix
-    # ./modules/services/docker/vaultwarden.nix
-    # ./modules/services/docker/vaultwarden-nginx.nix
 
    	# --- home-manager last ---
     ../shared/services/home-manager.nix
