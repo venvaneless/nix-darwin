@@ -3,7 +3,7 @@
 # ZSH: THEFUCK
 # ============================================================
 
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
 {
   home.packages = [
@@ -11,6 +11,6 @@
   ];
 
   programs.zsh.initExtra = ''
-    eval "$(thefuck --alias)"
+    eval "$(${pkgs.thefuck}/bin/thefuck --alias)"
   '';
 }

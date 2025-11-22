@@ -1,60 +1,33 @@
 # /Users/ven/dotfiles/nix/darwin/modules/terminal/zsh.nix
 #
-# ZSH CONFIGURATION
+# MODULAR ZSH CONFIGURATION (HOME MANAGER)
 # ============================================================
-# Home-Manager-managed Zsh:
-# - Uses dotDir = ~/dotfiles/zsh
-# - Adds Homebrew + Docker CLI to PATH via home.sessionPath
-# - Loads conf.d/*.zsh from $ZDOTDIR
-# - Sets up completion, compinit, menu selection
-# - Provides Nix maintenance helpers + system aliases
-# - Imports modular feature modules from ./zsh/*.nix
+# - Manages Zsh through Home Manager
+# - ZDOTDIR = ~/dotfiles/zsh
+# - Aliases + helper functions live here
+# - Completion, compinit, fzf, autosuggestions, syntax highlighting,
+#   history search, asdf, forgit, fzf-tab all come from ./plugins/*.nix
 # ============================================================
 
 { config, lib, pkgs, ... }:
 
 {
-  # ----- Zsh program (Home Manager) -----
   programs.zsh = {
     enable = true;
-    enableCompletion = true;
 
-    # Put all runtime Zsh files under ~/dotfiles/zsh
+    # Home Manager will write .zshenv/.zshrc to dotDir
     dotDir = "${config.home.homeDirectory}/dotfiles/zsh";
 
-    # Built-in HM integration for extras
-    syntaxHighlighting.enable = true;
-    autosuggestions.enable = true;
-    historySubstringSearch.enable = true;
+    # DO NOT put completion, compinit, zstyle, or external completions here.
+    # Those belong in plugins/completion.nix now.
 
-    # Make absolutely sure ZDOTDIR is correct early
-    initExtraBeforeCompInit = ''
-      # Ensure ZDOTDIR is set for this session
-      export ZDOTDIR="$HOME/dotfiles/zsh"
-    '';
-
+    # Only keep your functions + aliases here.
     initExtra = ''
-      # --- Load modular conf.d snippets (runtime-level) ---
-      # This lets you drop custom *.zsh files into $ZDOTDIR/conf.d
-      # without changing Nix.
-      if [ -d "$ZDOTDIR/conf.d" ]; then
-        for file in "$ZDOTDIR"/conf.d/*.zsh; do
-          [ -f "$file" ] && source "$file"
-        done
-      fi
-
-      # --- Fix insecure completion dirs ---
-      # Avoid annoying compaudit prompts and still get completion.
-      ZSH_DISABLE_COMPFIX=true
-      autoload -Uz compinit
-      compinit -u
-
-      # Enable interactive completion menu (after compinit)
-      zstyle ':completion:*' menu select
-
       # --- Nix maintenance helpers ---
       ddg() { sudo -H nix-env --delete-generations "$@" --profile /nix/var/nix/profiles/system; }
+
       ndg() { sudo nix-collect-garbage --delete-older-than "$1"d; }
+
       ndgcg30() {
         echo "🧹 Deleting old generations (+5) and collecting garbage older than 30 days..."
         sudo -H nix-env --delete-generations +5 --profile /nix/var/nix/profiles/system
@@ -65,28 +38,25 @@
 
     # ----- Shell aliases -----
     shellAliases = {
-      # Nix-darwin & Home Manager
+      # Nix-darwin
       drb  = "sudo -E -s darwin-rebuild build --flake /Users/ven/dotfiles/nix#macbook";
       drs  = "sudo -E -s darwin-rebuild switch --flake /Users/ven/dotfiles/nix#macbook";
       drn  = "sudo -E -s darwin-rebuild dry-run --flake /Users/ven/dotfiles/nix#macbook";
+
+      # Home Manager
       drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#ven";
       drhb = "home-manager build --flake /Users/ven/dotfiles/nix#ven";
+
+      # Generations
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
 
-      # Git helper scripts
+      # Git scripts
       gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
       gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
     };
   };
 
-  # ----- FZF integration -----
-  programs.fzf = {
-    enable = true;
-    enableZshIntegration = true;
-  };
-
-  # ----- PATH: Homebrew + Docker CLI + local bin -----
-  # This is the *correct* place to put PATH tweaks for the user.
+  # Correct session PATH for Homebrew + Docker CLI
   home.sessionPath = [
     "/opt/homebrew/bin"
     "/opt/homebrew/sbin"
@@ -94,15 +64,17 @@
     "/Applications/Programming/Docker.app/Contents/Resources/bin"
   ];
 
-  # ----- Modular Zsh feature modules (Nix-level) -----
-  # Put feature modules under ./zsh/ and toggle them here.
+  # --- Modular plugin imports ----
   imports = [
+    ./plugins/completion.nix
     ./plugins/fzf.nix
+    ./plugins/autosuggestion.nix
     ./plugins/syntax-highlighting.nix
-    ./plugins/autosuggestions.nix
-    ./plugins/history.nix
-    ./plugins/thefuck.nix
-    ./plugins/starship.nix
-    ./plugins/asdf.nix
+    ./plugins/history-search.nix
+
+    # keep commented modules if you want — they won’t break anything
+    # ./plugins/asdf.nix
+    # ./plugins/starship.nix
+    # ./plugins/thefuck.nix
   ];
 }

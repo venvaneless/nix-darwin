@@ -3,9 +3,8 @@
 # ZSH: AUTOSUGGESTIONS
 # ============================================================
 
-{ config, pkgs, ... }:
+{ ... }:
 
 {
-	programs.zsh.autosuggestion.enable
-
+  programs.zsh.autosuggestion.enable = true;
 }

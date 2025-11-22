@@ -1,21 +1,32 @@
-# /Users/ven/dotfiles/nix/darwin/modules/terminal/zsh/zsh/asdf.nix
 #
-# ZSH: ASDF VERSION MANAGER
+# ZSH: ASDF VERSION MANAGER (INSTALLED VIA NIX)
+# ============================================================
+# - Installs asdf-vm from Nix
+# - Loads asdf.sh from the Nix store
+# - Enables completions (bash completions work fine in Zsh)
+# - Allows "asdf global nodejs 20.x", "asdf install python latest", etc.
+# - Does NOT require ~/.asdf
 # ============================================================
 
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
 {
-  # Install asdf itself via Nix
+  # Install asdf via Nix
   home.packages = [
     pkgs.asdf-vm
   ];
 
   programs.zsh.initExtra = ''
-    # ASDF initialization
-    if [ -d "$HOME/.asdf" ]; then
-      . "$HOME/.asdf/asdf.sh"
-      . "$HOME/.asdf/completions/asdf.bash" 2>/dev/null || true
+    #### ASDF INITIALIZATION ####
+
+    # Load main ASDF environment
+    if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
+      . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
+    fi
+
+    # Load ASDF completions (bash completions also work under Zsh)
+    if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
+      . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
     fi
   '';
 }

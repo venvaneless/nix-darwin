@@ -3,7 +3,7 @@
 # ZSH: HISTORY SUBSTRING SEARCH
 # ============================================================
 
-{ config, pkgs, ... }:
+{ ... }:
 
 {
   programs.zsh.historySubstringSearch.enable = true;

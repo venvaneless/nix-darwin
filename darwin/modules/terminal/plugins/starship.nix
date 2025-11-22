@@ -3,7 +3,7 @@
 # ZSH: STARSHIP PROMPT
 # ============================================================
 
-{ config, pkgs, ... }:
+{ ... }:
 
 {
   programs.starship = {

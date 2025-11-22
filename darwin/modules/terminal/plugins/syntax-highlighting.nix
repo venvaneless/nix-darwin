@@ -3,7 +3,7 @@
 # ZSH: SYNTAX HIGHLIGHTING
 # ============================================================
 
-{ config, pkgs, ... }:
+{ ... }:
 
 {
   programs.zsh.syntaxHighlighting.enable = true;
