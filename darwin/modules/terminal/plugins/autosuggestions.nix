@@ -6,5 +6,6 @@
 { config, pkgs, ... }:
 
 {
-  programs.zsh.autosuggestions.enable = true;
+	programs.zsh.autosuggestion.enable
+
 }
