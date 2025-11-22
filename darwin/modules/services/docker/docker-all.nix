@@ -155,7 +155,7 @@ let
     # (import ./postgres.nix)
 
     # Browsertrix crawler container
-    (import ./browsertrix.nix)
+    # (import ./browsertrix.nix)
   ];
 
   # Build per-container fragments

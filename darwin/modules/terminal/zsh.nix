@@ -80,6 +80,7 @@
   home.sessionPath = [
     "/opt/homebrew/bin"
     "$HOME/.local/bin"
+    "/Applications/Programming/Docker.app/Contents/Resources/bin"
   ];
 
   # Automatically import submodules under ./zsh/
