@@ -70,7 +70,7 @@
     ./plugins/fzf.nix
     ./plugins/autosuggestions.nix
     ./plugins/syntax-highlighting.nix
-    ./plugins/history-search.nix
+    ./plugins/history.nix
 
     # keep commented modules if you want — they won’t break anything
     # ./plugins/asdf.nix
