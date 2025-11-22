@@ -6,18 +6,20 @@
   # ----- Primary user -----
   system.primaryUser = "ven";
   system.stateVersion = lib.mkForce 6;
+  
+  nix.enable = false;
 
   # ===== DEBUG ACTIVATION TEST =====
   # This runs as part of the main activation script via extraActivation.
 
   imports = [
-
+ 	# --- home-manager last ---
+  ../shared/services/home-manager.nix
 
     # --- system modules ---
     ./modules/system/base.nix
     ./modules/system/homebrew.nix
-    ./modules/terminal/shell.nix
-    ./modules/services/nix-homebrew.nix
+    # ./modules/terminal/shell.nix
     ./modules/services/script-services.nix
     ./modules/services/pdf-tools.nix
     ./modules/apps/apps.nix
@@ -25,7 +27,6 @@
     # --- docker ---
     ./modules/services/docker/docker-all.nix
 
-   	# --- home-manager last ---
-    ../shared/services/home-manager.nix
+
   ];
 }

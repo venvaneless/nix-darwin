@@ -1,33 +1,46 @@
 # /Users/ven/dotfiles/nix/darwin/modules/system/homebrew.nix
-
-# HOMEBREW
+#
+# HOMEBREW (Unified)
 # ============================================================
-# Handles declarative system-wide apps and global
-# Homebrew configuration.
+# - Bootstraps Homebrew via nix-homebrew
+# - Enables declarative brews & casks
+# - Works cleanly with nix-darwin + Determinate
 # ============================================================
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, inputs, nix-homebrew, ... }:
 
 {
+  # --- Load the nix-homebrew module (framework) ---
+  imports = [
+    nix-homebrew.darwinModules.nix-homebrew
+  ];
+
+  # --- Configure the nix-homebrew backend ---
+  nix-homebrew = {
+    enable = true;
+    user = "ven";
+    enableRosetta = false;
+    autoMigrate = true;
+  };
+
+  # --- Declarative Homebrew package management ---
   homebrew = {
     enable = true;
 
+    # auto-update when switching
     global.autoUpdate = true;
+
+    # If a package is removed from config, uninstall it
     onActivation.cleanup = "uninstall";
-    
+
+    # ----- Brews -----
     brews = [
-        "nginx"
-      ];
+      "nginx"
+    ];
 
-    # --- Declarative apps (casks) ---
+    # ----- Casks -----
     casks = [
-  { name = "ungoogled-chromium"; args = { appdir = "/Applications"; }; }
-];
-
-    # --- Notes ---
-    # Do NOT set appdir globally, since you control it per-app.
-    # caskArgs.no_quarantine = true;
-    # nix-homebrew owns the prefix, so don’t override it.
-    # brewPrefix = "/opt/homebrew";
+      { name = "ungoogled-chromium"; args = { appdir = "/Applications"; }; }
+    ];
   };
 }

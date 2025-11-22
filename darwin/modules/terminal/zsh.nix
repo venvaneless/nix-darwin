@@ -2,45 +2,54 @@
 #
 # ZSH CONFIGURATION
 # ============================================================
-# Enables Zsh, sets up PATH and environment,
-# loads conf.d snippets, and defines rebuild + maintenance shortcuts.
+# Home-Manager-managed Zsh:
+# - Uses dotDir = ~/dotfiles/zsh
+# - Adds Homebrew + Docker CLI to PATH via home.sessionPath
+# - Loads conf.d/*.zsh from $ZDOTDIR
+# - Sets up completion, compinit, menu selection
+# - Provides Nix maintenance helpers + system aliases
+# - Imports modular feature modules from ./zsh/*.nix
 # ============================================================
 
 { config, lib, pkgs, ... }:
 
 {
+  # ----- Zsh program (Home Manager) -----
   programs.zsh = {
     enable = true;
     enableCompletion = true;
-    syntaxHighlighting.enable = true;
 
+    # Put all runtime Zsh files under ~/dotfiles/zsh
     dotDir = "${config.home.homeDirectory}/dotfiles/zsh";
 
-    initContent = ''
-      # Ensure Nix paths visible
-      # (PATH is already set correctly in zshenv.local — don't override here)
-      if [[ ":$PATH:" != *":/run/current-system/sw/bin:"* ]]; then
-        :
-      fi
+    # Built-in HM integration for extras
+    syntaxHighlighting.enable = true;
+    autosuggestions.enable = true;
+    historySubstringSearch.enable = true;
 
-      # Load nix-daemon environment
-      if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
-        . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-      fi
+    # Make absolutely sure ZDOTDIR is correct early
+    initExtraBeforeCompInit = ''
+      # Ensure ZDOTDIR is set for this session
+      export ZDOTDIR="$HOME/dotfiles/zsh"
+    '';
 
-      # Load modular conf.d snippets
+    initExtra = ''
+      # --- Load modular conf.d snippets (runtime-level) ---
+      # This lets you drop custom *.zsh files into $ZDOTDIR/conf.d
+      # without changing Nix.
       if [ -d "$ZDOTDIR/conf.d" ]; then
         for file in "$ZDOTDIR"/conf.d/*.zsh; do
-          source "$file"
+          [ -f "$file" ] && source "$file"
         done
       fi
 
       # --- Fix insecure completion dirs ---
+      # Avoid annoying compaudit prompts and still get completion.
       ZSH_DISABLE_COMPFIX=true
       autoload -Uz compinit
       compinit -u
 
-      # Enable interactive completion menu (must come *after* compinit)
+      # Enable interactive completion menu (after compinit)
       zstyle ':completion:*' menu select
 
       # --- Nix maintenance helpers ---
@@ -54,43 +63,46 @@
       }
     '';
 
+    # ----- Shell aliases -----
     shellAliases = {
+      # Nix-darwin & Home Manager
       drb  = "sudo -E -s darwin-rebuild build --flake /Users/ven/dotfiles/nix#macbook";
       drs  = "sudo -E -s darwin-rebuild switch --flake /Users/ven/dotfiles/nix#macbook";
       drn  = "sudo -E -s darwin-rebuild dry-run --flake /Users/ven/dotfiles/nix#macbook";
       drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#ven";
       drhb = "home-manager build --flake /Users/ven/dotfiles/nix#ven";
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
-      
-      # GIT SCRIPTS
+
+      # Git helper scripts
       gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
       gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
-      
-      # TEST SCRIPTS
- 
     };
   };
 
+  # ----- FZF integration -----
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
   };
 
-  # Correct PATH order for Apple Silicon
+  # ----- PATH: Homebrew + Docker CLI + local bin -----
+  # This is the *correct* place to put PATH tweaks for the user.
   home.sessionPath = [
     "/opt/homebrew/bin"
-    "$HOME/.local/bin"
+    "/opt/homebrew/sbin"
+    "${config.home.homeDirectory}/.local/bin"
     "/Applications/Programming/Docker.app/Contents/Resources/bin"
   ];
 
-  # Automatically import submodules under ./zsh/
-  imports = let
-    zshModules =
-      lib.attrValues (lib.mapAttrs
-        (name: _: ./zsh/${name})
-        (lib.filterAttrs
-          (name: type:
-            type == "regular" && lib.hasSuffix ".nix" name)
-          (builtins.readDir ./zsh)));
-  in zshModules;
+  # ----- Modular Zsh feature modules (Nix-level) -----
+  # Put feature modules under ./zsh/ and toggle them here.
+  imports = [
+    ./zsh/fzf.nix
+    ./zsh/syntax-highlighting.nix
+    ./zsh/autosuggestions.nix
+    ./zsh/history.nix
+    ./zsh/thefuck.nix
+    ./zsh/starship.nix
+    ./zsh/asdf.nix
+  ];
 }

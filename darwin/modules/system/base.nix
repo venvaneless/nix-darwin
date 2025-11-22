@@ -19,11 +19,12 @@
       build-users-group = "nixbld";
     };
 
-    # --- Default shell ---
-    programs.zsh.enable = true;
+    # --- Enable Nix Determine ---
+    nix.enable = false;
+
 
     # --- System state version (Darwin revision) ---
-    system.stateVersion = 5;
+    system.stateVersion = 6;
 
     # --- Global system packages ---
     environment.systemPackages = with pkgs; [
