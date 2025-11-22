@@ -19,7 +19,7 @@
     # --- system modules ---
     ./modules/system/base.nix
     ./modules/system/homebrew.nix
-    # ./modules/terminal/shell.nix
+    ./modules/terminal/shell.nix
     ./modules/services/script-services.nix
     ./modules/services/pdf-tools.nix
     ./modules/apps/apps.nix
