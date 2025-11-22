@@ -16,7 +16,7 @@
     pkgs.asdf-vm
   ];
 
-  programs.zsh.initExtra = ''
+  programs.zsh.initContent = ''
     #### ASDF INITIALIZATION ####
 
     # Load main ASDF environment

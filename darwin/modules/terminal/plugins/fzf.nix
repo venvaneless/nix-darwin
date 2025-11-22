@@ -25,7 +25,7 @@
   ];
 
   # --- Plugin sourcing (original syntax preserved) ---
-  programs.zsh.initExtra = ''
+  programs.zsh.initContent = ''
     # fzf-tab (original-style source path)
     if [ -f "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.zsh" ]; then
       source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.zsh

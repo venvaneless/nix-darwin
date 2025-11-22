@@ -15,7 +15,7 @@
   programs.zsh.enableCompletion = true;
 
   # Global completion setup
-  programs.zsh.initExtra = ''
+  programs.zsh.initContent = ''
     # Disable insecure directory warnings
     ZSH_DISABLE_COMPFIX=true
 

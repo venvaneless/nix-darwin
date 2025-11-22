@@ -10,7 +10,7 @@
     pkgs.thefuck
   ];
 
-  programs.zsh.initExtra = ''
+  programs.zsh.initContent = ''
     eval "$(${pkgs.thefuck}/bin/thefuck --alias)"
   '';
 }

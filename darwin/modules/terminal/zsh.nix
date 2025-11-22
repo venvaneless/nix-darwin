@@ -22,7 +22,7 @@
     # Those belong in plugins/completion.nix now.
 
     # Only keep your functions + aliases here.
-    initExtra = ''
+    initContent = ''
       # --- Nix maintenance helpers ---
       ddg() { sudo -H nix-env --delete-generations "$@" --profile /nix/var/nix/profiles/system; }
 
