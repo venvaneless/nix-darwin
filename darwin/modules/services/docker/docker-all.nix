@@ -12,6 +12,7 @@
 #   - Declarative storage under:
 #         /Users/ven/dotfiles/containers/<clean-name>
 #   - launchd auto-start + KeepAlive for all universal containers
+#     (overridable per container)
 #   - Runner scripts using: docker start || docker run -d
 #
 # IMPORTANT:
@@ -37,20 +38,26 @@ let
       (lib.toLower name);
 
   # ----- Universal container builder -----
-  # Takes a single container definition and produces Nix config
-  # fragments for:
-  #   - system.activationScripts.ensure-<name>-data
-  #   - launchd.daemons.docker-<name>
   #
   # Container definition shape:
   #   {
-  #     name         = "redis";
-  #     image        = "redis:latest";
-  #     ports        = [ "6379:6379" ];
-  #     extraVolumes = [ "/host/path:/container/path" ];
-  #     extraArgs    = [ "--some-flag" "value" ];
+  #     name         = "redis";              # required
+  #     image        = "redis:latest";       # required
+  #     ports        = [ "6379:6379" ];      # optional
+  #     extraVolumes = [ "/host:/cont" ];    # optional
+  #     extraArgs    = [ "--flag" "value" ]; # optional
+  #     runAtLoad    = false;                # optional (default: true)
+  #     keepAlive    = false;                # optional (default: true)
   #   }
-  mkContainer = { name, image, ports ? [], extraVolumes ? [], extraArgs ? [] }:
+  mkContainer =
+    { name
+    , image
+    , ports ? []
+    , extraVolumes ? []
+    , extraArgs ? []
+    , runAtLoad ? true
+    , keepAlive ? true
+    }:
     let
       cName   = cleanName name;
       dataDir = "${containersRoot}/${cName}";
@@ -61,7 +68,9 @@ let
           (map (p: "-p ${p}") ports);
 
       # Volumes:
-      #   A = 1 → /Users/ven/dotfiles/containers/<name>:/data
+      #   Always:
+      #     /Users/ven/dotfiles/containers/<clean-name>:/data
+      #   Plus any extraVolumes the container defines
       volumeArgs =
         "-v ${dataDir}:/data "
         + lib.concatStringsSep " "
@@ -70,14 +79,22 @@ let
       # Extra arguments, if any
       args = lib.concatStringsSep " " extraArgs;
 
+      # Script that ensures the data directory exists.
+      ensureDirScript = pkgs.writeShellScriptBin "ensure-${cName}-data" ''
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        mkdir -p "${dataDir}"
+        chmod 700 "${dataDir}"
+      '';
+
       # Runner script for this container
-      runner = pkgs.writeShellScript "run-${cName}" ''
-        #!/bin/bash
+      runner = pkgs.writeShellScriptBin "run-${cName}" ''
+        #!/usr/bin/env bash
         set -euo pipefail
 
         # Ensure data directory exists
-        mkdir -p "${dataDir}"
-        chmod 700 "${dataDir}"
+        "${ensureDirScript}/bin/ensure-${cName}-data"
 
         # Start existing container OR create it
         "${dockerBin}" start ${cName} || \
@@ -90,19 +107,21 @@ let
       '';
     in
     {
-      # Ensure data dir exists at activation time
+      # Ensure data dir exists at activation time (nix-darwin friendly)
       system.activationScripts."ensure-${cName}-data".text = ''
-        mkdir -p "${dataDir}"
-        chmod 700 "${dataDir}"
+        "${ensureDirScript}/bin/ensure-${cName}-data"
       '';
 
-      # Launchd daemon: auto-start and keep alive
+      # Expose the runner in PATH (nice to have)
+      environment.systemPackages = [ runner ];
+
+      # Launchd daemon: auto-start and keep alive (overridable)
       launchd.daemons."docker-${cName}" = {
         serviceConfig = {
-          Label = "com.ven.docker.${cName}";
-          ProgramArguments = [ "${runner}" ];
-          RunAtLoad = true;
-          KeepAlive = true;
+          Label           = "com.ven.docker.${cName}";
+          ProgramArguments = [ "${runner}/bin/run-${cName}" ];
+          RunAtLoad       = runAtLoad;
+          KeepAlive       = keepAlive;
         };
       };
     };
@@ -118,11 +137,16 @@ let
   #   - ports        (optional list of strings)
   #   - extraVolumes (optional list of strings)
   #   - extraArgs    (optional list of strings)
+  #   - runAtLoad    (optional bool, default true)
+  #   - keepAlive    (optional bool, default true)
   #
   containerDefs = [
     # Example (uncomment when you create these files):
     # (import ./redis.nix)
     # (import ./postgres.nix)
+
+    # Browsertrix crawler container
+    (import ./browsertrix.nix)
   ];
 
   # Build per-container fragments
