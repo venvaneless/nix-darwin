@@ -3,42 +3,50 @@
 # FZF + TAB + HISTORY + FORGIT
 # ============================================================
 # - fzf (HM-native integration)
-# - zsh-fzf-tab
-# - zsh-fzf-history-search
-# - zsh-forgit
+# - zsh-fzf-tab (fzf UI on <TAB>)
+# - zsh-fzf-history-search (fzf UI on Ctrl-R)
+# - zsh-forgit (fzf-powered git helper functions)
 # ============================================================
 
 { pkgs, ... }:
 
 {
-  # --- HM-native fzf support ---
+  # --- FZF core integration ---
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
   };
 
-  # --- Plugin packages (as in your originals) ---
+  # --- Plugin packages ---
   home.packages = [
     pkgs.zsh-fzf-tab
     pkgs.zsh-fzf-history-search
     pkgs.zsh-forgit
   ];
 
-  # --- Plugin sourcing (original syntax preserved) ---
+  # --- Plugin sourcing (multiple path fallbacks, HM-compatible) ---
   programs.zsh.initContent = ''
-    # fzf-tab (original-style source path)
-    if [ -f "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.zsh" ]; then
-      source ${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.zsh
+    #### FZF-RELATED PLUGINS ####
+
+    # ----- fzf-tab: use fzf for <TAB> completion -----
+    if [ -f "${pkgs.zsh-fzf-tab}/share/zsh/plugins/fzf-tab/fzf-tab.plugin.zsh" ]; then
+      source "${pkgs.zsh-fzf-tab}/share/zsh/plugins/fzf-tab/fzf-tab.plugin.zsh"
+    elif [ -f "${pkgs.zsh-fzf-tab}/share/zsh/plugins/fzf-tab/fzf-tab.zsh" ]; then
+      source "${pkgs.zsh-fzf-tab}/share/zsh/plugins/fzf-tab/fzf-tab.zsh"
+    elif [ -f "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh" ]; then
+      source "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh"
+    elif [ -f "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.zsh" ]; then
+      source "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.zsh"
     fi
 
-    # zsh-fzf-history-search (original-style source path)
+    # ----- zsh-fzf-history-search: Ctrl-R history -----
     if [ -f "${pkgs.zsh-fzf-history-search}/share/zsh-fzf-history-search/history-search.plugin.zsh" ]; then
-      source ${pkgs.zsh-fzf-history-search}/share/zsh-fzf-history-search/history-search.plugin.zsh
+      source "${pkgs.zsh-fzf-history-search}/share/zsh-fzf-history-search/history-search.plugin.zsh"
     fi
 
-    # forgit (original-style source path)
+    # ----- forgit: git helpers on top of fzf -----
     if [ -f "${pkgs.zsh-forgit}/share/zsh/site-functions/forgit.plugin.zsh" ]; then
-      source ${pkgs.zsh-forgit}/share/zsh/site-functions/forgit.plugin.zsh
+      source "${pkgs.zsh-forgit}/share/zsh/site-functions/forgit.plugin.zsh"
     fi
   '';
 }
