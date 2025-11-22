@@ -68,7 +68,7 @@
   imports = [
     ./plugins/completion.nix
     ./plugins/fzf.nix
-    ./plugins/autosuggestion.nix
+    ./plugins/autosuggestions.nix
     ./plugins/syntax-highlighting.nix
     ./plugins/history-search.nix
 
