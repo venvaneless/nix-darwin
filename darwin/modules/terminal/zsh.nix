@@ -97,12 +97,12 @@
   # ----- Modular Zsh feature modules (Nix-level) -----
   # Put feature modules under ./zsh/ and toggle them here.
   imports = [
-    ./zsh/fzf.nix
-    ./zsh/syntax-highlighting.nix
-    ./zsh/autosuggestions.nix
-    ./zsh/history.nix
-    ./zsh/thefuck.nix
-    ./zsh/starship.nix
-    ./zsh/asdf.nix
+    ./plugins/fzf.nix
+    ./plugins/syntax-highlighting.nix
+    ./plugins/autosuggestions.nix
+    ./plugins/history.nix
+    ./plugins/thefuck.nix
+    ./plugins/starship.nix
+    ./plugins/asdf.nix
   ];
 }
