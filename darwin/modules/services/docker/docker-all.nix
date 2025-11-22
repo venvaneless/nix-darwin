@@ -32,10 +32,19 @@ let
   # ----- Name sanitizer -----
   # Converts arbitrary container name to a safe, lowercase folder name.
   cleanName = name:
-    lib.replaceStrings
-      [ " " "-" "_" "/" ":" "." "," "'" "\"" "(" ")" "[" "]" "{" "}" "@" "#" "$" "%" "^" "&" "*" "+" "=" ]
-      [ ""  ""  ""  ""  ""  ""  ""  ""  ""   ""   ""   ""   ""   ""   ""   ""   ""   ""   ""   ""   ""   ]
-      (lib.toLower name);
+    let
+      lowered = lib.toLower name;
+  
+      allowed =
+        lib.stringToCharacters "abcdefghijklmnopqrstuvwxyz-";
+  
+      chars =
+        lib.stringToCharacters lowered;
+  
+      kept =
+        lib.filter (c: lib.elem c allowed) chars;
+    in
+      lib.concatStrings kept;
 
   # ----- Universal container builder -----
   #
