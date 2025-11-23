@@ -37,7 +37,6 @@
       modules = [
         ./shared/services/home-manager.nix
       ];
-      activationPackage = pkgs.callPackage ./some/package.nix {};  # Add if required
     };
 
     # --- Flake apps ---

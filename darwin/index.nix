@@ -14,7 +14,7 @@
 
   imports = [
  	# --- home-manager last ---
-  ../shared/services/home-manager.nix
+  # ../shared/services/home-manager.nix
 
     # --- system modules ---
     ./modules/system/base.nix
