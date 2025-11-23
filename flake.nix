@@ -35,8 +35,9 @@
       inherit pkgs;
       extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
       modules = [
-        ./shared/services/home-manager.nix  # Ensure this path is correct
+        ./shared/services/home-manager.nix
       ];
+      activationPackage = pkgs.callPackage ./some/package.nix {};  # Add if required
     };
 
     # --- Flake apps ---
