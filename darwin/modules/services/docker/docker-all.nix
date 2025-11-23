@@ -27,7 +27,7 @@
 let
   # ----- Base paths -----
   containersRoot = "/Users/ven/dotfiles/containers";
-  dockerBin      = "/usr/local/bin/docker";
+  dockerBin      = "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
   # ----- Name sanitizer -----
   # Converts arbitrary container name to a safe, lowercase folder name.
