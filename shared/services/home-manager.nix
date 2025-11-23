@@ -9,7 +9,7 @@
 { pkgs, lib, home-manager, inputs, ... }:
 
 {
-  # --- Enable Home Manager module within nix-darwin ---
+  # --- Enable Home Manager module within nix-darwin (macOS) ---
   imports = [
     home-manager.darwinModules.home-manager
   ];
@@ -25,7 +25,7 @@
     users.ven = {
       home = {
         username = "ven";
-        homeDirectory = lib.mkForce "/Users/ven";
+        homeDirectory = lib.mkForce "/Users/ven"; # or "/home/ven" on Linux
         stateVersion = "25.11";
       };
 
@@ -37,4 +37,9 @@
       ];
     };
   };
+
+  # --- System-level environment for Nix + Zsh (add this block)
+  environment.systemPath = [
+    pkgs.nix
+  ];
 }

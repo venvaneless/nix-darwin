@@ -17,7 +17,7 @@
 
   outputs = inputs@{ self, nixpkgs, darwin, home-manager, nix-homebrew, ... }:
   let
-    system = "aarch64-darwin";
+    system = "aarch64-darwin"; # Change to linux if you need Linux support
     pkgs   = import nixpkgs { inherit system; };
   in
   {
@@ -31,17 +31,16 @@
     };
 
     # --- Stand-alone Home Manager (optional) ---
-    homeConfigurations.ven =
-      home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
-        modules = [
-          ./shared/services/home-manager-standalone.nix
-        ];
-      };
+    # homeConfigurations.ven =
+    #   home-manager.lib.homeManagerConfiguration {
+    #     inherit pkgs;
+    #     extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
+    #     modules = [
+    #       ./shared/services/home-manager-standalone.nix
+    #     ];
+    #   };
 
     # --- Flake apps ---
-    # Empty. No Zed update scripts anymore.
-    apps.${system} = { };
+    # apps.${system} = { };
   };
 }
