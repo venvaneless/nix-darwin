@@ -1,32 +1,46 @@
-# /Users/ven/dotfiles/nix/darwin/index.nix
-
-{ lib, ... }:
-
+# /Users/ven/dotfiles/nix/flake.nix
 {
-  # ----- Primary user -----
-  system.primaryUser = "ven";
-  system.stateVersion = lib.mkForce 6;
-  
-  nix.enable = false;
+  # Description should be placed at the top-level of the flake.
+  description = "Ven’s setup";  # Make sure this is at the top-level
 
-  # ===== DEBUG ACTIVATION TEST =====
-  # This runs as part of the main activation script via extraActivation.
+  nixConfig = {
+    allow-dirty = true;
+  };
 
-  imports = [
- 	# --- home-manager last ---
-  # ../shared/services/home-manager.nix
+  inputs = {
+    nixpkgs.url        = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    darwin.url         = "github:LnL7/nix-darwin";
+    home-manager.url   = "github:nix-community/home-manager";
 
-    # --- system modules ---
-    ./modules/system/base.nix
-    ./modules/system/homebrew.nix
-    # ./modules/terminal/shell.nix
-    ./modules/services/script-services.nix
-    ./modules/services/pdf-tools.nix
-    ./modules/apps/apps.nix
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    nix-homebrew.url   = "github:zhaofengli/nix-homebrew";
+  };
 
-    # --- docker ---
-    ./modules/services/docker/docker-all.nix
+  outputs = inputs@{ self, nixpkgs, darwin, home-manager, nix-homebrew, ... }:
+  let
+    system = "aarch64-darwin"; # Change to linux if you need Linux support
+    pkgs   = import nixpkgs { inherit system; };
+  in
+  {
+    # --- macOS system configuration (nix-darwin) ---
+    darwinConfigurations.macbook = darwin.lib.darwinSystem {
+      inherit system;
+      specialArgs = { inherit inputs nix-homebrew home-manager; };
+      modules = [
+        ./darwin/index.nix
+      ];
+    };
 
+    # --- Stand-alone Home Manager (optional) ---
+    homeConfigurations.ven = home-manager.lib.homeManagerConfiguration {
+      inherit pkgs;
+      extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
+      modules = [
+        ./shared/services/home-manager.nix
+      ];
+    };
 
-  ];
+    # --- Flake apps ---
+    apps.${system} = { };
+  };
 }

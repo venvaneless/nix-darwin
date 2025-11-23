@@ -1,6 +1,7 @@
 # /Users/ven/dotfiles/nix/flake.nix
 {
-  description = "Ven’s setup";
+  # Description should be placed at the top-level of the flake.
+  description = "Ven’s setup";  # Make sure this is at the top-level
 
   nixConfig = {
     allow-dirty = true;
@@ -26,11 +27,11 @@
       inherit system;
       specialArgs = { inherit inputs nix-homebrew home-manager; };
       modules = [
-        ./darwin/index.nix  # Import your index.nix here
+        ./darwin/index.nix
       ];
     };
 
-    # --- Home Manager configuration (ven) ---
+    # --- Stand-alone Home Manager (optional) ---
     homeConfigurations.ven = home-manager.lib.homeManagerConfiguration {
       inherit pkgs;
       extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
@@ -40,6 +41,6 @@
     };
 
     # --- Flake apps ---
-    # apps.${system} = { };
+    apps.${system} = { };
   };
 }
