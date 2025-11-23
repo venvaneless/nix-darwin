@@ -31,14 +31,7 @@
     };
 
     # --- Stand-alone Home Manager (optional) ---
-    # homeConfigurations.ven =
-    #   home-manager.lib.homeManagerConfiguration {
-    #     inherit pkgs;
-    #     extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
-    #     modules = [
-    #       ./shared/services/home-manager-standalone.nix
-    #     ];
-    #   };
+
 
     # --- Flake apps ---
     # apps.${system} = { };
