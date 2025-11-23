@@ -26,12 +26,9 @@
       inherit system;
       specialArgs = { inherit inputs nix-homebrew home-manager; };
       modules = [
-        ./darwin/index.nix
+        ./darwin/index.nix  # Import your index.nix here
       ];
     };
-
-    # --- Stand-alone Home Manager (optional) ---
-
 
     # --- Flake apps ---
     # apps.${system} = { };
