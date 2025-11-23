@@ -1,7 +1,6 @@
 # /Users/ven/dotfiles/nix/flake.nix
 {
-  # Description should be placed at the top-level of the flake.
-  description = "Ven’s setup";  # Make sure this is at the top-level
+  description = "Ven’s setup";
 
   nixConfig = {
     allow-dirty = true;
