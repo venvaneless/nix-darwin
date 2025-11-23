@@ -2,8 +2,7 @@
 #
 # HOME MANAGER SHARED SERVICE
 # ============================================================
-# Enables and configures Home Manager for the user "ven".
-# Works under both nix-darwin and Linux (NixOS / standalone).
+# Enables and configures Home Manager for the user "ven".öä.eqw# Works under both nix-darwin and Linux (NixOS / standalone).
 # ============================================================
 
 { pkgs, lib, home-manager, inputs, ... }:
