@@ -30,6 +30,15 @@
       ];
     };
 
+    # --- Home Manager configuration (ven) ---
+    homeConfigurations.ven = home-manager.lib.homeManagerConfiguration {
+      inherit pkgs;
+      extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
+      modules = [
+        ./shared/services/home-manager.nix  # Ensure this path is correct
+      ];
+    };
+
     # --- Flake apps ---
     # apps.${system} = { };
   };
