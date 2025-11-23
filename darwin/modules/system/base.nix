@@ -29,6 +29,7 @@
     # --- Global system packages ---
     environment.systemPackages = with pkgs; [
     inputs.darwin.packages.${pkgs.system}.darwin-rebuild
+    bashInteractive
     git-crypt
     nh
     home-manager
