@@ -14,14 +14,11 @@
 	{
 	  programs.zsh = {
 	    enable = true;
-	
-	    # Home Manager will write .zshenv/.zshrc to dotDir
-	    dotDir = "${config.home.homeDirectory}/dotfiles/zsh";
-					
-			zshenv = "${config.home.homeDirectory}/dotfiles/zsh/.zshenv";
-					
+			
 			# Force Home Manager to create .zshrc and .zshenv
-
+			dotDir = "${config.home.homeDirectory}/dotfiles/zsh";
+						
+			zshenv = "${config.home.homeDirectory}/dotfiles/zsh/.zshenv";  
 	
 	    # DO NOT put completion, compinit, zstyle, or external completions here.
 	    # Those belong in plugins/completion.nix now.
