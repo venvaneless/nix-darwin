@@ -46,7 +46,9 @@
 
     # ----- forgit: git helpers on top of fzf -----
     if [ -f "${pkgs.zsh-forgit}/share/zsh/site-functions/forgit.plugin.zsh" ]; then
-      source "${pkgs.zsh-forgit}/share/zsh/site-functions/forgit.plugin.zsh"
-    fi
-  '';
+        source "${pkgs.zsh-forgit}/share/zsh/site-functions/forgit.plugin.zsh"
+      else
+        echo "forgit plugin not found!"
+      fi
+    ''; 
 }
