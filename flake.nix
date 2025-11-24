@@ -35,7 +35,7 @@
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
 
     # --- Home Manager nixpkgs
-    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    
   };
 
   # ------------------------------------------------------------
