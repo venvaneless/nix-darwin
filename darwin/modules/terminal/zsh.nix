@@ -45,23 +45,12 @@
     shellAliases = {
 
     	# ---Nix darwin
-    	# build flake
-      drb  = "sudo -E -s darwin-rebuild build --flake /Users/ven/dotfiles/nix#macbook";
-      
-      # switch to build
-      drs  = "sudo -E -s darwin-rebuild switch --flake /Users/ven/dotfiles/nix#macbook";
-      
-      # dry run rebuild
-      drn  = "sudo -E -s darwin-rebuild dry-run --flake /Users/ven/dotfiles/nix#macbook";
+      drb  = "sudo -H -s darwin-rebuild build --flake /Users/ven/dotfiles/nix#macbook";
+      drs  = "sudo -H -s darwin-rebuild switch --flake /Users/ven/dotfiles/nix#macbook";
+      drn  = "sudo -H -s darwin-rebuild check --flake /Users/ven/dotfiles/nix#macbook";
 
-      # activate new home manager configuration
-      drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#macbook";
-      
-      # ----------------------------------------------------------------- #
-      # 
       # ---Home Manager
-      
-      # build new home manager configuration
+      drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#macbook";
       drhb = "home-manager build --flake /Users/ven/dotfiles/nix#macbook";
 
       # delete old gens
