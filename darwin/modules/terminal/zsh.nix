@@ -1,6 +1,6 @@
 # /Users/ven/dotfiles/nix/darwin/modules/terminal/zsh.nix
 #
-# MODULAR ZSH CONFIGURATION (HOME MANAGER)
+# ZSH CONFIGURATION
 # ============================================================
 # - Manages Zsh through Home Manager
 # - ZDOTDIR = ~/dotfiles/zsh
@@ -15,21 +15,23 @@
   programs.zsh = {
     enable = true;
 
-    # Force Home Manager to create .zshrc and .zshenv
+    # Force Home Manager to create .zshrc
     dotDir = "${config.home.homeDirectory}/dotfiles/zsh";
 
-    # zshenv = "${config.home.homeDirectory}/dotfiles/zsh/.zshenv";
-
-    # DO NOT put completion, compinit, zstyle, or external completions here.
-    # Those belong in plugins/completion.nix now.
-
-    # Only keep your functions + aliases here.
+    
+    # ----------------------------------------------------------------- #
+    # 
+    # Only keep functions + aliases here
     initContent = ''
+    
       # --- Nix maintenance helpers ---
+      # Delete old generations
       ddg() { sudo -H nix-env --delete-generations "$@" --profile /nix/var/nix/profiles/system; }
 
+      # Garbage collector
       ndg() { sudo nix-collect-garbage --delete-older-than "$1"d; }
 
+      # Deleting both old generations and garbage
       ndgcg30() {
         echo "Deleting old generations (+5) and collecting garbage older than 30 days..."
         sudo -H nix-env --delete-generations +5 --profile /nix/var/nix/profiles/system
@@ -38,35 +40,61 @@
       }
     '';
 
-    # ----- Shell aliases -----
+    # ----------------------------------------------------------------- #
+    # 
     shellAliases = {
-      # Nix-darwin & Home Manager
+
+    	# ---Nix darwin
+    	# build flake
       drb  = "sudo -E -s darwin-rebuild build --flake /Users/ven/dotfiles/nix#macbook";
+      
+      # switch to build
       drs  = "sudo -E -s darwin-rebuild switch --flake /Users/ven/dotfiles/nix#macbook";
+      
+      # dry run rebuild
       drn  = "sudo -E -s darwin-rebuild dry-run --flake /Users/ven/dotfiles/nix#macbook";
 
-      # Home Manager
+      # activate new home manager configuration
       drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#macbook";
-      drhb = "home-manager build --flake /Users/ven/dotfiles/nix#macbook";
       
-      # Generations
+      # ----------------------------------------------------------------- #
+      # 
+      # ---Home Manager
+      
+      # build new home manager configuration
+      drhb = "home-manager build --flake /Users/ven/dotfiles/nix#macbook";
+
+      # delete old gens
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
 
       # Git scripts
       gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
       gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
     };
-  }
+  };
 
-  # Correct session PATH for Homebrew + Docker CLI
-  home.sessionPath = [
-    "/opt/homebrew/bin"
-    "/opt/homebrew/sbin"
-    "${config.home.homeDirectory}/.local/bin"
-    "/Applications/Programming/Docker.app/Contents/Resources/bin"
-  ];
+  
+  # ----------------------------------------------------------------- #
+  # 
+  # ----- HOME-LEVEL VARIABLES -----
+  # 
+  # Correct session PATHS
+  home = {
+    sessionPath = [
+    	# homebrew PATHS
+      "/opt/homebrew/bin"
+      "/opt/homebrew/sbin"
+      "${config.home.homeDirectory}/.local/bin"
+      
+      # Docker PATH
+      "/Applications/Programming/Docker.app/Contents/Resources/bin"
+    ];
+  };
 
-  # --- Modular plugin imports ----
+  
+  # ----------------------------------------------------------------- #
+  # 
+  # ----- Plugin imports -----
   imports = [
     ./plugins/completion.nix
     ./plugins/fzf.nix
@@ -74,7 +102,7 @@
     ./plugins/syntax-highlighting.nix
     ./plugins/history.nix
 
-    # keep commented modules if you want — they won’t break anything
+    # Optional
     # ./plugins/asdf.nix
     # ./plugins/starship.nix
     # ./plugins/thefuck.nix
