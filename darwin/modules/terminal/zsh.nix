@@ -49,10 +49,6 @@
       drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#macbook";
       drhb = "home-manager build --flake /Users/ven/dotfiles/nix#macbook";
       
-      # Generations cleanup
-      drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
-      };
-      
       # Generations
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
 
@@ -60,7 +56,6 @@
       gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
       gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
     };
-  };
 
   # Correct session PATH for Homebrew + Docker CLI
   home.sessionPath = [
