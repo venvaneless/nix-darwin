@@ -1,6 +1,6 @@
 # /Users/ven/dotfiles/nix/darwin/index.nix
 
-{ lib, ... }:
+{ lib, home-manager, ... }:
 
 {
   # ----- Primary user -----
@@ -10,23 +10,22 @@
   nix.enable = false;
 
   # ===== DEBUG ACTIVATION TEST =====
-  # This runs as part of the main activation script via extraActivation.
 
   imports = [
- 	# --- home-manager last ---
-  #../shared/services/home-manager.nix
+    # --- REQUIRED: Enable Home Manager inside nix-darwin ---
+    home-manager.darwinModules.home-manager
+
+    # --- User + HM config ---
+    ../shared/services/home-manager.nix
 
     # --- system modules ---
     ./modules/system/base.nix
-    ./modules/system/homebrew.nix
-    # ./modules/terminal/shell.nix
+    ./modules/system/homebrew.nix	
     ./modules/services/script-services.nix
     ./modules/services/pdf-tools.nix
     ./modules/apps/apps.nix
 
     # --- docker ---
     ./modules/services/docker/docker-all.nix
-
-
   ];
 }

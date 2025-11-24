@@ -2,23 +2,15 @@
 #
 # HOME MANAGER SHARED SERVICE
 # ============================================================
-# Enables and configures Home Manager for the user "ven".
-# Works under nix-darwin and as a standalone Home Manager flake output.
+# Home Manager user configuration for "ven".
+# This file MUST NOT import `home-manager.darwinModules.home-manager`.
+# That module belongs only in `darwin/index.nix`.
 # ============================================================
 
-{ pkgs, lib, home-manager, inputs, ... }:
+{ pkgs, lib, ... }:
 
 {
-  # --- Enable Home Manager module within nix-darwin (macOS) ---
-  imports = [
-    home-manager.darwinModules.home-manager
-  ];
-
-  # --- Make `home-manager` CLI available system-wide ---
-  environment.systemPackages = [
-    home-manager.packages.${pkgs.system}.default
-  ];
-
+  # --- Home Manager (user session configuration only) ---
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
@@ -38,7 +30,12 @@
     };
   };
 
-  # --- System-level environment for Nix + Zsh ---
+  # --- Expose HM CLI ---
+  environment.systemPackages = [
+    pkgs.home-manager
+  ];
+
+  # --- System-level environment for Nix ---
   environment.systemPath = [
     pkgs.nix
   ];
