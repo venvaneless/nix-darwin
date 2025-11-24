@@ -73,7 +73,6 @@
     ./plugins/autosuggestions.nix
     ./plugins/syntax-highlighting.nix
     ./plugins/history.nix
-    ./plugins/forgit.nix
 
     # keep commented modules if you want — they won’t break anything
     # ./plugins/asdf.nix
