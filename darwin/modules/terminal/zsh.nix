@@ -56,6 +56,7 @@
       gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
       gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
     };
+  }
 
   # Correct session PATH for Homebrew + Docker CLI
   home.sessionPath = [
