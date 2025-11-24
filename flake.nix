@@ -73,7 +73,8 @@
       inherit pkgs;
       extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
       modules = [
-        ./darwin/modules/system/home-manager-standalone.nix
+      modules = [
+        ./shared/system/home-manager-standalone.nix
         # Imports HM for the system
       ];
     };

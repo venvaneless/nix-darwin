@@ -30,7 +30,7 @@
 
   # --- User modules ---
   imports = [
-    ../terminal/zsh.nix
-    ../apps/user-data/symlinking.nix
+  ../../darwin/modules/terminal/zsh.nix
+  ../../darwin/modules/apps/user-data/symlinking.nix
   ];
 }
