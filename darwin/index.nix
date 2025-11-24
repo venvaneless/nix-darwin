@@ -1,37 +1,61 @@
 # /Users/ven/dotfiles/nix/darwin/index.nix
+#
+# DARWIN: MAIN SYSTEM MODULE
+# ================================================
+# This file glues together:
+#   - nix-darwin system configuration
+#   - integrated Home Manager configuration
+#   - all system-level modules (brew, nginx, scripts, docker, etc.)
+#
+# Notes:
+#   - Home Manager is enabled ONLY through nix-darwin
+#   - No standalone HM mode is used
+#   - User-level modules live under darwin/modules/system/home-manager.nix
+# ================================================
 
 { lib, home-manager, ... }:
 
-{
+# ------------------------------------------------------------
+# --- SYSTEM --- 
+# ------------------------------------------------------------
+
+{	
+
+  # ----- Primary user -----
   system.primaryUser  = "ven";
   system.stateVersion = lib.mkForce 6;
 
+  # --- Determinate Nix controlled ---
   nix.enable = false;
 
+  
+  # ------------------------------------------------------------
+  # 
+  # --- MODULE IMPORTS ---
+  # ------------------------------------------------------------
   imports = [
-    # -- Enables Home Manager system integration ---
+
+    # --- HOME MANAGER INTEGRATION ---
+    # ------------------------------------------------------------
+    # Enables Home Manager as part of nix-darwin.
     home-manager.darwinModules.home-manager
 
-    # -- Enables Home Manager user integration ---
+    # User configuration for Home-Manager
     ./modules/system/home-manager.nix
 
-    # ------------------------------------------------------------
-    # 
-    # --- Modules
-    # ------------------------------------------------------------
+    # --- SYSTEM MODULES ---
     ./modules/system/base.nix
-    ./modules/services/pdf-tools.nix
-    # Services and system tools
     ./modules/system/homebrew.nix
-    # Homebrew
-    ./modules/apps/apps.nix
-    # Apps
-    
-    
+
+    # --- Services & Tools ---
     ./modules/services/script-services.nix
-    # Scripts
-    
-    # -- Docker --
+    ./modules/services/pdf-tools.nix
+
+    # --- Apps ---
+    ./modules/apps/apps.nix
+
+    # --- Docker ---
+    # ------------------------------------------------------------
     ./modules/services/docker/docker-all.nix
   ];
 }

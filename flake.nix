@@ -4,18 +4,8 @@
 # ================================================
 # Provides:
 #   - nix-darwin system configuration (macbook)
-#   - Standalone Home Manager configuration (#ven)
-#
-# Structure:
-#   macbook → full system + integrated Home Manager
-#   ven     → standalone Home Manager switch
-#
-# Notes:
-#   - home-manager.nix is for integrated HM
-#   - home-manager-standalone.nix is for standalone HM
-#   - No system options should appear in either HM file
+#   - Integrated Home Manager configuration (via index.nix)
 # ================================================
-
 
 {
   description = "Ven’s setup";
@@ -23,10 +13,8 @@
   # Allow committing without cleaning build artifacts
   nixConfig.allow-dirty = true;
 
-
   # ------------------------------------------------------------
-  # 
-  # --- INPUTS
+  # --- INPUTS ---
   # ------------------------------------------------------------
   inputs = {
     nixpkgs.url      = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -34,54 +22,34 @@
     home-manager.url = "github:nix-community/home-manager";
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
 
-    # --- Home Manager nixpkgs
+    # HM follows nixpkgs
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    darwin.inputs.nixpkgs.follows = "nixpkgs";
-    nix-homebrew.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   # ------------------------------------------------------------
   # 
   # --- OUTPUTS
   # ------------------------------------------------------------
-  # 
-  # ---Nix Darwin ---
   outputs = inputs@{ nixpkgs, darwin, home-manager, nix-homebrew, ... }:
   let
     system = "aarch64-darwin";
     pkgs   = import nixpkgs { inherit system; };
   in
-
   {
-    # ------------------------------------------------------------
-    # 
-    # --- darwin Configurations - system ---
+    # --- nix-darwin SYSTEM ---
     darwinConfigurations.macbook = darwin.lib.darwinSystem {
       inherit system;
       specialArgs = { inherit inputs nix-homebrew home-manager; };
       modules = [
         ./darwin/index.nix
-        # Imports all modules
       ];
     };
 
-
+    # --- No standalone home-manager
     # ------------------------------------------------------------
-    # 
-    # --- HOME MANAGER: Standalone Configuration ---
-    homeConfigurations.ven = home-manager.lib.homeManagerConfiguration {
-      inherit pkgs;
-      extraSpecialArgs = { inherit inputs nix-homebrew home-manager; };
-      modules = [
-        ./shared/system/home-manager-standalone.nix
-        # Imports HM for the system
-      ];
-    };
+    homeConfigurations = {};
 
-
-    # ------------------------------------------------------------
-    # 
-    # --- FLAKE APPS (disabled for now)
+    # --- FLAKE APPS ---
     # ------------------------------------------------------------
     apps.${system} = {};
   };
