@@ -8,7 +8,7 @@
   # ============================================================
 
   { config, pkgs, lib, inputs, ... }:
-
+  
   {
     # --- Core system identity ---
     networking.hostName = "Vens-MacBook-Pro";

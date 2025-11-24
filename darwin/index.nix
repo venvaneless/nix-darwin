@@ -3,29 +3,35 @@
 { lib, home-manager, ... }:
 
 {
-  # ----- Primary user -----
-  system.primaryUser = "ven";
+  system.primaryUser  = "ven";
   system.stateVersion = lib.mkForce 6;
-  
+
   nix.enable = false;
 
-  # ===== DEBUG ACTIVATION TEST =====
-
   imports = [
-    # --- REQUIRED: Enable Home Manager inside nix-darwin ---
+    # -- Enables Home Manager system integration ---
     home-manager.darwinModules.home-manager
 
-    # --- User + HM config ---
-    ../shared/services/home-manager.nix
+    # -- Enables Home Manager user integration ---
+    ./modules/system/home-manager.nix
 
-    # --- system modules ---
+    # ------------------------------------------------------------
+    # 
+    # --- Modules
+    # ------------------------------------------------------------
     ./modules/system/base.nix
-    ./modules/system/homebrew.nix	
-    ./modules/services/script-services.nix
     ./modules/services/pdf-tools.nix
+    # Services and system tools
+    ./modules/system/homebrew.nix
+    # Homebrew
     ./modules/apps/apps.nix
-
-    # --- docker ---
+    # Apps
+    
+    
+    ./modules/services/script-services.nix
+    # Scripts
+    
+    # -- Docker --
     ./modules/services/docker/docker-all.nix
   ];
 }

@@ -10,12 +10,12 @@
 { config, lib, pkgs, inputs, nix-homebrew, ... }:
 
 {
-  # --- Load the nix-homebrew module (framework) ---
+  # --- Loads Homebrew
   imports = [
     nix-homebrew.darwinModules.nix-homebrew
   ];
 
-  # --- Configure the nix-homebrew backend ---
+  # --- Configures the nix-homebrew backend
   nix-homebrew = {
     enable = true;
     user = "ven";
@@ -23,7 +23,7 @@
     autoMigrate = true;
   };
 
-  # --- Declarative Homebrew package management ---
+  # --- Homebrew package management ---
   homebrew = {
     enable = true;
 

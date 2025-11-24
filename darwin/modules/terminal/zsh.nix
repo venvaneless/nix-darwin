@@ -11,11 +11,12 @@
 
 { config, lib, pkgs, ... }:
 
+# Enanble zsh shell
 {
   programs.zsh = {
     enable = true;
 
-    # Force Home Manager to create .zshrc
+    # Keeps zshrc owned by HM here
     dotDir = "${config.home.homeDirectory}/dotfiles/zsh";
 
     
@@ -44,19 +45,19 @@
     # 
     shellAliases = {
 
-    	# ---Nix darwin
+    	# --- Nix darwin
       drb  = "sudo -H -s darwin-rebuild build --flake /Users/ven/dotfiles/nix#macbook";
       drs  = "sudo -H -s darwin-rebuild switch --flake /Users/ven/dotfiles/nix#macbook";
       drn  = "sudo -H -s darwin-rebuild check --flake /Users/ven/dotfiles/nix#macbook";
 
-      # ---Home Manager
-      drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#macbook";
-      drhb = "home-manager build --flake /Users/ven/dotfiles/nix#macbook";
+      # --- Home Manager
+      drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#ven";
+      drhb = "home-manager build  --flake /Users/ven/dotfiles/nix#ven";
 
-      # delete old gens
+      # --- Deletes old gens
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
 
-      # Git scripts
+      # --- Git
       gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
       gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
     };
@@ -67,7 +68,7 @@
   # 
   # ----- HOME-LEVEL VARIABLES -----
   # 
-  # Correct session PATHS
+  # --- Correct session PATHS
   home = {
     sessionPath = [
     	# homebrew PATHS
