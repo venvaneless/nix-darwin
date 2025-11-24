@@ -30,8 +30,8 @@
 
       # --- User modules ---
       imports = [
-      ../terminal/zsh.nix
-      ../apps/user-data/symlinking.nix
+        ../terminal/zsh.nix
+        ../apps/user-data/symlinking.nix
       ];
     };
   };
