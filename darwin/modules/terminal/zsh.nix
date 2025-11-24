@@ -46,9 +46,13 @@
       drn  = "sudo -E -s darwin-rebuild dry-run --flake /Users/ven/dotfiles/nix#macbook";
 
       # Home Manager
-      drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#ven";
-      drhb = "home-manager build --flake /Users/ven/dotfiles/nix#ven";
-
+      drh  = "home-manager switch --flake /Users/ven/dotfiles/nix#macbook";
+      drhb = "home-manager build --flake /Users/ven/dotfiles/nix#macbook";
+      
+      # Generations cleanup
+      drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
+      };
+      
       # Generations
       drg  = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
 
