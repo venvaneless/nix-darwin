@@ -9,6 +9,6 @@
 { ... }:
 {
   imports = [
-    ./zed-uninstall.nix
+    # ./zed-uninstall.nix
   ];
 }

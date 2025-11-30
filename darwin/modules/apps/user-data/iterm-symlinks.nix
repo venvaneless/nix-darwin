@@ -1,77 +1,77 @@
-# /Users/ven/dotfiles/nix/darwin/modules/apps/user-data/iterm-symlinks.nix
-#
-# ITERM2: USER-DATA MIDDLE-MAN
-# ============================================================
-# Source of truth: /Users/ven/dotfiles/apps/iterm2
-# Runtime paths: ~/Library/Application Support/iTerm2
-#                 ~/Library/Preferences/com.googlecode.iterm2.plist
-# ============================================================
-
+# darwin/modules/apps/user-data/iterm-symlinks.nix
 { config, lib, pkgs, ... }:
 
 let
   home     = config.home.homeDirectory;
-  dotIterm = "/Users/ven/dotfiles/apps/iterm2";
+  dotIterm = "/Users/ven/dotfiles/apps/iterm";  # source of truth
   asIterm  = "${home}/Library/Application Support/iTerm2";
   plist    = "${home}/Library/Preferences/com.googlecode.iterm2.plist";
   dotPlist = "${dotIterm}/com.googlecode.iterm2.plist";
 in
 {
-  home.activation.iterm2UserData = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    set -euo pipefail
-    echo "Managing iTerm2 user‑data..."
+  home.activation.itermUserData =
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      set -euo pipefail
+      echo "Managing iTerm2 user-data…"
 
-    # 1. Initialise dotfiles directory from existing system files if it doesn't exist.
-    if [ ! -d "${dotIterm}" ]; then
+      # 1. Initialise dotfiles dir if missing.  Copy existing app support files and plist.
+      if [ ! -d "${dotIterm}" ]; then
+        mkdir -p "${dotIterm}"
+        [ -d "${asIterm}" ] && cp -a "${asIterm}/." "${dotIterm}/" 2>/dev/null || true
+        [ -f "${plist}" ]   && cp -a "${plist}" "${dotPlist}"   2>/dev/null || true
+      fi
+
+      # 2. Make sure Application Support/iTerm2 is a real directory.
+      if [ -L "${asIterm}" ]; then
+        rm -f "${asIterm}"
+      fi
+      mkdir -p "${asIterm}"
+
+      # 3. Symlink all dotfiles back into the Application Support folder (except plist).
+      for item in "${dotIterm}"/*; do
+        name="$(basename "$item")"
+        [ "$name" = "com.googlecode.iterm2.plist" ] && continue
+        ln -sfn "$item" "${asIterm}/$name"
+      done
+
+      # 4. Move any new files/directories created by iTerm2 into dotfiles and replace with symlinks.
+      #    Do directories first.
+      while IFS= read -r item; do
+        name="$(basename "$item")"
+        [ "$name" = "." ] || [ "$name" = ".." ] || [ "$name" = "com.googlecode.iterm2.plist" ] && continue
+
+        if [ -e "${dotIterm}/$name" ]; then
+          rm -rf "$item"
+          ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
+          continue
+        fi
+
+        mv "$item" "${dotIterm}/$name"
+        ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
+      done < <(find "${asIterm}" -maxdepth 1 -mindepth 1 -type d)
+
+      while IFS= read -r item; do
+        name="$(basename "$item")"
+        [ "$name" = "com.googlecode.iterm2.plist" ] && continue
+
+        if [ -e "${dotIterm}/$name" ]; then
+          rm -f "$item"
+          ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
+          continue
+        fi
+
+        mv "$item" "${dotIterm}/$name"
+        ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
+      done < <(find "${asIterm}" -maxdepth 1 -mindepth 1 -type f)
+
+      # 5. Handle the plist: move real plist into dotfiles and symlink back.
       mkdir -p "${dotIterm}"
-      [ -d "${asIterm}" ] && cp -a "${asIterm}/." "${dotIterm}/" || true
-      [ -f "${plist}" ]   && cp -a "${plist}" "${dotPlist}" || true
-    fi
-
-    # 2. Ensure Application Support/iTerm2 is a real directory.
-    [ -L "${asIterm}" ] && rm -f "${asIterm}"
-    mkdir -p "${asIterm}"
-
-    # 3. Symlink every file in dotfiles back into Application Support (skip plist).
-    for item in "${dotIterm}"/*; do
-      name="$(basename "$item")"
-      [ "$name" = "com.googlecode.iterm2.plist" ] && continue
-      ln -sfn "$item" "${asIterm}/$name"
-    done
-
-    # 4. Move any new files or directories created by iTerm2 back into the dotfiles dir.
-    #    Replace them with symlinks so future writes hit the dotfiles copy.
-    while IFS= read -r item; do
-      name="$(basename "$item")"
-      [ "$name" = "." ] || [ "$name" = ".." ] || [ "$name" = "com.googlecode.iterm2.plist" ] && continue
-      if [ -e "${dotIterm}/$name" ]; then
-        rm -rf "$item"
-        ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
-        continue
+      if [ -f "${plist}" ] && [ ! -L "${plist}" ]; then
+        mv "${plist}" "${dotPlist}"
       fi
-      mv "$item" "${dotIterm}/$name"
-      ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
-    done < <(find "${asIterm}" -maxdepth 1 -mindepth 1 -type d)
-    while IFS= read -r item; do
-      name="$(basename "$item")"
-      [ "$name" = "com.googlecode.iterm2.plist" ] && continue
-      if [ -e "${dotIterm}/$name" ]; then
-        rm -f "$item"
-        ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
-        continue
-      fi
-      mv "$item" "${dotIterm}/$name"
-      ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
-    done < <(find "${asIterm}" -maxdepth 1 -mindepth 1 -type f)
+      [ -f "${dotPlist}" ] || : > "${dotPlist}"
+      ln -sfn "${dotPlist}" "${plist}"
 
-    # 5. Move the real plist into dotfiles (if present) and symlink it back.
-    mkdir -p "${dotIterm}"
-    if [ -f "${plist}" ] && [ ! -L "${plist}" ]; then
-      mv "${plist}" "${dotPlist}"
-    fi
-    [ -f "${dotPlist}" ] || : > "${dotPlist}"
-    ln -sfn "${dotPlist}" "${plist}"
-
-    echo "iTerm2 user‑data sync complete."
-  '';
+      echo "iTerm2 user-data sync complete."
+    '';
 }

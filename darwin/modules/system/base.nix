@@ -10,16 +10,33 @@
 
   # --- Enable new Nix CLI and flakes, and configure caches ---
   nix.settings = {
+    # enable the new CLI and flake support
     experimental-features = [ "nix-command" "flakes" ];
+
+    # build users group for multi-user Nix
     build-users-group = "nixbld";
 
-    # Use only the official cache for now; this removes the bad key permanently
+    # Move Nix directories (profiles, channels, defexpr) to the XDG base directories.
+    # This removes ~/.nix-profile and ~/.nix-defexpr in favour of $XDG_STATE_HOME/nix.
+    use-xdg-base-directories = true;
+
+    # Use only the official cache for now; this removes the bad key permanently.
     substituters = [
       "https://cache.nixos.org"
     ];
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
     ];
+  };
+
+  # When using XDG base directories, Nix will default to $XDG_STATE_HOME/nix for
+  # profiles and expressions.  To keep **all** of these files under
+  # ~/.config/nix, override XDG variables accordingly.  These variables
+  # affect all applications, so consider this carefully.
+  environment.variables = {
+    XDG_STATE_HOME = "$HOME/.config/nix";
+    XDG_DATA_HOME  = "$HOME/.config/nix";
+    XDG_CACHE_HOME = "$HOME/.config/nix";
   };
 
   # --- System state version (Darwin revision) ---
