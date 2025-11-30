@@ -10,5 +10,6 @@
 {
   imports = [
     ./zed.nix
+    ./iterm.nix
   ];
 }

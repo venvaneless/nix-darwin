@@ -47,9 +47,9 @@
     shellAliases = {
 
     	# --- Nix darwin
-      drb  = "sudo -H -s darwin-rebuild build --flake /Users/ven/dotfiles/nix#macbook";
-      drs  = "sudo -H -s darwin-rebuild switch --flake /Users/ven/dotfiles/nix#macbook";
-      drn  = "sudo -H -s darwin-rebuild check --flake /Users/ven/dotfiles/nix#macbook";
+      drb  = "sudo -H darwin-rebuild build --flake /Users/ven/dotfiles/nix#macbook";
+      drs  = "sudo -H darwin-rebuild switch --flake /Users/ven/dotfiles/nix#macbook";
+      drn  = "sudo -H darwin-rebuild check --flake /Users/ven/dotfiles/nix#macbook";
 
       # --- Home Manager
 
