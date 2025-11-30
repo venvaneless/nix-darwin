@@ -1,35 +1,26 @@
-# /Users/ven/dotfiles/nix/darwin/modules/system/base.nix
-#
-# CORE CONFIG
-# ============================================================
-# BASE CONFIG
-# Enable flakes, small services, expose additional flags
-# and commands for the "nix-darwin" etc.
-# ============================================================
-
+# darwin/modules/system/base.nix
 { config, pkgs, lib, inputs, ... }:
 
 {
   # --- Core system identity ---
   networking.hostName = "Vens-MacBook-Pro";
 
-  # --- Enable new Nix CLI and flakes ---
+  # Tell nix‑darwin to manage /etc/nix/nix.conf for us
+  nix.enable = true;
+
+  # --- Enable new Nix CLI and flakes, and configure caches ---
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
     build-users-group = "nixbld";
 
-    # Use the Nix Community binary cache
+    # Use only the official cache for now; this removes the bad key permanently
     substituters = [
       "https://cache.nixos.org"
     ];
-
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
     ];
   };
-
-  # --- Enable Nix Determine ---
-  nix.enable = false;
 
   # --- System state version (Darwin revision) ---
   system.stateVersion = 6;
