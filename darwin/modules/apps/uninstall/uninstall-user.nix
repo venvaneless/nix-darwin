@@ -10,9 +10,9 @@
 { ... }:
 {
   imports = [
+  	# ./chromium-user-data-uninstall.nix
+   	# ./iterm2-user-data-uninstall.nix
     # ./zed-user-data-uninstall.nix
-    # ./iterm2-user-data-uninstall.nix
-    
-    # future user-level uninstallers
+   # future user-level uninstallers
   ];
 }

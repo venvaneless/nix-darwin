@@ -47,9 +47,23 @@
     shellAliases = {
 
     	# --- Nix darwin
-      drb  = "sudo -H darwin-rebuild build --flake /Users/ven/dotfiles/nix#macbook";
-      drs  = "sudo -H darwin-rebuild switch --flake /Users/ven/dotfiles/nix#macbook";
-      drn  = "sudo -H darwin-rebuild check --flake /Users/ven/dotfiles/nix#macbook";
+      drb  = "sudo -H darwin-rebuild build --flake ~/dotfiles/nix#macbook";
+      # Evaluates the flake
+      # Builds all derivations
+      # Doesn't switch to the current flake
+      drs  = "sudo -H darwin-rebuild switch --flake ~/dotfiles/nix#macbook";
+      # Checks the full nix-darwin system configuration like switch but without rebuilding/applying
+      # It does NOT build or apply anything
+      drc  = "sudo -H darwin-rebuild check --flake ~/dotfiles/nix#macbook";
+      
+      # Checks the flake itself, NOT the Darwin configuration
+      # Checks if darwinConfigurations.macbook exist as an output
+      # Checks if the flake.nix is syntactically valid
+      # Checks declared outputs
+      # Tests if tests/builds defined in checks run
+      # Checks if devShells evaluate
+      # Checks if overlays evaluate
+      drn  = "sudo -H nix flake check ~/dotfiles/nix";
 
       # --- Home Manager
 

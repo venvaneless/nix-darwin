@@ -13,6 +13,7 @@
 
 {
   imports = [
+  	./chromium-symlinks.nix
   	./iterm-symlinks.nix
     ./zed-symlinks.nix
 

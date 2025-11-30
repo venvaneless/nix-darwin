@@ -9,6 +9,8 @@
 { ... }:
 {
   imports = [
+    # ./chromium-uninstall.nix
+    # ./iterm-uninstall.nix
     # ./zed-uninstall.nix
   ];
 }

@@ -14,27 +14,28 @@ in
       set -euo pipefail
       echo "Managing iTerm2 user-data…"
 
-      # 1. Initialise dotfiles dir if missing.  Copy existing app support files and plist.
+      # Initialise dotfiles dir if missing
+      # Copy existing app support files and plist
       if [ ! -d "${dotIterm}" ]; then
         mkdir -p "${dotIterm}"
         [ -d "${asIterm}" ] && cp -a "${asIterm}/." "${dotIterm}/" 2>/dev/null || true
         [ -f "${plist}" ]   && cp -a "${plist}" "${dotPlist}"   2>/dev/null || true
       fi
 
-      # 2. Make sure Application Support/iTerm2 is a real directory.
+      # Ensure Application Support/iTerm2 is a real directory.
       if [ -L "${asIterm}" ]; then
         rm -f "${asIterm}"
       fi
       mkdir -p "${asIterm}"
 
-      # 3. Symlink all dotfiles back into the Application Support folder (except plist).
+      # Symlinks all dotfiles (except .plist file) back into the Application Support folder
       for item in "${dotIterm}"/*; do
         name="$(basename "$item")"
         [ "$name" = "com.googlecode.iterm2.plist" ] && continue
         ln -sfn "$item" "${asIterm}/$name"
       done
 
-      # 4. Move any new files/directories created by iTerm2 into dotfiles and replace with symlinks.
+      # Move any new files/directories created by iTerm2 into dotfiles and replace with symlinks
       #    Do directories first.
       while IFS= read -r item; do
         name="$(basename "$item")"
@@ -50,6 +51,7 @@ in
         ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
       done < <(find "${asIterm}" -maxdepth 1 -mindepth 1 -type d)
 
+      # Move any new files created by iTerm2 back into dotfiles.
       while IFS= read -r item; do
         name="$(basename "$item")"
         [ "$name" = "com.googlecode.iterm2.plist" ] && continue

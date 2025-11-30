@@ -9,6 +9,7 @@ SCRIPT_DIR="/Users/ven/dotfiles/nix/scripts"
 # Add or remove entries here to control what rsync-all runs
 # ------------------------------------------------------------
 ENABLED_SCRIPTS=(
+	"rsync-chromium.sh"
   "rsync-iterm.sh"
   "rsync-zed.sh"
   "rsync-obsidian.sh"
