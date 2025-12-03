@@ -9,7 +9,7 @@
 { ... }:
 {
   imports = [
+   	./iterm.nix
     ./zed.nix
-    ./iterm.nix
   ];
 }

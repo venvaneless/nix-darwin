@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/terminal/plugins/completion.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/terminal/plugins/completion.nix
 #
 # ZSH: COMPLETION SYSTEM (GLOBAL)
 # ============================================================

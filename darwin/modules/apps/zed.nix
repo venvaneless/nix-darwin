@@ -1,4 +1,4 @@
-# /Users/ven/iCloudDocs/dotfiles/nix/darwin/modules/apps/zed.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/zed.nix
 
 # ZED: INSTALL APP
 # ============================================================

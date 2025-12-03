@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/index.nix
+# /Users/ven/dotfiles/nix/stable/darwin/index.nix
 #
 # DARWIN: MAIN SYSTEM MODULE
 # ================================================

@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/terminal/plugins/fzf.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/terminal/plugins/fzf.nix
 #
 # FZF + TAB + HISTORY + FORGIT
 # ============================================================

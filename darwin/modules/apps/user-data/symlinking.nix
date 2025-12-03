@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/apps/user-data/symlinking.nix
+#  /Users/ven/dotfiles/nix/stable/darwin/modules/apps/user-data/symlinking.nix
 #
 # APP USER-DATA SYMLINK LOADER
 # ============================================================

@@ -1,4 +1,4 @@
-# darwin/modules/apps/user-data/iterm-symlinks.nix
+#  /Users/ven/dotfiles/nix/stable/darwin/modules/apps/user-data/iterm-symlinks.nix
 { config, lib, pkgs, ... }:
 
 let

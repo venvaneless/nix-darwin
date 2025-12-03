@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/services/docker/docker-all.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/services/docker/docker-all.nix
 #
 # DOCKER: ALL-IN-ONE MODULE
 # ============================================================

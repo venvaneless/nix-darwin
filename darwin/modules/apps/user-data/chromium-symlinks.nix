@@ -1,6 +1,6 @@
-# /Users/ven/dotfiles/nix/darwin/modules/apps/user-data/chromium-symlinks.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/user-data/chromium-symlinks.nix
 #
-# Chromium: USER‑DATA MIDDLE‑MAN
+# CHROMIUM: USER-DATA MIDDLE-MAN
 # ============================================================
 # Source of truth:
 #     /Users/ven/dotfiles/apps/chromium
@@ -13,32 +13,33 @@
 #   - Ensure dotfiles path exists (initialize from system if needed)
 #   - Ensure Application Support/Chromium is a folder (not a symlink)
 #   - Ensure all files inside are symlinks pointing to dotfiles
-#   - Move new system‑created files back into dotfiles
+#   - Move new system-created files back into dotfiles
 #   - Ensure plist is symlinked
 #   - Never overwrite dotfiles
 #   - Never interact with iCloud
 #   - Never install or update anything
 #   - Never launch Chromium
+#   - SPECIAL: Never move/symlink fragile login DB files:
+#       Cookies
+#       Cookies-journal
+#       Network Persistent State
+#       Secure Preferences
+#       TransportSecurity
 #
-# This file mirrors the iTerm2 user‑data module but is tailored for
-# ungoogled Chromium.  The authoritative copy of your browser
-# settings resides under your dotfiles directory and changes are
-# synchronized so that Chromium continues to function normally.
-# When Chromium writes new files into its Application Support
-# directory they are moved into `dotfiles/apps/chromium` and
-# replaced with symlinks.  Similarly, your preferences plist is
-# stored alongside the other files and symlinked back into
-# `~/Library/Preferences`:contentReference[oaicite:1]{index=1}.
+# This file mirrors the behavior of the Zed user-data module, but is
+# tailored for Chromium’s profile layout. The authoritative copy of
+# your browser settings resides under dotfiles/apps/chromium, and new
+# files are pulled back from Application Support into dotfiles and
+# symlinked. Fragile login-related databases are left as real files
+# so Chromium does not lose sessions/logins.
 # ============================================================
 
 { config, lib, pkgs, ... }:
 
 let
   home        = config.home.homeDirectory;
-  # The location of the authoritative user‑data files.
   dotChromium = "/Users/ven/dotfiles/apps/chromium";
 
-  # Paths to runtime data.
   asChromium  = "${home}/Library/Application Support/Chromium";
   plist       = "${home}/Library/Preferences/org.chromium.Chromium.plist";
   dotPlist    = "${dotChromium}/org.chromium.Chromium.plist";
@@ -47,66 +48,149 @@ in
   home.activation.chromiumUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Managing Chromium user‑data..."
+      echo "Managing Chromium user-data..."
 
-      # Initialise dotfiles dir if missing
-      # Copy existing app support files and plist
+      # ------------------------------------------------------------
+      # Fragile DB list: never move/symlink/delete these
+      # ------------------------------------------------------------
+      fragile_files='
+Cookies
+Cookies-journal
+Network Persistent State
+Secure Preferences
+TransportSecurity
+'
+
+      is_fragile() {
+        local name="$1"
+        # Compare against each line in fragile_files
+        printf "%s\n" "$fragile_files" | while IFS= read -r f; do
+          [ -z "$f" ] && continue
+          if [ "$name" = "$f" ]; then
+            return 0
+          fi
+        done
+        return 1
+      }
+
+      # ------------------------------------------------------------
+      # Ensure dotfiles directory exists. If missing → initialize.
+      # ------------------------------------------------------------
       if [ ! -d "${dotChromium}" ]; then
         echo "Chromium dotfiles missing → creating."
         mkdir -p "${dotChromium}"
-        [ -d "${asChromium}" ] && cp -a "${asChromium}/." "${dotChromium}/" || true
-        [ -f "${plist}" ] && cp -a "${plist}" "${dotPlist}" || true
+
+        # Copy existing Application Support files into dotfiles once
+        if [ -d "${asChromium}" ]; then
+          echo "Copying existing Application Support files → dotfiles"
+          cp -a "${asChromium}/." "${dotChromium}/" 2>/dev/null || true
+        fi
+
+        # Copy plist into dotfiles once
+        if [ -f "${plist}" ]; then
+          echo "Copying plist → dotfiles"
+          cp -a "${plist}" "${dotPlist}" || true
+        fi
       fi
 
-      # Ensure Application Support/Chromium is a real directory.
-      [ -L "${asChromium}" ] && rm -f "${asChromium}"
+      # ------------------------------------------------------------
+      # Ensure Application Support/Chromium is a REAL folder
+      # ------------------------------------------------------------
+      if [ -L "${asChromium}" ]; then
+        echo "Fixing: Application Support/Chromium must not be a symlink."
+        rm -f "${asChromium}"
+      fi
+
       mkdir -p "${asChromium}"
 
-      # Symlinks all dotfiles (except .plist file) back into the Application Support folder
+      # ------------------------------------------------------------
+      # Ensure dotfiles → system symlinks (except plist + fragile DBs)
+      # ------------------------------------------------------------
       for item in "${dotChromium}"/*; do
         name="$(basename "$item")"
+
+        # Skip plist
         [ "$name" = "org.chromium.Chromium.plist" ] && continue
+
+        # Skip fragile login-related files
+        if is_fragile "$name"; then
+          echo "Skipping fragile (real file only): $name"
+          continue
+        fi
+
         ln -sfn "$item" "${asChromium}/$name"
       done
 
-      # Move any new files/directories created by Chromium into dotfiles and replace with symlinks
+      # ------------------------------------------------------------
+      # Move system-created new directories → dotfiles (then symlink)
+      # ------------------------------------------------------------
       while IFS= read -r item; do
         name="$(basename "$item")"
-        [ "$name" = "." ] || [ "$name" = ".." ] || [ "$name" = "org.chromium.Chromium.plist" ] && continue
-        
+
+        # Skip special/fragile names
+        [ "$name" = "." ] && continue
+        [ "$name" = ".." ] && continue
+        [ "$name" = "org.chromium.Chromium.plist" ] && continue
+        if is_fragile "$name"; then
+          echo "Leaving fragile directory as real: $name"
+          continue
+        fi
+
         if [ -e "${dotChromium}/$name" ]; then
+          echo "Linking existing directory from dotfiles: $name"
           rm -rf "$item"
           ln -sfn "${dotChromium}/$name" "${asChromium}/$name"
           continue
         fi
-        
+
+        echo "Moving new directory to dotfiles: $name"
         mv "$item" "${dotChromium}/$name"
         ln -sfn "${dotChromium}/$name" "${asChromium}/$name"
       done < <(find "${asChromium}" -maxdepth 1 -mindepth 1 -type d)
 
-      # Move any new files created by Chromium back into dotfiles.
+      # ------------------------------------------------------------
+      # Move system-created new files → dotfiles (then symlink)
+      # ------------------------------------------------------------
       while IFS= read -r item; do
         name="$(basename "$item")"
+
+        # Skip plist
         [ "$name" = "org.chromium.Chromium.plist" ] && continue
-        
+
+        # Skip fragile login-related files
+        if is_fragile "$name"; then
+          echo "Leaving fragile file as real: $name"
+          continue
+        fi
+
         if [ -e "${dotChromium}/$name" ]; then
+          echo "Linking existing file from dotfiles: $name"
           rm -f "$item"
           ln -sfn "${dotChromium}/$name" "${asChromium}/$name"
           continue
         fi
-        
+
+        echo "Moving new file to dotfiles: $name"
         mv "$item" "${dotChromium}/$name"
         ln -sfn "${dotChromium}/$name" "${asChromium}/$name"
       done < <(find "${asChromium}" -maxdepth 1 -mindepth 1 -type f)
 
-      # Handle the plist: move real plist into dotfiles and symlink back.
+      # ------------------------------------------------------------
+      # Plist handling
+      # ------------------------------------------------------------
       mkdir -p "${dotChromium}"
+
       if [ -f "${plist}" ] && [ ! -L "${plist}" ]; then
+        echo "Moving real plist → dotfiles"
         mv "${plist}" "${dotPlist}"
       fi
-      [ -f "${dotPlist}" ] || : > "${dotPlist}"
+
+      if [ ! -f "${dotPlist}" ]; then
+        : > "${dotPlist}"
+      fi
+
       ln -sfn "${dotPlist}" "${plist}"
 
-      echo "Chromium user‑data sync complete."
+      echo "Chromium user-data sync complete."
     '';
 }

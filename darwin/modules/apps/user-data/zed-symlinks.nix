@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/apps/user-data/zed-symlinks.nix
+#  /Users/ven/dotfiles/nix/stable/darwin/modules/apps/user-data/zed-symlinks.nix
 #
 # ZED: USER-DATA MIDDLE-MAN
 # ============================================================
@@ -45,7 +45,7 @@ in
       echo "Managing Zed user-data..."
 
       # ------------------------------------------------------------
-      # 0. NEW: ~/.config/zed → dotfiles/apps/zed/user-data
+      # NEW: ~/.config/zed → dotfiles/apps/zed/user-data
       # ------------------------------------------------------------
       mkdir -p "${dotUser}"
 
@@ -74,7 +74,7 @@ in
 
 
       # ------------------------------------------------------------
-      # 1. Ensure dotfiles directory exists. If missing → initialize.
+      # Ensure dotfiles directory exists. If missing → initialize.
       # ------------------------------------------------------------
       if [ ! -d "${dotZed}" ]; then
         echo "Zed dotfiles missing → creating."
@@ -94,7 +94,7 @@ in
 
 
       # ------------------------------------------------------------
-      # 2. Ensure Application Support/Zed is a REAL folder
+      # Ensure Application Support/Zed is a REAL folder
       # ------------------------------------------------------------
       if [ -L "${asZed}" ]; then
         echo "Fixing: Application Support/Zed must not be a symlink."
@@ -105,7 +105,7 @@ in
 
 
       # ------------------------------------------------------------
-      # 3. Ensure dotfiles → system symlinks
+      # Ensure dotfiles → system symlinks
       # ------------------------------------------------------------
       for item in "${dotZed}"/*; do
         name="$(basename "$item")"
@@ -115,7 +115,7 @@ in
 
 
       # ------------------------------------------------------------
-      # 4. Move system-created new items → dotfiles (directories first)
+      # Move system-created new items → dotfiles (directories first)
       # ------------------------------------------------------------
 
       # FIRST: move directories only
@@ -163,7 +163,7 @@ in
 
 
       # ------------------------------------------------------------
-      # 5. Plist handling
+      # Plist handling
       # ------------------------------------------------------------
       mkdir -p "${dotZed}"
 

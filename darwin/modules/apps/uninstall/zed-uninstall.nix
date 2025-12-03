@@ -1,4 +1,4 @@
-# /Users/ven/iCloudDocs/dotfiles/nix/darwin/modules/apps/uninstall/zed-uninstall.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/uninstall/zed-uninstall.nix
 #
 # ZED: SYSTEM UNINSTALL
 # ============================================================

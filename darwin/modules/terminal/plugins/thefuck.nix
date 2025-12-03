@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/terminal/zsh/zsh/thefuck.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/terminal/zsh/zsh/thefuck.nix
 #
 # ZSH: THEFUCK
 # ============================================================

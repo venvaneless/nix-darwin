@@ -1,4 +1,4 @@
-# /Users/ven/iCloudDocs/dotfiles/nix/darwin/modules/apps/uninstall/uninstall.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/uninstall/uninstall.nix
 #
 # APPS - UNINSTALL
 # ============================================================

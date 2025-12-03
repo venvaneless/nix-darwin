@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/services/docker/vaultwarden-nginx.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/services/docker/vaultwarden-nginx.nix
 #
 # HOMEBREW NGINX REVERSE PROXY FOR VAULTWARDEN
 # ============================================================

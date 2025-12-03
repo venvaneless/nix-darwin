@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/apps/uninstall/chromium-user-data-uninstall.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/uninstall/chromium-user-data-uninstall.nix
 #
 # Chromium: UNINSTALL USER DATA
 # ============================================================

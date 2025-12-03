@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/terminal/zsh/zsh/starship.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/terminal/zsh/zsh/starship.nix
 #
 # ZSH: STARSHIP PROMPT
 # ============================================================

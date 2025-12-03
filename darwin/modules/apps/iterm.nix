@@ -1,4 +1,4 @@
-# /Users/ven/iCloudDocs/dotfiles/nix/darwin/modules/apps/iterm.nix
+# /Users/ven/iCloudDocs/dotfiles/nix/stable/darwin/modules/apps/iterm.nix
 
 # ITERM2: INSTALL APP
 # ============================================================

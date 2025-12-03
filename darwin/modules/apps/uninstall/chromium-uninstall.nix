@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/apps/uninstall/chromium-uninstall.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/uninstall/chromium-uninstall.nix
 #
 # Chromium: UNINSTALL APPLICATION
 # ============================================================

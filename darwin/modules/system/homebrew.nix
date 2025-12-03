@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/system/homebrew.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/system/homebrew.nix
 #
 # HOMEBREW (Unified)
 # ============================================================

@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/services/script-services.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/services/script-services.nix
 #
 # CLEANUP SERVICES AGGREGATOR
 # ============================================================

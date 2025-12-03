@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/terminal/zsh.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/terminal/zsh.nix
 #
 # ZSH CONFIGURATION
 # ============================================================
@@ -47,14 +47,14 @@
     shellAliases = {
 
     	# --- Nix darwin
-      drb  = "sudo -H darwin-rebuild build --flake ~/dotfiles/nix#macbook";
+      drb  = "sudo -H darwin-rebuild build --flake ~/dotfiles/nix/stable#macbook";
       # Evaluates the flake
       # Builds all derivations
       # Doesn't switch to the current flake
-      drs  = "sudo -H darwin-rebuild switch --flake ~/dotfiles/nix#macbook";
+      drs  = "sudo -H darwin-rebuild switch --flake ~/dotfiles/nix/stable#macbook";
       # Checks the full nix-darwin system configuration like switch but without rebuilding/applying
       # It does NOT build or apply anything
-      drc  = "sudo -H darwin-rebuild check --flake ~/dotfiles/nix#macbook";
+      drc  = "sudo -H darwin-rebuild check --flake ~/dotfiles/nix/stable#macbook";
       
       # Checks the flake itself, NOT the Darwin configuration
       # Checks if darwinConfigurations.macbook exist as an output
@@ -63,7 +63,7 @@
       # Tests if tests/builds defined in checks run
       # Checks if devShells evaluate
       # Checks if overlays evaluate
-      drn  = "sudo -H nix flake check ~/dotfiles/nix";
+      drn  = "sudo -H nix flake check ~/dotfiles/nix/stable";
 
       # --- Home Manager
 

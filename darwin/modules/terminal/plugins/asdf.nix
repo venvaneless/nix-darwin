@@ -1,4 +1,5 @@
-#
+# /Users/ven/dotfiles/nix/stable/darwin/modules/terminal/plugins/asdf.nix
+# 
 # ZSH: ASDF VERSION MANAGER (INSTALLED VIA NIX)
 # ============================================================
 # - Installs asdf-vm from Nix

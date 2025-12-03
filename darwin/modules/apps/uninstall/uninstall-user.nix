@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/darwin/modules/apps/uninstall/uninstall-user.nix
+# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/uninstall/uninstall-user.nix
 #
 # APPS: USER-DATA REMOVAL
 # ============================================================
