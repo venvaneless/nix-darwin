@@ -13,15 +13,10 @@
 
 {
   imports = [
-  	#./chromium-restore.nix
-   ./iterm-restore.nix
-  # ./chromium-symlinks.nix
- #  ./iterm-symlinks.nix
-   ./zed-symlinks.nix
-
-    # Future app user-data modules:
-    # ./vscode-symlinks.nix
-    # ./obsidian-symlinks.nix
-    # ./wezterm-symlinks.nix
+  	# ./chromium-restore.nix
+   	# ./iterm-restore.nix
+    # ./chromium-symlinks.nix
+    # ./iterm-symlinks.nix
+    # ./zed-symlinks.nix
   ];
 }

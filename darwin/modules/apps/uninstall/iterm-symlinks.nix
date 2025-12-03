@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/chromium-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/iterm-symlinks.nix
 # 
 # DARWIN: CHROMIUM PROFILE + PLIST MIGRATION (ONE-TIME MOVE + SYMLINK)
 # ====================================================================
