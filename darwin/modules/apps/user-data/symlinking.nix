@@ -14,7 +14,7 @@
 {
   imports = [
   	./chromium-restore.nix
-  	./chromium-symlinks.nix
+  	# ./chromium-symlinks.nix
   	./iterm-symlinks.nix
     ./zed-symlinks.nix
 
