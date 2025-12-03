@@ -1,4 +1,4 @@
-#  /Users/ven/dotfiles/nix/stable/darwin/modules/apps/user-data/symlinking.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/symlinking.nix
 #
 # APP USER-DATA SYMLINK LOADER
 # ============================================================
@@ -13,6 +13,7 @@
 
 {
   imports = [
+  	./chromium-restore.nix
   	./chromium-symlinks.nix
   	./iterm-symlinks.nix
     ./zed-symlinks.nix

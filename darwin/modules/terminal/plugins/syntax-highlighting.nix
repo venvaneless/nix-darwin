@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/terminal/zsh/zsh/syntax-highlighting.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/syntax-highlighting.nix
 #
 # ZSH: SYNTAX HIGHLIGHTING
 # ============================================================

@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/services/docker/vaultwarden.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/vaultwarden.nix
 #
 # VAULTWARDEN: DARWIN CONTAINER
 # ============================================================

@@ -1,5 +1,5 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/uninstall/zed-user-data-uninstall.nix
-
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/uninstall/zed-user-data-uninstall.nix
+# 
 # ZED: UNINSTALL USER DATA
 # =========================
 

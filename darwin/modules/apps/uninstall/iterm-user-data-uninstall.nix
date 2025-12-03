@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/uninstall/iterm-user-data-uninstall.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/uninstall/iterm-user-data-uninstall.nix
 #
 # iTerm2: UNINSTALL USER DATA
 # ============================================================

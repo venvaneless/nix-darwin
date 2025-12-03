@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/services/app-definitions.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/app-definitions.nix
 #
 # APP DEFINITIONS (RUNNABLE COMMANDS)
 # =========================

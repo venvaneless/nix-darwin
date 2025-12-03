@@ -1,5 +1,5 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/apps/zed.nix
-
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/zed.nix
+# 
 # ZED: INSTALL APP
 # ============================================================
 # Installs the Zed editor app to a chosen folder

@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/system/home-manager.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/home-manager.nix
 #
 # DARWIN: HOME MANAGER (INTEGRATED)
 # ================================================

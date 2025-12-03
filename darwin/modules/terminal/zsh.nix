@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/terminal/zsh.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/zsh.nix
 #
 # ZSH CONFIGURATION
 # ============================================================

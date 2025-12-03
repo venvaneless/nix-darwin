@@ -1,4 +1,5 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/system/base.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/base.nix
+# 
 { config, pkgs, lib, inputs, ... }:
 
 {

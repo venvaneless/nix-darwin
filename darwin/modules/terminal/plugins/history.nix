@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/terminal/zsh/zsh/history.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/history.nix
 #
 # ZSH: HISTORY SUBSTRING SEARCH
 # ============================================================

@@ -1,5 +1,5 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/services/docker/docker-all.nix
-#
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/docker-all.nix
+# 
 # DOCKER: ALL-IN-ONE MODULE
 # ============================================================
 # Imports:

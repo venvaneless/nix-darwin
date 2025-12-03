@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/chromium-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/chromium-symlinks2.nix
 #
 # CHROMIUM: USER-DATA MIDDLE-MAN
 # ============================================================
@@ -61,15 +61,20 @@ Secure Preferences
 TransportSecurity
 '
 
+      # NOTE:
+      # The previous implementation used a pipeline with "while read"
+      # which ran in a subshell and ALWAYS returned 1.
+      # This version uses a simple case/esac, so it works correctly.
       is_fragile() {
-        local name="$1"
-        # Compare against each line in fragile_files
-        printf "%s\n" "$fragile_files" | while IFS= read -r f; do
-          [ -z "$f" ] && continue
-          if [ "$name" = "$f" ]; then
+        case "$1" in
+          "Cookies" | \
+          "Cookies-journal" | \
+          "Network Persistent State" | \
+          "Secure Preferences" | \
+          "TransportSecurity")
             return 0
-          fi
-        done
+            ;;
+        esac
         return 1
       }
 
@@ -114,7 +119,7 @@ TransportSecurity
 
         # Skip fragile login-related files
         if is_fragile "$name"; then
-          echo "Skipping fragile (real file only): $name"
+          echo "Skipping fragile (real file only, no symlink): $name"
           continue
         fi
 

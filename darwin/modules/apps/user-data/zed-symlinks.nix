@@ -1,4 +1,4 @@
-#  /Users/ven/dotfiles/nix/stable/darwin/modules/apps/user-data/zed-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/zed-symlinks.nix
 #
 # ZED: USER-DATA MIDDLE-MAN
 # ============================================================

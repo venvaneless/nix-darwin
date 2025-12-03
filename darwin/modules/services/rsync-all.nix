@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/stable/darwin/modules/services/rsync-all.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/rsync-all.nix
 #
 # SYSTEM: RSYNC-ALL WRAPPER
 # ============================================================
