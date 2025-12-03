@@ -1,5 +1,3 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/chromium-symlinks.nix
-# 
 # DARWIN: CHROMIUM PROFILE + PLIST MIGRATION (ONE-TIME MOVE + SYMLINK)
 # ====================================================================
 # Moves the Chromium profile directory and plist into ven-dots and

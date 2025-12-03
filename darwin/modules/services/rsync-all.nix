@@ -14,7 +14,7 @@ let
     #!/bin/bash
     set -euo pipefail
 
-    SCRIPT_DIR="/Users/ven/dotfiles/scripts"
+    SCRIPT_DIR="/Users/ven/.config/nix/nix-scripts"
 
     echo "▶ Running all app backup scripts…"
 

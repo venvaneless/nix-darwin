@@ -26,7 +26,7 @@
 
 let
   # ----- Base paths -----
-  containersRoot = "/Users/ven/dotfiles/containers";
+  containersRoot = "/Users/ven/ven-dots/user-data/containers";
   dockerBin      = "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
   # ----- Name sanitizer -----

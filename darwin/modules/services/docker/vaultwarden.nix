@@ -17,7 +17,7 @@
 
 let
   # ----- Paths -----
-  containersRoot = "/Users/ven/dotfiles/containers";
+  containersRoot = "/Users/ven/ven-dots/user-data/containers";
   appName        = "vaultwarden";
   dataDir        = "${containersRoot}/${appName}";
 
