@@ -1,12 +1,11 @@
 # DARWIN: CHROMIUM USER-DATA FULL RESTORE (REVERSE OF SYMLINK MODULE)
 # ===================================================================
 # Purpose:
-#   - Stop using ~/dotfiles/apps/chromium as "source of truth"
-#   - Remove symlinks inside ~/Library/Application Support/Chromium
-#   - Materialize real files/dirs there again (copied from dotChromium)
-#   - Fix org.chromium.Chromium.plist back to a real file in Preferences
-#   - NO new symlinks are created
-#   - dotChromium is left intact (you can delete it manually afterwards)
+#   - Convert all Chromium symlinks → real files/dirs
+#   - Copy contents back from dotChromium to Application Support
+#   - Restore real plist in Preferences
+#   - NO new symlinks created
+#   - Leaves dotChromium intact for manual cleanup later
 # ===================================================================
 
 { config, lib, pkgs, ... }:
@@ -23,37 +22,29 @@ in
   home.activation.chromiumRestore =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Restoring Chromium data from dotfiles → real files..."
+      echo "Restoring Chromium data from dotfiles → real filesystem..."
 
       # ----------------------------------------------------------------
-      # 0. Sanity: ensure runtime dir exists if we have dotfiles
+      # Ensure runtime directory exists if dotChromium exists
       # ----------------------------------------------------------------
       if [ -d "${dotChromium}" ] && [ ! -d "${asChromium}" ]; then
         echo "Creating Application Support/Chromium..."
         mkdir -p "${asChromium}"
       fi
 
-      if [ ! -d "${asChromium}" ]; then
-        echo "No Application Support/Chromium directory present. Nothing to restore."
-      fi
-
       # ----------------------------------------------------------------
-      # 1. Convert symlinks in Application Support/Chromium → real files
+      # Convert symlinks inside Application Support/Chromium → real files
       # ----------------------------------------------------------------
       if [ -d "${asChromium}" ]; then
-        echo "Converting symlinks inside Application Support/Chromium to real files..."
+        echo "Converting symlinks inside Application Support/Chromium..."
 
-        # Handle both files and directories that are symlinks
-        while IFS= read -r -d '' item; do
+        while IFS= read -r -d $'\0' item; do
           base="$(basename "$item")"
           target="$(readlink "$item" || true)"
 
-          # If the symlink points into dotChromium and target exists,
-          # copy the real contents back and drop the symlink.
           case "$target" in
             "${dotChromium}/"*)
-              echo "  - Restoring from dotfiles: $base"
-              # Use a temp name to avoid overwriting issues
+              echo "  - Restoring: $base"
               tmp="${asChromium}/.$base.restore-tmp"
               rm -rf "$tmp"
               if [ -e "$target" ]; then
@@ -61,12 +52,12 @@ in
                 rm -f "$item"
                 mv "$tmp" "${asChromium}/$base"
               else
-                echo "    (Warning: target $target does not exist, removing symlink only)"
+                echo "    (Warning: target missing, removing symlink only)"
                 rm -f "$item"
               fi
               ;;
             *)
-              echo "  - Symlink not pointing into dotChromium, removing only: $base"
+              echo "  - Removing symlink not pointing to dotChromium: $base"
               rm -f "$item"
               ;;
           esac
@@ -74,60 +65,53 @@ in
       fi
 
       # ----------------------------------------------------------------
-      # 2. Ensure anything still in dotChromium exists in Application Support
+      # Ensure anything in dotChromium exists in Application Support
       # ----------------------------------------------------------------
       if [ -d "${dotChromium}" ]; then
-        echo "Ensuring all dotfiles/apps/chromium items are present in Application Support..."
+        echo "Copying missing items from dotChromium → Application Support..."
 
         for item in "${dotChromium}"/*; do
           base="$(basename "$item")"
 
-          # Skip plist here; handled separately
           if [ "$base" = "org.chromium.Chromium.plist" ]; then
             continue
           fi
 
           if [ ! -e "${asChromium}/$base" ]; then
-            echo "  - Copying missing item: $base"
+            echo "  - Restoring: $base"
             cp -a "$item" "${asChromium}/$base"
           else
-            echo "  - Already exists in Application Support, leaving as-is: $base"
+            echo "  - Exists already: $base"
           fi
         done
-      else
-        echo "dotChromium (${dotChromium}) does not exist; nothing to copy back."
       fi
 
       # ----------------------------------------------------------------
-      # 3. Plist handling: make it a REAL file again
+      # Restore real plist in Preferences
       # ----------------------------------------------------------------
-      echo "Restoring org.chromium.Chromium.plist to a real file (no symlink)..."
+      echo "Restoring Preferences/org.chromium.Chromium.plist..."
 
-      # If plist is a symlink, convert to real file from dotPlist if possible
       if [ -L "${plist}" ]; then
-        echo "  - Plist is a symlink, converting to real file..."
+        echo "  - Converting symlink plist → real file"
         rm -f "${plist}"
+
         if [ -f "${dotPlist}" ]; then
           cp -a "${dotPlist}" "${plist}"
-          echo "  - Plist restored from dotPlist."
         else
-          echo "  - dotPlist missing; creating empty plist file."
           : > "${plist}"
         fi
+
       elif [ ! -e "${plist}" ]; then
-        # No plist at all → copy from dotPlist if available
+        echo "  - plist missing, restoring from dotPlist (if exists)"
         if [ -f "${dotPlist}" ]; then
-          echo "  - Plist missing; copying from dotPlist."
           cp -a "${dotPlist}" "${plist}"
         else
-          echo "  - Plist missing and dotPlist not found; creating empty plist."
           : > "${plist}"
         fi
       else
-        echo "  - Plist is already a real file; leaving as-is."
+        echo "  - plist already real, leaving untouched"
       fi
 
-      echo "Chromium reverse-symlink restore complete."
-      echo "You can now stop using chromium-symlinks.nix and optionally remove ${dotChromium} manually."
+      echo "✔ Chromium reverse-symlink restore COMPLETED."
     '';
 }
