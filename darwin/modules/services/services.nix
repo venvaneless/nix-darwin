@@ -9,11 +9,19 @@
 { ... }:
 
 {
-  imports = [
-    ./generations-cleanup.nix
-    # ./rsync-all.nix
+	imports = [
+    ./script-services.nix
 
-    # Proof-only module
-    # ./ven-proof.nix
+    # Docker + containers + tooling
+    ./docker/docker.nix
+    ./docker/containers.nix
+    ./docker/mkcert.nix
+    ./docker/nginx.nix
+
+    # Vaultwarden stack
+    ./docker/vaultwarden/vaultwarden.nix
+    ./docker/vaultwarden/vaultwarden-service.nix
+    ./docker/vaultwarden/vaultwarden-mkcert.nix
+    ./docker/vaultwarden/vaultwarden-nginx.nix
   ];
 }

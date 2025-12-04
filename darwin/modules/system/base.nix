@@ -50,9 +50,9 @@
     git-crypt
     nh
     home-manager
-    mkcert
+    # mkcert
     nssTools
-    nginx
+    # nginx
     nixd
     nil
   ];

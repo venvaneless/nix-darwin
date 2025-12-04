@@ -1,49 +1,46 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/docker.nix
 #
-# DOCKER: DARWIN SERVICE
-# ============================================================
-# Installs Docker Desktop via Homebrew into /Applications/Programming
-# and configures a launchd daemon to start it automatically.
-# Docker is kept alive by launchd; if you really want it off,
-# you must disable/unload the launchd job.
-# ============================================================
+# DOCKER: CROSS-PLATFORM SETUP
+# ============================
+# - On macOS: installs Docker Desktop via Homebrew cask and starts it via launchd.
+# - On Linux/NixOS: enables the Docker service.
+# ============================
 
 { config, pkgs, lib, ... }:
 
 let
-  dockerAppDir  = "/Applications/Programming";
-  dockerAppPath = "${dockerAppDir}/Docker.app/Contents/MacOS/Docker";
-
+  isDarwin = pkgs.stdenv.isDarwin;
+  isLinux  = pkgs.stdenv.isLinux;
 in
 {
-  # ----- Ensure target Applications directory exists -----
-  system.activationScripts.ensureDockerAppDir.text = ''
-    mkdir -p "${dockerAppDir}"
-  '';
-
-  # ----- Install Docker Desktop via Homebrew cask -----
-  homebrew.casks = [
+  # DARWIN: Docker Desktop via Homebrew + launchd
+  # ---------------------------------------------
+  homebrew.casks = lib.mkIf isDarwin ([
     {
       name = "docker";
-      args = { appdir = dockerAppDir; };
+      args = { appdir = "/Applications/Programming"; };
     }
-  ];
+  ]);
 
-  # ----- Launchd daemon: keep Docker Desktop running -----
-  # This will:
-  #   - start Docker Desktop on boot
-  #   - restart it if it crashes or is quit
-  # If you want to really shut it down, unload this job.
-  launchd.daemons.docker-desktop = {
+  # Ensure target Applications directory exists on macOS
+  system.activationScripts.ensureDockerAppDir.text = lib.mkIf isDarwin ''
+    echo ">>> [docker] Ensuring /Applications/Programming exists"
+    mkdir -p "/Applications/Programming"
+  '';
+
+  # Launchd daemon to keep Docker Desktop running (macOS only)
+  launchd.daemons.docker-desktop = lib.mkIf isDarwin {
     serviceConfig = {
       Label = "com.ven.docker-desktop";
-
       ProgramArguments = [
-        dockerAppPath
+        "/Applications/Programming/Docker.app/Contents/MacOS/Docker"
       ];
-
       RunAtLoad = true;
       KeepAlive = true;
     };
   };
+
+  # LINUX/NixOS: use systemd Docker service
+  # ---------------------------------------
+  virtualisation.docker.enable = lib.mkIf isLinux true;
 }
