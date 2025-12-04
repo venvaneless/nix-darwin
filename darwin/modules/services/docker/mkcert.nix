@@ -9,22 +9,25 @@
 
 { config, pkgs, lib, ... }:
 
+let
+  userHome = config.users.users.ven.home;
+  caroot   = "${userHome}/.config/mkcert";
+in
 {
-  # Install mkcert globally
   environment.systemPackages = [ pkgs.mkcert ];
 
-  # Activation script: ensure mkcert CA is installed
   system.activationScripts.mkcert-install.text = lib.mkAfter ''
     echo ">>> [mkcert] Ensuring mkcert CA is installed"
-    CAROOT="${HOME}/.config/mkcert"
 
-    if [ ! -f "${HOME}/.config/mkcert/rootCA.pem" ]; then
-      echo ">>> [mkcert] No rootCA.pem found, running mkcert -install"
-      CAROOT="$CAROOT" "${pkgs.mkcert}/bin/mkcert" -install || {
+    CAROOT="${caroot}"
+
+    if [ ! -f "${caroot}/rootCA.pem" ]; then
+      echo ">>> [mkcert] No rootCA.pem found → running mkcert -install"
+      CAROOT="${caroot}" "${pkgs.mkcert}/bin/mkcert" -install || {
         echo "!!! [mkcert] mkcert -install failed"
       }
     else
-      echo ">>> [mkcert] mkcert CA already present at ${HOME}/.config/mkcert"
+      echo ">>> [mkcert] mkcert CA already present at ${caroot}"
     fi
   '';
 }

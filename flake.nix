@@ -24,10 +24,7 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
   
     # nix-homebrew (FIXED)
-    nix-homebrew = {
-      url = "github:zhaofengli-wip/nix-homebrew";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    nix-homebrew.url = "github:zhaofengli/nix-homebrew";
   };
 
   outputs = inputs@{ self, nixpkgs, darwin, home-manager, nix-homebrew, ... }:
