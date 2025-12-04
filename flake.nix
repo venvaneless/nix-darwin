@@ -1,4 +1,4 @@
-# /Users/ven/dotfiles/nix/stable/darwin/flake.nix
+# /Users/ven/.config/nix/nix-darwin/flake.nix
 #
 # FLAKE: MAIN ENTRYPOINT
 # ================================================
