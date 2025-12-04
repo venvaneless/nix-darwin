@@ -63,7 +63,11 @@
 	      # Tests if tests/builds defined in checks run
 	      # Checks if devShells evaluate
 	      # Checks if overlays evaluate
-	      drn  = "sudo -H nix flake check ~/.config/nix/nix-darwin";
+	      ndc  = "sudo -H nix flake check ~/.config/nix/nix-darwin";
+				
+				 # Update the flake after new lockfile
+				ndu  = "nix flake update --flake ~/.config/nix/nix-darwin";
+				
 	
 	      # --- Home Manager
 	

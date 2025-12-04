@@ -13,20 +13,21 @@
 
   inputs = {
     # Core package set
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
-
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
+  
     # nix-darwin
-    darwin.url = "github:LnL7/nix-darwin";
+    darwin.url = "github:LnL7/nix-darwin/nix-darwin-25.11";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
-
+  
     # Home Manager
-    home-manager.url = "github:nix-community/home-manager/release-24.05";
+    home-manager.url = "github:nix-community/home-manager/release-25.11";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-
-    # nix-homebrew
-    nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
-    nix-homebrew.inputs.nixpkgs.follows = "nixpkgs";
-    nix-homebrew.inputs.darwin.follows = "darwin";
+  
+    # nix-homebrew (FIXED)
+    nix-homebrew = {
+      url = "github:zhaofengli-wip/nix-homebrew";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs@{ self, nixpkgs, darwin, home-manager, nix-homebrew, ... }:
