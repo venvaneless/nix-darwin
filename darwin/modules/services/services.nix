@@ -1,16 +1,22 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/script-services.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/services.nix
 #
-# CLEANUP SERVICES AGGREGATOR
+# SERVICES AGGREGATOR
 # ============================================================
-# Loads all maintenance/cleanup modules.
-# Imported once in darwin/index.nix.
+# Loads ALL service modules:
+#   - cleanup services
+#   - docker + containers
+#   - nginx
+#   - mkcert
+#   - vaultwarden stack
 # ============================================================
 
 { ... }:
 
 {
-	imports = [
-    ./script-services.nix
+  imports = [
+    # Cleanup
+    ./generations-cleanup.nix
+    # ./rsync-all.nix
 
     # Docker + containers + tooling
     ./docker/docker.nix

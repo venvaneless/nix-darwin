@@ -57,6 +57,6 @@
 
     # --- Docker ---
     # ------------------------------------------------------------
-    ./modules/services/docker/docker-all.nix
+    # ./modules/services/docker/docker-all.nix
   ];
 }
