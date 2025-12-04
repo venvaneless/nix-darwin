@@ -2,15 +2,6 @@
 #
 # DOCKER: DARWIN SERVICE + UNIVERSAL CONTAINERS
 # ============================================================
-# - Installs and runs Docker Desktop via Homebrew
-# - Provides a universal mkContainer helper
-# - Declarative containers stored under:
-#       /Users/ven/ven-dots/user-data/containers/<clean-name>
-# - Each container gets:
-#       - activation script to create its data dir
-#       - runner script (docker start || docker run -d)
-#       - launchd daemon to auto-start and keep alive
-# ============================================================
 
 { config, pkgs, lib, ... }:
 
@@ -19,38 +10,22 @@ let
   containersRoot = "/Users/ven/ven-dots/user-data/containers";
   dockerBin      = "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
-  # Docker Desktop app path
   dockerAppDir  = "/Applications/Programming";
   dockerAppPath = "${dockerAppDir}/Docker.app/Contents/MacOS/Docker";
 
-  # Container definitions are kept in docker-all.nix
-  dockerAll = import ./docker-all.nix;
-  containerDefs =
-    if dockerAll ? containerDefs then dockerAll.containerDefs else [];
+  # ----- Container list comes from docker-all.nix -----
+  containerDefs = config.containerDefs;
 
-  # ----- Name sanitizer -----
-  # Converts arbitrary container name to a safe, lowercase folder name.
+  # ----- cleanName -----
   cleanName = name:
     let
       lowered = lib.toLower name;
       allowed = lib.stringToCharacters "abcdefghijklmnopqrstuvwxyz-";
       chars   = lib.stringToCharacters lowered;
       kept    = lib.filter (c: lib.elem c allowed) chars;
-    in
-      lib.concatStrings kept;
+    in lib.concatStrings kept;
 
-  # ----- Universal container builder -----
-  #
-  # Container definition shape:
-  #   {
-  #     name         = "redis";              # required
-  #     image        = "redis:latest";       # required
-  #     ports        = [ "6379:6379" ];      # optional
-  #     extraVolumes = [ "/host:/cont" ];    # optional
-  #     extraArgs    = [ "--flag" "value" ]; # optional
-  #     runAtLoad    = false;                # optional (default: true)
-  #     keepAlive    = false;                # optional (default: true)
-  #   }
+  # ----- mkContainer -----
   mkContainer =
     { name
     , image
@@ -63,103 +38,61 @@ let
     let
       cName   = cleanName name;
       dataDir = "${containersRoot}/${cName}";
-
-      # Ports: ["6379:6379"] → "-p 6379:6379 -p ..."
-      portArgs =
-        lib.concatStringsSep " "
-          (map (p: "-p ${p}") ports);
-
-      # Volumes:
-      #   Always:
-      #     /Users/ven/ven-dots/user-data/containers/<clean-name>:/data
-      #   Plus any extraVolumes the container defines
+      portArgs = lib.concatStringsSep " " (map (p: "-p ${p}") ports);
       volumeArgs =
         "-v ${dataDir}:/data "
-        + lib.concatStringsSep " "
-            (map (v: "-v ${v}") extraVolumes);
-
-      # Extra arguments, if any
+        + lib.concatStringsSep " " (map (v: "-v ${v}") extraVolumes);
       args = lib.concatStringsSep " " extraArgs;
 
-      # Script that ensures the data directory exists.
       ensureDirScript = pkgs.writeShellScriptBin "ensure-${cName}-data" ''
         #!/usr/bin/env bash
-        set -euo pipefail
-
         mkdir -p "${dataDir}"
         chmod 700 "${dataDir}"
       '';
 
-      # Runner script for this container
       runner = pkgs.writeShellScriptBin "run-${cName}" ''
         #!/usr/bin/env bash
         set -euo pipefail
-
-        # Ensure data directory exists
         "${ensureDirScript}/bin/ensure-${cName}-data"
-
-        # Start existing container OR create it
         "${dockerBin}" start ${cName} || \
-        "${dockerBin}" run -d \
-          --name ${cName} \
-          ${portArgs} \
-          ${volumeArgs} \
-          ${args} \
-          ${image}
+        "${dockerBin}" run -d --name ${cName} ${portArgs} ${volumeArgs} ${args} ${image}
       '';
     in
     {
-      # Ensure data dir exists at activation time (nix-darwin friendly)
-      system.activationScripts."ensure-${cName}-data".text = ''
-        "${ensureDirScript}/bin/ensure-${cName}-data"
-      '';
+      system.activationScripts."ensure-${cName}-data".text =
+        ''"${ensureDirScript}/bin/ensure-${cName}-data"'';
 
-      # Expose the runner in PATH (nice to have)
       environment.systemPackages = [ runner ];
 
-      # Launchd daemon: auto-start and keep alive (overridable)
       launchd.daemons."docker-${cName}" = {
         serviceConfig = {
-          Label            = "com.ven.docker.${cName}";
+          Label = "com.ven.docker.${cName}";
           ProgramArguments = [ "${runner}/bin/run-${cName}" ];
-          RunAtLoad        = runAtLoad;
-          KeepAlive        = keepAlive;
+          RunAtLoad = runAtLoad;
+          KeepAlive = keepAlive;
         };
       };
     };
 
-  # Build per-container fragments
   containerFragments = map mkContainer containerDefs;
 
 in
-  # Merge:
-  #  - Docker Desktop service
-  #  - one fragment per universal container
-  ({
-    # ----- Ensure target Applications directory exists -----
-    system.activationScripts.ensureDockerAppDir.text = ''
-      mkdir -p "${dockerAppDir}"
-    '';
+{
+  # ----- Docker Desktop installation -----
+  system.activationScripts.ensureDockerAppDir.text =
+    ''mkdir -p "${dockerAppDir}"'';
 
-    # ----- Install Docker Desktop via Homebrew cask -----
-    homebrew.casks = [
-      {
-        name = "docker";
-        args = { appdir = dockerAppDir; };
-      }
-    ];
+  homebrew.casks = [
+    { name = "docker"; args = { appdir = dockerAppDir; }; }
+  ];
 
-    # ----- Launchd daemon: keep Docker Desktop running -----
-    launchd.daemons.docker-desktop = {
-      serviceConfig = {
-        Label = "com.ven.docker-desktop";
-
-        ProgramArguments = [
-          dockerAppPath
-        ];
-
-        RunAtLoad = true;
-        KeepAlive = true;
-      };
+  launchd.daemons.docker-desktop = {
+    serviceConfig = {
+      Label = "com.ven.docker-desktop";
+      ProgramArguments = [ dockerAppPath ];
+      RunAtLoad = true;
+      KeepAlive = true;
     };
-  } // lib.mkMerge containerFragments)
+  };
+
+} // lib.mkMerge containerFragments

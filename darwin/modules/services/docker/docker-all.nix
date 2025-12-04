@@ -2,28 +2,28 @@
 #
 # DOCKER: AGGREGATOR MODULE
 # ============================================================
-# - Imports:
-#       docker.nix          → Docker Desktop + mkContainer system
-#       vaultwarden.nix     → Vaultwarden container + nginx + certs
-#
-# - Exports:
-#       containerDefs        → list of mkContainer containers (empty for now)
-#
-# docker.nix will import this file to read containerDefs.
-# index.nix should import ONLY THIS FILE.
+# - Declares the containerDefs option that docker.nix will use
+# - Sets the containerDefs list (empty for now)
+# - Imports docker.nix and vaultwarden.nix cleanly as modules
 # ============================================================
 
-{ pkgs, lib, ... }:
+{ config, pkgs, lib, ... }:
 
 {
-  # ----- This file only provides the container list -----
-  containerDefs = [
-    # Add your extra containers here later:
-    # (import ./redis.nix)
+  # ----- Declare option -----
+  options.containerDefs = lib.mkOption {
+    type = lib.types.listOf lib.types.attrs;
+    default = [ ];
+    description = "List of mkContainer container definitions.";
+  };
+
+  # ----- Set Value -----
+  config.containerDefs = [
+    # Add your extra generic containers here
     # (import ./browsertrix.nix)
   ];
 
-  # ----- And it imports the two real modules -----
+  # ----- Import docker + vaultwarden -----
   imports = [
     ./docker.nix
     ./vaultwarden.nix
