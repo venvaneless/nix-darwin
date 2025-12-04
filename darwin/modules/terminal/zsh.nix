@@ -55,7 +55,7 @@
       # Checks the full nix-darwin system configuration like switch but without rebuilding/applying
       # It does NOT build or apply anything
       drc  = "sudo -H darwin-rebuild check --flake ~/.config/nix/nix-darwin#macbook";
-      
+
       # Checks the flake itself, NOT the Darwin configuration
       # Checks if darwinConfigurations.macbook exist as an output
       # Checks if the flake.nix is syntactically valid
