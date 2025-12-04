@@ -1,5 +1,5 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/docker-all.nix
-# 
+# /Users/ven/dotfiles/nix/darwin/modules/services/docker/docker-all.nix
+#
 # DOCKER: ALL-IN-ONE MODULE
 # ============================================================
 # Imports:
@@ -26,7 +26,7 @@
 
 let
   # ----- Base paths -----
-  containersRoot = "/Users/ven/ven-dots/user-data/containers";
+  containersRoot = "/Users/ven/dotfiles/containers";
   dockerBin      = "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
   # ----- Name sanitizer -----

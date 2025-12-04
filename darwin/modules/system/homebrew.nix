@@ -35,7 +35,7 @@
 
     # ----- Brews -----
     brews = [
-      "nginx"
+     # "nginx"
     ];
 
     # ----- Casks -----

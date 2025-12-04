@@ -49,7 +49,7 @@
     ./modules/system/homebrew.nix
 
     # --- Services & Tools ---
-    ./modules/services/script-services.nix
+    ./modules/services/services.nix
     ./modules/services/pdf-tools.nix
 
     # --- Apps ---
@@ -57,6 +57,6 @@
 
     # --- Docker ---
     # ------------------------------------------------------------
-    ./modules/services/docker/docker-all.nix
+    #./modules/services/docker/docker-all.nix
   ];
 }
