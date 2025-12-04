@@ -35,9 +35,9 @@
   # ~/.config/nix, override XDG variables accordingly.  These variables
   # affect all applications, so consider this carefully.
   environment.variables = {
-    XDG_STATE_HOME = "$HOME/.config/nix";
-    XDG_DATA_HOME  = "$HOME/.config/nix";
-    XDG_CACHE_HOME = "$HOME/.config/nix";
+    XDG_STATE_HOME = "$HOME/.config";
+    XDG_DATA_HOME  = "$HOME/.config";
+    XDG_CACHE_HOME = "$HOME/.config";
   };
 
   # --- System state version (Darwin revision) ---
