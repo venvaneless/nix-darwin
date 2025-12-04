@@ -13,8 +13,6 @@
 
 {
   imports = [
-  	# ./chromium-restore.nix
-   	# ./iterm-restore.nix
     # ./chromium-symlinks.nix
     # ./iterm-symlinks.nix
     # ./zed-symlinks.nix

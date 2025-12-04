@@ -1,41 +1,48 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/docker.nix
-#
-# DOCKER: DARWIN SERVICE + UNIVERSAL CONTAINERS
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/docker-all.nix
+# 
+# DOCKER: ALL-IN-ONE MODULE
 # ============================================================
-# - Installs and runs Docker Desktop via Homebrew
-# - Provides a universal mkContainer helper
-# - Declarative containers stored under:
-#       /Users/ven/ven-dots/user-data/containers/<clean-name>
-# - Each container gets:
-#       - activation script to create its data dir
-#       - runner script (docker start || docker run -d)
-#       - launchd daemon to auto-start and keep alive
+# Imports:
+#   - docker.nix (installs Docker Desktop & keeps it running)
+#   - vaultwarden.nix (custom Vaultwarden container)
+#   - vaultwarden-nginx.nix (reverse proxy for Vaultwarden)
+#
+# Provides:
+#   - mkContainer: builds per-container activation + launchd jobs
+#   - Declarative storage under:
+#         /Users/ven/dotfiles/containers/<clean-name>
+#   - launchd auto-start + KeepAlive for all universal containers
+#     (overridable per container)
+#   - Runner scripts using: docker start || docker run -d
+#
+# IMPORTANT:
+#   - Vaultwarden remains fully separate and is NOT managed
+#     by mkContainer.
+#   - You enable/disable universal containers by editing the
+#     `containerDefs` list below.
 # ============================================================
 
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 let
   # ----- Base paths -----
   containersRoot = "/Users/ven/ven-dots/user-data/containers";
   dockerBin      = "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
-  # Docker Desktop app path
-  dockerAppDir  = "/Applications/Programming";
-  dockerAppPath = "${dockerAppDir}/Docker.app/Contents/MacOS/Docker";
-
-  # Container definitions are kept in docker-all.nix
-  dockerAll = import ./docker-all.nix;
-  containerDefs =
-    if dockerAll ? containerDefs then dockerAll.containerDefs else [];
-
   # ----- Name sanitizer -----
   # Converts arbitrary container name to a safe, lowercase folder name.
   cleanName = name:
     let
       lowered = lib.toLower name;
-      allowed = lib.stringToCharacters "abcdefghijklmnopqrstuvwxyz-";
-      chars   = lib.stringToCharacters lowered;
-      kept    = lib.filter (c: lib.elem c allowed) chars;
+  
+      allowed =
+        lib.stringToCharacters "abcdefghijklmnopqrstuvwxyz-";
+  
+      chars =
+        lib.stringToCharacters lowered;
+  
+      kept =
+        lib.filter (c: lib.elem c allowed) chars;
     in
       lib.concatStrings kept;
 
@@ -71,7 +78,7 @@ let
 
       # Volumes:
       #   Always:
-      #     /Users/ven/ven-dots/user-data/containers/<clean-name>:/data
+      #     /Users/ven/dotfiles/containers/<clean-name>:/data
       #   Plus any extraVolumes the container defines
       volumeArgs =
         "-v ${dataDir}:/data "
@@ -120,46 +127,48 @@ let
       # Launchd daemon: auto-start and keep alive (overridable)
       launchd.daemons."docker-${cName}" = {
         serviceConfig = {
-          Label            = "com.ven.docker.${cName}";
+          Label           = "com.ven.docker.${cName}";
           ProgramArguments = [ "${runner}/bin/run-${cName}" ];
-          RunAtLoad        = runAtLoad;
-          KeepAlive        = keepAlive;
+          RunAtLoad       = runAtLoad;
+          KeepAlive       = keepAlive;
         };
       };
     };
+
+  # ----- Declarative list of universal containers -----
+  #
+  # Turn containers ON/OFF here by commenting them in/out.
+  #
+  # Each imported file (e.g. ./redis.nix) must return a simple
+  # attribute set with fields:
+  #   - name         (string, required)
+  #   - image        (string, required)
+  #   - ports        (optional list of strings)
+  #   - extraVolumes (optional list of strings)
+  #   - extraArgs    (optional list of strings)
+  #   - runAtLoad    (optional bool, default true)
+  #   - keepAlive    (optional bool, default true)
+  #
+  containerDefs = [
+    # Example (uncomment when you create these files):
+    # (import ./redis.nix)
+    # (import ./postgres.nix)
+
+    # Browsertrix crawler container
+    # (import ./browsertrix.nix)
+  ];
 
   # Build per-container fragments
   containerFragments = map mkContainer containerDefs;
 
 in
   # Merge:
-  #  - Docker Desktop service
+  #  - imports (Docker Desktop + Vaultwarden + NGINX)
   #  - one fragment per universal container
   ({
-    # ----- Ensure target Applications directory exists -----
-    system.activationScripts.ensureDockerAppDir.text = ''
-      mkdir -p "${dockerAppDir}"
-    '';
-
-    # ----- Install Docker Desktop via Homebrew cask -----
-    homebrew.casks = [
-      {
-        name = "docker";
-        args = { appdir = dockerAppDir; };
-      }
+    imports = [
+      ./docker.nix
+      ./vaultwarden.nix
+      ./vaultwarden-nginx.nix
     ];
-
-    # ----- Launchd daemon: keep Docker Desktop running -----
-    launchd.daemons.docker-desktop = {
-      serviceConfig = {
-        Label = "com.ven.docker-desktop";
-
-        ProgramArguments = [
-          dockerAppPath
-        ];
-
-        RunAtLoad = true;
-        KeepAlive = true;
-      };
-    };
   } // lib.mkMerge containerFragments)
