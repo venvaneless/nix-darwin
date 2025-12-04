@@ -24,9 +24,10 @@
 # CERT MANAGEMENT:
 #   - TLS certs are stored in:
 #         /Users/ven/ven-dots/ssl/vaultwarden
-#   - On each activation, mkcert regenerates *leaf* certs for:
+#   - mkcert generates *leaf* certs for:
 #         vaultwarden.local AND 192.168.2.125
-#   - The mkcert root CA is NOT touched here
+#     ONLY IF the cert/key files are missing.
+#   - The mkcert root CA is NOT touched here.
 #
 # NGINX:
 #   - Writes nginx.conf to:
@@ -97,9 +98,9 @@ let
     "${dockerBin} start ${appName} || " +
     "${dockerBin} run -d " +
       "--name ${appName} " +
-      "-p 8080:80 " +  # Publishes container port 80 as host port 8080
-      "-v ${dataDir}:/data " +  # Mounts host dataDir into container /data
-      "${envString} " +         # Injects environment vars into container
+      "-p 8080:80 " +              # Publishes container port 80 as host port 8080
+      "-v ${dataDir}:/data " +     # Mounts host dataDir into container /data
+      "${envString} " +            # Injects environment vars into container
       "vaultwarden/server:latest";
 
   # NGINX CONFIGURATION TEMPLATE
@@ -188,7 +189,7 @@ in
   # ------------------------------------------------------------
   # On each activation, this script:
   #   1. Ensures the cert directory exists
-  #   2. Uses mkcert to (re)issue a *leaf* cert + key for:
+  #   2. Generates *leaf* cert + key ONLY IF MISSING for:
   #        - vaultwarden.local
   #        - 192.168.2.125
   #   3. Converts the PEM cert to DER format for optional mobile import
@@ -206,12 +207,16 @@ in
     # Ensure certificate directory exists
     mkdir -p "${certDir}"
 
-    # (Re)issue leaf cert + key for hostname + IP
-    echo ">>> [vaultwarden-nginx] (Re)issuing leaf cert with mkcert"
-    "${pkgs.mkcert}/bin/mkcert" \
-      -cert-file "${certPem}" \
-      -key-file  "${keyPem}" \
-      vaultwarden.local 192.168.2.125
+    # Generate leaf cert + key ONLY IF MISSING
+    if [ ! -f "${certPem}" ] || [ ! -f "${keyPem}" ]; then
+      echo ">>> [vaultwarden-nginx] No certs found — generating with mkcert"
+      "${pkgs.mkcert}/bin/mkcert" \
+        -cert-file "${certPem}" \
+        -key-file  "${keyPem}" \
+        vaultwarden.local 192.168.2.125
+    else
+      echo ">>> [vaultwarden-nginx] Existing certs found — NOT regenerating"
+    fi
 
     # Convert PEM cert to DER format (for iOS/Android if needed)
     echo ">>> [vaultwarden-nginx] Converting PEM → DER for mobile"
