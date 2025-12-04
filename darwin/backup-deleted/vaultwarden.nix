@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/vaultwarden.nix
+# /Users/ven/dotfiles/nix/darwin/modules/services/docker/vaultwarden.nix
 #
 # VAULTWARDEN: DARWIN CONTAINER
 # ============================================================
@@ -17,7 +17,7 @@
 
 let
   # ----- Paths -----
-  containersRoot = "/Users/ven/ven-dots/user-data/containers";
+  containersRoot = "/Users/ven/dotfiles/containers";
   appName        = "vaultwarden";
   dataDir        = "${containersRoot}/${appName}";
 
