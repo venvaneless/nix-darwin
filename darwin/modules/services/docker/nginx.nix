@@ -1,22 +1,18 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/nginx.nix
 #
-# NGINX: CUSTOM SERVICE (NO services.nginx)
-# ========================================
-# - Installs nginx from Nixpkgs.
-# - Writes a main nginx.conf to:
+# NGINX: CUSTOM SERVICE (DARWIN ONLY)
+# ===================================
+# - Installs nginx from Nixpkgs
+# - Writes main nginx.conf to:
 #       $HOME/ven-dots/conf/nginx.conf
-# - Includes per-app configs from:
+# - Loads per-app configs from:
 #       $HOME/ven-dots/conf/apps-enabled/*.conf
-# - Creates a launchd daemon on macOS.
-# - Creates a systemd service on Linux.
-# ========================================
+# - Creates launchd daemon to run nginx with that config
+# ===================================
 
 { config, pkgs, lib, ... }:
 
 let
-  isDarwin = pkgs.stdenv.isDarwin;
-  isLinux  = pkgs.stdenv.isLinux;
-
   userHome = config.users.users.ven.home;
 
   confRoot   = "${userHome}/ven-dots/conf";
@@ -50,30 +46,14 @@ let
       sendfile        on;
       keepalive_timeout  65;
 
-      # Per-app configs
       include ${appsDir}/*.conf;
     }
   '';
 
-  runner = pkgs.writeShellScriptBin "run-nginx-custom" ''
+  nginxSetupScript = pkgs.writeShellScriptBin "nginx-setup" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo ">>> [nginx] Using config: ${nginxConf}"
-
-    # Test config before starting
-    "${nginxBin}" -t -c "${nginxConf}"
-
-    echo ">>> [nginx] Starting nginx (daemon off)"
-    exec "${nginxBin}" -g "daemon off;" -c "${nginxConf}"
-  '';
-in
-{
-  # Install nginx system-wide
-  environment.systemPackages = [ pkgs.nginx ];
-
-  # Ensure directories + main config exist
-  system.activationScripts.nginx-setup.text = lib.mkAfter ''
     echo ">>> [nginx] Setting up nginx directories and config"
 
     mkdir -p "${confRoot}"
@@ -86,25 +66,34 @@ ${mainConfig}
 EOF
   '';
 
-  # macOS: launchd service
-  launchd.daemons.nginx-custom = lib.mkIf isDarwin {
+  runner = pkgs.writeShellScriptBin "run-nginx-custom" ''
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo ">>> [nginx] Using config: ${nginxConf}"
+
+    "${nginxBin}" -t -c "${nginxConf}"
+
+    echo ">>> [nginx] Starting nginx (daemon off)"
+    exec "${nginxBin}" -g "daemon off;" -c "${nginxConf}"
+  '';
+in
+{
+  # Install nginx binary
+  environment.systemPackages = [ pkgs.nginx ];
+
+  # Activation: prepare config + dirs
+  system.activationScripts.nginx-setup.text = lib.mkAfter ''
+    "${nginxSetupScript}/bin/nginx-setup"
+  '';
+
+  # launchd: start nginx using custom config
+  launchd.daemons.nginx-custom = {
     serviceConfig = {
       Label           = "com.ven.nginx-custom";
       ProgramArguments = [ "${runner}/bin/run-nginx-custom" ];
       RunAtLoad       = true;
       KeepAlive       = true;
-      WorkingDirectory = "${confRoot}";
-    };
-  };
-
-  # Linux: systemd service
-  systemd.services.nginx-custom = lib.mkIf isLinux {
-    description = "Custom nginx (Nix-managed)";
-    wantedBy    = [ "multi-user.target" ];
-    serviceConfig = {
-      Type      = "simple";
-      ExecStart = "${runner}/bin/run-nginx-custom";
-      Restart   = "always";
       WorkingDirectory = "${confRoot}";
     };
   };

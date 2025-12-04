@@ -1,29 +1,19 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/containers.nix
 #
-# DOCKER: DECLARATIVE CONTAINERS LIB
-# ==================================
-# - Provides mkContainer: a helper to define Docker containers declaratively.
-# - Works on macOS (launchd) and Linux (systemd).
-# - NOT used directly by Vaultwarden yet, but ready for future containers.
-# ==================================
+# DOCKER CONTAINERS (DARWIN-ONLY HELPER)
+# ======================================
+# - Provides mkContainer helper for future use.
+# - Only defines launchd services (no systemd here).
+# ======================================
 
 { config, pkgs, lib, ... }:
 
 let
-  isDarwin = pkgs.stdenv.isDarwin;
-  isLinux  = pkgs.stdenv.isLinux;
-
-  # Default containers/data root for your tools
   containersRoot = "/Users/ven/ven-dots/user-data/containers";
 
-  # Docker binary path per platform
   dockerBin =
-    if isDarwin then
-      "/Applications/Programming/Docker.app/Contents/Resources/bin/docker"
-    else
-      "docker";
+    "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
-  # mkContainer: define a container + service for it
   mkContainer =
     { name
     , image
@@ -84,11 +74,11 @@ let
         "${ensureDirScript}/bin/ensure-${cName}-data"
       '';
 
-      # Expose runner in PATH
+      # Expose runner
       environment.systemPackages = [ runner ];
 
-      # launchd (Darwin)
-      launchd.daemons."docker-${cName}" = lib.mkIf isDarwin {
+      # launchd only (Darwin)
+      launchd.daemons."docker-${cName}" = {
         serviceConfig = {
           Label           = "com.ven.docker.${cName}";
           ProgramArguments = [ "${runner}/bin/run-${cName}" ];
@@ -96,26 +86,14 @@ let
           KeepAlive       = keepAlive;
         };
       };
-
-      # systemd (Linux)
-      systemd.services."docker-${cName}" = lib.mkIf isLinux {
-        description = "Docker container ${cName}";
-        wantedBy    = [ "multi-user.target" ];
-        serviceConfig = {
-          Type      = "simple";
-          ExecStart = "${runner}/bin/run-${cName}";
-          Restart   = if keepAlive then "always" else "no";
-        };
-      };
     };
 
 in
 {
-  # Export mkContainer via config so other modules can use it later.
   options.ven.docker.mkContainer = lib.mkOption {
     type = lib.types.anything;
     default = mkContainer;
-    description = "Helper function to declare Docker containers.";
+    description = "Helper function to declare Docker containers (Darwin only).";
   };
 
   config = { };
