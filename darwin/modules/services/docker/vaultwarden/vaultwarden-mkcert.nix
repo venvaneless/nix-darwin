@@ -11,12 +11,16 @@
 # - Exports mkcert CA root as:
 #       ~/ven-dots/ssl/vaultwarden/rootCA.crt
 #   for iOS/Android import.
+# - Fixes ownership + permissions so:
+#       - nginx (root) can read the key
+#       - user "ven" can read the CRT and PEM
 # ============================================================
 
 { config, pkgs, lib, ... }:
 
 let
-  userHome = config.users.users.ven.home;
+  userName = "ven";
+  userHome = config.users.users.${userName}.home;
   caroot   = "${userHome}/.config/mkcert";
 
   certDir = "${userHome}/ven-dots/ssl/vaultwarden";
@@ -39,7 +43,7 @@ let
     mkdir -p "${certDir}"
     CAROOT="${caroot}"
 
-    # 1. Issue/reuse server certificate for vaultwarden.local + 192.168.2.125
+    # --- 1. Issue/reuse server certificate for vaultwarden.local + 192.168.2.125 ---
     if [ ! -f "${certPem}" ] || [ ! -f "${keyPem}" ]; then
       echo ">>> [vw-cert] Generating new mkcert cert+key for:"
       echo ">>>            - vaultwarden.local"
@@ -55,23 +59,29 @@ let
       echo ">>> [vw-cert] Existing Vaultwarden cert/key found, reusing"
     fi
 
-    # 2. Export mkcert CA root as .crt for phones
+    # --- 2. Export mkcert CA root as .crt for phones ---
     if [ -f "${caroot}/rootCA.pem" ]; then
       echo ">>> [vw-cert] Exporting mkcert root CA → ${caCrt}"
       cp "${caroot}/rootCA.pem" "${caCrt}"
       echo ">>> [vw-cert] You can now import rootCA.crt on iOS/Android"
     else
       echo "!!! [vw-cert] mkcert rootCA.pem not found in ${caroot}"
-      echo "!!! [vw-cert] Run manually (once):"
+      echo "!!! [vw-cert] Run manually (once, if needed):"
       echo "!!!           CAROOT=\"${caroot}\" mkcert -install"
     fi
+
+    # --- 3. Fix ownership + permissions so nginx + ven both work ---
+    echo ">>> [vw-cert] Fixing ownership + permissions"
+    chown -R root:staff "${certDir}" || echo "!!! [vw-cert] chown root:staff failed (continuing)"
+    chmod 600 "${keyPem}" || echo "!!! [vw-cert] chmod 600 key failed (continuing)"
+    chmod 644 "${certPem}" "${caCrt}" || echo "!!! [vw-cert] chmod 644 cert/crt failed (continuing)"
   '';
 in
 {
-  # Expose script in PATH
+  # Expose script in PATH (optional, but nice)
   environment.systemPackages = [ vwCertScript ];
 
-  # Run it every activation
+  # Run it every activation (using the KNOWN-good hook)
   system.activationScripts.extraActivation.text = lib.mkAfter ''
     echo ">>> Running vaultwarden-cert-setup"
     ${vwCertScript}/bin/vaultwarden-cert-setup || echo "!!! vaultwarden-cert-setup failed (continuing)"
