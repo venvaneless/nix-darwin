@@ -1,5 +1,5 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/vaultwarden/vaultwarden-mkcert.nix
-#		
+#
 # VAULTWARDEN: CERTIFICATES (MKCERT)
 # ============================================================
 # - Uses mkcert CA from:
@@ -31,7 +31,7 @@ let
   keyPem  = "${certDir}/vaultwarden.local-key.pem";
 
   # CA cert for phones (copy of mkcert rootCA.pem)
-  caCrt   = "${caroot}/rootCA.crt";
+  caCrt   = "${certDir}/rootCA.crt";
 
   vwCertScript = pkgs.writeShellScriptBin "vaultwarden-cert-setup" ''
     #!/usr/bin/env bash
