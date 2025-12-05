@@ -31,7 +31,7 @@ let
   keyPem  = "${certDir}/vaultwarden.local-key.pem";
 
   # CA cert for phones (copy of mkcert rootCA.pem)
-  caCrt   = "${certDir}/rootCA.crt";
+  caCrt   = "${caroot}/rootCA.crt";
 
   vwCertScript = pkgs.writeShellScriptBin "vaultwarden-cert-setup" ''
     #!/usr/bin/env bash
