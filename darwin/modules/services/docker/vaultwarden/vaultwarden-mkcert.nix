@@ -1,22 +1,13 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/vaultwarden/vaultwarden-mkcert.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/mkcert.nix
 #
-# VAULTWARDEN: CERTIFICATES (MKCERT)
+# MKCERT: GLOBAL SETUP (DARWIN)
 # ============================================================
-# - Uses mkcert CA from:
+# - Installs mkcert as a system package
+# - Ensures mkcert CA is installed into:
 #       ~/.config/mkcert
-# - Generates server cert + key for:
-#       vaultwarden.local  AND  192.168.2.125
-# - Stores server cert + key in:
-#       ~/ven-dots/ssl/vaultwarden
-#       - vaultwarden.local.pem
-#       - vaultwarden.local-key.pem
-# - Exports mkcert CA root as:
-#       ~/.config/mkcert/rootCA.crt
-#   for iOS/Android import (same CA as macOS uses).
-# - Fixes ownership + permissions so:
-#       - nginx (root) can read the key
-#       - user "ven" owns the files and can delete them without sudo
-# - Logs every step during activation.
+# - Fixes ownership so files are owned by user "ven"
+# - Provides helper to export DER .crt for phones
+# - Prints clear messages on every activation
 # ============================================================
 
 { config, pkgs, lib, ... }:
@@ -24,92 +15,116 @@
 let
   userName = "ven";
   userHome = config.users.users.${userName}.home;
-
-  # mkcert CAROOT
   caroot   = "${userHome}/.config/mkcert";
 
-  # Vaultwarden TLS dir for nginx server cert
-  certDir  = "${userHome}/ven-dots/ssl/vaultwarden";
-
-  # SERVER cert + key for nginx:
-  certPem = "${certDir}/vaultwarden.local.pem";
-  keyPem  = "${certDir}/vaultwarden.local-key.pem";
-
-  # CA cert for phones (copy of mkcert rootCA.pem, SAME FOLDER as mkcert)
-  caCrt   = "${caroot}/rootCA.crt";
-
-  vwCertScript = pkgs.writeShellScriptBin "vaultwarden-cert-setup" ''
+  # MKCERT: INSTALL / ENSURE CA
+  # ------------------------------------------------------------
+  # - Creates CAROOT directory
+  # - Runs mkcert -install only if rootCA.pem is missing
+  # - Fixes ownership of CAROOT so mkcert works under user "ven"
+  # ------------------------------------------------------------
+  mkcertScript = pkgs.writeShellScriptBin "mkcert-install" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo ">>> [vw-cert] START: Vaultwarden SSL setup"
-    echo ">>> [vw-cert]   CAROOT:    ${caroot}"
-    echo ">>> [vw-cert]   CERT DIR:  ${certDir}"
+    echo ">>> [mkcert] Ensuring mkcert CA is installed"
+    echo ">>> [mkcert]   CAROOT: ${caroot}"
 
-    # ---------------------------------------- #
-    # Directory prep (server cert/key only)
-    # ---------------------------------------- #
-    mkdir -p "${certDir}"
-    chmod 755 "${certDir}" || true
+    # Ensure CAROOT exists
+    mkdir -p "${caroot}"
 
+    # Use CAROOT for mkcert
     CAROOT="${caroot}"
 
-    # ---------------------------------------- #
-    # 1) Server cert + key (vaultwarden.local + IP)
-    # ---------------------------------------- #
-    if [ ! -f "${certPem}" ] || [ ! -f "${keyPem}" ]; then
-      echo ">>> [vw-cert] Generating mkcert cert+key for:"
-      echo ">>>            - vaultwarden.local"
-      echo ">>>            - 192.168.2.125"
-      CAROOT="${caroot}" "${pkgs.mkcert}/bin/mkcert" \
-        -cert-file "${certPem}" \
-        -key-file  "${keyPem}" \
-        vaultwarden.local 192.168.2.125 || {
-          echo "!!! [vw-cert] mkcert FAILED while issuing server cert"
-          exit 1
-        }
-      echo ">>> [vw-cert] New server cert + key created"
+    # Only run mkcert -install if rootCA.pem is missing
+    if [ ! -f "${caroot}/rootCA.pem" ]; then
+      echo ">>> [mkcert] No rootCA.pem found → running mkcert -install"
+      CAROOT="${caroot}" "${pkgs.mkcert}/bin/mkcert" -install || {
+        echo "!!! [mkcert] mkcert -install failed"
+        exit 1
+      }
     else
-      echo ">>> [vw-cert] Existing cert + key found, reusing"
+      echo ">>> [mkcert] CA already present at ${caroot}/rootCA.pem"
     fi
 
-    # ---------------------------------------- #
-    # 2) Export mkcert CA → rootCA.crt (for phones)
-    #    NOTE: stays in CAROOT (~/.config/mkcert), like you wanted.
-    # ---------------------------------------- #
-    if [ -f "${caroot}/rootCA.pem" ]; then
-      echo ">>> [vw-cert] Exporting mkcert root CA → ${caCrt}"
-      cp "${caroot}/rootCA.pem" "${caCrt}"
-      chmod 644 "${caCrt}" || true
-      echo ">>> [vw-cert] You can now import rootCA.crt on iOS/Android"
-    else
-      echo "!!! [vw-cert] mkcert rootCA.pem NOT found in ${caroot}"
-      echo "!!! [vw-cert] If CA is broken, run once (already automated by mkcert.nix):"
-      echo "!!!           CAROOT=\"${caroot}\" mkcert -install"
+    echo ">>> [mkcert] Fixing ownership of CAROOT -> ${userName}:staff"
+    chown -R "${userName}:staff" "${caroot}" || echo "!!! [mkcert] chown failed (continuing)"
+  '';
+
+  # MKCERT: EXPORT CA AS DER FOR PHONES
+  # ------------------------------------------------------------
+  # - Converts rootCA.pem → rootCA-android.crt using openssl x509
+  # - Keeps everything inside ~/.config/mkcert
+  # - Does NOT run automatically; you call it manually:
+  #       mkcert-export-root-der
+  # ------------------------------------------------------------
+  mkcertExportScript = pkgs.writeShellScriptBin "mkcert-export-root-der" ''
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo ">>> [mkcert-export] Exporting mkcert root CA as DER for phones"
+    echo ">>> [mkcert-export]   CAROOT: ${caroot}"
+
+    # Check that CAROOT exists and has rootCA.pem
+    if [ ! -d "${caroot}" ]; then
+      echo "!!! [mkcert-export] CAROOT directory does not exist: ${caroot}"
+      echo "!!! [mkcert-export] Run mkcert-install (via drs) first."
+      exit 1
     fi
 
-    # ---------------------------------------- #
-    # 3) Fix ownership + permissions (Vaultwarden cert dir)
-    # ---------------------------------------- #
-    echo ">>> [vw-cert] Fixing ownership + permissions for ${certDir}"
-    chown -R "${userName}:staff" "${certDir}" || {
-      echo "!!! [vw-cert] chown ${userName}:staff ${certDir} failed (continuing)"
-    }
+    if [ ! -f "${caroot}/rootCA.pem" ]; then
+      echo "!!! [mkcert-export] ${caroot}/rootCA.pem not found."
+      echo "!!! [mkcert-export] Run mkcert-install (via drs) first."
+      exit 1
+    fi
 
-    # nginx master runs as root; it can read 600 key.
-    chmod 600 "${keyPem}" || echo "!!! [vw-cert] chmod 600 key failed (continuing)"
-    chmod 644 "${certPem}" || echo "!!! [vw-cert] chmod 644 cert failed (continuing)"
+    local target="${caroot}/rootCA-android.crt"
 
-    echo ">>> [vw-cert] DONE: Vaultwarden SSL setup"
+    echo ">>> [mkcert-export] Converting PEM → DER"
+    echo ">>> [mkcert-export]   source: ${caroot}/rootCA.pem"
+    echo ">>> [mkcert-export]   target: ${target}"
+
+    "${pkgs.openssl}/bin/openssl" x509 \
+      -in "${caroot}/rootCA.pem" \
+      -out "${target}" \
+      -outform der || {
+        echo "!!! [mkcert-export] openssl DER export failed"
+        exit 1
+      }
+
+    if [ ! -f "${target}" ]; then
+      echo "!!! [mkcert-export] Expected DER file not found at ${target}"
+      exit 1
+    fi
+
+    chmod 644 "${target}" || echo "!!! [mkcert-export] chmod 644 on ${target} failed (continuing)"
+
+    echo ">>> [mkcert-export] mkcert root CA exported as DER ✅"
+    echo ">>> [mkcert-export]   Import this on phones:"
+    echo ">>> [mkcert-export]   - ${target}"
   '';
 in
 {
-  # Helper script in PATH (for debugging if you ever want it)
-  environment.systemPackages = [ vwCertScript ];
+  # MKCERT TOOLS IN PATH
+  # ------------------------------------------------------------
+  # - mkcert CLI (from pkgs.mkcert)
+  # - mkcert-install (global CA setup, run at activation)
+  # - mkcert-export-root-der (manual helper for Android/iOS)
+  # ------------------------------------------------------------
+  environment.systemPackages = [
+    pkgs.mkcert
+    pkgs.openssl
+    mkcertScript
+    mkcertExportScript
+  ];
 
-  # Run automatically on every activation (no manual commands)
+  # GLOBAL ACTIVATION HOOK
+  # ------------------------------------------------------------
+  # - Always run mkcert-install at activation
+  # - Ensures rootCA.pem exists and CAROOT ownership is correct
+  # ------------------------------------------------------------
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> Running vaultwarden-cert-setup"
-    ${vwCertScript}/bin/vaultwarden-cert-setup || echo "!!! vaultwarden-cert-setup failed (continuing)"
+    echo ">>> Running mkcert-install (global)"
+    ${mkcertScript}/bin/mkcert-install || echo "!!! mkcert-install failed (continuing)"
   '';
 }
