@@ -2,12 +2,15 @@
 #
 # NGINX: CUSTOM SERVICE (DARWIN ONLY)
 # ===================================
-# - Installs nginx from Nixpkgs
+# - Installs nginx from Nixpkgs.
+# - Provides:
+#     - nginx-setup CLI script (writes main nginx.conf)
+#     - run-nginx-custom CLI script (runs nginx in foreground)
 # - Writes main nginx.conf to:
 #       $HOME/ven-dots/conf/nginx.conf
 # - Loads per-app configs from:
 #       $HOME/ven-dots/conf/apps-enabled/*.conf
-# - Creates launchd daemon to run nginx with that config
+# - Creates launchd daemon to run nginx with that config.
 # ===================================
 
 { config, pkgs, lib, ... }:
@@ -79,10 +82,10 @@ EOF
   '';
 in
 {
-  # Install nginx binary
-  environment.systemPackages = [ pkgs.nginx ];
+  # Install nginx + helper scripts
+  environment.systemPackages = [ pkgs.nginx nginxSetupScript runner ];
 
-  # Activation: prepare config + dirs
+  # Activation: prepare config + dirs via the script
   system.activationScripts.nginx-setup.text = lib.mkAfter ''
     "${nginxSetupScript}/bin/nginx-setup"
   '';
@@ -90,10 +93,10 @@ in
   # launchd: start nginx using custom config
   launchd.daemons.nginx-custom = {
     serviceConfig = {
-      Label           = "com.ven.nginx-custom";
+      Label            = "com.ven.nginx-custom";
       ProgramArguments = [ "${runner}/bin/run-nginx-custom" ];
-      RunAtLoad       = true;
-      KeepAlive       = true;
+      RunAtLoad        = true;
+      KeepAlive        = true;
       WorkingDirectory = "${confRoot}";
     };
   };

@@ -9,8 +9,10 @@
 { config, pkgs, lib, ... }:
 
 let
+  # Root directory for container data
   containersRoot = "/Users/ven/ven-dots/user-data/containers";
 
+  # Docker binary for Docker Desktop on macOS
   dockerBin =
     "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
@@ -51,7 +53,7 @@ let
         #!/usr/bin/env bash
         set -euo pipefail
 
-        echo ">>> [container:${cName}] Starting…"
+        echo ">>> [container:${cName}] Starting..."
         "${ensureDirScript}/bin/ensure-${cName}-data"
 
         if ! command -v "${dockerBin}" >/dev/null 2>&1; then
@@ -80,10 +82,10 @@ let
       # launchd only (Darwin)
       launchd.daemons."docker-${cName}" = {
         serviceConfig = {
-          Label           = "com.ven.docker.${cName}";
+          Label            = "com.ven.docker.${cName}";
           ProgramArguments = [ "${runner}/bin/run-${cName}" ];
-          RunAtLoad       = runAtLoad;
-          KeepAlive       = keepAlive;
+          RunAtLoad        = runAtLoad;
+          KeepAlive        = keepAlive;
         };
       };
     };

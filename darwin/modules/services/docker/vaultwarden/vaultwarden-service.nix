@@ -12,10 +12,10 @@
 let
   appName  = "vaultwarden";
 
-  dataDir  = config.ven.vaultwarden.dataDir or "/Users/ven/ven-dots/user-data/containers/vaultwarden";
-  hostPort = config.ven.vaultwarden.hostPort or 8080;
+  dataDir      = config.ven.vaultwarden.dataDir or "/Users/ven/ven-dots/user-data/containers/vaultwarden";
+  hostPort     = config.ven.vaultwarden.hostPort or 8080;
   internalPort = config.ven.vaultwarden.internalPort or 80;
-  envVars  = config.ven.vaultwarden.envVars or [];
+  envVars      = config.ven.vaultwarden.envVars or [];
 
   containersRoot = "/Users/ven/ven-dots/user-data/containers";
 
@@ -40,7 +40,7 @@ let
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo ">>> [vaultwarden] Starting container…"
+    echo ">>> [vaultwarden] Starting container..."
 
     "${ensureDirScript}/bin/ensure-${appName}-data"
 
@@ -65,15 +65,15 @@ in
   '';
 
   # Expose runner in PATH
-  environment.systemPackages = [ runner ];
+  environment.systemPackages = [ runner ensureDirScript ];
 
   # macOS launchd only
   launchd.daemons.vaultwarden = {
     serviceConfig = {
-      Label           = "com.ven.vaultwarden";
+      Label            = "com.ven.vaultwarden";
       ProgramArguments = [ "${runner}/bin/run-${appName}" ];
-      RunAtLoad       = true;
-      KeepAlive       = true;
+      RunAtLoad        = true;
+      KeepAlive        = true;
     };
   };
 }
