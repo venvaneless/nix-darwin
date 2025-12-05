@@ -59,9 +59,10 @@ let
   '';
 in
 {
-  # Ensure data dir exists at activation time
-  system.activationScripts.vaultwardenDataDir.text = ''
-    "${ensureDirScript}/bin/ensure-${appName}-data"
+  # Ensure data dir exists at activation time (using the SAME pattern as cleanup)
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
+    echo ">>> [vaultwarden] Ensuring data dir via activation"
+    ${ensureDirScript}/bin/ensure-${appName}-data || echo "!!! [vaultwarden] ensure data dir failed (continuing)"
   '';
 
   # Expose runner in PATH
