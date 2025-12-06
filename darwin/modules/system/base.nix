@@ -46,14 +46,15 @@
   # --- Global system packages ---
   environment.systemPackages = with pkgs; [
     inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
+    # Newest bash
     bashInteractive
     git-crypt
-    nh
     home-manager
-    # mkcert
     nssTools
-    # nginx
+    # Nix linter
     nixd
     nil
+    # YAML CLI 
+    yq-go
   ];
 }
