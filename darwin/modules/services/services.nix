@@ -29,5 +29,6 @@
     ./docker/vaultwarden/vaultwarden-service.nix
     ./docker/vaultwarden/vaultwarden-mkcert.nix
     ./docker/vaultwarden/vaultwarden-nginx.nix
+    ./docker/vaultwarden/vaultwarden-android-cert.nix
   ];
 }
