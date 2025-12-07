@@ -107,7 +107,7 @@
     	./plugins/asdf.nix
     	./plugins/autosuggestions.nix
 	    ./plugins/completion.nix
-			./plugins/fuckup.nix
+			./plugins/payf.nix
 	    ./plugins/fzf.nix
 	    ./plugins/history.nix
 			./plugins/mcfly.nix
