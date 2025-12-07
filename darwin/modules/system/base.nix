@@ -48,6 +48,8 @@
     inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
     # Newest bash
     bashInteractive
+    # App for text replacement
+    espanso
     git-crypt
     home-manager
     nssTools

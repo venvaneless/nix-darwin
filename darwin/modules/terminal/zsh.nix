@@ -109,10 +109,11 @@
 	    ./plugins/autosuggestions.nix
 	    ./plugins/syntax-highlighting.nix
 	    ./plugins/history.nix
+			./plugins/espanso.nix
 	
 	    # Optional
-	    # ./plugins/asdf.nix
-	    # ./plugins/starship.nix
-	    # ./plugins/thefuck.nix
+	    ./plugins/asdf.nix
+	    ./plugins/starship.nix
+	    ./plugins/thefuck.nix
 	  ];
 	}

@@ -18,6 +18,9 @@
   programs.zsh.initContent = ''
     # Disable insecure directory warnings
     ZSH_DISABLE_COMPFIX=true
+    
+    # Load the completion listing module (required for menu selection)
+      zmodload zsh/complist
 
     # Build and load the completion system
     autoload -Uz compinit
@@ -25,6 +28,10 @@
 
     # FZF-style interactive completion menu
     zstyle ':completion:*' menu select
+    zstyle ':completion:*' list-prompt '%S%M matches:%s'
+    zstyle ':completion:*' select-prompt '%SScrolling active: %s'
+    
+    bindkey -M menuselect '^M' .accept-line
 
     #### EXTERNAL COMPLETIONS ####
 
