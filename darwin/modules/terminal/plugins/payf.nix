@@ -3,9 +3,12 @@
 {
   programs.pay-respects = {
     enable = true;
+    enableZshIntegration = true;
 
-    suggestionsOnly = true;     # only suggest, don’t auto-run
-    alias = "f";                # the command to trigger corrections
-    enableZshIntegration = true; # integrates automatically with Zsh
+    # Set alias => this replaces default
+    options = [
+      "--alias"
+      "m"
+    ];
   };
 }

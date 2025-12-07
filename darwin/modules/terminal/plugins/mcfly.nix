@@ -3,7 +3,7 @@
 {
   home.packages = [ pkgs.mcfly ];
 
-  programs.zsh.initExtra = ''
+  programs.zsh.initContent = ''
     eval "$(mcfly init zsh)"
   '';
 }
