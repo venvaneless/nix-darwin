@@ -3,7 +3,7 @@
 {
   home.packages = [ pkgs.fuckup ];
 
-  programs.zsh.initScripts = [
+  programs.zsh.initContent = [
     { name = "fuckup"; text = "eval \"$(fuckup --alias)\""; }
   ];
 }
