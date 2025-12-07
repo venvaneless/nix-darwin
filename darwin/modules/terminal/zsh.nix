@@ -104,15 +104,13 @@
 	  # 
 	  # ----- Plugin imports -----
 	  imports = [
+    	./plugins/asdf.nix
+    	./plugins/autosuggestions.nix
 	    ./plugins/completion.nix
 	    ./plugins/fzf.nix
-	    ./plugins/autosuggestions.nix
-	    ./plugins/syntax-highlighting.nix
 	    ./plugins/history.nix
-	
-	    # Optional
-	    ./plugins/asdf.nix
-	    ./plugins/starship.nix
-	    ./plugins/thefuck.nix
+			./plugins/mcfly.nix
+			./plugins/starship.nix
+	    ./plugins/syntax-highlighting.nix
 	  ];
 	}
