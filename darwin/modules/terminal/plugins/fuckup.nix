@@ -3,8 +3,7 @@
 {
   home.packages = [ pkgs.fuckup ];
 
-  programs.zsh.initScripts = ''
-    # FUCKUP: fix last command (thefuck replacement)
-    eval "$(fuckup --alias)"
-  '';
+  programs.zsh.initScripts = [
+    { name = "fuckup"; text = "eval \"$(fuckup --alias)\""; }
+  ];
 }
