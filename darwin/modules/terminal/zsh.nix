@@ -109,7 +109,6 @@
 	    ./plugins/autosuggestions.nix
 	    ./plugins/syntax-highlighting.nix
 	    ./plugins/history.nix
-			./plugins/espanso.nix
 	
 	    # Optional
 	    ./plugins/asdf.nix

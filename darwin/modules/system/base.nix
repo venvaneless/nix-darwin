@@ -38,6 +38,8 @@
     XDG_STATE_HOME = "$HOME/.config";
     XDG_DATA_HOME  = "$HOME/.config";
     XDG_CACHE_HOME = "$HOME/.config";
+    
+    ESPANSO_DIR = "/Users/ven/ven-dots/espanso";
   };
 
   # --- System state version (Darwin revision) ---
