@@ -3,8 +3,7 @@
 {
   home.packages = [ pkgs.mcfly ];
 
-  programs.zsh.initExtraConfig = ''
-    # MCFLY: smart history
+  programs.zsh.initExtra = ''
     eval "$(mcfly init zsh)"
   '';
 }
