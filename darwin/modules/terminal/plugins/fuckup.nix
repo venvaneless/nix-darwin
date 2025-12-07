@@ -3,7 +3,7 @@
 {
   home.packages = [ pkgs.fuckup ];
 
-  programs.zsh.initExtra = ''
+  programs.zsh.initScripts = ''
     # FUCKUP: fix last command (thefuck replacement)
     eval "$(fuckup --alias)"
   '';
