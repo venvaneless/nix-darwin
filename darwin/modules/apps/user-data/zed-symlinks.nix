@@ -3,12 +3,12 @@
 # ZED: USER-DATA MIDDLE-MAN
 # ============================================================
 # Source of truth:
-#     /Users/ven/dotfiles/apps/zed
+#     /Users/ven/ven-dots/user-data/apps/zed
 #
 # Runtime paths:
 #     ~/Library/Application Support/Zed
 #     ~/Library/Preferences/dev.zed.Zed.plist
-#     ~/.config/zed   (ADDED)
+#     ~/.config/zed
 #
 # Responsibilities:
 #   - Ensure dotfiles path exists (initialize from system if needed)
@@ -16,23 +16,27 @@
 #   - Ensure all files inside are symlinks pointing to dotfiles
 #   - Move new system-created files back into dotfiles
 #   - Ensure plist is symlinked
-#   - Ensure ~/.config/zed is symlinked to dotfiles/apps/zed/user-data  (ADDED)
+#   - Ensure ~/.config/zed is moved into dotfiles/apps/zed/user-data
+#   - Ensure ~/.config/zed is symlinked back to that source of truth
 #   - Never overwrite dotfiles
 #   - Never interact with iCloud
 #   - Never install or update anything
 #   - Never launch Zed
 #
-# This file replaces ALL previous Zed user-data files.
 # ============================================================
 
 { config, lib, pkgs, ... }:
 
 let
   home      = config.home.homeDirectory;
-  dotZed    = "/Users/ven/ven-dots/user-data/apps/zed";
-  dotUser   = "/Users/ven/ven-dots/user-data/apps/zed/user-data";   # NEW
 
-  cfgDir    = "${home}/.config/zed";                      # NEW
+  # MAIN ZED DOTFILES ROOT
+  dotZed    = "/Users/ven/ven-dots/user-data/apps/zed";
+
+  # USER-DATA DIRECTORY INSIDE ZED DOTFILES
+  dotUser   = "${dotZed}/user-data";
+
+  cfgDir    = "${home}/.config/zed";  # Runtime location
 
   asZed     = "${home}/Library/Application Support/Zed";
   plist     = "${home}/Library/Preferences/dev.zed.Zed.plist";
@@ -45,18 +49,25 @@ in
       echo "Managing Zed user-data..."
 
       # ------------------------------------------------------------
-      # NEW: ~/.config/zed → dotfiles/apps/zed/user-data
+      # NEW: Ensure dotfiles user-data directory exists
       # ------------------------------------------------------------
       mkdir -p "${dotUser}"
 
-      # If ~/.config/zed exists AND is not a symlink → move its content once
+      # ------------------------------------------------------------
+      # Move ~/.config/zed into dotfiles/apps/zed/user-data
+      # ------------------------------------------------------------
       if [ -d "${cfgDir}" ] && [ ! -L "${cfgDir}" ]; then
-        echo "Found real ~/.config/zed → moving contents into dotfiles/user-data..."
+        echo "Found real ~/.config/zed → migrating contents into dotfiles user-data..."
+
         for item in "${cfgDir}"/*; do
           name="$(basename "$item")"
-          if [ -L "$item" ]; then
+
+          # If already migrated, skip
+          if [ -e "${dotUser}/$name" ]; then
+            echo "  Skipping existing: $name"
             continue
           fi
+
           echo "  Moving: $name"
           mv "$item" "${dotUser}/$name"
         done
@@ -65,7 +76,9 @@ in
       # Ensure ~/.config exists
       mkdir -p "${home}/.config"
 
-      # Ensure ~/.config/zed is a symlink pointing to user-data
+      # ------------------------------------------------------------
+      # Ensure ~/.config/zed is a symlink → dotUser
+      # ------------------------------------------------------------
       if [ ! -L "${cfgDir}" ] || [ "$(readlink "${cfgDir}")" != "${dotUser}" ]; then
         echo "Linking ~/.config/zed → ${dotUser}"
         rm -rf "${cfgDir}"
@@ -74,13 +87,13 @@ in
 
 
       # ------------------------------------------------------------
-      # Ensure dotfiles directory exists. If missing → initialize.
+      # Ensure dotfiles (Zed root) exists. If missing → initialize.
       # ------------------------------------------------------------
       if [ ! -d "${dotZed}" ]; then
         echo "Zed dotfiles missing → creating."
         mkdir -p "${dotZed}"
 
-        # Copy system files if they exist
+        # Copy existing Application Support files if they exist
         if [ -d "${asZed}" ]; then
           echo "Copying existing application support files → dotfiles"
           cp -a "${asZed}/." "${dotZed}/" 2>/dev/null || true
@@ -105,29 +118,33 @@ in
 
 
       # ------------------------------------------------------------
-      # Ensure dotfiles → system symlinks
+      # dotfiles → Application Support symlinks
+      # BUT DO NOT SYMLINK user-data INTO APPLICATION SUPPORT
       # ------------------------------------------------------------
       for item in "${dotZed}"/*; do
         name="$(basename "$item")"
+
+        # Skip plist
         [ "$name" = "dev.zed.Zed.plist" ] && continue
+
+        # SKIP THE user-data DIRECTORY
+        [ "$name" = "user-data" ] && continue
+
         ln -sfn "$item" "${asZed}/$name"
       done
 
 
       # ------------------------------------------------------------
-      # Move system-created new items → dotfiles (directories first)
+      # Move system-created new directories → dotfiles (AS only)
       # ------------------------------------------------------------
-
-      # FIRST: move directories only
       while IFS= read -r item; do
         name="$(basename "$item")"
 
-        # Skip . and .. and plist
         [ "$name" = "." ] && continue
         [ "$name" = ".." ] && continue
         [ "$name" = "dev.zed.Zed.plist" ] && continue
+        [ "$name" = "user-data" ] && continue  # DON'T TOUCH USER CONFIG
 
-        # If dotfiles already has anything with this name → skip moving it
         if [ -e "${dotZed}/$name" ]; then
           echo "Skipping directory $name — already exists in dotfiles."
           rm -rf "$item"
@@ -141,14 +158,15 @@ in
       done < <(find "${asZed}" -maxdepth 1 -mindepth 1 -type d)
 
 
-      # SECOND: move files only
+      # ------------------------------------------------------------
+      # Move system-created files → dotfiles (AS only)
+      # ------------------------------------------------------------
       while IFS= read -r item; do
         name="$(basename "$item")"
 
-        # Skip plist
         [ "$name" = "dev.zed.Zed.plist" ] && continue
+        [ "$name" = "user-data" ] && continue  # DON'T TOUCH USER CONFIG
 
-        # If dotfiles already has anything with this name → skip moving
         if [ -e "${dotZed}/$name" ]; then
           echo "Skipping file $name — already exists in dotfiles."
           rm -f "$item"
