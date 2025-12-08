@@ -15,10 +15,4 @@
   users.groups.containers = {
     gid = 450;
   };
-
-  # ------------------------------------------------------------
-  # ACCESS: ven gets read/write access
-  # IMPORTANT: extraGroups ONLY works on primaryUser
-  # ------------------------------------------------------------
-  users.users.${config.system.primaryUser}.extraGroups = [ "containers" ];
 }
