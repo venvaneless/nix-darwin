@@ -12,12 +12,11 @@
 let
   appName  = "vaultwarden";
 
-  dataDir      = config.ven.vaultwarden.dataDir or "/Users/ven/ven-dots/user-data/containers/vaultwarden";
+  # Data dir is now system-level, under /var/lib/containers
+  dataDir      = config.ven.vaultwarden.dataDir or "/var/lib/containers/vaultwarden";
   hostPort     = config.ven.vaultwarden.hostPort or 8080;
   internalPort = config.ven.vaultwarden.internalPort or 80;
   envVars      = config.ven.vaultwarden.envVars or [];
-
-  containersRoot = "/Users/ven/ven-dots/user-data/containers";
 
   dockerBin =
     "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
@@ -31,9 +30,12 @@ let
     set -euo pipefail
 
     echo ">>> [vaultwarden] Ensuring data directory: ${dataDir}"
-    mkdir -p "${containersRoot}"
+    mkdir -p "/var/lib/containers"
     mkdir -p "${dataDir}"
-    chmod 700 "${dataDir}"
+
+    # group "containers" is defined in user-groups.nix
+    chown root:containers "${dataDir}"
+    chmod 770 "${dataDir}"
   '';
 
   runner = pkgs.writeShellScriptBin "run-${appName}" ''

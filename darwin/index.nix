@@ -43,7 +43,8 @@
 
     # User configuration for Home-Manager
     ./modules/system/home-manager.nix
-
+    ./modules/system/user-groups.nix
+    
     # --- SYSTEM MODULES ---
     ./modules/system/base.nix
     ./modules/system/homebrew.nix
