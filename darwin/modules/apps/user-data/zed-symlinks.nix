@@ -29,8 +29,8 @@
 
 let
   home      = config.home.homeDirectory;
-  dotZed    = "/Users/ven/dotfiles/apps/zed";
-  dotUser   = "/Users/ven/dotfiles/apps/zed/user-data";   # NEW
+  dotZed    = "/Users/ven/ven-dots/user-data/apps/zed";
+  dotUser   = "/Users/ven/ven-dots/user-data/apps/zed/user-data";   # NEW
 
   cfgDir    = "${home}/.config/zed";                      # NEW
 
