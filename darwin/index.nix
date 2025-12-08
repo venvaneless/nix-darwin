@@ -24,12 +24,8 @@
   # ----- Primary user -----
   system.primaryUser  = "ven";
   system.stateVersion = lib.mkForce 6;
-    
-  users.users.ven = {
-    home = "/Users/ven";
-    # Add groups here:
-    extraGroups = [ "containers" ];
-  };
+  
+  users.users.ven.home = "/Users/ven";
 
 
 
