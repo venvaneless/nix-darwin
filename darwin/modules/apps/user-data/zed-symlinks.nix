@@ -28,19 +28,19 @@
 { config, lib, pkgs, ... }:
 
 let
-  home      = config.home.homeDirectory;
+  home = config.home.homeDirectory;
 
   # MAIN ZED DOTFILES ROOT
-  dotZed    = "/Users/ven/ven-dots/user-data/apps/zed";
+  dotZed = "/Users/ven/ven-dots/user-data/apps/zed";
 
   # USER-DATA DIRECTORY INSIDE ZED DOTFILES
-  dotUser   = "${dotZed}/user-data";
+  dotUser = "${dotZed}/user-data";
 
-  cfgDir    = "${home}/.config/zed";  # Runtime location
+  cfgDir = "${home}/.config/zed";  # Runtime location
 
-  asZed     = "${home}/Library/Application Support/Zed";
-  plist     = "${home}/Library/Preferences/dev.zed.Zed.plist";
-  dotPlist  = "${dotZed}/dev.zed.Zed.plist";
+  asZed    = "${home}/Library/Application Support/Zed";
+  plist    = "${home}/Library/Preferences/dev.zed.Zed.plist";
+  dotPlist = "${dotZed}/dev.zed.Zed.plist";
 in
 {
   home.activation.zedUserData =
@@ -49,20 +49,20 @@ in
       echo "Managing Zed user-data..."
 
       # ------------------------------------------------------------
-      # NEW: Ensure dotfiles user-data directory exists
+      # Move ~/.config/zed into dotfiles/apps/zed/user-data
       # ------------------------------------------------------------
       mkdir -p "${dotUser}"
 
-      # ------------------------------------------------------------
-      # Move ~/.config/zed into dotfiles/apps/zed/user-data
-      # ------------------------------------------------------------
+      # MOVE LOGIC:
+      # Move only items that do NOT already exist inside the source of truth
       if [ -d "${cfgDir}" ] && [ ! -L "${cfgDir}" ]; then
-        echo "Found real ~/.config/zed → migrating contents into dotfiles user-data..."
+        echo "Found real ~/.config/zed → migrating missing items into dotfiles/user-data..."
 
         for item in "${cfgDir}"/*; do
+          [ -e "$item" ] || continue
           name="$(basename "$item")"
 
-          # If already migrated, skip
+          # Skip items already present in source of truth
           if [ -e "${dotUser}/$name" ]; then
             echo "  Skipping existing: $name"
             continue
@@ -79,10 +79,14 @@ in
       # ------------------------------------------------------------
       # Ensure ~/.config/zed is a symlink → dotUser
       # ------------------------------------------------------------
+      echo "Ensuring ~/.config/zed is a symlink → ${dotUser}"
+
       if [ ! -L "${cfgDir}" ] || [ "$(readlink "${cfgDir}")" != "${dotUser}" ]; then
-        echo "Linking ~/.config/zed → ${dotUser}"
         rm -rf "${cfgDir}"
         ln -sfn "${dotUser}" "${cfgDir}"
+        echo "Symlink created: ~/.config/zed → ${dotUser}"
+      else
+        echo "Symlink already correct."
       fi
 
 
