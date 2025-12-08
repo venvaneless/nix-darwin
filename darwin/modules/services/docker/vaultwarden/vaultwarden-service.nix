@@ -25,17 +25,14 @@ let
     lib.concatStringsSep " "
       (map (v: "-e ${v}") envVars);
 
+  # This script runs *as the user*, not root.
+  # It CANNOT safely chown/chmod.
   ensureDirScript = pkgs.writeShellScriptBin "ensure-${appName}-data" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo ">>> [vaultwarden] Ensuring data directory: ${dataDir}"
-    mkdir -p "/var/lib/containers"
+    echo ">>> [vaultwarden] Ensuring data directory exists: ${dataDir}"
     mkdir -p "${dataDir}"
-
-    # group "containers" is defined in user-groups.nix
-    chown root:containers "${dataDir}"
-    chmod 770 "${dataDir}"
   '';
 
   runner = pkgs.writeShellScriptBin "run-${appName}" ''
@@ -61,16 +58,18 @@ let
   '';
 in
 {
-  # Ensure data dir exists at activation time (using the SAME pattern as cleanup)
-  system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> [vaultwarden] Ensuring data dir via activation"
-    ${ensureDirScript}/bin/ensure-${appName}-data || echo "!!! [vaultwarden] ensure data dir failed (continuing)"
+  # ROOT-LEVEL PERMISSIONS — this MUST be root (activation)
+  system.activationScripts."vaultwarden-data-perms".text = lib.mkAfter ''
+    echo ">>> [vaultwarden] Activation: preparing data dir (root)"
+    mkdir -p "${dataDir}"
+    chown root:containers "${dataDir}"
+    chmod 770 "${dataDir}"
   '';
 
   # Expose runner in PATH
   environment.systemPackages = [ runner ensureDirScript ];
 
-  # macOS launchd only
+  # macOS launchd daemon
   launchd.daemons.vaultwarden = {
     serviceConfig = {
       Label            = "com.ven.vaultwarden";
