@@ -3,22 +3,22 @@
 # DARWIN: CONTAINER DATA GROUP + USER ACCESS
 # ============================================================
 # - Creates shared system group "containers"
-# - All container data will live under /var/lib/containers
-# - Adds ven to the "containers" group for backup access
+# - Adds ven (primary user) to "containers" via extraGroups
 # ============================================================
 
 { config, lib, pkgs, ... }:
 
 {
   # ------------------------------------------------------------
-  # GROUP: containers (shared by all containers)
+  # GROUP: containers
   # ------------------------------------------------------------
   users.groups.containers = {
-    gid = 450;  # fixed, unused GID
+    gid = 450;
   };
 
   # ------------------------------------------------------------
-  # ACCESS: ven gets read/write access to container data
+  # ACCESS: ven gets read/write access
+  # IMPORTANT: extraGroups ONLY works on primaryUser
   # ------------------------------------------------------------
-  users.users.ven.extraGroups = [ "containers" ];
+  users.users.${config.system.primaryUser}.extraGroups = [ "containers" ];
 }

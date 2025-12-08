@@ -25,7 +25,14 @@
   system.primaryUser  = "ven";
   system.stateVersion = lib.mkForce 6;
   
-  users.users.ven.home = "/Users/ven";
+  system.primaryUser = "ven";
+  
+  users.users.ven = {
+    home = "/Users/ven";
+    shell = pkgs.zsh;
+    # Add groups here:
+    extraGroups = [ "containers" ];
+  };
 
 
 
