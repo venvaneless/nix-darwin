@@ -27,7 +27,6 @@
     
   users.users.ven = {
     home = "/Users/ven";
-    shell = pkgs.zsh;
     # Add groups here:
     extraGroups = [ "containers" ];
   };
