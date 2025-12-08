@@ -24,9 +24,7 @@
   # ----- Primary user -----
   system.primaryUser  = "ven";
   system.stateVersion = lib.mkForce 6;
-  
-  system.primaryUser = "ven";
-  
+    
   users.users.ven = {
     home = "/Users/ven";
     shell = pkgs.zsh;
