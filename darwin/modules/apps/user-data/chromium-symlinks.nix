@@ -1,153 +1,125 @@
-# DARWIN: CHROMIUM PROFILE + PLIST MIGRATION (ONE-TIME MOVE + SYMLINK)
-# ====================================================================
-# Moves the Chromium profile directory and plist into ven-dots and
-# symlinks them back.
+# DARWIN: CHROMIUM USER-DATA + PROFILE SYMLINKING
+# ============================================================
+# Source of truth:
+#     /Users/ven/ven-dots/user-data/apps/chromium
 #
-# Profile dir:
-#   AS = ~/Library/Application Support/Chromium
-#   VD = /Users/ven/ven-dots/user-data/apps/chromium
-#
-# Plist:
-#   Preferences plist:
+# Runtime paths:
+#     ~/Library/Application Support/Chromium
 #     ~/Library/Preferences/org.chromium.Chromium.plist
-#   ven-dots plist:
-#     /Users/ven/ven-dots/user-data/apps/chromium/org.chromium.Chromium.plist
 #
-# Behavior:
-#   Directory:
-#     - If AS is a symlink to VD:
-#         -> Do nothing.
-#     - If AS is a real dir and VD does not exist:
-#         -> Move AS -> VD, then create symlink AS -> VD.
-#     - If AS does not exist and VD exists:
-#         -> Create symlink AS -> VD.
-#     - If neither AS nor VD exists:
-#         -> Create VD, then symlink AS -> VD.
-#     - If both AS and VD exist as real dirs (no symlink):
-#         -> Print warning and do nothing (manual fix needed).
-#
-#   Plist:
-#     - If Preferences plist is a symlink to VD plist:
-#         -> Do nothing.
-#     - If Preferences plist is a real file and VD plist does not exist:
-#         -> Move plist -> VD, symlink Preferences -> VD plist.
-#     - If Preferences plist does not exist and VD plist exists:
-#         -> Symlink Preferences -> VD plist.
-#     - If both exist as real files:
-#         -> Print warning and do nothing (manual fix needed).
-#     - If neither exists:
-#         -> Do nothing; Chromium will create a plist later.
-#
-# After successful migration and verification, you can remove this module
-# from imports so it never runs again.
-# ====================================================================
+# Responsibilities:
+#   - Ensure ven-dots/apps/chromium exists
+#   - Move real Chromium profile into ven-dots if present
+#   - Ensure Application Support/Chromium is a symlink → ven-dots/apps/chromium
+#   - Move any new system-created files/dirs into source-of-truth
+#   - Ensure plist is moved + symlinked just like Zed’s plist handling
+#   - Never overwrite dotfiles unless file does not exist on ven-dots
+# ============================================================
 
 { config, lib, pkgs, ... }:
 
 let
-  home     = config.home.homeDirectory;
+  home = config.home.homeDirectory;
 
-  # ven-dots user-data apps root (matches Zed layout)
-  appsRoot = "/Users/ven/ven-dots/user-data/apps";
-  vd       = "${appsRoot}/chromium";  # ven-dots profile dir
+  dotChromium = "/Users/ven/ven-dots/user-data/apps/chromium";
+  asChromium  = "${home}/Library/Application Support/Chromium";
 
-  asChromium = "${home}/Library/Application Support/Chromium";
-
-  prefPlist = "${home}/Library/Preferences/org.chromium.Chromium.plist";
-  vdPlist   = "${vd}/org.chromium.Chromium.plist";
+  prefPlist   = "${home}/Library/Preferences/org.chromium.Chromium.plist";
+  dotPlist    = "${dotChromium}/org.chromium.Chromium.plist";
 in
 {
-  home.activation.chromiumMigrate =
+  home.activation.chromiumUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      set -eu
+      set -euo pipefail
+      echo "Managing Chromium user-data..."
 
-      echo "=== Chromium profile migration ==="
-      echo "  Application Support: ${asChromium}"
-      echo "  ven-dots profile   : ${vd}"
+      # ------------------------------------------------------------
+      # Ensure dotfiles root exists
+      # ------------------------------------------------------------
+      if [ ! -d "${dotChromium}" ]; then
+        echo "Creating Chromium dotfiles root → ${dotChromium}"
+        mkdir -p "${dotChromium}"
 
-      # Ensure ven-dots/apps root exists
-      if [ ! -d "${appsRoot}" ]; then
-        echo "  - Creating apps root: ${appsRoot}"
-        mkdir -p "${appsRoot}"
+        # If Application Support/Chromium exists, copy its contents
+        if [ -d "${asChromium}" ] && [ ! -L "${asChromium}" ]; then
+          echo "Copying existing Application Support → dotfiles"
+          cp -a "${asChromium}/." "${dotChromium}/" 2>/dev/null || true
+        fi
+
+        # Copy plist if it exists
+        if [ -f "${prefPlist}" ]; then
+          echo "Copying existing plist → dotfiles"
+          cp -a "${prefPlist}" "${dotPlist}" || true
+        fi
       fi
 
-      # ----------------------------------------------------------------
-      # PROFILE DIRECTORY MIGRATION
-      # ----------------------------------------------------------------
 
-      # Case 0: AS is already a symlink
+      # ------------------------------------------------------------
+      # Ensure Application Support/Chromium is a REAL DIR before symlinking
+      # ------------------------------------------------------------
       if [ -L "${asChromium}" ]; then
-        target="$(readlink "${asChromium}" || true)"
-        if [ "\${target}" = "${vd}" ]; then
-          echo "  - Chromium Application Support already symlinked to ven-dots."
-        else
-          echo "  ! WARNING: ${asChromium} is a symlink to ${target}, not ${vd}."
-          echo "    Not modifying it. Please fix manually if this is unexpected."
-        fi
-      else
-        # At this point, AS is either a real dir, a file, or does not exist.
-
-        if [ -d "${asChromium}" ] && [ ! -e "${vd}" ]; then
-          # Case A: Existing profile in AS, ven-dots missing -> move it.
-          echo "  - Migrating existing Chromium profile into ven-dots..."
-          mkdir -p "$(dirname "${vd}")"
-          mv "${asChromium}" "${vd}"
-        elif [ ! -e "${asChromium}" ] && [ -d "${vd}" ]; then
-          # Case B: No AS dir, but ven-dots profile exists -> just link.
-          echo "  - No Application Support profile; using existing ven-dots profile."
-        elif [ ! -e "${asChromium}" ] && [ ! -e "${vd}" ]; then
-          # Case C: Completely fresh setup -> create empty profile dir in ven-dots.
-          echo "  - No existing profile found. Creating empty ven-dots profile directory."
-          mkdir -p "${vd}"
-        elif [ -d "${asChromium}" ] && [ -d "${vd}" ]; then
-          # Case D: Both exist as real directories -> ambiguous, do nothing.
-          echo "  ! WARNING: Both ${asChromium} and ${vd} exist as real directories."
-          echo "    Not modifying either. Please reconcile manually."
-        else
-          # Catch-all for unexpected file types (e.g. regular file at AS)
-          echo "  ! WARNING: Unexpected filesystem state for Chromium profile."
-          echo "    ${asChromium} or ${vd} is not a directory/symlink as expected."
-          echo "    Not modifying the profile directory."
-        fi
-
-        # Ensure AS is a symlink pointing to VD if AS does not exist now
-        if [ ! -e "${asChromium}" ] && [ -d "${vd}" ]; then
-          echo "  - Creating symlink: ${asChromium} -> ${vd}"
-          ln -s "${vd}" "${asChromium}"
-        fi
+        echo "Fixing: Application Support/Chromium must not be a symlink pre-migration"
+        rm -f "${asChromium}"
       fi
 
-      # ----------------------------------------------------------------
-      # PLIST MIGRATION
-      # ----------------------------------------------------------------
-
-      echo "=== Chromium plist migration ==="
-      echo "  Preferences plist: ${prefPlist}"
-      echo "  ven-dots plist   : ${vdPlist}"
-
-      if [ -L "${prefPlist}" ]; then
-        plistTarget="$(readlink "${prefPlist}" || true)"
-        if [ "\${plistTarget}" = "${vdPlist}" ]; then
-          echo "  - Plist already symlinked to ven-dots. Nothing to do."
-        else
-          echo "  ! WARNING: Plist symlink points to ${plistTarget}, not ${vdPlist}."
-          echo "    Not modifying it. Please fix manually if this is unexpected."
-        fi
-      elif [ -f "${prefPlist}" ] && [ ! -e "${vdPlist}" ]; then
-        echo "  - Moving existing plist into ven-dots and symlinking..."
-        mkdir -p "$(dirname "${vdPlist}")"
-        mv "${prefPlist}" "${vdPlist}"
-        ln -s "${vdPlist}" "${prefPlist}"
-      elif [ ! -e "${prefPlist}" ] && [ -f "${vdPlist}" ]; then
-        echo "  - Preferences plist missing; linking from ven-dots."
-        ln -s "${vdPlist}" "${prefPlist}"
-      elif [ -f "${prefPlist}" ] && [ -f "${vdPlist}" ]; then
-        echo "  ! WARNING: Both Preferences plist and ven-dots plist exist as real files."
-        echo "    Not modifying either. Please reconcile manually."
-      else
-        echo "  - No plist migration needed at this time."
+      if [ -d "${asChromium}" ]; then
+        echo "Found real Chromium directory → preparing for migration"
       fi
 
-      echo "=== Chromium migration complete ==="
+
+      # ------------------------------------------------------------
+      # Move system-created files/dirs from AS → dotfiles (same logic as Zed)
+      # ------------------------------------------------------------
+      if [ -d "${asChromium}" ] && [ ! -L "${asChromium}" ]; then
+        echo "Migrating Chromium items into dotfiles..."
+
+        for item in "${asChromium}"/*; do
+          [ -e "$item" ] || continue
+          name="$(basename "$item")"
+
+          if [ -e "${dotChromium}/$name" ]; then
+            echo "  Skipping existing: $name"
+            rm -rf "$item"
+            ln -sfn "${dotChromium}/$name" "${asChromium}/$name"
+            continue
+          fi
+
+          echo "  Moving: $name"
+          mv "$item" "${dotChromium}/$name"
+          ln -sfn "${dotChromium}/$name" "${asChromium}/$name"
+        done
+      fi
+
+
+      # ------------------------------------------------------------
+      # Recreate Application Support/Chromium as a symlink → dotfiles
+      # ------------------------------------------------------------
+      rm -rf "${asChromium}"
+      ln -sfn "${dotChromium}" "${asChromium}"
+      echo "Symlink created: Chromium → ${dotChromium}"
+
+
+      # ------------------------------------------------------------
+      # PLIST HANDLING (same style as Zed)
+      # ------------------------------------------------------------
+      echo "Managing Chromium plist..."
+
+      # If real plist exists and source-of-truth copy is missing → move it
+      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPlist}" ]; then
+        echo "Moving real plist → dotfiles"
+        mv "${prefPlist}" "${dotPlist}"
+      fi
+
+      # Ensure dotfiles plist exists
+      if [ ! -f "${dotPlist}" ]; then
+        echo "Creating empty plist in dotfiles"
+        : > "${dotPlist}"
+      fi
+
+      # Ensure Preferences plist symlink exists
+      ln -sfn "${dotPlist}" "${prefPlist}"
+      echo "Plist symlinked: ${prefPlist} → ${dotPlist}"
+
+      echo "Chromium user-data sync complete."
     '';
 }

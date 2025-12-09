@@ -14,7 +14,6 @@
 {
   imports = [
     ./chromium-symlinks.nix
-    ./obsidian-sync.nix
     # ./iterm-symlinks.nix
     # ./zed-symlinks.nix
   ];
