@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/iterm-symlinking.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/iterm-symlinks.nix
 # 
 # DARWIN: ITERM USER-DATA + PLIST SYMLINKING
 # ============================================================
