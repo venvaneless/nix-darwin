@@ -78,7 +78,7 @@ in
       # Case 0: AS is already a symlink
       if [ -L "${asChromium}" ]; then
         target="$(readlink "${asChromium}" || true)"
-        if [ "${target}" = "${vd}" ]; then
+        if [ "\${target}" = "${vd}" ]; then
           echo "  - Chromium Application Support already symlinked to ven-dots."
         else
           echo "  ! WARNING: ${asChromium} is a symlink to ${target}, not ${vd}."
@@ -127,7 +127,7 @@ in
 
       if [ -L "${prefPlist}" ]; then
         plistTarget="$(readlink "${prefPlist}" || true)"
-        if [ "${plistTarget}" = "${vdPlist}" ]; then
+        if [ "\${plistTarget}" = "${vdPlist}" ]; then
           echo "  - Plist already symlinked to ven-dots. Nothing to do."
         else
           echo "  ! WARNING: Plist symlink points to ${plistTarget}, not ${vdPlist}."

@@ -54,9 +54,5 @@
 
     # --- Apps ---
     ./modules/apps/apps.nix
-
-    # --- Docker ---
-    # ------------------------------------------------------------
-    # ./modules/services/docker/docker-all.nix
   ];
 }
