@@ -5,13 +5,13 @@
 #
 # Profile dir:
 #   AS = ~/Library/Application Support/Chromium
-#   VD = /Users/ven/ven-dots/apps/chromium
+#   VD = /Users/ven/ven-dots/user-data/apps/chromium
 #
 # Plist:
 #   Preferences plist:
 #     ~/Library/Preferences/org.chromium.Chromium.plist
 #   ven-dots plist:
-#     /Users/ven/ven-dots/apps/chromium/org.chromium.Chromium.plist
+#     /Users/ven/ven-dots/user-data/apps/chromium/org.chromium.Chromium.plist
 #
 # Behavior:
 #   Directory:
@@ -45,14 +45,16 @@
 { config, lib, pkgs, ... }:
 
 let
-  home       = config.home.homeDirectory;
-  appsRoot   = "/Users/ven/ven-dots/apps";
-  vd         = "${appsRoot}/chromium";  # ven-dots profile dir
+  home     = config.home.homeDirectory;
+
+  # ven-dots user-data apps root (matches Zed layout)
+  appsRoot = "/Users/ven/ven-dots/user-data/apps";
+  vd       = "${appsRoot}/chromium";  # ven-dots profile dir
 
   asChromium = "${home}/Library/Application Support/Chromium";
 
-  prefPlist  = "${home}/Library/Preferences/org.chromium.Chromium.plist";
-  vdPlist    = "${vd}/org.chromium.Chromium.plist";
+  prefPlist = "${home}/Library/Preferences/org.chromium.Chromium.plist";
+  vdPlist   = "${vd}/org.chromium.Chromium.plist";
 in
 {
   home.activation.chromiumMigrate =
