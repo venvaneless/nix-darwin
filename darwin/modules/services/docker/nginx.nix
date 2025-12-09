@@ -87,7 +87,10 @@ EOF
     }
 
     echo ">>> [nginx] nginx -t OK, launching (daemon off)"
-    exec "${nginxBin}" -g "daemon off;" -c "${nginxConf}"
+    exec "${nginxBin}" \
+  -e "/Users/ven/ven-dots/conf/logs/error.log" \
+  -g "daemon off;" \
+  -c "${nginxConf}"
   '';
 in
 {
