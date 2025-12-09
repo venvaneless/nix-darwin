@@ -12,11 +12,12 @@
 let
   appName  = "vaultwarden";
 
-  # Data dir is now system-level, under /var/lib/containers
-  dataDir      = config.ven.vaultwarden.dataDir or "/var/lib/containers/vaultwarden";
+  dataDir      = config.ven.vaultwarden.dataDir or "/Users/ven/ven-dots/user-data/containers/vaultwarden";
   hostPort     = config.ven.vaultwarden.hostPort or 8080;
   internalPort = config.ven.vaultwarden.internalPort or 80;
   envVars      = config.ven.vaultwarden.envVars or [];
+
+  containersRoot = "/Users/ven/ven-dots/user-data/containers";
 
   dockerBin =
     "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
@@ -25,14 +26,14 @@ let
     lib.concatStringsSep " "
       (map (v: "-e ${v}") envVars);
 
-  # This script runs *as the user*, not root.
-  # It CANNOT safely chown/chmod.
   ensureDirScript = pkgs.writeShellScriptBin "ensure-${appName}-data" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo ">>> [vaultwarden] Ensuring data directory exists: ${dataDir}"
+    echo ">>> [vaultwarden] Ensuring data directory: ${dataDir}"
+    mkdir -p "${containersRoot}"
     mkdir -p "${dataDir}"
+    chmod 700 "${dataDir}"
   '';
 
   runner = pkgs.writeShellScriptBin "run-${appName}" ''
@@ -76,18 +77,16 @@ let
   '';
 in
 {
-  # ROOT-LEVEL PERMISSIONS — this MUST be root (activation)
-  system.activationScripts."vaultwarden-data-perms".text = lib.mkAfter ''
-    echo ">>> [vaultwarden] Activation: preparing data dir (root)"
-    mkdir -p "${dataDir}"
-    chown root:containers "${dataDir}"
-    chmod 770 "${dataDir}"
+  # Ensure data dir exists at activation time (using the SAME pattern as cleanup)
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
+    echo ">>> [vaultwarden] Ensuring data dir via activation"
+    ${ensureDirScript}/bin/ensure-${appName}-data || echo "!!! [vaultwarden] ensure data dir failed (continuing)"
   '';
 
   # Expose runner in PATH
   environment.systemPackages = [ runner ensureDirScript ];
 
-  # macOS launchd daemon
+  # macOS launchd only
   launchd.daemons.vaultwarden = {
     serviceConfig = {
       Label            = "com.ven.vaultwarden";

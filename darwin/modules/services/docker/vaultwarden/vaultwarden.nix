@@ -10,8 +10,7 @@
 
 let
   # Shared paths for Vaultwarden
-  # NOTE: moved out of /Users/ven into stable system location.
-  dataDir = "/var/lib/containers/vaultwarden";
+  dataDir = "/Users/ven/ven-dots/user-data/containers/vaultwarden";
 
   # Internal container port (Vaultwarden default HTTP)
   internalPort = 80;
