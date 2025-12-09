@@ -1,18 +1,18 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/obsidian.nix
-
-# ITERM2: INSTALL APP
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/raycast.nix
+# 
+# ZED: INSTALL APP
 # ============================================================
-# Installs Obsidian for macOS to a chosen folder
+# Installs Raycast to a chosen folder
 # through homebrew
 # ============================================================
 
-# nix-darwin system module: installs iTerm2.app system-wide.
+# nix-darwin system module: installs Zed.app system-wide.
 
 { ... }:
 
 let
-  appName   = "Obsidian.app";
-  caskName  = "obsidian";
+  appName   = "Raycast.app";
+  caskName  = "raycast";
   targetDir = "/Applications/Productivity";
 in
 {
@@ -20,7 +20,7 @@ in
     { name = caskName; args = { appdir = targetDir; }; }
   ];
 
-  system.activationScripts.ensureItermAppDir.text = ''
+  system.activationScripts.ensureZedAppDir.text = ''
     mkdir -p "${targetDir}"
   '';
 }

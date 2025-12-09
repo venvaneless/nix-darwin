@@ -10,6 +10,8 @@
 {
   imports = [
    	./iterm.nix
+    ./obsidian.nix
+    ./wezterm.nix
     ./zed.nix
   ];
 }

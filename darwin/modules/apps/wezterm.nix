@@ -1,8 +1,8 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/obsidian.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/wezterm.nix
 
 # ITERM2: INSTALL APP
 # ============================================================
-# Installs Obsidian for macOS to a chosen folder
+# Installs the Wezterm Terminal for macOS to a chosen folder
 # through homebrew
 # ============================================================
 
@@ -11,9 +11,9 @@
 { ... }:
 
 let
-  appName   = "Obsidian.app";
-  caskName  = "obsidian";
-  targetDir = "/Applications/Productivity";
+  appName   = "Wezterm.app";
+  caskName  = "wezterm";
+  targetDir = "/Applications/Programming";
 in
 {
   homebrew.casks = [

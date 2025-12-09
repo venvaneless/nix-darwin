@@ -50,15 +50,25 @@
     inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
     # Newest bash
     bashInteractive
-    # App for text replacement
-    espanso
+    delta
+    # Fast alternative to 'find'
+    fd
+    # Encryption for git
     git-crypt
+    # Shell UI helpers
+    gum
     home-manager
+    # NSS certificate
     nssTools
-    # Nix linter
+    # Nix language server
     nixd
+    # Nix formatter
     nil
-    # YAML CLI 
+    # Fast recursive search
+    ripgrep
+    # Directory tree viewer
+    tree
+    # YAML processor 
     yq-go
   ];
 }
