@@ -11,6 +11,7 @@
   imports = [
    	./iterm.nix
     ./obsidian.nix
+    ./raycast.nix
     ./wezterm.nix
     ./zed.nix
   ];
