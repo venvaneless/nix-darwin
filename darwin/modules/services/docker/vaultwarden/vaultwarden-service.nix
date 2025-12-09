@@ -39,22 +39,40 @@ let
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo ">>> [vaultwarden] Starting container..."
+    echo ">>> [vaultwarden] Starting vaultwarden launchd runner"
 
+    # Ensure data dir exists
     "${ensureDirScript}/bin/ensure-${appName}-data"
 
+    # Check Docker binary
     if ! command -v "${dockerBin}" >/dev/null 2>&1; then
       echo "!!! [vaultwarden] docker not found at ${dockerBin}"
       exit 1
     fi
 
-    "${dockerBin}" start ${appName} || \
-    "${dockerBin}" run -d \
-      --name ${appName} \
-      -p ${toString hostPort}:${toString internalPort} \
-      -v "${dataDir}:/data" \
-      ${envArgs} \
-      vaultwarden/server:latest
+    echo ">>> [vaultwarden] Checking if Vaultwarden image exists"
+    if ! "${dockerBin}" image inspect vaultwarden/server:latest >/dev/null 2>&1; then
+      echo ">>> [vaultwarden] Image missing; pulling..."
+      "${dockerBin}" pull vaultwarden/server:latest
+    else
+      echo ">>> [vaultwarden] Image exists"
+    fi
+
+    echo ">>> [vaultwarden] Checking if container '${appName}' exists"
+    if ! "${dockerBin}" ps -a --format '{{.Names}}' | grep -qx "${appName}"; then
+      echo ">>> [vaultwarden] Container missing; creating..."
+      "${dockerBin}" run -d \
+        --name ${appName} \
+        -p ${toString hostPort}:${toString internalPort} \
+        -v "${dataDir}:/data" \
+        ${envArgs} \
+        vaultwarden/server:latest
+    else
+      echo ">>> [vaultwarden] Container exists"
+    fi
+
+    echo ">>> [vaultwarden] Starting container '${appName}'"
+    "${dockerBin}" start ${appName} || true
   '';
 in
 {
