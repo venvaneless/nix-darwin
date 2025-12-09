@@ -9,6 +9,7 @@
 { ... }:
 {
   imports = [
+  	./espanso.nix
    	./iterm.nix
     ./obsidian.nix
     ./raycast.nix
