@@ -13,7 +13,7 @@
   
   programs.zsh = {
     sessionVariables = {
-      STARSHIP_CONFIG = "${config.home.homeDirectory}/ven-dots/zsh/starship.toml";
+      STARSHIP_CONFIG = "${config.home.homeDirectory}/ven-dots/zsh/starship/starship.toml";
       STARSHIP_CACHE = "${config.home.homeDirectory}/ven-dots/zsh/starship/cache";
     };
   };
