@@ -14,7 +14,7 @@
   programs.zsh = {
     sessionVariables = {
       STARSHIP_CONFIG = "${config.home.homeDirectory}/ven-dots/zsh/starship.toml";
-      STARSHIP_CACHE = "${config.home.homeDirectory}/ven-dots/starship/cache";
+      STARSHIP_CACHE = "${config.home.homeDirectory}/ven-dots/zsh/starship/cache";
     };
   };
 }
