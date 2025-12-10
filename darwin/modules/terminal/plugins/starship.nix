@@ -3,11 +3,14 @@
 # ZSH: STARSHIP PROMPT
 # ============================================================
 
-{ ... }:
+{ config, ... }:
 
 {
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
   };
+  
+  programs.zsh.sessionVariables.STARSHIP_CONFIG =
+    "${config.home.homeDirectory}/ven-dots/zsh/starship.toml";
 }
