@@ -19,13 +19,16 @@ let
 
   containersRoot = "/Users/ven/ven-dots/user-data/containers";
 
+  # Docker Desktop binary
   dockerBin =
     "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
+  # Convert env var list → "-e A=B -e C=D ..."
   envArgs =
     lib.concatStringsSep " "
       (map (v: "-e ${v}") envVars);
 
+  # Ensures container data dir exists (same tool used by activation)
   ensureDirScript = pkgs.writeShellScriptBin "ensure-${appName}-data" ''
     #!/usr/bin/env bash
     set -euo pipefail
@@ -36,21 +39,38 @@ let
     chmod 700 "${dataDir}"
   '';
 
+  # ------------------------------------------------------------
+  # RUNNER SCRIPT — Launchd callback that starts the container
+  # ------------------------------------------------------------
   runner = pkgs.writeShellScriptBin "run-${appName}" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
     echo ">>> [vaultwarden] Starting vaultwarden launchd runner"
 
-    # Ensure data dir exists
+    # Ensure data directory exists BEFORE docker touches it
     "${ensureDirScript}/bin/ensure-${appName}-data"
 
-    # Check Docker binary
+    # Make sure the Docker binary exists
     if ! command -v "${dockerBin}" >/dev/null 2>&1; then
       echo "!!! [vaultwarden] docker not found at ${dockerBin}"
       exit 1
     fi
 
+    # ------------------------------------------------------------
+    # WAIT FOR DOCKER ENGINE TO BE READY
+    # (Fixes the reboot race condition that caused your outage)
+    # ------------------------------------------------------------
+    echo ">>> [vaultwarden] Waiting for Docker engine to become ready..."
+    until "${dockerBin}" info >/dev/null 2>&1; do
+      echo ">>> [vaultwarden] Docker not ready yet, retrying in 2s..."
+      sleep 2
+    done
+    echo ">>> [vaultwarden] Docker engine is ready"
+
+    # ------------------------------------------------------------
+    # Ensure Vaultwarden image exists
+    # ------------------------------------------------------------
     echo ">>> [vaultwarden] Checking if Vaultwarden image exists"
     if ! "${dockerBin}" image inspect vaultwarden/server:latest >/dev/null 2>&1; then
       echo ">>> [vaultwarden] Image missing; pulling..."
@@ -59,6 +79,9 @@ let
       echo ">>> [vaultwarden] Image exists"
     fi
 
+    # ------------------------------------------------------------
+    # Ensure container exists
+    # ------------------------------------------------------------
     echo ">>> [vaultwarden] Checking if container '${appName}' exists"
     if ! "${dockerBin}" ps -a --format '{{.Names}}' | grep -qx "${appName}"; then
       echo ">>> [vaultwarden] Container missing; creating..."
@@ -72,27 +95,41 @@ let
       echo ">>> [vaultwarden] Container exists"
     fi
 
+    # ------------------------------------------------------------
+    # Start container
+    # ------------------------------------------------------------
     echo ">>> [vaultwarden] Starting container '${appName}'"
     "${dockerBin}" start ${appName} || true
   '';
 in
 {
-  # Ensure data dir exists at activation time (using the SAME pattern as cleanup)
+  # ------------------------------------------------------------
+  # ACTIVATION HOOK — ensures data dir exists on rebuilds
+  # ------------------------------------------------------------
   system.activationScripts.extraActivation.text = lib.mkAfter ''
     echo ">>> [vaultwarden] Ensuring data dir via activation"
     ${ensureDirScript}/bin/ensure-${appName}-data || echo "!!! [vaultwarden] ensure data dir failed (continuing)"
   '';
 
-  # Expose runner in PATH
+  # Make runner & directory tool available in PATH
   environment.systemPackages = [ runner ensureDirScript ];
 
-  # macOS launchd only
+  # ------------------------------------------------------------
+  # LAUNCHD SERVICE — auto-start vaultwarden on boot
+  # ------------------------------------------------------------
   launchd.daemons.vaultwarden = {
     serviceConfig = {
       Label            = "com.ven.vaultwarden";
       ProgramArguments = [ "${runner}/bin/run-${appName}" ];
       RunAtLoad        = true;
-      KeepAlive        = true;
+
+      # IMPORTANT: Replace this with your actual docker backend label
+      # Get label via:
+      #   launchctl list | grep -i docker
+      KeepAlive = {
+        SuccessfulExit  = false;
+        OtherJobEnabled = "com.docker.backend";
+      };
     };
   };
 }
