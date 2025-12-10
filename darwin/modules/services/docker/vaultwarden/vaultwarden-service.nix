@@ -59,7 +59,6 @@ let
 
     # ------------------------------------------------------------
     # WAIT FOR DOCKER ENGINE TO BE READY
-    # (Fixes the reboot race condition that caused your outage)
     # ------------------------------------------------------------
     echo ">>> [vaultwarden] Waiting for Docker engine to become ready..."
     until "${dockerBin}" info >/dev/null 2>&1; do
@@ -122,14 +121,7 @@ in
       Label            = "com.ven.vaultwarden";
       ProgramArguments = [ "${runner}/bin/run-${appName}" ];
       RunAtLoad        = true;
-
-      # IMPORTANT: Replace this with your actual docker backend label
-      # Get label via:
-      #   launchctl list | grep -i docker
-      KeepAlive = {
-        SuccessfulExit  = false;
-        OtherJobEnabled = "com.docker.backend";
-      };
+      KeepAlive        = true;   # <<< FIXED
     };
   };
 }
