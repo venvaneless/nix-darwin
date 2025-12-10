@@ -1,4 +1,18 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/nginx.nix
+#
+# NGINX (DARWIN)
+# ============================================================
+# - Installs nginx from Nixpkgs.
+# - Writes a main nginx.conf to:
+#       ~/ven-dots/conf/nginx.conf
+# - Includes virtual hosts from:
+#       ~/ven-dots/conf/apps-enabled/*.conf
+# - Logs to:
+#       ~/ven-dots/conf/logs/{access,error}.log
+# - Provides a run-nginx-custom wrapper.
+# - Creates a launchd daemon:
+#       com.ven.nginx-custom
+# ============================================================
 
 { config, pkgs, lib, ... }:
 
@@ -81,17 +95,24 @@ EOF
   '';
 in
 {
+  # Install nginx and helper scripts
   environment.systemPackages = [ pkgs.nginx nginxSetupScript runner ];
 
+  # Stable wrapper path for launchd (avoids /nix/store path churn)
+  environment.etc."ven/services/run-nginx-custom".source =
+    "${runner}/bin/run-nginx-custom";
+
+  # Ensure folders + nginx.conf exist at activation
   system.activationScripts.extraActivation.text = lib.mkAfter ''
     echo ">>> Running nginx-setup"
     ${nginxSetupScript}/bin/nginx-setup || echo "!!! nginx-setup failed (continuing)"
   '';
 
+  # Launchd daemon: com.ven.nginx-custom
   launchd.daemons.nginx-custom = {
     serviceConfig = {
       Label            = "com.ven.nginx-custom";
-      ProgramArguments = [ "${runner}/bin/run-nginx-custom" ];
+      ProgramArguments = [ "/etc/ven/services/run-nginx-custom" ];
       RunAtLoad        = true;
       KeepAlive        = true;
       WorkingDirectory = "${confRoot}";
