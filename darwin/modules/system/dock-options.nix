@@ -129,7 +129,6 @@
     static-only = false;
 
     persistent-apps = [
-    "/System/Applications/Finder.app"
     "/Applications/Chromium.app"
     "/Applications/Programming/iTerm.app"
     "/Applications/Productivity/Zed.app"
