@@ -21,7 +21,7 @@
     # ------ SIZE AND MAGNIFICATION ------ #
 
     # --- Icon size in pixels
-    tilesize = 62;
+    tilesize = 82;
 
     # --- Magnify icons on hover
     magnification = true;
