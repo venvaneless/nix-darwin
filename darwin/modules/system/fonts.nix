@@ -50,4 +50,22 @@
 
   # ------------------------------------------------------------
   # CUSTOM FONT DERIVATIONS (PLACEHOLDER)
-  # For commercial / local fonts (Berkeley Mono
+  # For commercial / local fonts (Berkeley Mono, Operator Mono, etc.)
+  # ------------------------------------------------------------
+  #
+  # Pattern:
+  # 1. Create a small derivation that installs *.ttf/*.otf into
+  #    $out/share/fonts/truetype or opentype.
+  # 2. Call that derivation and add it to fonts.packages above.
+  #
+  # Example skeleton (keep in a separate file under ./pkgs/fonts if you want):
+  #
+  # let
+  #   berkeley-mono = pkgs.callPackage
+  #     ../../pkgs/fonts/berkeley-mono.nix
+  #     { };
+  # in {
+  #   fonts.packages = fonts.packages ++ [ berkeley-mono ];
+  # }
+  #
+}
