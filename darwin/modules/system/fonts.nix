@@ -20,7 +20,6 @@
   # /run/current-system/sw/share/X11/fonts and exposes them to apps. :contentReference[oaicite:7]{index=7}
   #
   fonts = {
-    fontDir.enable = true;
 
     # --------------------------------------------------------
     # INSTALLED FONTS
