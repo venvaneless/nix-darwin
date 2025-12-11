@@ -110,13 +110,13 @@
            # In practice this is an array of dicts and needs precise keys.
            # Columns you want: Name, Date Created, Date Modified, Size, iCloud status.
            # -----------------------------------------------------------------------------
-           "columns" = (
+           "columns" = 
       					{ identifier = "name"; },
         				{ identifier = "dateCreated"; },
       					{ identifier = "dateModified"; },
     						{ identifier = "size"; },
   							{ identifier = "iCloudStatus"; }
-							);
+						 ];
         };
       };
     };
