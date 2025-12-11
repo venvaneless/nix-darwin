@@ -116,9 +116,9 @@
       					{ identifier = "dateModified"; },
     						{ identifier = "size"; },
   							{ identifier = "iCloudStatus"; }
-						 ];
-        };
-      };
-    };
-  };
+         ];
+       };
+     };
+   };
+ };
 }
