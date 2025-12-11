@@ -34,7 +34,7 @@
     FXDefaultSearchScope = "SCcf";
 
     # --- Default Finder location (“Home”)
-    NewWindowTarget = "PfHm";
+    NewWindowTarget = "Home";
     
     # --- Alternative path:
     # NewWindowTargetPath = "/Users/ven/";
