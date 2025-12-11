@@ -76,7 +76,7 @@
   #
   # Using targets.darwin.defaults for non-standard preference keys.
   #
-  system.defaults."com.apple.finder".FXRemoveOldTrashItems = false;
+  system.defaults.finder.FXRemoveOldTrashItems = false;
 
 
   # ------------------------------------------------------------

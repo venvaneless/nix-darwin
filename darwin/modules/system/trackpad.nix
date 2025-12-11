@@ -227,5 +227,6 @@
   #
   system.defaults.NSGlobalDomain = {
     "com.apple.swipescrolldirection" = true;
+    _HIHideMenuBar = true;
   };
 }
