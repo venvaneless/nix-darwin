@@ -31,7 +31,7 @@
     #
     packages = [
       # --- Nerd Fonts bundle with selected families ---
-      (pkgs.nerdfonts.override {
+      (pkgs.nerd-fonts.override {
         fonts = [
           "JetBrainsMono"
           "FiraCode"
