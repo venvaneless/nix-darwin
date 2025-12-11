@@ -27,13 +27,8 @@
 
       # --- Nerd Fonts bundle with selected families ---
       # These are patched with ligatures, Powerline glyphs, etc.
-      (pkgs.nerd-fonts.override {
-        fonts = [
-          "JetBrainsMono"
-          "FiraCode"
-          "Meslo"
-        ];
-      })
+      pkgs.nerd-fonts
+
 
       # --- Additional nice monos / UIs (unpatched originals) ---
       pkgs.jetbrains-mono
