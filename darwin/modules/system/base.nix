@@ -1,27 +1,37 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/system/base.nix
-# 
+#
 { config, pkgs, lib, inputs, ... }:
 
 {
-  # --- Core system identity ---
+  # ------------------------------------------------------------
+  # SYSTEM MODULE IMPORTS
+  # Dock, Finder, fonts, trackpad
+  # ------------------------------------------------------------
+  imports = [
+    ./system-options.nix
+  ];
+
+  # ------------------------------------------------------------
+  # SYSTEM IDENTITY
+  # ------------------------------------------------------------
   networking.hostName = "Vens-MacBook-Pro";
 
-  # Tell nix‑darwin to manage /etc/nix/nix.conf for us
+  # ------------------------------------------------------------
+  # NIX SETTINGS
+  # ------------------------------------------------------------
   nix.enable = true;
 
-  # --- Enable new Nix CLI and flakes, and configure caches ---
   nix.settings = {
-    # enable the new CLI and flake support
+    # Enable flakes + modern CLI
     experimental-features = [ "nix-command" "flakes" ];
 
-    # build users group for multi-user Nix
+    # System build group
     build-users-group = "nixbld";
 
-    # Move Nix directories (profiles, channels, defexpr) to the XDG base directories.
-    # This removes ~/.nix-profile and ~/.nix-defexpr in favour of $XDG_STATE_HOME/nix.
+    # Move ~/.nix-* into XDG directories
     use-xdg-base-directories = true;
 
-    # Use only the official cache for now; this removes the bad key permanently.
+    # Official binary cache
     substituters = [
       "https://cache.nixos.org"
     ];
@@ -30,45 +40,65 @@
     ];
   };
 
-  # When using XDG base directories, Nix will default to $XDG_STATE_HOME/nix for
-  # profiles and expressions.  To keep **all** of these files under
-  # ~/.config/nix, override XDG variables accordingly.  These variables
-  # affect all applications, so consider this carefully.
+  # ------------------------------------------------------------
+  # GLOBAL ENVIRONMENT VARIABLES
+  # ------------------------------------------------------------
   environment.variables = {
     XDG_STATE_HOME = "$HOME/.config";
     XDG_DATA_HOME  = "$HOME/.config";
     XDG_CACHE_HOME = "$HOME/.config";
-    
+
     ESPANSO_DIR = "/Users/ven/ven-dots/espanso";
   };
 
-  # --- System state version (Darwin revision) ---
+  # ------------------------------------------------------------
+  # STATE VERSION
+  # ------------------------------------------------------------
   system.stateVersion = 6;
 
-  # --- Global system packages ---
+  # ------------------------------------------------------------
+  # SYSTEM PACKAGES
+  # Core utilities with concise descriptions
+  # ------------------------------------------------------------
   environment.systemPackages = with pkgs; [
+
+    # darwin-rebuild binary
     inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
-    # Newest bash
+
+    # New Bash
     bashInteractive
+
+    # Git diff viewer with syntax highlighting
     delta
-    # Fast alternative to 'find'
+
+    # Fast alternative to find
     fd
-    # Encryption for git
+
+    # Git encryption tool
     git-crypt
-    # Shell UI helpers
+
+    # Terminal UI helpers
     gum
+
+    # Home Manager CLI
     home-manager
-    # NSS certificate
+
+    # Tools for NSS certificates
     nssTools
+
     # Nix language server
     nixd
+
     # Nix formatter
     nil
+
     # Fast recursive search
     ripgrep
+
     # Directory tree viewer
     tree
-    # YAML processor 
+
+    # YAML processor
     yq-go
   ];
 }
