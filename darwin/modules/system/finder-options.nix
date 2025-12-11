@@ -93,32 +93,32 @@
       #
       "StandardViewSettings" = {
         "ListViewSettings" = {
-           # 16px font for list view
-           "textSize" = 16;
+          # 16px font for list view
+          "textSize" = 16;
       
           # “Big” icon size; tweak as you like
           "iconSize" = 32;
       
-           # Sort by column "name"
-           "sortColumn" = "name";
+          # Sort by column "name"
+          "sortColumn" = "name";
            
-           # Sort in ascending order
-           "useRelativeDates" = 0;
+          # Sort in ascending order
+          "useRelativeDates" = 0;
            
-            # -----------------------------------------------------------------------------
-           # Placeholder for visible columns.
-           # In practice this is an array of dicts and needs precise keys.
-           # Columns you want: Name, Date Created, Date Modified, Size, iCloud status.
-           # -----------------------------------------------------------------------------
-           "columns" = 
-      					{ identifier = "name"; },
-        				{ identifier = "dateCreated"; },
-      					{ identifier = "dateModified"; },
-    						{ identifier = "size"; },
-  							{ identifier = "iCloudStatus"; }
-         ];
-       };
-     };
-   };
- };
+          # -----------------------------------------------------------------------------
+          # Placeholder for visible columns.
+          # In practice this is an array of dicts and needs precise keys.
+          # Columns you want: Name, Date Created, Date Modified, Size, iCloud status.
+          # -----------------------------------------------------------------------------
+          "columns" = [
+            { identifier = "name"; }
+            { identifier = "dateCreated"; }
+            { identifier = "dateModified"; }
+            { identifier = "size"; }
+            { identifier = "iCloudStatus"; }
+          ];
+        };
+      };
+    };
+  };
 }
