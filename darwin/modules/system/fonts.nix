@@ -3,7 +3,7 @@
 # SYSTEM FONTS
 # ============================================================
 # Font configuration for macOS via nix-darwin.
-# - Installs patched Nerd Fonts for ligatures and powerline glyphs.
+# - Installs selected Nerd Fonts (patched variants).
 # - Uses fonts.packages (2025 API) to manage system fonts.
 # - Provides placeholders for extra font packages and custom fonts.
 # ============================================================
@@ -25,16 +25,16 @@
     # --------------------------------------------------------
     packages = [
 
-      # --- Nerd Fonts bundle with selected families ---
-      # These are patched with ligatures, Powerline glyphs, etc.
-      pkgs.nerd-fonts
+      # --- Selected Nerd Fonts (patched) ---
+      pkgs.nerd-fonts.jetbrains-mono
+      pkgs.nerd-fonts.fira-code
+      pkgs.nerd-fonts.meslo-lg
 
+      # --- Optional original (unpatched) fonts ---
+      # pkgs.jetbrains-mono
+      # pkgs.fira-code
 
-      # --- Additional nice monos / UIs (unpatched originals) ---
-      pkgs.jetbrains-mono
-      pkgs.fira-code
-
-      # pkgs.monaspace
+      # --- Extra UI / CJK fonts (commented placeholders) ---
       # pkgs.inter
       # pkgs.noto-fonts
       # pkgs.noto-fonts-cjk-sans
@@ -48,17 +48,8 @@
   # For commercial / local fonts (Berkeley Mono, Operator Mono, etc.)
   # ------------------------------------------------------------
   #
-  # Pattern:
-  # 1. Create a small derivation that installs *.ttf/*.otf into
-  #    $out/share/fonts/truetype or opentype.
-  # 2. Call that derivation and add it to fonts.packages above.
-  #
-  # Example skeleton (keep in a separate file under ./pkgs/fonts if you want):
-  #
   # let
-  #   berkeley-mono = pkgs.callPackage
-  #     ../../pkgs/fonts/berkeley-mono.nix
-  #     { };
+  #   berkeley-mono = pkgs.callPackage ../../pkgs/fonts/berkeley-mono.nix { };
   # in {
   #   fonts.packages = fonts.packages ++ [ berkeley-mono ];
   # }
