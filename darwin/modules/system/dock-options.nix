@@ -21,13 +21,13 @@
     # ------ SIZE AND MAGNIFICATION ------ #
 
     # --- Icon size in pixels
-    tilesize = 70;
+    tilesize = 75;
 
     # --- Magnify icons on hover
     magnification = true;
 
     # --- Magnified icon size when hovering
-    largesize = 64;
+    largesize = 80;
 
     # --- Hide/show the Dock
     autohide = true;
@@ -53,7 +53,7 @@
     # -----------------------------------------
     # ... instead of separate tile
     # -----------------------------------------
-    minimize-to-application = true;
+    minimize-to-application = false;
 
     # ------ INDICATORS ------ #
     # -------------------------------------------
@@ -62,7 +62,7 @@
     show-process-indicators = true;
 
     # --- Show recent applications in the Dock
-    show-recents = false;
+    show-recents = true;
 
     # --- Make icons of hidden applications translucent
     showhidden = true;
@@ -94,7 +94,7 @@
     # ON = Windows grouped by app
     # OFF = All windows shown individually
     # -----------------------------------------
-    # expose-group-apps = true;
+    expose-group-apps = true;
      
     # --- Highlight stack when hovering
     # When hovering over a “stack” (Downloads folder, etc.) in the Dock, the hovered item becomes highlighted
@@ -102,7 +102,7 @@
     # ON = Highlight on hover
     # OFF = No highlight
     # -----------------------------------------
-    # mouse-over-hilite-stack = true;
+    mouse-over-hilite-stack = true;
      
     # --- Most Recently Used Spaces
     # -----------------------------------------
@@ -117,7 +117,7 @@
     # on a Dock icon to activate Exposé for that app.
     # Scroll up on Safari icon → shows all Safari windows.
     # ------------------------------------------------------
-    # scroll-to-open = true;
+    scroll-to-open = true;
      
     # -----------------------------------------
     # --- Slow Motion while minimising
@@ -126,13 +126,13 @@
     # slow-motion-allowed = true;
      
     # --- Dynamic Dock behaviour
-    # static-only = false;
+    static-only = false;
 
-    # persistent-apps = [
-    #   "/System/Applications/Finder.app"
-    #   "/Applications/Chromium.app"
-    #   "/Applications/Programming/iTerm.app"
-    #   "/Applications/Productivity/Zed.app"
-    # ];
+    persistent-apps = [
+    "/System/Applications/Finder.app"
+    "/Applications/Chromium.app"
+    "/Applications/Programming/iTerm.app"
+    "/Applications/Productivity/Zed.app"
+    ];
   };
 }
