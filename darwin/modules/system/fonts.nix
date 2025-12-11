@@ -27,7 +27,7 @@
 
       # --- Nerd Fonts bundle with selected families ---
       # These are patched with ligatures, Powerline glyphs, etc.
-      (pkgs.nerdfonts.override {
+      (pkgs.nerd-fonts.override {
         fonts = [
           "JetBrainsMono"
           "FiraCode"
