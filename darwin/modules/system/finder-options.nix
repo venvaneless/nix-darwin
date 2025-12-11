@@ -51,9 +51,6 @@
     # --- Folders on top
     _FXSortFoldersFirst = true;
 
-    # Finder Sidebar
-    SidebarWidth = 200;
-
     # --- Path bar at bottom
     ShowPathbar = true;
 
