@@ -30,7 +30,7 @@
     # On Darwin, fonts.fonts works like fonts.packages on NixOS:
     # list out font packages (including nerdfonts overrides). :contentReference[oaicite:8]{index=8}
     #
-    fonts = [
+    packages = [
       # --- Nerd Fonts bundle with selected families ---
       (pkgs.nerdfonts.override {
         fonts = [
