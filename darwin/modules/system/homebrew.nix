@@ -35,7 +35,7 @@
 
     # ----- Brews -----
     brews = [
-    	mas
+    	"mas"
     ];
 
     # ----- Casks -----
