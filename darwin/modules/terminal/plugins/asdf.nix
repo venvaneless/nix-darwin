@@ -3,85 +3,64 @@
 # DARWIN: ASDF VERSION MANAGER
 # ====================================================================
 # - asdf-vm is installed via Nix (binary only)
-# - All plugin data lives in: ~/ven-dots/zsh/asdf
-# - .tool-versions is stored inside the same directory
-# - Shims are added to PATH
-# - This preserves the classic "asdf install / asdf global" workflow
+# - ASDF_DATA_DIR = ~/ven-dots/zsh/asdf
+# - .tool-versions stored inside ASDF_DATA_DIR
+# - Shims added to PATH
+# - Directories are created by asdf automatically
 # ====================================================================
 
-{ config, lib, pkgs, ... }:
+{ config, pkgs, ... }:
 
 let
-  # ASDF DATA ROOT (your preferred location)
   asdfData = "${config.home.homeDirectory}/ven-dots/zsh/asdf";
-
 in
 {
   # ------------------------------------------------------------
   # ASDF PACKAGE
-  # ------------------------------------------------------------
   # Install the asdf-vm binary from Nix. This gives us:
   # - asdf executable
   # - asdf.sh
   # - completions
+  # ------------------------------------------------------------
   home.packages = [
     pkgs.asdf-vm
   ];
 
-
-  # ------------------------------------------------------------
-  # ASDF DIRECTORY LAYOUT
-  # ------------------------------------------------------------
-  # Create the full directory tree so asdf works like the classic ~/.asdf
-  home.directories = [
-    "ven-dots/zsh/asdf"
-    "ven-dots/zsh/asdf/plugins"
-    "ven-dots/zsh/asdf/installs"
-    "ven-dots/zsh/asdf/shims"
-    "ven-dots/zsh/asdf/tmp"
-  ];
-
-
   # ------------------------------------------------------------
   # TOOL-VERSIONS FILE
-  # ------------------------------------------------------------
   # Classic .tool-versions format, stored inside your ASDF root
-  home.file."ven-dots/zsh/asdf/.tool-versions".text = ''
-    nodejs latest
-    python latest
-  '';
-
+  # ------------------------------------------------------------
+  # home.file."ven-dots/zsh/asdf/.tool-versions".text = ''
+  #  nodejs 25.0.0
+  #  python 3.13.9
+  # '';
 
   # ------------------------------------------------------------
   # ENVIRONMENT VARIABLES
-  # ------------------------------------------------------------
   # Tell asdf to store everything inside ~/ven-dots/zsh/asdf
-  home.sessionVariables = {
+  # ------------------------------------------------------------
+  programs.zsh.sessionVariables = {
     ASDF_DATA_DIR = asdfData;
   };
 
-  # Add shims to PATH so python/node/npm resolve correctly
-  home.sessionPath = [
+  programs.zsh.sessionPath = [
     "${asdfData}/shims"
   ];
 
-
   # ------------------------------------------------------------
   # ZSH INITIALIZATION
+  # Binary paths to the asdf installation
   # ------------------------------------------------------------
-  # Load asdf from the Nix store, and use our ASDF_DATA_DIR
   programs.zsh.initContent = ''
     #### ASDF INITIALIZATION ####
-
-    # Ensure correct ASDF data directory
     export ASDF_DATA_DIR="${asdfData}"
 
-    # Load main asdf.sh
+    # Load main asdf.sh from Nix store
     if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
       . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
     fi
 
-    # Load completions (bash completions work under zsh)
+    # Load completions (bash completions work in Zsh)
     if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
       . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
     fi
