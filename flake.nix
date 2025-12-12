@@ -34,6 +34,12 @@
     let
       system = "aarch64-darwin";
     in {
+    
+  	 # =====================================================================
+       # NIXPKGS OVERLAYS (modular, imported from overlays/)
+       # =====================================================================
+       nixpkgs.overlays = import ./darwin/modules/overlays;
+       
       # DARWIN: MAIN SYSTEM
       # =========================
       darwinConfigurations.macbook = darwin.lib.darwinSystem {

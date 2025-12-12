@@ -1,0 +1,13 @@
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/overlays/overlays.nix
+#
+# OVERLAYS: GLUE FILE
+# ====================================================================
+# Loads all overlays from ./overlays/
+# This makes overlays modular, maintainable and scalable.
+# ====================================================================
+
+[
+  (import ./overlay-asdf.nix)
+  # Add more overlays here:
+  # (import ./overlay-xyz.nix)
+]

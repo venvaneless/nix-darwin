@@ -35,12 +35,24 @@
 
     # ----- Brews -----
     brews = [
-     # "nginx"
+    	mas
     ];
 
     # ----- Casks -----
     casks = [
-      { name = "ungoogled-chromium"; args = { appdir = "/Applications"; }; }
+      {
+        name = "ungoogled-chromium";
+        args = {
+          appdir = "/Applications";
+        };
+      }
+
+      {
+        name = "appcleaner";
+        args = {
+          appdir = "/Applications";
+        };
+      }
     ];
   };
 }
