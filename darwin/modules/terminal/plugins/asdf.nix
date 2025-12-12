@@ -4,9 +4,8 @@
 # ====================================================================
 # - asdf-vm is installed via Nix (binary only)
 # - ASDF_DATA_DIR = ~/ven-dots/zsh/asdf
-# - .tool-versions stored inside ASDF_DATA_DIR
-# - Shims added to PATH
-# - Directories are created by asdf automatically
+# - .tool-versions stored manually or via Nix
+# - Shims added to PATH via home.sessionPath
 # ====================================================================
 
 { config, pkgs, ... }:
@@ -17,52 +16,50 @@ in
 {
   # ------------------------------------------------------------
   # ASDF PACKAGE
-  # Install the asdf-vm binary from Nix. This gives us:
-  # - asdf executable
-  # - asdf.sh
-  # - completions
   # ------------------------------------------------------------
   home.packages = [
     pkgs.asdf-vm
   ];
 
   # ------------------------------------------------------------
-  # TOOL-VERSIONS FILE
-  # Classic .tool-versions format, stored inside your ASDF root
+  # OPTIONAL: TOOL-VERSIONS FILE
+  # (Commented out so you can maintain manually)
   # ------------------------------------------------------------
   # home.file."ven-dots/zsh/asdf/.tool-versions".text = ''
-  #  nodejs 25.0.0
-  #  python 3.13.9
+  #   nodejs 25.0.0
+  #   python 3.13.9
   # '';
 
   # ------------------------------------------------------------
   # ENVIRONMENT VARIABLES
-  # Tell asdf to store everything inside ~/ven-dots/zsh/asdf
+  # MUST be inside programs.zsh = { sessionVariables = { ... }; }
   # ------------------------------------------------------------
-  programs.zsh.sessionVariables = {
-    ASDF_DATA_DIR = asdfData;
+  programs.zsh = {
+    sessionVariables = {
+      ASDF_DATA_DIR = asdfData;
+    };
+
+    initContent = ''
+      #### ASDF INITIALIZATION ####
+      export ASDF_DATA_DIR="${asdfData}"
+
+      # Load main asdf.sh from Nix store
+      if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
+        . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
+      fi
+
+      # Load completions (bash completions work in Zsh)
+      if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
+        . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
+      fi
+    '';
   };
 
-  programs.zsh.sessionPath = [
+  # ------------------------------------------------------------
+  # PATH EXTENSION
+  # This MUST be under home.sessionPath, never under programs.zsh
+  # ------------------------------------------------------------
+  home.sessionPath = [
     "${asdfData}/shims"
   ];
-
-  # ------------------------------------------------------------
-  # ZSH INITIALIZATION
-  # Binary paths to the asdf installation
-  # ------------------------------------------------------------
-  programs.zsh.initContent = ''
-    #### ASDF INITIALIZATION ####
-    export ASDF_DATA_DIR="${asdfData}"
-
-    # Load main asdf.sh from Nix store
-    if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
-      . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
-    fi
-
-    # Load completions (bash completions work in Zsh)
-    if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
-      . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
-    fi
-  '';
 }
