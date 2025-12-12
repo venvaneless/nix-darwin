@@ -37,11 +37,13 @@ in
   programs.zsh = {
     sessionVariables = {
       ASDF_DATA_DIR = asdfData;
+      ASDF_CONFIG_FILE = "${asdfData}/.tool-versions";
     };
 
     initContent = ''
       #### ASDF INITIALIZATION ####
       export ASDF_DATA_DIR="${asdfData}"
+      export ASDF_CONFIG_FILE="${asdfData}/.tool-versions"
 
       # Load main asdf.sh from Nix store
       if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
