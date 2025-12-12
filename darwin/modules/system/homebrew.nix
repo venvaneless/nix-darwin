@@ -50,7 +50,7 @@
       {
         name = "appcleaner";
         args = {
-          appdir = "/Applications";
+          appdir = "/Applications/System";
         };
       }
     ];
