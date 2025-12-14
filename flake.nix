@@ -38,7 +38,7 @@
   	 # =====================================================================
        # NIXPKGS OVERLAYS (modular, imported from overlays/)
        # =====================================================================
-       nixpkgs.overlays = import ./darwin/modules/overlays;
+       nixpkgs.overlays = import ./darwin/modules/overlays/overlays.nix;
        
       # DARWIN: MAIN SYSTEM
       # =========================
