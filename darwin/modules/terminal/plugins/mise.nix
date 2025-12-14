@@ -4,9 +4,9 @@
 # ====================================================================
 # - Installs mise via Nix
 # - Global config lives in ~/ven-dots/zsh/mise/config.toml
-# - Local project overrides via mise.toml (or .tool-versions if needed)
-# - No symlinks required
-# - Designed to coexist with asdf
+# - Nix does NOT manage the config file
+# - Changes to mise config take effect immediately (no rebuild)
+# - Local project overrides via mise.toml or .tool-versions
 # ====================================================================
 
 { config, pkgs, ... }:
@@ -23,25 +23,15 @@ in
   ];
 
   # ------------------------------------------------------------
-  # GLOBAL MISE CONFIG (DECLARATIVE)
-  # This is your global default tool set, tracked in Git
-  # ------------------------------------------------------------
-  home.file."${miseDir}/config.toml".text = ''
-    [tools]
-    node = "25.0.0"
-    python = "3.13.9"
-  '';
-
-  # ------------------------------------------------------------
   # ZSH INTEGRATION
   # ------------------------------------------------------------
   programs.zsh = {
     sessionVariables = {
-      # Tell mise where its global config lives
+      # Tell mise where the global config lives
       MISE_CONFIG_FILE = "${miseDir}/config.toml";
 
       # Optional: keep mise cache out of $HOME clutter
-      MISE_CACHE_DIR = "${miseDir}/cache";
+      MISE_CACHE_DIR  = "${miseDir}/cache";
     };
 
     initContent = ''
@@ -56,7 +46,7 @@ in
 
   # ------------------------------------------------------------
   # PATH PRIORITY
-  # Ensure mise shims take precedence over asdf
+  # Ensure mise-managed tools win over asdf
   # ------------------------------------------------------------
   home.sessionPath = [
     "${config.home.homeDirectory}/.local/share/mise/shims"
