@@ -122,14 +122,14 @@
 		# PLUGINS
 		# ----------------------------------------------------------------- #
 	  imports = [
-    	./plugins/asdf.nix
+    	# ./plugins/asdf.nix
     	./plugins/autosuggestions.nix
 	    ./plugins/completion.nix
 			./plugins/payf.nix
 	    ./plugins/fzf.nix
 	    ./plugins/history.nix
 			./plugins/mcfly.nix
-			./plugins/mise.nix
+			/plugins/mise.nix
 			./plugins/starship.nix
 	    ./plugins/syntax-highlighting.nix
 	  ];

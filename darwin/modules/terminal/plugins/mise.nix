@@ -28,7 +28,7 @@ in
   programs.zsh = {
     sessionVariables = {
       # Tell mise where the global config lives
-      MISE_CONFIG_FILE = "${miseDir}/config.toml";
+      MISE_CONFIG_FILE = "${config.home.homeDirectory}/ven-dots/zsh/mise/config.toml";
 
       # Optional: keep mise cache out of $HOME clutter
       MISE_CACHE_DIR  = "${miseDir}/cache";
