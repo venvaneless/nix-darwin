@@ -1,9 +1,11 @@
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/mise.nix
+#
 # DARWIN: MISE VERSION MANAGER
 # ====================================================================
 # - Installs mise via Nix
-# - ALL mise state lives in ~/ven-dots/zsh/mise
-# - Global tools defined in config.toml
-# - No symlinks, no files in $HOME
+# - Forces ALL mise dirs into ~/ven-dots/zsh/mise
+# - Global tools in ~/ven-dots/zsh/mise/config.toml
+# - Shims on PATH from ~/ven-dots/zsh/mise/shims
 # ====================================================================
 
 { config, pkgs, ... }:
@@ -17,14 +19,16 @@ in
   ];
 
   programs.zsh = {
-    sessionVariables = {
-      # ---- MISE ROOT LOCATIONS ----
-      MISE_CONFIG_DIR = miseDir;
-      MISE_DATA_DIR   = "${miseDir}/data";
-      MISE_CACHE_DIR  = "${miseDir}/cache";
-    };
+    # EARLY: make sure these exist before mise activation happens
+    envExtra = ''
+      export MISE_CONFIG_DIR="${miseDir}"
+      export MISE_DATA_DIR="${miseDir}"
+      export MISE_CACHE_DIR="${miseDir}/cache"
+      export MISE_STATE_DIR="${miseDir}/state"
+    '';
 
-    initContent = ''
+    # LATE: activate mise after vars are set
+    initExtra = ''
       #### MISE INITIALIZATION ####
       if command -v mise >/dev/null 2>&1; then
         eval "$(mise activate zsh)"
@@ -32,7 +36,7 @@ in
     '';
   };
 
-  # Ensure mise shims win
+  # PATH: match what mise reports as its shims dir (now forced to ven-dots)
   home.sessionPath = [
     "${miseDir}/shims"
   ];
