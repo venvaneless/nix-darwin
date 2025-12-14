@@ -39,15 +39,16 @@ in
     };
 
     initContent = ''
-      # ------ ASDF INITIALIZATION ------ #
-      # ------------------------------------------------------------
+      #### ASDF INITIALIZATION ####
 
       export ASDF_DATA_DIR="${asdfData}"
 
+      # Load asdf
       if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
         . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
       fi
 
+      # Completions
       if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
         . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
       fi
