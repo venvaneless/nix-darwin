@@ -8,7 +8,7 @@
 # - Shims added to PATH via home.sessionPath
 # ====================================================================
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   asdfData = "${config.home.homeDirectory}/ven-dots/zsh/asdf";
@@ -22,19 +22,19 @@ in
   ];
 
   # ------------------------------------------------------------
-  # GLOBAL TOOL-VERSIONS (DECLARATIVE SYMLINK)
+  # GLOBAL TOOL-VERSIONS (OUT-OF-STORE SYMLINK)
   # asdf only supports ~/.tool-versions for global resolution.
   # The real file lives in ven-dots and is tracked in Git.
   # ------------------------------------------------------------
   home.file.".tool-versions".source =
-    "${config.home.homeDirectory}/ven-dots/zsh/asdf/.tool-versions";
+    lib.file.mkOutOfStoreSymlink
+      "${config.home.homeDirectory}/ven-dots/zsh/asdf/.tool-versions";
 
   # ------------------------------------------------------------
   # ZSH ENVIRONMENT
   # ------------------------------------------------------------
   programs.zsh = {
     sessionVariables = {
-      # Controls where asdf stores installs, plugins, shims, etc.
       ASDF_DATA_DIR = asdfData;
     };
 
@@ -42,15 +42,12 @@ in
       # ------ ASDF INITIALIZATION ------ #
       # ------------------------------------------------------------
 
-      # --- Setting ASDF_DATA_DIR early
       export ASDF_DATA_DIR="${asdfData}"
 
-      # --- Loading asdf from Nix store
       if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
         . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
       fi
 
-      # --- Completions
       if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
         . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
       fi
@@ -59,7 +56,6 @@ in
 
   # ------------------------------------------------------------
   # PATH EXTENSION
-  # Shims must be on PATH for node/python/etc. to work
   # ------------------------------------------------------------
   home.sessionPath = [
     "${asdfData}/shims"
