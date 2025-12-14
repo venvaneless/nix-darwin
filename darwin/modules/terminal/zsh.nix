@@ -122,7 +122,7 @@
 		# PLUGINS
 		# ----------------------------------------------------------------- #
 	  imports = [
-    	# ./plugins/asdf.nix
+    	./plugins/asdf.nix
     	./plugins/autosuggestions.nix
 	    ./plugins/completion.nix
 			./plugins/payf.nix
