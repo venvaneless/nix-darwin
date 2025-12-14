@@ -23,11 +23,13 @@ in
 
   # ------------------------------------------------------------
   # GLOBAL TOOL-VERSIONS (OUT-OF-STORE SYMLINK)
-  # asdf only supports ~/.tool-versions for global resolution.
-  # The real file lives in ven-dots and is tracked in Git.
+  # NOTE:
+  # - In nix-darwin + integrated Home Manager, the symlink helper is:
+  #   config.lib.file.mkOutOfStoreSymlink
+  # - nixpkgs lib (lib.*) does NOT provide lib.file.*
   # ------------------------------------------------------------
   home.file.".tool-versions".source =
-    lib.file.mkOutOfStoreSymlink
+    config.lib.file.mkOutOfStoreSymlink
       "${config.home.homeDirectory}/ven-dots/zsh/asdf/.tool-versions";
 
   # ------------------------------------------------------------
@@ -43,12 +45,12 @@ in
 
       export ASDF_DATA_DIR="${asdfData}"
 
-      # Load asdf
+      # Load asdf from Nix store
       if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
         . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
       fi
 
-      # Completions
+      # Load completions (bash completions work in Zsh)
       if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
         . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
       fi
