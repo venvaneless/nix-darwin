@@ -2,9 +2,9 @@
 #
 # DARWIN: ASDF VERSION MANAGER
 # ====================================================================
-# - asdf-vm is installed via Nix (binary only)
+# - asdf-vm installed via Nix (binary only)
 # - ASDF_DATA_DIR = ~/ven-dots/zsh/asdf
-# - .tool-versions stored manually or via Nix
+# - Real .tool-versions lives in ven-dots and is symlinked to $HOME
 # - Shims added to PATH via home.sessionPath
 # ====================================================================
 
@@ -22,35 +22,35 @@ in
   ];
 
   # ------------------------------------------------------------
-  # OPTIONAL: TOOL-VERSIONS FILE
-  # (Commented out so you can maintain manually)
+  # GLOBAL TOOL-VERSIONS (DECLARATIVE SYMLINK)
+  # asdf only supports ~/.tool-versions for global resolution.
+  # The real file lives in ven-dots and is tracked in Git.
   # ------------------------------------------------------------
-  # home.file."ven-dots/zsh/asdf/.tool-versions".text = ''
-  #   nodejs 25.0.0
-  #   python 3.13.9
-  # '';
+  home.file.".tool-versions".source =
+    "${config.home.homeDirectory}/ven-dots/zsh/asdf/.tool-versions";
 
   # ------------------------------------------------------------
-  # ENVIRONMENT VARIABLES
-  # MUST be inside programs.zsh = { sessionVariables = { ... }; }
+  # ZSH ENVIRONMENT
   # ------------------------------------------------------------
   programs.zsh = {
     sessionVariables = {
+      # Controls where asdf stores installs, plugins, shims, etc.
       ASDF_DATA_DIR = asdfData;
-      ASDF_CONFIG_FILE = "${asdfData}/.tool-versions";
     };
 
     initContent = ''
-      #### ASDF INITIALIZATION ####
-      export ASDF_DATA_DIR="${asdfData}"
-      export ASDF_CONFIG_FILE="${asdfData}/.tool-versions"
+      # ------ ASDF INITIALIZATION ------ #
+      # ------------------------------------------------------------
 
-      # Load main asdf.sh from Nix store
+      # --- Setting ASDF_DATA_DIR early
+      export ASDF_DATA_DIR="${asdfData}"
+
+      # --- Loading asdf from Nix store
       if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
         . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
       fi
 
-      # Load completions (bash completions work in Zsh)
+      # --- Completions
       if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
         . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
       fi
@@ -59,7 +59,7 @@ in
 
   # ------------------------------------------------------------
   # PATH EXTENSION
-  # This MUST be under home.sessionPath, never under programs.zsh
+  # Shims must be on PATH for node/python/etc. to work
   # ------------------------------------------------------------
   home.sessionPath = [
     "${asdfData}/shims"

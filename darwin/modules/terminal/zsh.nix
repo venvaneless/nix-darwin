@@ -129,6 +129,7 @@
 	    ./plugins/fzf.nix
 	    ./plugins/history.nix
 			./plugins/mcfly.nix
+			./plugins/mise.nix
 			./plugins/starship.nix
 	    ./plugins/syntax-highlighting.nix
 	  ];

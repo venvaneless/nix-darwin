@@ -7,7 +7,6 @@
 # ====================================================================
 
 [
-  (import ./overlay-asdf.nix)
   # Add more overlays here:
   # (import ./overlay-xyz.nix)
 ]
