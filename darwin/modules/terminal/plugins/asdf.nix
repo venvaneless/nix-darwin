@@ -1,39 +1,55 @@
-# DARWIN: MISE VERSION MANAGER
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/asdf.nix
+#
+# DARWIN: ASDF VERSION MANAGER
 # ====================================================================
-# - Installs mise via Nix
-# - ALL mise state lives in ~/ven-dots/zsh/mise
-# - Global tools defined in config.toml
-# - No symlinks, no files in $HOME
+# - asdf-vm installed via Nix (binary only)
+# - ASDF_DATA_DIR = ~/ven-dots/zsh/asdf
+# - asdf is LOCAL-ONLY
+# - mise handles all global runtimes
 # ====================================================================
 
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 let
-  miseDir = "${config.home.homeDirectory}/ven-dots/zsh/mise";
+  asdfData = "${config.home.homeDirectory}/ven-dots/zsh/asdf";
 in
 {
+  # ------------------------------------------------------------
+  # ASDF PACKAGE
+  # ------------------------------------------------------------
   home.packages = [
-    pkgs.mise
+    pkgs.asdf-vm
   ];
 
+  # ------------------------------------------------------------
+  # ZSH ENVIRONMENT
+  # ------------------------------------------------------------
   programs.zsh = {
     sessionVariables = {
-      # ---- MISE ROOT LOCATIONS ----
-      MISE_CONFIG_DIR = miseDir;
-      MISE_DATA_DIR   = "${miseDir}/data";
-      MISE_CACHE_DIR  = "${miseDir}/cache";
+      ASDF_DATA_DIR = asdfData;
     };
 
     initContent = ''
-      #### MISE INITIALIZATION ####
-      if command -v mise >/dev/null 2>&1; then
-        eval "$(mise activate zsh)"
+      #### ASDF INITIALIZATION ####
+
+      export ASDF_DATA_DIR="${asdfData}"
+
+      # Load asdf from Nix store
+      if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
+        . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
+      fi
+
+      # Load completions (bash completions work in Zsh)
+      if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
+        . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
       fi
     '';
   };
 
-  # Ensure mise shims win
+  # ------------------------------------------------------------
+  # PATH EXTENSION
+  # ------------------------------------------------------------
   home.sessionPath = [
-    "${miseDir}/data/shims"
+    "${asdfData}/shims"
   ];
 }
