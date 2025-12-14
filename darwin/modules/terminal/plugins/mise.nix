@@ -34,6 +34,6 @@ in
 
   # Ensure mise shims win
   home.sessionPath = [
-    "${miseDir}/data/shims"
+    "${miseDir}/shims"
   ];
 }
