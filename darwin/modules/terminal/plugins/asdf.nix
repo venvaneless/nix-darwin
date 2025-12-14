@@ -1,66 +1,39 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/asdf.nix
-#
-# DARWIN: ASDF VERSION MANAGER
+# DARWIN: MISE VERSION MANAGER
 # ====================================================================
-# - asdf-vm installed via Nix (binary only)
-# - ASDF_DATA_DIR = ~/ven-dots/zsh/asdf
-# - Real .tool-versions lives in ven-dots and is symlinked to $HOME
-# - Shims added to PATH via home.sessionPath
+# - Installs mise via Nix
+# - ALL mise state lives in ~/ven-dots/zsh/mise
+# - Global tools defined in config.toml
+# - No symlinks, no files in $HOME
 # ====================================================================
 
-{ config, pkgs, lib, ... }:
+{ config, pkgs, ... }:
 
 let
-  asdfData = "${config.home.homeDirectory}/ven-dots/zsh/asdf";
+  miseDir = "${config.home.homeDirectory}/ven-dots/zsh/mise";
 in
 {
-  # ------------------------------------------------------------
-  # ASDF PACKAGE
-  # ------------------------------------------------------------
   home.packages = [
-    pkgs.asdf-vm
+    pkgs.mise
   ];
 
-  # ------------------------------------------------------------
-  # GLOBAL TOOL-VERSIONS (OUT-OF-STORE SYMLINK)
-  # NOTE:
-  # - In nix-darwin + integrated Home Manager, the symlink helper is:
-  #   config.lib.file.mkOutOfStoreSymlink
-  # - nixpkgs lib (lib.*) does NOT provide lib.file.*
-  # ------------------------------------------------------------
-  home.file.".tool-versions".source =
-    config.lib.file.mkOutOfStoreSymlink
-      "${config.home.homeDirectory}/ven-dots/zsh/asdf/.tool-versions";
-
-  # ------------------------------------------------------------
-  # ZSH ENVIRONMENT
-  # ------------------------------------------------------------
   programs.zsh = {
     sessionVariables = {
-      ASDF_DATA_DIR = asdfData;
+      # ---- MISE ROOT LOCATIONS ----
+      MISE_CONFIG_DIR = miseDir;
+      MISE_DATA_DIR   = "${miseDir}/data";
+      MISE_CACHE_DIR  = "${miseDir}/cache";
     };
 
     initContent = ''
-      #### ASDF INITIALIZATION ####
-
-      export ASDF_DATA_DIR="${asdfData}"
-
-      # Load asdf from Nix store
-      if [ -f "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh" ]; then
-        . "${pkgs.asdf-vm}/share/asdf-vm/asdf.sh"
-      fi
-
-      # Load completions (bash completions work in Zsh)
-      if [ -f "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash" ]; then
-        . "${pkgs.asdf-vm}/share/asdf-vm/completions/asdf.bash"
+      #### MISE INITIALIZATION ####
+      if command -v mise >/dev/null 2>&1; then
+        eval "$(mise activate zsh)"
       fi
     '';
   };
 
-  # ------------------------------------------------------------
-  # PATH EXTENSION
-  # ------------------------------------------------------------
+  # Ensure mise shims win
   home.sessionPath = [
-    "${asdfData}/shims"
+    "${miseDir}/data/shims"
   ];
 }
