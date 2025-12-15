@@ -1,9 +1,9 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/a-better-finder-rename.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/a-better-finder-attributes.nix
 #
-# A BETTER FINDER RENAME: INSTALL APP
+# A BETTER FINDER ATTRIBUTES: INSTALL APP
 # ============================================================
-# Installs "A Better Finder Rename" for macOS via Homebrew cask
-# and places it into a custom Applications directory.
+# Installs "A Better Finder Attributes" for macOS via Homebrew
+# cask and places it into a custom Applications directory.
 # ============================================================
 
 { ... }:
@@ -11,8 +11,8 @@
 let
   # APP METADATA
   # ------------------------------------------------------------
-  appName   = "A Better Finder Rename.app";
-  caskName  = "a-better-finder-rename";
+  appName   = "A Better Finder Attributes.app";
+  caskName  = "a-better-finder-attributes";
   targetDir = "/Applications/Tools";
 in
 {
@@ -27,7 +27,7 @@ in
 
   # DARWIN: ENSURE APPLICATION DIRECTORY EXISTS
   # ------------------------------------------------------------
-  system.activationScripts.ensureABFRAppDir.text = ''
+  system.activationScripts.ensureABFAttributesAppDir.text = ''
     if [ ! -d "${targetDir}" ]; then
       echo "[${appName}] Creating application directory: ${targetDir}"
       mkdir -p "${targetDir}"

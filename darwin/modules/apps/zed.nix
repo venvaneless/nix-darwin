@@ -19,7 +19,7 @@ in
   homebrew.casks = [
     { name = caskName; args = { appdir = targetDir; }; }
   ];
-
+  
   system.activationScripts.ensureZedAppDir.text = ''
     mkdir -p "${targetDir}"
   '';

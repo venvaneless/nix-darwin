@@ -9,6 +9,8 @@
 { ... }:
 {
   imports = [
+  	./a-better-finder-attributes.nix
+   	./a-better-finder-rename.nix
   	./espanso.nix
    	./iterm.nix
     ./obsidian.nix
