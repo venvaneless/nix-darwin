@@ -67,6 +67,9 @@
 
     # New Bash
     bashInteractive
+    
+    # Bitwarden CLI
+    bitwarden-cli
 
     # Git diff viewer with syntax highlighting
     delta
