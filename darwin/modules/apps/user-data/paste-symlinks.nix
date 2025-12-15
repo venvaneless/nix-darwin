@@ -1,91 +1,44 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/paste-symlinks.nix
 #
-# DARWIN: PASTE USER-DATA
+# PASTE USER-DATA
 # ============================================================
 # Paste is a clipboard manager for macOS.
 #
-# Moves app state into ven-dots and symlinks it back:
-#   - Application Support folder
-#   - Preferences plist
+# User-owned preferences:
+# - com.wiheads.paste-direct.plist
 #
-# Source of truth:
-#   /Users/ven/ven-dots/user-data/apps/paste
+# System-owned Apple plists are intentionally ignored.
 # ============================================================
 
 { config, lib, ... }:
 
 let
-  # PATHS: ROOTS
-  # ------------------------------------------------------------
   home    = config.home.homeDirectory;
   dotsApp = "/Users/ven/ven-dots/user-data/apps";
 
-  # APP: IDENTIFIERS
-  # ------------------------------------------------------------
   appFolder = "paste";
-  asName    = "Paste";
 
-  # APP: RUNTIME PATHS
-  # ------------------------------------------------------------
-  asPath    = "${home}/Library/Application Support/${asName}";
-  prefPlist = "${home}/Library/Preferences/com.pasteapp.paste.plist";
+  prefPlist = "${home}/Library/Preferences/com.wiheads.paste-direct.plist";
 
-  # APP: DOTFILES PATHS
-  # ------------------------------------------------------------
-  dotRoot  = "${dotsApp}/${appFolder}";
-  dotPlist = "${dotRoot}/com.pasteapp.paste.plist";
-
-  # PLIST MODE
-  # ------------------------------------------------------------
-  plistMode = "single";
+  dotRoot   = "${dotsApp}/${appFolder}";
+  dotPlist  = "${dotRoot}/com.wiheads.paste-direct.plist";
 in
 {
   home.activation.pasteUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Managing user-data: ${asName}"
-      echo "NOTE: Close Paste during first migration if it is running."
+      echo "Managing user-data: Paste"
+      echo "NOTE: Close Paste during first migration."
 
-      # DOTFILES: ENSURE ROOT EXISTS
-      # ------------------------------------------------------------
       mkdir -p "${dotRoot}"
 
-      # APPLICATION SUPPORT: MIGRATE + SYMLINK
-      # ------------------------------------------------------------
-      if [ -L "${asPath}" ]; then
-        rm -f "${asPath}"
+      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPlist}" ]; then
+        mv "${prefPlist}" "${dotPlist}"
       fi
 
-      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        echo "Migrating Application Support → dotfiles"
-        mkdir -p "${dotRoot}"
-        mv "${asPath}/"* "${dotRoot}/" 2>/dev/null || true
-        rmdir "${asPath}" 2>/dev/null || true
-      fi
+      [ -f "${dotPlist}" ] || : > "${dotPlist}"
+      ln -sfn "${dotPlist}" "${prefPlist}"
 
-      rm -rf "${asPath}" 2>/dev/null || true
-      ln -sfn "${dotRoot}" "${asPath}"
-
-      # PREFERENCES: MIGRATE + SYMLINK
-      # ------------------------------------------------------------
-      if [ "${plistMode}" = "multi" ]; then
-        mkdir -p "${dotRoot}/Preferences"
-        dotPlistPath="${dotRoot}/Preferences/$(basename "${prefPlist}")"
-      else
-        dotPlistPath="${dotPlist}"
-      fi
-
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "$dotPlistPath" ]; then
-        echo "Moving plist → dotfiles"
-        mv "${prefPlist}" "$dotPlistPath"
-      fi
-
-      if [ ! -f "$dotPlistPath" ]; then
-        : > "$dotPlistPath"
-      fi
-
-      ln -sfn "$dotPlistPath" "${prefPlist}"
-
-      echo "Done: ${asName}"
+      echo "Done: Paste"
     '';
 }

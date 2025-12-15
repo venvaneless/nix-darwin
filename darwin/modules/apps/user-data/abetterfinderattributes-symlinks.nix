@@ -1,43 +1,46 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/abetterfinderattributes-symlinks.nix
 #
-# DARWIN: A BETTER FINDER ATTRIBUTES USER-DATA
+# A BETTER FINDER ATTRIBUTES USER-DATA
 # ============================================================
 # A Better Finder Attributes is a bulk file attribute editor for macOS.
 #
 # Moves app state into ven-dots and symlinks it back:
-#   - Application Support folder
-#   - Preferences plist
+# - Application Support directory
+# - Preferences plists (multiple)
 #
 # Source of truth:
-#   /Users/ven/ven-dots/user-data/apps/a_better_finder_attributes
+# /Users/ven/ven-dots/user-data/apps/a_better_finder_attributes
 # ============================================================
 
 { config, lib, ... }:
 
 let
-  # PATHS: ROOTS
+  # ------------------------------------------------------------
+  # PATH ROOTS
   # ------------------------------------------------------------
   home    = config.home.homeDirectory;
   dotsApp = "/Users/ven/ven-dots/user-data/apps";
 
-  # APP: IDENTIFIERS
+  # ------------------------------------------------------------
+  # APP IDENTIFIERS
   # ------------------------------------------------------------
   appFolder = "a_better_finder_attributes";
   asName    = "A Better Finder Attributes";
 
-  # APP: RUNTIME PATHS
   # ------------------------------------------------------------
-  asPath    = "${home}/Library/Application Support/${asName}";
-  prefPlist = "${home}/Library/Preferences/com.publicspace.abfa.plist";
+  # RUNTIME PATHS
+  # ------------------------------------------------------------
+  asPath     = "${home}/Library/Application Support/${asName}";
+  prefPlistA = "${home}/Library/Preferences/com.publicspace.abfa.plist";
+  prefPlistB = "${home}/Library/Preferences/net.publicspace.abfa7.plist";
 
-  # APP: DOTFILES PATHS
   # ------------------------------------------------------------
-  dotRoot  = "${dotsApp}/${appFolder}";
-  dotPlist = "${dotRoot}/com.publicspace.abfa.plist";
-
-  # PLIST MODE
+  # DOTFILES PATHS
   # ------------------------------------------------------------
-  plistMode = "single";
+  dotRoot    = "${dotsApp}/${appFolder}";
+  dotAsDir   = "${dotRoot}/Application Support";
+  dotPlistA  = "${dotRoot}/com.publicspace.abfa.plist";
+  dotPlistB  = "${dotRoot}/net.publicspace.abfa7.plist";
 in
 {
   home.activation.abfaUserData =
@@ -45,45 +48,50 @@ in
       set -euo pipefail
       echo "Managing user-data: ${asName}"
 
-      # DOTFILES: ENSURE ROOT EXISTS
+      # ------------------------------------------------------------
+      # DOTFILES ROOT
       # ------------------------------------------------------------
       mkdir -p "${dotRoot}"
 
+      # ------------------------------------------------------------
       # APPLICATION SUPPORT: MIGRATE + SYMLINK
       # ------------------------------------------------------------
+      mkdir -p "${dotAsDir}"
+
       if [ -L "${asPath}" ]; then
         rm -f "${asPath}"
       fi
 
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
         echo "Migrating Application Support → dotfiles"
-        mkdir -p "${dotRoot}"
-        mv "${asPath}/"* "${dotRoot}/" 2>/dev/null || true
+        mv "${asPath}/"* "${dotAsDir}/" 2>/dev/null || true
         rmdir "${asPath}" 2>/dev/null || true
       fi
 
       rm -rf "${asPath}" 2>/dev/null || true
-      ln -sfn "${dotRoot}" "${asPath}"
+      ln -sfn "${dotAsDir}" "${asPath}"
 
-      # PREFERENCES: MIGRATE + SYMLINK
       # ------------------------------------------------------------
-      if [ "${plistMode}" = "multi" ]; then
-        mkdir -p "${dotRoot}/Preferences"
-        dotPlistPath="${dotRoot}/Preferences/$(basename "${prefPlist}")"
-      else
-        dotPlistPath="${dotPlist}"
+      # PREFERENCES PLIST A: com.publicspace.abfa.plist
+      # ------------------------------------------------------------
+      if [ -f "${prefPlistA}" ] && [ ! -L "${prefPlistA}" ] && [ ! -f "${dotPlistA}" ]; then
+        echo "Moving plist → dotfiles: $(basename "${prefPlistA}")"
+        mv "${prefPlistA}" "${dotPlistA}"
       fi
 
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "$dotPlistPath" ]; then
-        echo "Moving plist → dotfiles"
-        mv "${prefPlist}" "$dotPlistPath"
+      [ -f "${dotPlistA}" ] || : > "${dotPlistA}"
+      ln -sfn "${dotPlistA}" "${prefPlistA}"
+
+      # ------------------------------------------------------------
+      # PREFERENCES PLIST B: net.publicspace.abfa7.plist
+      # ------------------------------------------------------------
+      if [ -f "${prefPlistB}" ] && [ ! -L "${prefPlistB}" ] && [ ! -f "${dotPlistB}" ]; then
+        echo "Moving plist → dotfiles: $(basename "${prefPlistB}")"
+        mv "${prefPlistB}" "${dotPlistB}"
       fi
 
-      if [ ! -f "$dotPlistPath" ]; then
-        : > "$dotPlistPath"
-      fi
-
-      ln -sfn "$dotPlistPath" "${prefPlist}"
+      [ -f "${dotPlistB}" ] || : > "${dotPlistB}"
+      ln -sfn "${dotPlistB}" "${prefPlistB}"
 
       echo "Done: ${asName}"
     '';

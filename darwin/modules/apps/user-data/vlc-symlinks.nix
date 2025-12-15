@@ -1,43 +1,42 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/vlc-symlinks.nix
 #
-# DARWIN: VLC USER-DATA
+# VLC USER-DATA
 # ============================================================
-# VLC is a media player for macOS.
+# VLC media player for macOS.
 #
-# Moves app state into ven-dots and symlinks it back:
-#   - Application Support folder
-#   - Preferences plist
+# VLC stores all user state in:
+# - ~/Library/Preferences/org.videolan.vlc/ (directory)
+# - ~/Library/Preferences/org.videolan.vlc.plist
 #
-# Source of truth:
-#   /Users/ven/ven-dots/user-data/apps/vlc
+# This module migrates both into ven-dots and symlinks them back.
 # ============================================================
 
 { config, lib, ... }:
 
 let
-  # PATHS: ROOTS
+  # ------------------------------------------------------------
+  # PATH ROOTS
   # ------------------------------------------------------------
   home    = config.home.homeDirectory;
   dotsApp = "/Users/ven/ven-dots/user-data/apps";
 
-  # APP: IDENTIFIERS
+  # ------------------------------------------------------------
+  # VLC IDENTIFIERS
   # ------------------------------------------------------------
   appFolder = "vlc";
-  asName    = "org.videolan.vlc";
 
-  # APP: RUNTIME PATHS
   # ------------------------------------------------------------
-  asPath    = "${home}/Library/Application Support/${asName}";
+  # VLC RUNTIME PATHS
+  # ------------------------------------------------------------
+  prefDir   = "${home}/Library/Preferences/org.videolan.vlc";
   prefPlist = "${home}/Library/Preferences/org.videolan.vlc.plist";
 
-  # APP: DOTFILES PATHS
   # ------------------------------------------------------------
-  dotRoot  = "${dotsApp}/${appFolder}";
-  dotPlist = "${dotRoot}/org.videolan.vlc.plist";
-
-  # PLIST MODE
+  # DOTFILES PATHS
   # ------------------------------------------------------------
-  plistMode = "single";
+  dotRoot     = "${dotsApp}/${appFolder}";
+  dotPrefDir  = "${dotRoot}/org.videolan.vlc";
+  dotPrefPlist = "${dotRoot}/org.videolan.vlc.plist";
 in
 {
   home.activation.vlcUserData =
@@ -45,45 +44,32 @@ in
       set -euo pipefail
       echo "Managing user-data: VLC"
 
-      # DOTFILES: ENSURE ROOT EXISTS
+      # ------------------------------------------------------------
+      # DOTFILES ROOT
       # ------------------------------------------------------------
       mkdir -p "${dotRoot}"
 
-      # APPLICATION SUPPORT: MIGRATE + SYMLINK
       # ------------------------------------------------------------
-      if [ -L "${asPath}" ]; then
-        rm -f "${asPath}"
-      fi
-
-      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        echo "Migrating Application Support → dotfiles"
-        mkdir -p "${dotRoot}"
-        mv "${asPath}/"* "${dotRoot}/" 2>/dev/null || true
-        rmdir "${asPath}" 2>/dev/null || true
-      fi
-
-      rm -rf "${asPath}" 2>/dev/null || true
-      ln -sfn "${dotRoot}" "${asPath}"
-
-      # PREFERENCES: MIGRATE + SYMLINK
+      # PREFERENCES DIRECTORY
       # ------------------------------------------------------------
-      if [ "${plistMode}" = "multi" ]; then
-        mkdir -p "${dotRoot}/Preferences"
-        dotPlistPath="${dotRoot}/Preferences/$(basename "${prefPlist}")"
-      else
-        dotPlistPath="${dotPlist}"
+      if [ -d "${prefDir}" ] && [ ! -L "${prefDir}" ]; then
+        echo "Migrating VLC preferences directory"
+        mv "${prefDir}" "${dotPrefDir}"
       fi
 
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "$dotPlistPath" ]; then
-        echo "Moving plist → dotfiles"
-        mv "${prefPlist}" "$dotPlistPath"
+      rm -rf "${prefDir}" 2>/dev/null || true
+      ln -sfn "${dotPrefDir}" "${prefDir}"
+
+      # ------------------------------------------------------------
+      # PREFERENCES PLIST
+      # ------------------------------------------------------------
+      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPrefPlist}" ]; then
+        echo "Migrating VLC plist"
+        mv "${prefPlist}" "${dotPrefPlist}"
       fi
 
-      if [ ! -f "$dotPlistPath" ]; then
-        : > "$dotPlistPath"
-      fi
-
-      ln -sfn "$dotPlistPath" "${prefPlist}"
+      [ -f "${dotPrefPlist}" ] || : > "${dotPrefPlist}"
+      ln -sfn "${dotPrefPlist}" "${prefPlist}"
 
       echo "Done: VLC"
     '';
