@@ -29,9 +29,15 @@
 
     # auto-update when switching
     global.autoUpdate = true;
-
-    # If a package is removed from config, uninstall it
-    onActivation.cleanup = "uninstall";
+    
+    onActivation = {
+    		# If removed, uninstall it
+      	cleanup = "zap";
+        
+        # Reinstall if missing
+        upgrade = true;
+      };
+      
 
     # ----- Brews -----
     brews = [
@@ -44,13 +50,6 @@
         name = "ungoogled-chromium";
         args = {
           appdir = "/Applications";
-        };
-      }
-
-      {
-        name = "appcleaner";
-        args = {
-          appdir = "/Applications/System";
         };
       }
     ];
