@@ -2,89 +2,58 @@
 #
 # DARWIN: YATE USER-DATA
 # ============================================================
-# Yate is an audio tagging and metadata editor for macOS.
-#
-# Moves app state into ven-dots and symlinks it back:
-#   - Application Support folder
-#   - Preferences plist
+# Yate is an audio metadata editor.
 #
 # Source of truth:
 #   /Users/ven/ven-dots/user-data/apps/yate
+#
+# Runtime locations:
+#   ~/Library/Application Support/Yate
+#   ~/Library/Preferences/com.2manyrobots.Yate.plist
 # ============================================================
 
 { config, lib, ... }:
 
 let
-  # PATHS: ROOTS
-  # ------------------------------------------------------------
   home    = config.home.homeDirectory;
   dotsApp = "/Users/ven/ven-dots/user-data/apps";
 
-  # APP: IDENTIFIERS
-  # ------------------------------------------------------------
   appFolder = "yate";
-  asName    = "Yate";
+  asDirName = "Yate";
 
-  # APP: RUNTIME PATHS
-  # ------------------------------------------------------------
-  asPath    = "${home}/Library/Application Support/${asName}";
-  prefPlist = "${home}/Library/Preferences/com.2manyrobots.Yate.plist";
+  asPath    = "${home}/Library/Application Support/${asDirName}";
+  plist     = "${home}/Library/Preferences/com.2manyrobots.Yate.plist";
 
-  # APP: DOTFILES PATHS
-  # ------------------------------------------------------------
   dotRoot  = "${dotsApp}/${appFolder}";
   dotPlist = "${dotRoot}/com.2manyrobots.Yate.plist";
-
-  # PLIST MODE
-  # ------------------------------------------------------------
-  plistMode = "single";
 in
 {
   home.activation.yateUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Managing user-data: ${asName}"
+      echo "Managing user-data: Yate"
 
-      # DOTFILES: ENSURE ROOT EXISTS
-      # ------------------------------------------------------------
       mkdir -p "${dotRoot}"
 
-      # APPLICATION SUPPORT: MIGRATE + SYMLINK
-      # ------------------------------------------------------------
-      if [ -L "${asPath}" ]; then
-        rm -f "${asPath}"
-      fi
-
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        echo "Migrating Application Support → dotfiles"
-        mkdir -p "${dotRoot}"
-        mv "${asPath}/"* "${dotRoot}/" 2>/dev/null || true
-        rmdir "${asPath}" 2>/dev/null || true
+        for item in "${asPath}"/*; do
+          [ -e "$item" ] || continue
+          name="$(basename "$item")"
+          [ -e "${dotRoot}/$name" ] || mv "$item" "${dotRoot}/$name"
+        done
       fi
+      mkdir -p "${asPath}"
 
-      rm -rf "${asPath}" 2>/dev/null || true
-      ln -sfn "${dotRoot}" "${asPath}"
+      for item in "${dotRoot}"/*; do
+        name="$(basename "$item")"
+        case "$name" in *.plist) continue ;; esac
+        ln -sfn "$item" "${asPath}/$name"
+      done
 
-      # PREFERENCES: MIGRATE + SYMLINK
-      # ------------------------------------------------------------
-      if [ "${plistMode}" = "multi" ]; then
-        mkdir -p "${dotRoot}/Preferences"
-        dotPlistPath="${dotRoot}/Preferences/$(basename "${prefPlist}")"
-      else
-        dotPlistPath="${dotPlist}"
-      fi
+      [ -f "${plist}" ] && [ ! -f "${dotPlist}" ] && mv "${plist}" "${dotPlist}"
+      [ -f "${dotPlist}" ] || : > "${dotPlist}"
+      ln -sfn "${dotPlist}" "${plist}"
 
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "$dotPlistPath" ]; then
-        echo "Moving plist → dotfiles"
-        mv "${prefPlist}" "$dotPlistPath"
-      fi
-
-      if [ ! -f "$dotPlistPath" ]; then
-        : > "$dotPlistPath"
-      fi
-
-      ln -sfn "$dotPlistPath" "${prefPlist}"
-
-      echo "Done: ${asName}"
+      echo "Done: Yate"
     '';
 }

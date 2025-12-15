@@ -1,14 +1,16 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/abetterfinderrename-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/a-better-finder-rename-symlinks.nix
 #
-# A BETTER FINDER RENAME USER-DATA
+# DARWIN: A BETTER FINDER RENAME USER-DATA
 # ============================================================
-# A Better Finder Rename is a bulk renaming utility for macOS.
+# A Better Finder Rename is a bulk file renaming tool.
 #
-# Stores all user data in ~/Library/Preferences:
-# - net.publicspace.abfr12.plist
-# - ABFR Registration
+# Source of truth:
+#   /Users/ven/ven-dots/user-data/apps/a_better_finder_rename
 #
-# This module migrates both into ven-dots and symlinks them back.
+# Runtime locations:
+#   ~/Library/Application Support/A Better Finder Rename 12
+#   ~/Library/Preferences/net.publicspace.abfr12.plist
+#   ~/Library/Preferences/ABFR Registration
 # ============================================================
 
 { config, lib, ... }:
@@ -18,13 +20,15 @@ let
   dotsApp = "/Users/ven/ven-dots/user-data/apps";
 
   appFolder = "a_better_finder_rename";
+  asDirName = "A Better Finder Rename 12";
 
-  plistPath = "${home}/Library/Preferences/net.publicspace.abfr12.plist";
-  regPath   = "${home}/Library/Preferences/ABFR Registration";
+  asPath   = "${home}/Library/Application Support/${asDirName}";
+  plist    = "${home}/Library/Preferences/net.publicspace.abfr12.plist";
+  regFile  = "${home}/Library/Preferences/ABFR Registration";
 
-  dotRoot   = "${dotsApp}/${appFolder}";
-  dotPlist  = "${dotRoot}/net.publicspace.abfr12.plist";
-  dotReg    = "${dotRoot}/ABFR Registration";
+  dotRoot  = "${dotsApp}/${appFolder}";
+  dotPlist = "${dotRoot}/net.publicspace.abfr12.plist";
+  dotReg   = "${dotRoot}/ABFR Registration";
 in
 {
   home.activation.abfrUserData =
@@ -34,25 +38,29 @@ in
 
       mkdir -p "${dotRoot}"
 
-      # ------------------------------------------------------------
-      # PLIST
-      # ------------------------------------------------------------
-      if [ -f "${plistPath}" ] && [ ! -L "${plistPath}" ] && [ ! -f "${dotPlist}" ]; then
-        mv "${plistPath}" "${dotPlist}"
+      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
+        for item in "${asPath}"/*; do
+          [ -e "$item" ] || continue
+          name="$(basename "$item")"
+          [ -e "${dotRoot}/$name" ] || mv "$item" "${dotRoot}/$name"
+        done
       fi
+      mkdir -p "${asPath}"
+
+      for item in "${dotRoot}"/*; do
+        name="$(basename "$item")"
+        case "$name" in *.plist|"ABFR Registration") continue ;; esac
+        ln -sfn "$item" "${asPath}/$name"
+      done
+
+      [ -f "${plist}" ] && [ ! -f "${dotPlist}" ] && mv "${plist}" "${dotPlist}"
+      [ -f "${regFile}" ] && [ ! -f "${dotReg}" ] && mv "${regFile}" "${dotReg}"
 
       [ -f "${dotPlist}" ] || : > "${dotPlist}"
-      ln -sfn "${dotPlist}" "${plistPath}"
+      [ -f "${dotReg}" ]   || : > "${dotReg}"
 
-      # ------------------------------------------------------------
-      # REGISTRATION FILE
-      # ------------------------------------------------------------
-      if [ -f "${regPath}" ] && [ ! -L "${regPath}" ] && [ ! -f "${dotReg}" ]; then
-        mv "${regPath}" "${dotReg}"
-      fi
-
-      [ -f "${dotReg}" ] || : > "${dotReg}"
-      ln -sfn "${dotReg}" "${regPath}"
+      ln -sfn "${dotPlist}" "${plist}"
+      ln -sfn "${dotReg}"   "${regFile}"
 
       echo "Done: A Better Finder Rename"
     '';

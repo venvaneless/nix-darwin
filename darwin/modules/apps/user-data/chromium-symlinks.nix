@@ -122,6 +122,6 @@ in
       ln -sfn "${dotPlist}" "${prefPlist}"
       echo "Plist symlinked: ${prefPlist} → ${dotPlist}"
 
-      echo "Chromium user-data sync complete."
+      echo "Done: Chrome"
     '';
 }
