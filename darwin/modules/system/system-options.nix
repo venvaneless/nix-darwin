@@ -23,6 +23,7 @@
     ./dock-options.nix
     ./finder-options.nix
     ./fonts.nix
+    ./statusbar.nix
     ./trackpad.nix
   ];
 }

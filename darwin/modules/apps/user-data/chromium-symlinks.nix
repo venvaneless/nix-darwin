@@ -1,3 +1,5 @@
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/chromium-symlinks.nix
+# 
 # DARWIN: CHROMIUM USER-DATA + PROFILE SYMLINKING
 # ============================================================
 # Source of truth:
