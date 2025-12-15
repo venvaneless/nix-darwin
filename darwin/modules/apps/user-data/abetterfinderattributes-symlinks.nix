@@ -2,93 +2,57 @@
 #
 # DARWIN: A BETTER FINDER ATTRIBUTES USER-DATA
 # ============================================================
-# A Better Finder Attributes is a bulk file attribute editor.
+# Bulk file attribute editor.
 #
-# Source of truth:
+# SOURCE OF TRUTH:
 #   /Users/ven/ven-dots/user-data/apps/a_better_finder_attributes
 #
-# Runtime locations:
+# RUNTIME LOCATIONS:
 #   ~/Library/Application Support/A Better Finder Attributes
 #   ~/Library/Preferences/com.publicspace.abfa.plist
 #   ~/Library/Preferences/net.publicspace.abfa7.plist
-#
-# Responsibilities:
-#   - Ensure dotfiles folder exists
-#   - Move Application Support contents into dotfiles
-#   - Move Preferences plists into dotfiles
-#   - Recreate original locations
-#   - Symlink files back to original paths
-#
-# IMPORTANT:
-#   - No symlinks are ever created inside the dotfiles folder
-#   - Only individual files are symlinked (never whole directories)
 # ============================================================
 
 { config, lib, ... }:
 
 let
-  # ------------------------------------------------------------
-  # PATH ROOTS
-  # ------------------------------------------------------------
   home    = config.home.homeDirectory;
   dotsApp = "/Users/ven/ven-dots/user-data/apps";
 
-  # ------------------------------------------------------------
-  # APP IDENTIFIERS
-  # ------------------------------------------------------------
-  appFolder = "a_better_finder_attributes";
-  asDirName = "A Better Finder Attributes";
+  appFolder  = "a_better_finder_attributes";
+  asRealName = "A Better Finder Attributes";
 
-  # ------------------------------------------------------------
-  # RUNTIME PATHS
-  # ------------------------------------------------------------
-  asPath      = "${home}/Library/Application Support/${asDirName}";
-  prefPlistA  = "${home}/Library/Preferences/com.publicspace.abfa.plist";
-  prefPlistB  = "${home}/Library/Preferences/net.publicspace.abfa7.plist";
+  asPath = "${home}/Library/Application Support/${asRealName}";
 
-  # ------------------------------------------------------------
-  # DOTFILES PATHS
-  # ------------------------------------------------------------
-  dotRoot     = "${dotsApp}/${appFolder}";
-  dotPlistA   = "${dotRoot}/com.publicspace.abfa.plist";
-  dotPlistB   = "${dotRoot}/net.publicspace.abfa7.plist";
+  plistA = "${home}/Library/Preferences/com.publicspace.abfa.plist";
+  plistB = "${home}/Library/Preferences/net.publicspace.abfa7.plist";
+
+  dotRoot  = "${dotsApp}/${appFolder}";
+  dotPrefs = "${dotRoot}/Preferences";
 in
 {
   home.activation.abfaUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Managing user-data: A Better Finder Attributes"
+      echo "[ABFA] Syncing user-data"
 
-      # DOTFILES
-      mkdir -p "${dotRoot}"
+      mkdir -p "${dotsApp}"
 
-      # APPLICATION SUPPORT → DOTFILES
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        for item in "${asPath}"/*; do
-          [ -e "$item" ] || continue
-          name="$(basename "$item")"
-          [ -e "${dotRoot}/$name" ] || mv "$item" "${dotRoot}/$name"
-        done
+        mv "${asPath}" "${dotRoot}"
       fi
-      mkdir -p "${asPath}"
 
-      # SYMLINK BACK (FILES ONLY)
-      for item in "${dotRoot}"/*; do
-        name="$(basename "$item")"
-        case "$name" in *.plist) continue ;; esac
-        ln -sfn "$item" "${asPath}/$name"
-      done
+      rm -rf "${asPath}" 2>/dev/null || true
+      ln -sfn "${dotRoot}" "${asPath}"
 
-      # PREFERENCES
-      [ -f "${prefPlistA}" ] && [ ! -f "${dotPlistA}" ] && mv "${prefPlistA}" "${dotPlistA}"
-      [ -f "${prefPlistB}" ] && [ ! -f "${dotPlistB}" ] && mv "${prefPlistB}" "${dotPlistB}"
+      mkdir -p "${dotPrefs}"
 
-      [ -f "${dotPlistA}" ] || : > "${dotPlistA}"
-      [ -f "${dotPlistB}" ] || : > "${dotPlistB}"
+      [ -f "${plistA}" ] && [ ! -f "${dotPrefs}/$(basename "${plistA}")" ] && mv "${plistA}" "${dotPrefs}/"
+      [ -f "${plistB}" ] && [ ! -f "${dotPrefs}/$(basename "${plistB}")" ] && mv "${plistB}" "${dotPrefs}/"
 
-      ln -sfn "${dotPlistA}" "${prefPlistA}"
-      ln -sfn "${dotPlistB}" "${prefPlistB}"
+      ln -sfn "${dotPrefs}/$(basename "${plistA}")" "${plistA}"
+      ln -sfn "${dotPrefs}/$(basename "${plistB}")" "${plistB}"
 
-      echo "Done: A Better Finder Attributes"
+      echo "A Better Finder Attributes: Done: User-data sync complete"
     '';
 }

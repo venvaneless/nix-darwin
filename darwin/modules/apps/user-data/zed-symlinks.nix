@@ -200,6 +200,6 @@ in
 
       ln -sfn "${dotPlist}" "${plist}"
 
-      echo "Done: Zed"
+      echo "Zed: Done: User-data sync complete"
     '';
 }

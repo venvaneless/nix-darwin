@@ -4,10 +4,10 @@
 # ============================================================
 # AppCleaner is a lightweight app uninstaller.
 #
-# Source of truth:
+# SOURCE OF TRUTH:
 #   /Users/ven/ven-dots/user-data/apps/appcleaner
 #
-# Runtime locations:
+# RUNTIME LOCATION:
 #   ~/Library/Preferences/net.freemacsoft.AppCleaner.plist
 # ============================================================
 
@@ -19,22 +19,25 @@ let
 
   appFolder = "appcleaner";
 
-  plist    = "${home}/Library/Preferences/net.freemacsoft.AppCleaner.plist";
-  dotRoot  = "${dotsApp}/${appFolder}";
-  dotPlist = "${dotRoot}/net.freemacsoft.AppCleaner.plist";
+  prefPlist = "${home}/Library/Preferences/net.freemacsoft.AppCleaner.plist";
+  dotRoot   = "${dotsApp}/${appFolder}";
+  dotPlist  = "${dotRoot}/net.freemacsoft.AppCleaner.plist";
 in
 {
   home.activation.appCleanerUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Managing user-data: AppCleaner"
+      echo "[AppCleaner] Syncing user-data"
 
       mkdir -p "${dotRoot}"
 
-      [ -f "${plist}" ] && [ ! -f "${dotPlist}" ] && mv "${plist}" "${dotPlist}"
-      [ -f "${dotPlist}" ] || : > "${dotPlist}"
-      ln -sfn "${dotPlist}" "${plist}"
+      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPlist}" ]; then
+        mv "${prefPlist}" "${dotPlist}"
+      fi
 
-      echo "Done: AppCleaner"
+      [ -f "${dotPlist}" ] || : > "${dotPlist}"
+      ln -sfn "${dotPlist}" "${prefPlist}"
+      
+      echo "AppCleaner: Done: User-data sync complete"
     '';
 }

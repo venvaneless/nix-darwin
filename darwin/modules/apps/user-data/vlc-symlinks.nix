@@ -4,26 +4,40 @@
 # ============================================================
 # VLC is a media player for macOS.
 #
-# Source of truth:
+# This module relocates VLC user data into ven-dots so it can be
+# versioned, backed up, and synced as a single source of truth.
+#
+# ------------------------------------------------------------
+# SOURCE OF TRUTH
+# ------------------------------------------------------------
 #   /Users/ven/ven-dots/user-data/apps/vlc
 #
-# Runtime locations:
-#   ~/Library/Application Support/org.videolan.vlc/
-#     - vlcrc
-#     - ml.xspf
+# This directory is ALWAYS:
+#   - a real directory
+#   - never a symlink
+#   - the authoritative location for VLC state
 #
+# ------------------------------------------------------------
+# RUNTIME LOCATIONS (macOS EXPECTS THESE)
+# ------------------------------------------------------------
+#   ~/Library/Application Support/org.videolan.vlc
 #   ~/Library/Preferences/org.videolan.vlc.plist
 #
-# Responsibilities:
-#   - Ensure dotfiles folder exists
-#   - Move VLC files from Application Support into dotfiles
-#   - Move VLC plist from Preferences into dotfiles
-#   - Recreate original locations
-#   - Symlink files back to their original paths
+# ------------------------------------------------------------
+# RESPONSIBILITIES
+# ------------------------------------------------------------
+#   - Ensure dotfiles root exists
+#   - Move VLC Application Support directory into dotfiles
+#   - Recreate Application Support path as a symlink
+#   - Move VLC plist into dotfiles
+#   - Symlink plist back to Preferences
 #
-# IMPORTANT:
-#   - No symlinks are ever created inside the dotfiles folder
-#   - Only individual files are symlinked (never whole directories)
+# ------------------------------------------------------------
+# IMPORTANT
+# ------------------------------------------------------------
+#   - No symlinks are ever created INSIDE the dotfiles folder
+#   - The Application Support DIRECTORY is the unit of state
+#   - Folder names may differ between dotfiles and runtime
 # ============================================================
 
 { config, lib, ... }:
@@ -36,76 +50,65 @@ let
   dotsApp = "/Users/ven/ven-dots/user-data/apps";
 
   # ------------------------------------------------------------
-  # VLC IDENTIFIERS
+  # APP IDENTIFIERS
   # ------------------------------------------------------------
+  # Normalized name used in ven-dots (lowercase, no spaces)
   appFolder = "vlc";
 
-  # ------------------------------------------------------------
-  # VLC RUNTIME PATHS
-  # ------------------------------------------------------------
-  asDirName = "org.videolan.vlc";
-  asPath    = "${home}/Library/Application Support/${asDirName}";
+  # Actual folder name macOS / VLC uses
+  asRealName = "org.videolan.vlc";
 
+  # ------------------------------------------------------------
+  # RUNTIME PATHS (EXPECTED BY macOS)
+  # ------------------------------------------------------------
+  asPath    = "${home}/Library/Application Support/${asRealName}";
   prefPlist = "${home}/Library/Preferences/org.videolan.vlc.plist";
 
   # ------------------------------------------------------------
   # DOTFILES PATHS (SOURCE OF TRUTH)
   # ------------------------------------------------------------
-  dotRoot   = "${dotsApp}/${appFolder}";
-  dotPlist  = "${dotRoot}/org.videolan.vlc.plist";
+  dotRoot  = "${dotsApp}/${appFolder}";
+  dotPlist = "${dotRoot}/org.videolan.vlc.plist";
 in
 {
   home.activation.vlcUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Managing user-data: VLC"
+      echo "[VLC] Syncing user-data"
 
       # ------------------------------------------------------------
-      # DOTFILES: ENSURE ROOT EXISTS
+      # ENSURE DOTFILES ROOT EXISTS
       # ------------------------------------------------------------
-      mkdir -p "${dotRoot}"
+      # This guarantees the source of truth always exists
+      mkdir -p "${dotsApp}"
 
       # ------------------------------------------------------------
-      # APPLICATION SUPPORT: MOVE FILES → DOTFILES
+      # APPLICATION SUPPORT: MOVE → DOTFILES
       # ------------------------------------------------------------
+      # If VLC has already created its Application Support folder,
+      # and it is NOT a symlink, move it into ven-dots.
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        for item in "${asPath}"/*; do
-          [ -e "$item" ] || continue
-          name="$(basename "$item")"
-
-          if [ ! -e "${dotRoot}/$name" ]; then
-            mv "$item" "${dotRoot}/$name"
-          else
-            rm -rf "$item"
-          fi
-        done
+        echo "[VLC] Moving Application Support → ven-dots"
+        mv "${asPath}" "${dotRoot}"
       fi
 
-      # Ensure Application Support directory exists
-      mkdir -p "${asPath}"
-
       # ------------------------------------------------------------
-      # APPLICATION SUPPORT: SYMLINK FILES BACK
+      # APPLICATION SUPPORT: RECREATE AS SYMLINK
       # ------------------------------------------------------------
-      for item in "${dotRoot}"/*; do
-        [ -e "$item" ] || continue
-        name="$(basename "$item")"
-
-        # Skip plist files
-        case "$name" in
-          *.plist) continue ;;
-        esac
-
-        ln -sfn "$item" "${asPath}/$name"
-      done
+      # Ensure no leftover path exists, then recreate it
+      # as a symlink pointing to the dotfiles location.
+      rm -rf "${asPath}" 2>/dev/null || true
+      ln -sfn "${dotRoot}" "${asPath}"
 
       # ------------------------------------------------------------
       # PREFERENCES: MOVE PLIST → DOTFILES
       # ------------------------------------------------------------
       if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPlist}" ]; then
+        echo "[VLC] Moving plist → ven-dots"
         mv "${prefPlist}" "${dotPlist}"
       fi
 
+      # Ensure plist exists so the symlink target is valid
       [ -f "${dotPlist}" ] || : > "${dotPlist}"
 
       # ------------------------------------------------------------
@@ -113,6 +116,6 @@ in
       # ------------------------------------------------------------
       ln -sfn "${dotPlist}" "${prefPlist}"
 
-      echo "VLC user-data sync complete."
+      echo "VLC: Done: User-data sync complete"
     '';
 }
