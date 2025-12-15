@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/a-better-finder-rename-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/abetterfinderrename-symlinks.nix
 #
 # DARWIN: A BETTER FINDER RENAME USER-DATA
 # ============================================================

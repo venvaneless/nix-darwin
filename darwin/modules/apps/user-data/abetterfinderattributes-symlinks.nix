@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/a-better-finder-attributes-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/abetterfinderattributes-symlinks.nix
 #
 # DARWIN: A BETTER FINDER ATTRIBUTES USER-DATA
 # ============================================================

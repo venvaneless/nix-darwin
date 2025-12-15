@@ -6,26 +6,25 @@
 # into a custom Applications directory.
 # ============================================================
 
+# nix-darwin system module: installs iTerm2.app system-wide.
+
 { ... }:
 
 let
-  # APP METADATA
+	# APP METADATA
   # ------------------------------------------------------------
   appName   = "AppCleaner.app";
   caskName  = "appcleaner";
   targetDir = "/Applications/System";
 in
 {
-  # HOMEBREW CASK INSTALL
+	# Homebrew cask install
   # ------------------------------------------------------------
   homebrew.casks = [
-    {
-      name = caskName;
-      args = { appdir = targetDir; };
-    }
+    { name = caskName; args = { appdir = targetDir; }; }
   ];
 
-  # DARWIN: ENSURE APPLICATION DIRECTORY EXISTS
+  # Ensure application directory exists
   # ------------------------------------------------------------
   system.activationScripts.ensureAppCleanerAppDir.text = ''
     mkdir -p "${targetDir}"

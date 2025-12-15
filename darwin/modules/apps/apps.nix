@@ -9,18 +9,18 @@
 { ... }:
 {
   imports = [
-  	./a-better-finder-attributes.nix
-   	./a-better-finder-rename.nix
-    ./appcleaner.nix
-  	./espanso.nix
-   	./iterm.nix
-    ./mas.nix
-    ./obsidian.nix
-    ./paste.nix
-    ./raycast.nix
-    ./vlc.nix
-    ./wezterm.nix
-    ./zed.nix
-    ./yate.nix
+  		./abetterfinderattributes.nix
+    	./abetterfinderrename.nix
+     	./appcleaner.nix
+      ./espanso.nix
+      ./iterm.nix
+      ./mas.nix
+      ./obsidian.nix
+      ./paste.nix
+      ./raycast.nix
+      ./vlc.nix
+      ./wezterm.nix
+      ./zed.nix
+      ./yate.nix
   ];
 }
