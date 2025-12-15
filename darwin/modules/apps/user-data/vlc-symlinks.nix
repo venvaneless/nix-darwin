@@ -1,14 +1,29 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/vlc-symlinks.nix
 #
-# VLC USER-DATA
+# DARWIN: VLC USER-DATA
 # ============================================================
-# VLC media player for macOS.
+# VLC is a media player for macOS.
 #
-# VLC stores all user state in:
-# - ~/Library/Preferences/org.videolan.vlc/ (directory)
-# - ~/Library/Preferences/org.videolan.vlc.plist
+# Source of truth:
+#   /Users/ven/ven-dots/user-data/apps/vlc
 #
-# This module migrates both into ven-dots and symlinks them back.
+# Runtime locations:
+#   ~/Library/Application Support/org.videolan.vlc/
+#     - vlcrc
+#     - ml.xspf
+#
+#   ~/Library/Preferences/org.videolan.vlc.plist
+#
+# Responsibilities:
+#   - Ensure dotfiles folder exists
+#   - Move VLC files from Application Support into dotfiles
+#   - Move VLC plist from Preferences into dotfiles
+#   - Recreate original locations
+#   - Symlink files back to their original paths
+#
+# IMPORTANT:
+#   - No symlinks are ever created inside the dotfiles folder
+#   - Only individual files are symlinked (never whole directories)
 # ============================================================
 
 { config, lib, ... }:
@@ -28,15 +43,16 @@ let
   # ------------------------------------------------------------
   # VLC RUNTIME PATHS
   # ------------------------------------------------------------
-  prefDir   = "${home}/Library/Preferences/org.videolan.vlc";
+  asDirName = "org.videolan.vlc";
+  asPath    = "${home}/Library/Application Support/${asDirName}";
+
   prefPlist = "${home}/Library/Preferences/org.videolan.vlc.plist";
 
   # ------------------------------------------------------------
-  # DOTFILES PATHS
+  # DOTFILES PATHS (SOURCE OF TRUTH)
   # ------------------------------------------------------------
-  dotRoot     = "${dotsApp}/${appFolder}";
-  dotPrefDir  = "${dotRoot}/org.videolan.vlc";
-  dotPrefPlist = "${dotRoot}/org.videolan.vlc.plist";
+  dotRoot   = "${dotsApp}/${appFolder}";
+  dotPlist  = "${dotRoot}/org.videolan.vlc.plist";
 in
 {
   home.activation.vlcUserData =
@@ -45,32 +61,58 @@ in
       echo "Managing user-data: VLC"
 
       # ------------------------------------------------------------
-      # DOTFILES ROOT
+      # DOTFILES: ENSURE ROOT EXISTS
       # ------------------------------------------------------------
       mkdir -p "${dotRoot}"
 
       # ------------------------------------------------------------
-      # PREFERENCES DIRECTORY
+      # APPLICATION SUPPORT: MOVE FILES → DOTFILES
       # ------------------------------------------------------------
-      if [ -d "${prefDir}" ] && [ ! -L "${prefDir}" ]; then
-        echo "Migrating VLC preferences directory"
-        mv "${prefDir}" "${dotPrefDir}"
+      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
+        for item in "${asPath}"/*; do
+          [ -e "$item" ] || continue
+          name="$(basename "$item")"
+
+          if [ ! -e "${dotRoot}/$name" ]; then
+            mv "$item" "${dotRoot}/$name"
+          else
+            rm -rf "$item"
+          fi
+        done
       fi
 
-      rm -rf "${prefDir}" 2>/dev/null || true
-      ln -sfn "${dotPrefDir}" "${prefDir}"
+      # Ensure Application Support directory exists
+      mkdir -p "${asPath}"
 
       # ------------------------------------------------------------
-      # PREFERENCES PLIST
+      # APPLICATION SUPPORT: SYMLINK FILES BACK
       # ------------------------------------------------------------
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPrefPlist}" ]; then
-        echo "Migrating VLC plist"
-        mv "${prefPlist}" "${dotPrefPlist}"
+      for item in "${dotRoot}"/*; do
+        [ -e "$item" ] || continue
+        name="$(basename "$item")"
+
+        # Skip plist files
+        case "$name" in
+          *.plist) continue ;;
+        esac
+
+        ln -sfn "$item" "${asPath}/$name"
+      done
+
+      # ------------------------------------------------------------
+      # PREFERENCES: MOVE PLIST → DOTFILES
+      # ------------------------------------------------------------
+      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPlist}" ]; then
+        mv "${prefPlist}" "${dotPlist}"
       fi
 
-      [ -f "${dotPrefPlist}" ] || : > "${dotPrefPlist}"
-      ln -sfn "${dotPrefPlist}" "${prefPlist}"
+      [ -f "${dotPlist}" ] || : > "${dotPlist}"
 
-      echo "Done: VLC"
+      # ------------------------------------------------------------
+      # PREFERENCES: SYMLINK PLIST BACK
+      # ------------------------------------------------------------
+      ln -sfn "${dotPlist}" "${prefPlist}"
+
+      echo "VLC user-data sync complete."
     '';
 }
