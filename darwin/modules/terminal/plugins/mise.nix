@@ -28,7 +28,7 @@ in
     '';
 
     # LATE: activate mise after vars are set
-    initExtra = ''
+    initContent = ''
       #### MISE INITIALIZATION ####
       if command -v mise >/dev/null 2>&1; then
         eval "$(mise activate zsh)"
