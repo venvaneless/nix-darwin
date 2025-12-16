@@ -31,7 +31,7 @@ in
   home.activation.yateUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "[Yate] Syncing user-data"
+      echo "[Yate] Starting user-data sync…"
 
       # ------------------------------------------------------------
       # --- SOURCE OF TRUTH ---
@@ -39,7 +39,7 @@ in
       mkdir -p "${dotsApp}"
 
       if [ ! -d "${dotRoot}" ]; then
-        echo "[Yate] ${dotRoot} doesn't exist for Yate yet. Creating. 📁"
+        echo "[Yate] Source of truth folder missing. Creating: ${dotRoot} 📁"
         mkdir -p "${dotRoot}"
       fi
 
@@ -47,14 +47,10 @@ in
       # --- APPLICATION SUPPORT ---
       # ------------------------------------------------------------
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        if [ -e "${dotRoot}" ] && [ "$(ls -A "${dotRoot}" 2>/dev/null || true)" != "" ]; then
-          echo "[Yate] WARNING: '${asRealName}' exists in Application Support and '${dotRoot}' is not empty. Skipping move. ⚠️"
-        else
-          echo "[Yate] '${asRealName}' is being moved from Application Support to ${dotRoot} 📦"
-          rm -rf "${dotRoot}" 2>/dev/null || true
-          mv "${asPath}" "${dotRoot}"
-          echo "[Yate] '${asRealName}' has been successfully moved from ${asPath} to ${dotRoot} ✅"
-        fi
+        echo "[Yate] '${asRealName}' is being moved from Application Support to ${dotRoot} 📦"
+        rm -rf "${dotRoot}" 2>/dev/null || true
+        mv "${asPath}" "${dotRoot}"
+        echo "[Yate] '${asRealName}' has been successfully moved from ${asPath} to ${dotRoot} ✅"
       fi
 
       rm -rf "${asPath}" 2>/dev/null || true
@@ -72,10 +68,13 @@ in
         echo "[Yate] '$name' has been successfully moved from ${prefPlist} to ${dotPlist} ✅"
       fi
 
-      [ -e "${dotPlist}" ] || : > "${dotPlist}"
-
-      ln -sfn "${dotPlist}" "${prefPlist}"
-      echo "[Yate] '$name' is being symlinked back to ${prefPlist} 🔗"
+      if [ -e "${dotPlist}" ]; then
+        rm -f "${prefPlist}" 2>/dev/null || true
+        ln -sfn "${dotPlist}" "${prefPlist}"
+        echo "[Yate] '$name' is being symlinked back to ${prefPlist} 🔗"
+      else
+        echo "[Yate] '$name' not found in source of truth. Skipping symlink. ⚠️"
+      fi
 
       echo "Yate: User-data sync complete ✅"
     '';
