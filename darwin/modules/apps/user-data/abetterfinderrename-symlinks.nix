@@ -36,23 +36,59 @@ in
       set -euo pipefail
       echo "[ABFR] Syncing user-data"
 
+      # ------------------------------------------------------------
+      # --- SOURCE OF TRUTH ---
+      # ------------------------------------------------------------
       mkdir -p "${dotsApp}"
 
+      if [ ! -d "${dotRoot}" ]; then
+        echo "[ABFR] ${dotRoot} doesn't exist for A Better Finder Rename yet. Creating. 📁"
+        mkdir -p "${dotRoot}"
+      fi
+
+      if [ ! -d "${dotPrefs}" ]; then
+        echo "[ABFR] Preferences folder doesn't exist for A Better Finder Rename yet. Creating. 📁"
+        mkdir -p "${dotPrefs}"
+      fi
+
+      # ------------------------------------------------------------
+      # --- APPLICATION SUPPORT ---
+      # ------------------------------------------------------------
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        mv "${asPath}" "${dotRoot}"
+        if [ -e "${dotRoot}" ] && [ "$(ls -A "${dotRoot}" 2>/dev/null || true)" != "" ]; then
+          echo "[ABFR] WARNING: '${asRealName}' exists in Application Support and '${dotRoot}' is not empty. Skipping move. ⚠️"
+        else
+          echo "[ABFR] '${asRealName}' is being moved from Application Support to ${dotRoot} 📦"
+          rm -rf "${dotRoot}" 2>/dev/null || true
+          mv "${asPath}" "${dotRoot}"
+          echo "[ABFR] '${asRealName}' has been successfully moved from ${asPath} to ${dotRoot} ✅"
+        fi
       fi
 
       rm -rf "${asPath}" 2>/dev/null || true
       ln -sfn "${dotRoot}" "${asPath}"
+      echo "[ABFR] '${asRealName}' is being symlinked back to ${asPath} 🔗"
 
-      mkdir -p "${dotPrefs}"
+      # ------------------------------------------------------------
+      # --- PREFERENCES ---
+      # ------------------------------------------------------------
+      for pref in "${plist}" "${reg}"; do
+        name="$(basename "$pref")"
 
-      [ -f "${plist}" ] && [ ! -f "${dotPrefs}/$(basename "${plist}")" ] && mv "${plist}" "${dotPrefs}/"
-      [ -f "${reg}" ]   && [ ! -f "${dotPrefs}/$(basename "${reg}")" ]   && mv "${reg}"   "${dotPrefs}/"
+        if [ -f "$pref" ] && [ ! -L "$pref" ] && [ ! -e "${dotPrefs}/$name" ]; then
+          echo "[ABFR] '$name' is being moved from Preferences to ${dotPrefs} 📄"
+          mv "$pref" "${dotPrefs}/$name"
+          echo "[ABFR] '$name' has been successfully moved from $pref to ${dotPrefs}/$name ✅"
+        fi
 
-      ln -sfn "${dotPrefs}/$(basename "${plist}")" "${plist}"
-      ln -sfn "${dotPrefs}/$(basename "${reg}")"   "${reg}"
+        if [ ! -e "${dotPrefs}/$name" ]; then
+          : > "${dotPrefs}/$name"
+        fi
 
-      echo "A Better Finder Rename: Done: User-data sync complete"
+        ln -sfn "${dotPrefs}/$name" "$pref"
+        echo "[ABFR] '$name' is being symlinked back to $pref 🔗"
+      done
+
+      echo "ABFR: User-data sync complete ✅"
     '';
 }

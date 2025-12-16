@@ -29,15 +29,32 @@ in
       set -euo pipefail
       echo "[AppCleaner] Syncing user-data"
 
-      mkdir -p "${dotRoot}"
+      # ------------------------------------------------------------
+      # --- SOURCE OF TRUTH ---
+      # ------------------------------------------------------------
+      mkdir -p "${dotsApp}"
 
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPlist}" ]; then
-        mv "${prefPlist}" "${dotPlist}"
+      if [ ! -d "${dotRoot}" ]; then
+        echo "[AppCleaner] ${dotRoot} doesn't exist for AppCleaner yet. Creating. 📁"
+        mkdir -p "${dotRoot}"
       fi
 
-      [ -f "${dotPlist}" ] || : > "${dotPlist}"
+      # ------------------------------------------------------------
+      # --- PREFERENCES ---
+      # ------------------------------------------------------------
+      name="$(basename "${prefPlist}")"
+
+      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -e "${dotPlist}" ]; then
+        echo "[AppCleaner] '$name' is being moved from Preferences to ${dotRoot} 📄"
+        mv "${prefPlist}" "${dotPlist}"
+        echo "[AppCleaner] '$name' has been successfully moved from ${prefPlist} to ${dotPlist} ✅"
+      fi
+
+      [ -e "${dotPlist}" ] || : > "${dotPlist}"
+
       ln -sfn "${dotPlist}" "${prefPlist}"
-      
-      echo "AppCleaner: Done: User-data sync complete"
+      echo "[AppCleaner] '$name' is being symlinked back to ${prefPlist} 🔗"
+
+      echo "AppCleaner: User-data sync complete ✅"
     '';
 }

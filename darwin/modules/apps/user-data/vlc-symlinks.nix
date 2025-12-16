@@ -52,10 +52,7 @@ let
   # ------------------------------------------------------------
   # APP IDENTIFIERS
   # ------------------------------------------------------------
-  # Normalized name used in ven-dots (lowercase, no spaces)
-  appFolder = "vlc";
-
-  # Actual folder name macOS / VLC uses
+  appFolder  = "vlc";
   asRealName = "org.videolan.vlc";
 
   # ------------------------------------------------------------
@@ -77,45 +74,49 @@ in
       echo "[VLC] Syncing user-data"
 
       # ------------------------------------------------------------
-      # ENSURE DOTFILES ROOT EXISTS
+      # --- SOURCE OF TRUTH ---
       # ------------------------------------------------------------
-      # This guarantees the source of truth always exists
       mkdir -p "${dotsApp}"
 
-      # ------------------------------------------------------------
-      # APPLICATION SUPPORT: MOVE → DOTFILES
-      # ------------------------------------------------------------
-      # If VLC has already created its Application Support folder,
-      # and it is NOT a symlink, move it into ven-dots.
-      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        echo "[VLC] Moving Application Support → ven-dots"
-        mv "${asPath}" "${dotRoot}"
+      if [ ! -d "${dotRoot}" ]; then
+        echo "[VLC] ${dotRoot} doesn't exist for VLC yet. Creating. 📁"
+        mkdir -p "${dotRoot}"
       fi
 
       # ------------------------------------------------------------
-      # APPLICATION SUPPORT: RECREATE AS SYMLINK
+      # --- APPLICATION SUPPORT ---
       # ------------------------------------------------------------
-      # Ensure no leftover path exists, then recreate it
-      # as a symlink pointing to the dotfiles location.
+      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
+        if [ -e "${dotRoot}" ] && [ "$(ls -A "${dotRoot}" 2>/dev/null || true)" != "" ]; then
+          echo "[VLC] WARNING: '${asRealName}' exists in Application Support and '${dotRoot}' is not empty. Skipping move. ⚠️"
+        else
+          echo "[VLC] '${asRealName}' is being moved from Application Support to ${dotRoot} 📦"
+          rm -rf "${dotRoot}" 2>/dev/null || true
+          mv "${asPath}" "${dotRoot}"
+          echo "[VLC] '${asRealName}' has been successfully moved from ${asPath} to ${dotRoot} ✅"
+        fi
+      fi
+
       rm -rf "${asPath}" 2>/dev/null || true
       ln -sfn "${dotRoot}" "${asPath}"
+      echo "[VLC] '${asRealName}' is being symlinked back to ${asPath} 🔗"
 
       # ------------------------------------------------------------
-      # PREFERENCES: MOVE PLIST → DOTFILES
+      # --- PREFERENCES ---
       # ------------------------------------------------------------
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPlist}" ]; then
-        echo "[VLC] Moving plist → ven-dots"
+      name="$(basename "${prefPlist}")"
+
+      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -e "${dotPlist}" ]; then
+        echo "[VLC] '$name' is being moved from Preferences to ${dotRoot} 📄"
         mv "${prefPlist}" "${dotPlist}"
+        echo "[VLC] '$name' has been successfully moved from ${prefPlist} to ${dotPlist} ✅"
       fi
 
-      # Ensure plist exists so the symlink target is valid
-      [ -f "${dotPlist}" ] || : > "${dotPlist}"
+      [ -e "${dotPlist}" ] || : > "${dotPlist}"
 
-      # ------------------------------------------------------------
-      # PREFERENCES: SYMLINK PLIST BACK
-      # ------------------------------------------------------------
       ln -sfn "${dotPlist}" "${prefPlist}"
+      echo "[VLC] '$name' is being symlinked back to ${prefPlist} 🔗"
 
-      echo "VLC: Done: User-data sync complete"
+      echo "VLC: User-data sync complete ✅"
     '';
 }

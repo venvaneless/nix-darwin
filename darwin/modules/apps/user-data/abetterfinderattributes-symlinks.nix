@@ -4,13 +4,8 @@
 # ============================================================
 # Bulk file attribute editor.
 #
-# SOURCE OF TRUTH:
-#   /Users/ven/ven-dots/user-data/apps/a_better_finder_attributes
-#
-# RUNTIME LOCATIONS:
-#   ~/Library/Application Support/A Better Finder Attributes
-#   ~/Library/Preferences/com.publicspace.abfa.plist
-#   ~/Library/Preferences/net.publicspace.abfa7.plist
+# Moves Application Support data into ven-dots and symlinks it back.
+# Moves Preferences plists into ven-dots/Preferences and symlinks them back.
 # ============================================================
 
 { config, lib, ... }:
@@ -34,25 +29,46 @@ in
   home.activation.abfaUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "[ABFA] Syncing user-data"
+      echo "[ABFA] Starting user-data sync…"
 
-      mkdir -p "${dotsApp}"
+      # ------------------------------------------------------------
+      # SOURCE OF TRUTH SETUP
+      # ------------------------------------------------------------
+      if [ ! -d "${dotRoot}" ]; then
+        echo "[ABFA] Source of truth missing. Creating ${dotRoot} 📁"
+        mkdir -p "${dotRoot}"
+      fi
 
+      # ------------------------------------------------------------
+      # APPLICATION SUPPORT: MOVE + SYMLINK
+      # ------------------------------------------------------------
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
+        echo "[ABFA] '${asRealName}' is being moved from Application Support → ven-dots 📦"
         mv "${asPath}" "${dotRoot}"
+        echo "[ABFA] '${asRealName}' successfully moved ✅"
       fi
 
       rm -rf "${asPath}" 2>/dev/null || true
       ln -sfn "${dotRoot}" "${asPath}"
+      echo "[ABFA] '${asRealName}' is being symlinked back to Application Support 🔗"
 
+      # ------------------------------------------------------------
+      # PREFERENCES: MOVE + SYMLINK
+      # ------------------------------------------------------------
       mkdir -p "${dotPrefs}"
 
-      [ -f "${plistA}" ] && [ ! -f "${dotPrefs}/$(basename "${plistA}")" ] && mv "${plistA}" "${dotPrefs}/"
-      [ -f "${plistB}" ] && [ ! -f "${dotPrefs}/$(basename "${plistB}")" ] && mv "${plistB}" "${dotPrefs}/"
+      for plist in "${plistA}" "${plistB}"; do
+        name="$(basename "$plist")"
+        if [ -f "$plist" ] && [ ! -f "${dotPrefs}/$name" ]; then
+          echo "[ABFA] '$name' is being moved from Preferences → ${dotPrefs} 📄"
+          mv "$plist" "${dotPrefs}/$name"
+          echo "[ABFA] '$name' successfully moved ✅"
+        fi
 
-      ln -sfn "${dotPrefs}/$(basename "${plistA}")" "${plistA}"
-      ln -sfn "${dotPrefs}/$(basename "${plistB}")" "${plistB}"
+        ln -sfn "${dotPrefs}/$name" "$plist"
+        echo "[ABFA] '$name' is being symlinked back to Preferences 🔗"
+      done
 
-      echo "A Better Finder Attributes: Done: User-data sync complete"
+      echo "A Better Finder Attributes: User-data sync complete ✅"
     '';
 }

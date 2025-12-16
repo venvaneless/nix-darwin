@@ -39,22 +39,50 @@ in
       set -euo pipefail
       echo "[Espanso] Syncing user-data"
 
+      # ------------------------------------------------------------
+      # --- SOURCE OF TRUTH ---
+      # ------------------------------------------------------------
       mkdir -p "${dotsApp}"
 
+      if [ ! -d "${dotRoot}" ]; then
+        echo "[Espanso] ${dotRoot} doesn't exist for Espanso yet. Creating. 📁"
+        mkdir -p "${dotRoot}"
+      fi
+
+      # ------------------------------------------------------------
+      # --- APPLICATION SUPPORT ---
+      # ------------------------------------------------------------
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        mv "${asPath}" "${dotRoot}"
+        if [ -e "${dotRoot}" ] && [ "$(ls -A "${dotRoot}" 2>/dev/null || true)" != "" ]; then
+          echo "[Espanso] WARNING: '${asRealName}' exists in Application Support and '${dotRoot}' is not empty. Skipping move. ⚠️"
+        else
+          echo "[Espanso] '${asRealName}' is being moved from Application Support to ${dotRoot} 📦"
+          rm -rf "${dotRoot}" 2>/dev/null || true
+          mv "${asPath}" "${dotRoot}"
+          echo "[Espanso] '${asRealName}' has been successfully moved from ${asPath} to ${dotRoot} ✅"
+        fi
       fi
 
       rm -rf "${asPath}" 2>/dev/null || true
       ln -sfn "${dotRoot}" "${asPath}"
+      echo "[Espanso] '${asRealName}' is being symlinked back to ${asPath} 🔗"
 
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPlist}" ]; then
+      # ------------------------------------------------------------
+      # --- PREFERENCES ---
+      # ------------------------------------------------------------
+      name="$(basename "${prefPlist}")"
+
+      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -e "${dotPlist}" ]; then
+        echo "[Espanso] '$name' is being moved from Preferences to ${dotRoot} 📄"
         mv "${prefPlist}" "${dotPlist}"
+        echo "[Espanso] '$name' has been successfully moved from ${prefPlist} to ${dotPlist} ✅"
       fi
 
-      [ -f "${dotPlist}" ] || : > "${dotPlist}"
-      ln -sfn "${dotPlist}" "${prefPlist}"
+      [ -e "${dotPlist}" ] || : > "${dotPlist}"
 
-      echo "Espanso: Done: User-data sync complete"
+      ln -sfn "${dotPlist}" "${prefPlist}"
+      echo "[Espanso] '$name' is being symlinked back to ${prefPlist} 🔗"
+
+      echo "Espanso: User-data sync complete ✅"
     '';
 }
