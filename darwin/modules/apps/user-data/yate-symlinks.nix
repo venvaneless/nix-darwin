@@ -59,9 +59,9 @@ in
       if [ -f "${prefPlist}" ]; then
         echo "[Yate] Backing up preferences plist to ${dotRoot} 📄"
         cp -a "${prefPlist}" "${dotPlist}"
-        echo "[Yate] '$name' is being symlinked back to ${prefPlist} 🔗"
+        echo "[Yate] Preferences plist backed up successfully ✅"
       else
-        echo "[Yate] '$name' is missing in source of truth. Skipping symlink. ⚠️"
+        echo "[Yate] Preferences plist not found. Skipping. ⚠️"
       fi
 
       echo "Yate: User-data backup complete ✅"
