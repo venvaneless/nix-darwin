@@ -16,7 +16,7 @@
       ./iterm.nix
       ./mas.nix
       ./obsidian.nix
-      ./paste.nix
+      #./paste.nix
       ./raycast.nix
       ./vlc.nix
       ./wezterm.nix
