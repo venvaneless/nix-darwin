@@ -9,18 +9,18 @@
 { ... }:
 {
   imports = [
-  		./abetterfinderattributes.nix
-    	./abetterfinderrename.nix
-     	./appcleaner.nix
+  	#	./abetterfinderattributes.nix
+    #	./abetterfinderrename.nix
+    # 	./appcleaner.nix
       ./espanso.nix
       ./iterm.nix
       ./mas.nix
       ./obsidian.nix
-      ./paste.nix
+     # ./paste.nix
       ./raycast.nix
-      ./vlc.nix
+    #  ./vlc.nix
       ./wezterm.nix
       ./zed.nix
-      ./yate.nix
+     # ./yate.nix
   ];
 }
