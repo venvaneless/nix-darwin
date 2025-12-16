@@ -9,9 +9,9 @@
 { ... }:
 {
   imports = [
-  	#	./abetterfinderattributes.nix
-    #	./abetterfinderrename.nix
-    # 	./appcleaner.nix
+  		./abetterfinderattributes.nix
+    	./abetterfinderrename.nix
+    	./appcleaner.nix
       ./espanso.nix
       ./iterm.nix
       ./mas.nix
