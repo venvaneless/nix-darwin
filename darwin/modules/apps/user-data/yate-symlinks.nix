@@ -31,7 +31,7 @@ in
   home.activation.yateUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "[Yate] Starting user-data sync…"
+      echo "[Yate] Syncing user-data"
 
       # ------------------------------------------------------------
       # --- SOURCE OF TRUTH ---
@@ -39,7 +39,7 @@ in
       mkdir -p "${dotsApp}"
 
       if [ ! -d "${dotRoot}" ]; then
-        echo "[Yate] Source of truth folder missing. Creating: ${dotRoot} 📁"
+        echo "[Yate] ${dotRoot} doesn't exist for Yate yet. Creating. 📁"
         mkdir -p "${dotRoot}"
       fi
 
@@ -62,18 +62,20 @@ in
       # ------------------------------------------------------------
       name="$(basename "${prefPlist}")"
 
+      # Move plist only if it still exists in Preferences
       if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -e "${dotPlist}" ]; then
         echo "[Yate] '$name' is being moved from Preferences to ${dotRoot} 📄"
         mv "${prefPlist}" "${dotPlist}"
         echo "[Yate] '$name' has been successfully moved from ${prefPlist} to ${dotPlist} ✅"
       fi
 
+      # Always ensure symlink exists if source-of-truth plist exists
       if [ -e "${dotPlist}" ]; then
         rm -f "${prefPlist}" 2>/dev/null || true
         ln -sfn "${dotPlist}" "${prefPlist}"
         echo "[Yate] '$name' is being symlinked back to ${prefPlist} 🔗"
       else
-        echo "[Yate] '$name' not found in source of truth. Skipping symlink. ⚠️"
+        echo "[Yate] '$name' is missing in source of truth. Skipping symlink. ⚠️"
       fi
 
       echo "Yate: User-data sync complete ✅"
