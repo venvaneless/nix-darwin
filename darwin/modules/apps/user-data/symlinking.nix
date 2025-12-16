@@ -16,10 +16,11 @@
   	#	./abetterfinderattributes-symlinks.nix
    	#	./abetterfinderrename-symlinks.nix
     # ./chromium-symlinks.nix
-    ./espanso-symlinks.nix
+    # ./espanso-symlinks.nix
     # ./iterm-symlinks.nix
+    ./paste-symlinks.nix
     ./yate-symlinks.nix
-    # ./vlc-symlinks.nix
+    ./vlc-symlinks.nix
     # ./zed-symlinks.nix
   ];
 }
