@@ -1,57 +1,83 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/mas.nix
 #
-# MAC APP STORE: INSTALL APPS
+# MAC APP STORE APPLICATIONS (MAS)
 # ============================================================
-# Installs Mac App Store applications using the `mas` CLI.
+# Declarative installation of Mac App Store applications
+# using the `mas` CLI.
 #
-# NOTES:
-# - nix-darwin does NOT provide `services.mas`
-# - App Store login must be done manually once
-# - Apps are installed declaratively via activation script
+# IMPORTANT:
+# - `mas account` is NOT supported in recent versions
+# - App Store login must be done manually once (GUI)
+# - Free apps STILL require a signed-in App Store session
+#
+# This module:
+# - Declares MAS apps in a single tree
+# - Installs them idempotently
+# - Uses real filesystem checks instead of mas metadata
 # ============================================================
 
 { lib, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
-  # DECLARED MAS APPLICATIONS
+  # DECLARED MAC APP STORE APPLICATIONS
   # ------------------------------------------------------------
-  # Tree-style definition for clarity and reuse
+  # Key   = App bundle name (without .app)
+  # Value = App Store numeric ID
+  #
+  # To add apps:
+  #   1. Find ID via: mas search <name>
+  #   2. Add entry below
   # ------------------------------------------------------------
   masApps = {
     SnippetsLab = 1006087419;
   };
 
   # ------------------------------------------------------------
-  # MAS INSTALL SCRIPT
+  # MAS INSTALLATION SCRIPT
   # ------------------------------------------------------------
   installMasApps = pkgs.writeShellScriptBin "install-mas-apps" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo "[mas] Checking App Store login status"
+    echo "[mas] Processing Mac App Store applications"
 
-    if ! mas account >/dev/null 2>&1; then
-      echo "[mas] ERROR: Not signed into the Mac App Store"
-      echo "[mas] Sign in once manually, then re-run darwin-rebuild"
-      exit 0
-    fi
+    install_app() {
+      local name="$1"
+      local id="$2"
+      local app_path="/Applications/$name.app"
 
-    echo "[mas] Installing declared Mac App Store applications"
+      if [ -d "$app_path" ]; then
+        echo "[mas] $name already installed"
+        return
+      fi
+
+      echo "[mas] Installing $name (id: $id)"
+
+      if ! mas install "$id"; then
+        echo "[mas] ERROR: Failed to install $name"
+        echo "[mas] Possible causes:"
+        echo "      - Not signed into App Store"
+        echo "      - App Store GUI session needs refresh"
+        echo "      - App Store backend issue"
+        echo ""
+        echo "[mas] Fix:"
+        echo "      1. Open App Store.app"
+        echo "      2. Sign in"
+        echo "      3. Close App Store"
+        echo "      4. Re-run darwin-rebuild"
+        exit 0
+      fi
+    }
 
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList
       (name: id: ''
-        if mas list | awk '{print $1}' | grep -q "^${toString id}$"; then
-          echo "[mas] ${name} already installed"
-        else
-          echo "[mas] Installing ${name}"
-          mas install ${toString id}
-        fi
+        install_app "${name}" "${toString id}"
       '')
       masApps
     )}
 
-    echo "[mas] Mac App Store apps processed"
+    echo "[mas] Mac App Store applications processed"
   '';
 in
 {

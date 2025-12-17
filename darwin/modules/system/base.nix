@@ -85,7 +85,10 @@
 
     # Home Manager CLI
     home-manager
-
+    
+    # AppStore CLI
+    mas
+    
     # Tools for NSS certificates
     nssTools
 
