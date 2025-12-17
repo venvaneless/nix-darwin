@@ -14,6 +14,7 @@
     	./appcleaner.nix
       ./espanso.nix
       ./iterm.nix
+      ./masscode.nix
       ./obsidian.nix
       ./paste.nix
       ./raycast.nix
