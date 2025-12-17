@@ -21,6 +21,7 @@
 # RUNTIME LOCATIONS (macOS EXPECTS THESE)
 # ------------------------------------------------------------
 #   ~/Library/Application Support/org.videolan.vlc
+#   ~/Library/Preferences/org.videolan.vlc
 #   ~/Library/Preferences/org.videolan.vlc.plist
 #
 # ------------------------------------------------------------
@@ -29,6 +30,8 @@
 #   - Ensure dotfiles root exists
 #   - Move VLC Application Support directory into dotfiles
 #   - Recreate Application Support path as a symlink
+#   - Move VLC Preferences directory into dotfiles
+#   - Symlink Preferences directory back
 #   - Move VLC plist into dotfiles
 #   - Symlink plist back to Preferences
 #
@@ -56,15 +59,18 @@ let
   asRealName = "org.videolan.vlc";
 
   # ------------------------------------------------------------
-  # RUNTIME PATHS (EXPECTED BY macOS)
+  # RUNTIME PATHS
   # ------------------------------------------------------------
-  asPath    = "${home}/Library/Application Support/${asRealName}";
+  asPath   = "${home}/Library/Application Support/${asRealName}";
+  prefDir  = "${home}/Library/Preferences/${asRealName}";
   prefPlist = "${home}/Library/Preferences/org.videolan.vlc.plist";
 
   # ------------------------------------------------------------
-  # DOTFILES PATHS (SOURCE OF TRUTH)
+  # DOTFILES PATHS
   # ------------------------------------------------------------
   dotRoot  = "${dotsApp}/${appFolder}";
+  dotPrefs = "${dotRoot}/Preferences";
+  dotPrefDir = "${dotPrefs}/${asRealName}";
   dotPlist = "${dotRoot}/org.videolan.vlc.plist";
 in
 {
@@ -87,11 +93,10 @@ in
       # --- APPLICATION SUPPORT ---
       # ------------------------------------------------------------
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        if [ -e "${dotRoot}" ] && [ "$(ls -A "${dotRoot}" 2>/dev/null || true)" != "" ]; then
+        if [ "$(ls -A "${dotRoot}" 2>/dev/null || true)" != "" ]; then
           echo "[VLC] WARNING: '${asRealName}' exists in Application Support and '${dotRoot}' is not empty. Skipping move. ⚠️"
         else
           echo "[VLC] '${asRealName}' is being moved from Application Support to ${dotRoot} 📦"
-          rm -rf "${dotRoot}" 2>/dev/null || true
           mv "${asPath}" "${dotRoot}"
           echo "[VLC] '${asRealName}' has been successfully moved from ${asPath} to ${dotRoot} ✅"
         fi
@@ -102,7 +107,22 @@ in
       echo "[VLC] '${asRealName}' is being symlinked back to ${asPath} 🔗"
 
       # ------------------------------------------------------------
-      # --- PREFERENCES ---
+      # --- PREFERENCES DIRECTORY ---
+      # ------------------------------------------------------------
+      mkdir -p "${dotPrefs}"
+
+      if [ -d "${prefDir}" ] && [ ! -L "${prefDir}" ] && [ ! -d "${dotPrefDir}" ]; then
+        echo "[VLC] '${asRealName}' preferences directory is being moved from Preferences to ${dotPrefs} 📄"
+        mv "${prefDir}" "${dotPrefDir}"
+        echo "[VLC] '${asRealName}' preferences directory has been successfully moved to ${dotPrefDir} ✅"
+      fi
+
+      rm -rf "${prefDir}" 2>/dev/null || true
+      ln -sfn "${dotPrefDir}" "${prefDir}"
+      echo "[VLC] '${asRealName}' preferences directory is being symlinked back to ${prefDir} 🔗"
+
+      # ------------------------------------------------------------
+      # --- PREFERENCES PLIST ---
       # ------------------------------------------------------------
       name="$(basename "${prefPlist}")"
 
@@ -111,8 +131,6 @@ in
         mv "${prefPlist}" "${dotPlist}"
         echo "[VLC] '$name' has been successfully moved from ${prefPlist} to ${dotPlist} ✅"
       fi
-
-      [ -e "${dotPlist}" ] || : > "${dotPlist}"
 
       ln -sfn "${dotPlist}" "${prefPlist}"
       echo "[VLC] '$name' is being symlinked back to ${prefPlist} 🔗"
