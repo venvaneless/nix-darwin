@@ -6,28 +6,18 @@
 # using the `mas` CLI.
 #
 # IMPORTANT:
-# - `mas account` is NOT supported in recent versions
-# - App Store login must be done manually once (GUI)
-# - Free apps STILL require a signed-in App Store session
-#
-# This module:
-# - Declares MAS apps in a single tree
-# - Installs them idempotently
-# - Uses real filesystem checks instead of mas metadata
+# - Activation scripts run as root
+# - MAS installs apps per GUI user
+# - Therefore MAS MUST be executed as the primary user
 # ============================================================
 
-{ lib, pkgs, ... }:
+{ lib, pkgs, config, ... }:
 
 let
+  primaryUser = config.system.primaryUser;
+
   # ------------------------------------------------------------
   # DECLARED MAC APP STORE APPLICATIONS
-  # ------------------------------------------------------------
-  # Key   = App bundle name (without .app)
-  # Value = App Store numeric ID
-  #
-  # To add apps:
-  #   1. Find ID via: mas search <name>
-  #   2. Add entry below
   # ------------------------------------------------------------
   masApps = {
     SnippetsLab = 1006087419;
@@ -40,7 +30,11 @@ let
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo "[mas] Processing Mac App Store applications"
+    echo "[mas] Running MAS installs as user: ${primaryUser}"
+
+    run_as_user() {
+      sudo -u "${primaryUser}" "$@"
+    }
 
     install_app() {
       local name="$1"
@@ -54,18 +48,12 @@ let
 
       echo "[mas] Installing $name (id: $id)"
 
-      if ! mas install "$id"; then
+      if ! run_as_user mas install "$id"; then
         echo "[mas] ERROR: Failed to install $name"
         echo "[mas] Possible causes:"
-        echo "      - Not signed into App Store"
+        echo "      - ${primaryUser} is not signed into App Store"
         echo "      - App Store GUI session needs refresh"
         echo "      - App Store backend issue"
-        echo ""
-        echo "[mas] Fix:"
-        echo "      1. Open App Store.app"
-        echo "      2. Sign in"
-        echo "      3. Close App Store"
-        echo "      4. Re-run darwin-rebuild"
         exit 0
       fi
     }
