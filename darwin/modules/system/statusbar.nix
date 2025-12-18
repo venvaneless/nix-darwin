@@ -4,25 +4,22 @@
 # ============================================================
 # Declarative-ish macOS status bar configuration.
 #
-# Apple limitations:
-# - Control Center items are NOT exposed as real preferences
-# - Ordering of 3rd-party apps is impossible to control
+# Goals:
+# - Auto-hide menu bar
+# - Show ONLY:
+#   - Control Center
+#   - Battery
+#   - Input / language menu
+#   - Third-party apps (Raycast, etc.)
 #
-# This module:
-# - Enables menu bar auto-hide
-# - Hides all unwanted Apple status items
-# - Keeps only language, battery, and clock
-# - Applies changes reliably via activation script
+# Apple limitations:
+# - Ordering is NOT controllable
+# - Control Center contents are mostly not scriptable
 # ============================================================
 
 { lib, pkgs, ... }:
 
 let
-  # ------------------------------------------------------------
-  # STATUS BAR CONFIGURATION SCRIPT
-  # ------------------------------------------------------------
-  # Grouped by preference domain for readability.
-  # ------------------------------------------------------------
   configureStatusBar = pkgs.writeShellScriptBin "configure-status-bar" ''
     #!/usr/bin/env bash
     set -euo pipefail
@@ -30,41 +27,42 @@ let
     echo "[statusbar] Applying macOS status bar configuration"
 
     # ==========================================================
-    # NSGlobalDomain — MENU BAR BEHAVIOR
+    # MENU BAR BEHAVIOR
     # ==========================================================
 
     echo "[statusbar] Enabling menu bar auto-hide"
     defaults write NSGlobalDomain _HIHideMenuBar -bool true
 
     # ==========================================================
-    # com.apple.controlcenter — STATUS ITEMS
+    # STATUS ITEMS (MENU BAR)
     # ==========================================================
 
-    echo "[statusbar] Configuring Control Center status items"
+    echo "[statusbar] Configuring visible status items"
 
-    # --- Hidden items
-    defaults write com.apple.controlcenter "NSStatusItem Visible Siri"          -bool false
-    defaults write com.apple.controlcenter "NSStatusItem Visible Spotlight"     -bool false
-    defaults write com.apple.controlcenter "NSStatusItem Visible WiFi"          -bool false
-    defaults write com.apple.controlcenter "NSStatusItem Visible Bluetooth"     -bool false
-    defaults write com.apple.controlcenter "NSStatusItem Visible FocusModes"    -bool false
-    defaults write com.apple.controlcenter "NSStatusItem Visible AirDrop"       -bool false
-    defaults write com.apple.controlcenter "NSStatusItem Visible StageManager"  -bool false
-    defaults write com.apple.controlcenter "NSStatusItem Visible NowPlaying"    -bool false
+    # --- Hide everything noisy
+    defaults write com.apple.controlcenter "NSStatusItem Visible WiFi"         -bool false
+    defaults write com.apple.controlcenter "NSStatusItem Visible Bluetooth"   -bool false
+    defaults write com.apple.controlcenter "NSStatusItem Visible AirDrop"     -bool false
+    defaults write com.apple.controlcenter "NSStatusItem Visible FocusModes"  -bool false
+    defaults write com.apple.controlcenter "NSStatusItem Visible NowPlaying"  -bool false
+    defaults write com.apple.controlcenter "NSStatusItem Visible Siri"        -bool false
+    defaults write com.apple.controlcenter "NSStatusItem Visible Spotlight"   -bool false
+    defaults write com.apple.controlcenter "NSStatusItem Visible StageManager" -bool false
 
-    # --- Explicitly kept items
-    defaults write com.apple.controlcenter "NSStatusItem Visible InputMenu"     -bool true
+    # --- Explicitly keep essentials
+    defaults write com.apple.controlcenter "NSStatusItem Visible ControlCenter" -bool true
     defaults write com.apple.controlcenter "NSStatusItem Visible Battery"       -bool true
+    defaults write com.apple.controlcenter "NSStatusItem Visible InputMenu"     -bool true
 
     # ==========================================================
-    # com.apple.menuextra.clock — CLOCK
+    # CLOCK
     # ==========================================================
 
     echo "[statusbar] Configuring clock"
 
-    defaults write com.apple.menuextra.clock ShowDate        -int 1
-    defaults write com.apple.menuextra.clock ShowDayOfWeek  -bool true
-    defaults write com.apple.menuextra.clock ShowSeconds    -bool false
+    defaults write com.apple.menuextra.clock ShowDate       -int 1
+    defaults write com.apple.menuextra.clock ShowDayOfWeek -bool true
+    defaults write com.apple.menuextra.clock ShowSeconds   -bool false
 
     # ==========================================================
     # APPLY
@@ -78,12 +76,6 @@ let
   '';
 in
 {
-  # ============================================================
-  # ACTIVATION
-  # ============================================================
-  # nix-darwin–correct activation hook
-  # ============================================================
-
   system.activationScripts.statusBar.text = ''
     echo "[nix-darwin] Configuring status bar"
     ${configureStatusBar}/bin/configure-status-bar
