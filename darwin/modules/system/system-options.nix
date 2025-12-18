@@ -21,7 +21,8 @@
   # ------------------------------------------------------------
   imports = [
     ./dock-options.nix
-    ./finder-options.nix
+    ./finder-options-script.nix
+    # ./finder-options-noscript.nix
     ./fonts.nix
     ./statusbar.nix
     ./trackpad.nix

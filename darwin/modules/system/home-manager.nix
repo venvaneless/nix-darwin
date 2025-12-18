@@ -32,6 +32,7 @@
       imports = [
         ../terminal/zsh.nix
         ../apps/user-data/symlinking.nix
+        ./icloud-symlink.nix
       ];
     };
   };
