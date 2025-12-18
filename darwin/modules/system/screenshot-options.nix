@@ -28,7 +28,7 @@
     disable-shadow = true;
 
     # Show floating thumbnail after capture
-    show-thumbnail = false;
+    show-thumbnail = true;
 
     # ----------------------------------------------------------
     # LOCATION

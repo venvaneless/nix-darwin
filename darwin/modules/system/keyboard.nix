@@ -1,18 +1,64 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/system/keyboard.nix
+#
+# KEYBOARD OPTIONS
+# ============================================================
+# System-level keyboard and typing behavior.
+#
+# Covers:
+# - Hardware key remapping
+# - Function key behavior
+# - Global text input behavior (non-layout)
+#
+# NOTE:
+# These are system-wide settings managed by nix-darwin,
+# not per-user Home Manager options.
+# ============================================================
 
-targets.darwin.defaults.NSGlobalDomain = {
-  # Disable automatic capitalization
-  NSAutomaticCapitalizationEnabled = false;
+{ config, lib, pkgs, ... }:
 
-  # Disable smart dashes
-  NSAutomaticDashSubstitutionEnabled = true;
+{
+  # ------------------------------------------------------------
+  # HARDWARE KEYBOARD MAPPING
+  # ------------------------------------------------------------
+  system.keyboard = {
+    # Custom key mapping
+    enableKeyMapping = true;
 
-  # Disable smart quotes
-  NSAutomaticQuoteSubstitutionEnabled = false;
+    # Caps Lock behavior
+    remapCapsLockToEscape  = false;
+    remapCapsLockToControl = false;
+  };
 
-  # Disable automatic period substitution
-  NSAutomaticPeriodSubstitutionEnabled = false;
+  # ------------------------------------------------------------
+  # GLOBAL KEYBOARD / TEXT INPUT BEHAVIOR
+  # ------------------------------------------------------------
+  system.defaults.NSGlobalDomain = {
 
-  # Disable spell correction
-  NSAutomaticSpellingCorrectionEnabled = false;
-};
+    # ----------------------------------------------------------
+    # FUNCTION KEYS
+    # ----------------------------------------------------------
+
+    # Use F1, F2, etc. as standard function keys
+    # (media keys require holding Fn)
+    "com.apple.keyboard.fnState" = true;
+
+    # ----------------------------------------------------------
+    # TEXT INPUT BEHAVIOR
+    # ----------------------------------------------------------
+
+    # Automatic capitalization
+    NSAutomaticCapitalizationEnabled = true;
+
+    # Smart quotes
+    NSAutomaticQuoteSubstitutionEnabled = true;
+
+    # Smart dashes
+    NSAutomaticDashSubstitutionEnabled = true;
+
+    # Automatic period substitution
+    NSAutomaticPeriodSubstitutionEnabled = false;
+
+    # Automatic spell correction
+    NSAutomaticSpellingCorrectionEnabled = false;
+  };
+}
