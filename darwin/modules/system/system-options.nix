@@ -8,22 +8,54 @@
 # - Fonts
 # - Trackpad options
 #
-# This file is imported once from base.nix and in turn imports
-# the individual system modules to keep base.nix clean.
+# Holds ONLY nix-darwin system-level options.
 # ============================================================
-#
+
 { config, lib, pkgs, ... }:
 
 {
   # ------------------------------------------------------------
+  # GLOBAL SYSTEM UI OPTIONS (TYPED)
+  # ------------------------------------------------------------
+  system.defaults = {
+
+    # ----------------------------------------------------------
+    # GLOBAL MENU BAR
+    # ----------------------------------------------------------
+
+    # Menu bar auto-hide (system-wide)
+    NSGlobalDomain._HIHideMenuBar = true;
+
+    # ----------------------------------------------------------
+    # ACCESSIBILITY (UI EFFECTS)
+    # ----------------------------------------------------------
+
+    # Reduce transparency effects
+    universalaccess.reduceTransparency = false;
+
+    # Reduce motion / animations
+    universalaccess.reduceMotion = false;
+  };
+
+  # ------------------------------------------------------------
+  # POWER MANAGEMENT
+  # ------------------------------------------------------------
+  power.sleep = {
+
+    # When plugged in
+    display  = 10;     # minutes
+    computer = 20;     # minutes
+    harddisk = "never";
+  };
+
+  # ------------------------------------------------------------
   # MODULE IMPORTS
-  # System-level UI / UX configuration
   # ------------------------------------------------------------
   imports = [
     ./dock-options.nix
-    ./finder-options-script.nix
-    # ./finder-options-noscript.nix
+    ./finder-options-noscript.nix
     ./fonts.nix
+    ./screenshot-options.nix
     ./statusbar.nix
     ./trackpad.nix
   ];
