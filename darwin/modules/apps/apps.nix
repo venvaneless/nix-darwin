@@ -2,25 +2,27 @@
 #
 # LOAD APPS
 # ============================================================
-# # This file only imports individual installers for
-# apps.
+# This file only imports individual installers for apps
+# and enables selected user-facing programs.
 # ============================================================
 
 { ... }:
+
 {
   imports = [
-  		./abetterfinderattributes.nix
-    	./abetterfinderrename.nix
-    	./appcleaner.nix
-      ./espanso.nix
-      ./iterm.nix
-      ./masscode.nix
-      ./obsidian.nix
-      ./paste.nix
-      ./raycast.nix
-      ./vlc.nix
-      ./wezterm.nix
-      ./zed.nix
-      ./yate.nix
+    ./abetterfinderattributes.nix
+    ./abetterfinderrename.nix
+    ./appcleaner.nix
+    ./astrovim.nix
+    ./espanso.nix
+    ./hammerspoon.nix
+    ./iterm.nix
+    ./obsidian.nix
+    ./paste.nix
+    ./raycast.nix
+    ./vlc.nix
+    ./wezterm.nix
+    ./zed.nix
+    ./yate.nix
   ];
 }

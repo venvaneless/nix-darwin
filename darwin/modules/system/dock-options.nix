@@ -129,8 +129,10 @@
     static-only = false;
 
     persistent-apps = [
+    "/Applications/System/ForkLift.app"
     "/Applications/Chromium.app"
     "/Applications/Programming/iTerm.app"
+    "/Applications/Programming/SnippetsLab.app"
     "/Applications/Productivity/Zed.app"
     ];
   };

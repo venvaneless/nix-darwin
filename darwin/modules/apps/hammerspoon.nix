@@ -11,9 +11,9 @@
 { ... }:
 
 let
-  appName   = "Masscode.app";
-  caskName  = "masscode";
-  targetDir = "/Applications/Programming";
+  appName   = "Hammerspoon.app";
+  caskName  = "hammerspoon";
+  targetDir = "/Applications/System";
 in
 {
   homebrew.casks = [

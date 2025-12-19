@@ -28,6 +28,16 @@
   
     # nix-homebrew (FIXED)
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
+    
+    # NEW: flake utilities
+    flake-utils.url = "github:numtide/flake-utils";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    
+    # AstroNvim (managed as config)
+    astronvim = {
+    url = "github:AstroNvim/template";
+      flake = false;
+    };
   };
 
   outputs = inputs@{ self, nixpkgs, darwin, home-manager, nix-homebrew, ... }:

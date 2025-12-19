@@ -15,18 +15,24 @@
 #   - systemPackages (belongs to system-level)
 # ================================================
 
-{ pkgs, lib, ... }:
+{ pkgs, lib, inputs, ... }:
 
 {
   # --- Main User ---
   home-manager = {
     useGlobalPkgs   = true;
     useUserPackages = true;
+    extraSpecialArgs = { inherit inputs; };
 
     users.ven = {
       home.username      = "ven";
       home.homeDirectory = "/Users/ven";
       home.stateVersion  = "25.11";
+      
+      # --- Astrovim config --- #
+      home.packages = [
+        pkgs.neovim
+      ];
 
       # --- User modules ---
       imports = [
