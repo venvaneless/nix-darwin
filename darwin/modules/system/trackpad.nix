@@ -3,230 +3,264 @@
 # TRACKPAD OPTIONS
 # ============================================================
 # Trackpad defaults configured via nix-darwin.
-# - Controls click behaviour, force click and haptics.
-# - Controls scrolling, zoom, rotate and swipe gestures.
-# - Encodes all current settings from macOS Trackpad + Accessibility.
-# ============================================================
 #
+# Covers:
+# - Click and tap behavior
+# - Force click and haptics
+# - Dragging
+# - Scrolling, zooming, rotation
+# - System gestures
+# ============================================================
+
 { config, lib, pkgs, ... }:
 
 {
   # ------------------------------------------------------------
   # TRACKPAD CORE SETTINGS
-  # Click behaviour and gestures
   # ------------------------------------------------------------
-  #
   system.defaults.trackpad = {
 
-    # ------ CLICK SETTINGS ------ #
-
-    # --- Haptic feedback
-    # -----------------------------------------
+    # --- Haptic feedback --- #
+    # ----------------------------------------------------------
+    # Enables or disables haptic feedback when clicking or force-clicking
+    # the trackpad.
+    #
     # ActuateDetents:
     #   true  = haptic feedback enabled
     #   false = haptic feedback disabled
-    # -----------------------------------------
+    # ----------------------------------------------------------
     ActuateDetents = true;
 
-    # --- Silent clicking
-    # -----------------------------------------
+    # --- Silent clicking --- #
+    # ----------------------------------------------------------
+    # Controls whether a physical click sound is produced.
+    #
     # ActuationStrength:
-    #   0 = enable Silent Click
-    #   1 = disable Silent Click (normal click sound)
-    # -----------------------------------------
+    #   0 = silent click (no sound)
+    #   1 = normal click sound
+    # ----------------------------------------------------------
     ActuationStrength = 1;
 
-    # --- Tap to click
-    # -----------------------------------------
+    # --- Tap to click --- #
+    # ----------------------------------------------------------
+    # Allows tapping the trackpad surface to register as a click.
+    #
     # Clicking:
-    #   true  = tap with one finger = click
-    #   false = tap does nothing (you must press)
-    # -----------------------------------------
+    #   true  = tap registers as click
+    #   false = tap does nothing
+    # ----------------------------------------------------------
     Clicking = false;
 
-    # --- Drag lock
-    # -----------------------------------------
+    # --- Drag lock --- #
+    # ----------------------------------------------------------
+    # Keeps an item grabbed after lifting the finger during a drag
+    # until another click/tap occurs.
+    #
     # DragLock:
-    #   true  = drag lock enabled (keeps item “grabbed” after drag)
-    #   false = no drag lock
-    # -----------------------------------------
+    #   true  = drag lock enabled
+    #   false = drag lock disabled
+    # ----------------------------------------------------------
     DragLock = false;
 
-    # --- Tap to drag
-    # -----------------------------------------
+    # --- Tap to drag (Accessibility) --- #
+    # ----------------------------------------------------------
+    # Enables dragging items using tap gestures instead of physical clicks.
+    #
     # Dragging:
-    #   true  = enables drag by tap
-    # From 'Accessibility “Use trackpad for dragging”)'
-    #   false = disabled
-    # -----------------------------------------
+    #   true  = tap-drag enabled
+    #   false = tap-drag disabled
+    # ----------------------------------------------------------
     Dragging = true;
 
-    # --- Click pressure (normal click)
-    # -----------------------------------------
+    # --- Click pressure (normal click) --- #
+    # ----------------------------------------------------------
+    # Determines how hard you must press for a normal click.
+    #
     # FirstClickThreshold:
-    #   0 = light
-    #   1 = medium
-    #   2 = firm
-    # -----------------------------------------
+    #   0 = light pressure
+    #   1 = medium pressure
+    #   2 = firm pressure
+    # ----------------------------------------------------------
     FirstClickThreshold = 1;
 
-    # --- Force click suppression
-    # -----------------------------------------
+    # --- Force click enable / disable --- #
+    # ----------------------------------------------------------
+    # Controls whether force-click actions are available.
+    #
     # ForceSuppressed:
     #   true  = force click disabled
     #   false = force click enabled
-    # -----------------------------------------
+    # ----------------------------------------------------------
     ForceSuppressed = false;
 
-    # --- Force click pressure
-    # -----------------------------------------
+    # --- Force click pressure --- #
+    # ----------------------------------------------------------
+    # Determines how hard you must press to trigger a force click.
+    #
     # SecondClickThreshold:
-    #   0 = light
-    #   1 = medium
-    #   2 = firm
-    # -----------------------------------------
+    #   0 = light pressure
+    #   1 = medium pressure
+    #   2 = firm pressure
+    # ----------------------------------------------------------
     SecondClickThreshold = 1;
 
-    # --- Secondary click corner
-    # -----------------------------------------
+    # --- Secondary click corner --- #
+    # ----------------------------------------------------------
+    # Enables right-click using a specific trackpad corner.
+    #
     # TrackpadCornerSecondaryClick:
     #   0 = disabled
     #   1 = bottom-left corner
     #   2 = bottom-right corner
-    # -----------------------------------------
+    # ----------------------------------------------------------
     TrackpadCornerSecondaryClick = 2;
 
-    # --- Two-finger secondary click
-    # -----------------------------------------
+    # --- Two-finger right click --- #
+    # ----------------------------------------------------------
+    # Enables right-click using a two-finger tap or click.
+    #
     # TrackpadRightClick:
-    #   true  = two-finger tap/click is right click
-    #   false = disabled (only corner secondary click works)
-    # -----------------------------------------
+    #   true  = two-finger right click enabled
+    #   false = disabled
+    # ----------------------------------------------------------
     TrackpadRightClick = false;
 
-    # ------ DISABLED ------ #
-    # (none here – all click settings above are your active values)
-
-
-    # ------ DRAG SETTINGS ------ #
-
-    # --- Three-finger drag
-    # -----------------------------------------
+    # --- Three-finger drag --- #
+    # ----------------------------------------------------------
+    # Allows dragging windows by swiping with three fingers.
+    #
     # TrackpadThreeFingerDrag:
-    #   true  = three-finger drag enabled
+    #   true  = enabled
     #   false = disabled
-    # -----------------------------------------
+    # ----------------------------------------------------------
     TrackpadThreeFingerDrag = true;
 
-    # ------ SCROLL SETTINGS ------ #
-
-    # --- Inertia when scrolling
-    # -----------------------------------------
+    # --- Scroll inertia --- #
+    # ----------------------------------------------------------
+    # Enables momentum (inertia) when scrolling.
+    #
     # TrackpadMomentumScroll:
-    #   true  = scroll with inertia (“Use inertia when scrolling” ON)
-    #   false = no inertia
-    # -----------------------------------------
+    #   true  = inertia enabled
+    #   false = inertia disabled
+    # ----------------------------------------------------------
     TrackpadMomentumScroll = true;
 
-    # ------ ZOOM / ROTATE ------ #
-
-    # --- Smart zoom
-    # -----------------------------------------
+    # --- Smart zoom --- #
+    # ----------------------------------------------------------
+    # Double-tap with two fingers to zoom in/out.
+    #
     # TrackpadTwoFingerDoubleTapGesture:
-    #   true  = double-tap with two fingers = smart zoom
+    #   true  = enabled
     #   false = disabled
-    # -----------------------------------------
+    # ----------------------------------------------------------
     TrackpadTwoFingerDoubleTapGesture = true;
 
-    # --- Pinch to zoom
-    # -----------------------------------------
+    # --- Pinch to zoom --- #
+    # ----------------------------------------------------------
+    # Zoom content by pinching with two fingers.
+    #
     # TrackpadPinch:
-    #   true  = pinch with two fingers to zoom
+    #   true  = enabled
     #   false = disabled
-    # -----------------------------------------
+    # ----------------------------------------------------------
     TrackpadPinch = false;
 
-    # --- Rotate with two fingers
-    # -----------------------------------------
+    # --- Rotate --- #
+    # ----------------------------------------------------------
+    # Rotate content using a two-finger twist gesture.
+    #
     # TrackpadRotate:
-    #   true  = rotate gesture enabled
+    #   true  = enabled
     #   false = disabled
-    # -----------------------------------------
+    # ----------------------------------------------------------
     TrackpadRotate = false;
 
-  
-    # ------ SWIPE GESTURES ------ #
-
-    # --- Swipe between full-screen apps
-    # -----------------------------------------
+    # --- Swipe between full-screen apps --- #
+    # ----------------------------------------------------------
+    # Horizontal swipe gesture using four fingers.
+    #
     # TrackpadFourFingerHorizSwipeGesture:
     #   0 = disabled
-    #   2 = swipe between full-screen apps / desktops
-    # -----------------------------------------
+    #   2 = enabled (switch between full-screen apps / Spaces)
+    # ----------------------------------------------------------
     TrackpadFourFingerHorizSwipeGesture = 2;
 
-    # --- Launchpad + Desktop (pinch / spread)
-    # -----------------------------------------
+    # --- Launchpad / Show Desktop --- #
+    # ----------------------------------------------------------
+    # Pinch and spread gestures using four fingers.
+    #
     # TrackpadFourFingerPinchGesture:
     #   0 = disabled
-    #   2 = pinch = Launchpad, spread = Show Desktop
-    # -----------------------------------------
+    #   2 = enabled (Launchpad / Show Desktop)
+    # ----------------------------------------------------------
     TrackpadFourFingerPinchGesture = 2;
 
-    # --- Mission Control (four-finger swipe)
-    # -----------------------------------------
+    # --- Mission Control / App Exposé --- #
+    # ----------------------------------------------------------
+    # Vertical swipe using four fingers.
+    #
     # TrackpadFourFingerVertSwipeGesture:
     #   0 = disabled
-    #   2 = enabled (swipe up / down for Mission Control / App Exposé)
-    # -----------------------------------------
+    #   2 = enabled
+    # ----------------------------------------------------------
     TrackpadFourFingerVertSwipeGesture = 2;
 
-    # --- Swipe between pages
-    # -----------------------------------------
+    # --- Swipe between pages --- #
+    # ----------------------------------------------------------
+    # Horizontal swipe using three fingers.
+    #
     # TrackpadThreeFingerHorizSwipeGesture:
     #   0 = disabled
     #   1 = swipe between pages
     #   2 = swipe between full-screen apps
-    # -----------------------------------------
+    # ----------------------------------------------------------
     TrackpadThreeFingerHorizSwipeGesture = 1;
 
-    # --- Look up & data detectors
-    # -----------------------------------------
+    # --- Look up & data detectors --- #
+    # ----------------------------------------------------------
+    # Three-finger tap gesture.
+    #
     # TrackpadThreeFingerTapGesture:
-    #   0 = disabled (use Force Click with one finger instead)
-    #   2 = three-finger tap = Look up & data detectors
-    # -----------------------------------------
+    #   0 = disabled
+    #   2 = enabled (Look up / data detectors)
+    # ----------------------------------------------------------
     TrackpadThreeFingerTapGesture = 0;
 
-    # --- App Exposé (three-finger swipe) – OFF
-    # -----------------------------------------
+    # --- App Exposé (three-finger swipe) --- #
+    # ----------------------------------------------------------
+    # Vertical swipe using three fingers.
+    #
     # TrackpadThreeFingerVertSwipeGesture:
     #   0 = disabled
-    #   2 = three-finger swipe for Mission Control / App Exposé
-    # -----------------------------------------
+    #   2 = enabled
+    # ----------------------------------------------------------
     TrackpadThreeFingerVertSwipeGesture = 0;
 
-    # --- Notification Center (two-finger from right edge)
-    # -----------------------------------------
+    # --- Notification Center --- #
+    # ----------------------------------------------------------
+    # Swipe from the right edge using two fingers.
+    #
     # TrackpadTwoFingerFromRightEdgeSwipeGesture:
     #   0 = disabled
     #   3 = open Notification Center
-    # -----------------------------------------
+    # ----------------------------------------------------------
     TrackpadTwoFingerFromRightEdgeSwipeGesture = 3;
   };
 
-
   # ------------------------------------------------------------
-  # GLOBAL SCROLL SETTINGS
-  # Natural scrolling behaviour
+  # NSGlobalDomain — TRACKPAD TAP BEHAVIOR
   # ------------------------------------------------------------
-  #
-  # NSGlobalDomain key: "com.apple.swipescrolldirection"
-  # true  = Natural scrolling (content tracks finger)
-  # false = Traditional scrolling (Windows-style)
-  #
   system.defaults.NSGlobalDomain = {
-    "com.apple.swipescrolldirection" = true;
-    _HIHideMenuBar = true;
+
+    # --- Tap behavior --- #
+    # ----------------------------------------------------------
+    # Global tap-to-click behavior used by the trackpad.
+    #
+    # com.apple.mouse.tapBehavior:
+    #   null = system default
+    #   0    = disabled
+    #   1    = enabled
+    # ----------------------------------------------------------
+    "com.apple.mouse.tapBehavior" = null;
   };
 }

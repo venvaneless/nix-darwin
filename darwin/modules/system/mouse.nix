@@ -7,8 +7,7 @@
 # Covers:
 # - Cursor size
 # - Mouse speed
-# - Natural scrolling
-# - Tap behavior
+# - Scrolling direction
 #
 # Uses ONLY nix-darwin system.defaults options.
 # ============================================================
@@ -21,42 +20,47 @@
   # ------------------------------------------------------------
   system.defaults.universalaccess = {
 
-    # Cursor size:
-    # 1 = normal
-    # 4 = maximum
-    mouseDriverCursorSize = 2;
+    # --- Cursor size --- #
+    # ----------------------------------------------------------
+    # Controls the visual size of the mouse pointer.
+    #
+    # mouseDriverCursorSize:
+    #   1 = normal size
+    #   4 = maximum size
+    # ----------------------------------------------------------
+    mouseDriverCursorSize = 2.0;
   };
 
   # ------------------------------------------------------------
-  # GLOBAL PREFERENCES — MOUSE SPEED / SCALING
+  # GLOBAL PREFERENCES — MOUSE SPEED
   # ------------------------------------------------------------
   system.defaults.".GlobalPreferences" = {
 
-    # Mouse tracking speed
-    # Typical usable range: ~0.5 – 3.0
+    # --- Mouse tracking speed --- #
+    # ----------------------------------------------------------
+    # Controls how fast the pointer moves relative to mouse movement.
+    #
+    # Typical usable range:
+    #   ~0.5 = very slow
+    #   ~3.0 = very fast
+    # ----------------------------------------------------------
     "com.apple.mouse.scaling" = 2.0;
   };
 
   # ------------------------------------------------------------
-  # NSGlobalDomain — MOUSE BEHAVIOR
+  # NSGlobalDomain — SCROLLING
   # ------------------------------------------------------------
   system.defaults.NSGlobalDomain = {
 
+    # --- Scroll direction --- #
     # ----------------------------------------------------------
-    # TAP BEHAVIOR
+    # Controls whether scrolling uses “Natural” direction.
+    #
+    # true  = Natural scrolling
+    #         (content follows finger movement, iOS-style)
+    # false = Traditional scrolling
+    #         (finger up = content up, Windows-style)
     # ----------------------------------------------------------
-
-    # Tap behavior:
-    # null = system default
-    # 1    = enable tap-to-click
-    "com.apple.mouse.tapBehavior" = null;
-
-    # ----------------------------------------------------------
-    # SCROLLING
-    # ----------------------------------------------------------
-
-    # Disable “Natural” scrolling direction
-    # (content moves opposite to finger/mouse wheel)
     "com.apple.swipescrolldirection" = false;
   };
 }
