@@ -20,21 +20,35 @@
   system.defaults = {
 
     # ----------------------------------------------------------
-    # GLOBAL MENU BAR
+    # GLOBAL MENU BAR + NSGlobalDomain DEFAULTS
     # ----------------------------------------------------------
+    NSGlobalDomain = {
 
-    # Menu bar auto-hide (system-wide)
-    NSGlobalDomain._HIHideMenuBar = true;
+      # Menu bar auto-hide (system-wide)
+      _HIHideMenuBar = true;
+
+      # --------------------------------------------------------
+      # UI RESPONSIVENESS
+      # --------------------------------------------------------
+
+      # Disable most window animations
+      NSAutomaticWindowAnimationsEnabled = false;
+
+      # Speed up window resize animations
+      NSWindowResizeTime = 0.001;
+    };
 
     # ----------------------------------------------------------
     # ACCESSIBILITY (UI EFFECTS)
     # ----------------------------------------------------------
+    universalaccess = {
 
-    # Reduce transparency effects
-    universalaccess.reduceTransparency = false;
+      # Reduce transparency effects
+      reduceTransparency = false;
 
-    # Reduce motion / animations
-    universalaccess.reduceMotion = false;
+      # Reduce motion / animations
+      reduceMotion = false;
+    };
   };
 
   # ------------------------------------------------------------
@@ -55,6 +69,8 @@
     ./dock-options.nix
     ./finder-options-noscript.nix
     ./fonts.nix
+    ./keyboard.nix
+    ./mouse.nix
     ./screenshot-options.nix
     ./statusbar.nix
     ./trackpad.nix

@@ -28,17 +28,19 @@
   };
 
   # ------------------------------------------------------------
-  # NSGlobalDomain — MOUSE BEHAVIOR
+  # GLOBAL PREFERENCES — MOUSE SPEED / SCALING
   # ------------------------------------------------------------
-  system.defaults.NSGlobalDomain = {
-
-    # ----------------------------------------------------------
-    # MOUSE SPEED / SCALING
-    # ----------------------------------------------------------
+  system.defaults.".GlobalPreferences" = {
 
     # Mouse tracking speed
     # Typical usable range: ~0.5 – 3.0
     "com.apple.mouse.scaling" = 2.0;
+  };
+
+  # ------------------------------------------------------------
+  # NSGlobalDomain — MOUSE BEHAVIOR
+  # ------------------------------------------------------------
+  system.defaults.NSGlobalDomain = {
 
     # ----------------------------------------------------------
     # TAP BEHAVIOR
