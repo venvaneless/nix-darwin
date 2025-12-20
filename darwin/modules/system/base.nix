@@ -76,6 +76,9 @@
 
     # Fast alternative to find
     fd
+    
+    # Git Large Files Storage
+    git-lfs
 
     # Git encryption tool
     git-crypt
