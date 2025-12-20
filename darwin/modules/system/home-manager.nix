@@ -29,11 +29,22 @@
       home.homeDirectory = "/Users/ven";
       home.stateVersion  = "25.11";
       
+      
       # --- Astrovim config --- #
       home.packages = [
         pkgs.neovim
       ];
-
+      
+      programs.neovide = {
+        enable = true;
+      
+        settings = {
+          frame = "full";
+          idle = true;
+          maximized = true;
+        };
+      };
+      
       # --- User modules ---
       imports = [
         ../terminal/zsh.nix
