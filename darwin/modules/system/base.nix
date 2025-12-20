@@ -77,6 +77,9 @@
     # Fast alternative to find
     fd
     
+    # Git Filtering
+    git-filter-repo
+    
     # Git Large Files Storage
     git-lfs
 
