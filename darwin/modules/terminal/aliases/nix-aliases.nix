@@ -1,3 +1,5 @@
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/aliases/nix-aliases.nix
+
 { ... }:
 
 {
@@ -41,5 +43,10 @@
 		# Updates the flake after new lockfile
 		# ------------------------------------
 		ndu  = "nix flake update --flake ~/.config/nix/nix-darwin";
+		
+		# Temporary
+		# 🔴 PROOF ALIAS (temporary)
+		__HM_PROOF__ = "echo HM_SEES_THIS";
+		drv  = "sudo -H nix flake check ~/ven-dots/conf/nix/nix-darwin";
   };
 }
