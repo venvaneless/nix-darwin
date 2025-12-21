@@ -36,7 +36,6 @@
 	      "/Applications/Programming/Docker.app/Contents/Resources/bin"
 	    ];
 	  };
-	
 	  
 	  # ----------------------------------------------------------------- #
 		# PLUGINS

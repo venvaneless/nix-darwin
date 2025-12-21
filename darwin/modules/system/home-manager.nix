@@ -28,6 +28,13 @@
       home.username      = "ven";
       home.homeDirectory = "/Users/ven";
       home.stateVersion  = "25.11";
+      home.file.".zshenv" = {
+        text = ''
+          # Managed by Home Manager
+          export ZDOTDIR="$HOME/ven-dots/zsh"
+        '';
+        force = true;
+      };
       
       # --- Astrovim config --- #
       home.packages = [
