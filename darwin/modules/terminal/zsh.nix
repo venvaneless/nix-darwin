@@ -15,9 +15,12 @@
 	{
 	  programs.zsh = {
 	    enable = true;
-	
-	    # Keeps zshrc owned by HM here
-	    dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
+		
+	  # Keeps zshrc owned by HM here
+		dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
+		
+		initContent = "";
+
   };
 	 
 	  # ----------------------------------------------------------------- #
