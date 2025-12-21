@@ -4,6 +4,8 @@
 
 {
   programs.zsh.shellAliases = {
+  	ex = "exec zsh";
+   
 		# -------------------------------------
 		# Evaluates the flake
   	# Builds all derivations
@@ -43,8 +45,5 @@
 		# Updates the flake after new lockfile
 		# ------------------------------------
 		ndu  = "nix flake update --flake ~/.config/nix/nix-darwin";
-		
-		# Temporary
-		exs  = "exec zsh";
   };
 }
