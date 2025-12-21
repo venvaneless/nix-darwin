@@ -50,10 +50,6 @@
 
     ESPANSO_DIR = "/Users/ven/ven-dots/espanso";
   };
-  
-  programs.zsh = {
-    enable = true;
-  };
 
   # ------------------------------------------------------------
   # STATE VERSION
