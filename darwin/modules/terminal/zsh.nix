@@ -31,8 +31,6 @@
   # These paths match what HM generates internally when dotDir is set.
   home.file."ven-dots/zsh/.zshrc".force = true;
   home.file."ven-dots/zsh/.zshenv".force = true;
-  home.file."ven-dots/zsh/.zprofile".force = true;
-  home.file."ven-dots/zsh/.zlogin".force = true;
 
   # ----------------------------------------------------------------- #
   # HOME-LEVEL VARIABLES
