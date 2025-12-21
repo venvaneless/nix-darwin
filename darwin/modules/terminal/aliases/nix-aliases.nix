@@ -46,7 +46,7 @@
 		
 		# Temporary
 		# 🔴 PROOF ALIAS (temporary)
-		__HM_PROOF__ = "echo HM_SEES_THIS";
+		HMPROOF = "echo HM_SEES_THIS";
 		dcc  = "sudo -H nix flake check ~/ven-dots/conf/nix/nix-darwin";
   };
 }
