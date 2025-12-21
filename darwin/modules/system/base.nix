@@ -44,9 +44,9 @@
   # GLOBAL ENVIRONMENT VARIABLES
   # ------------------------------------------------------------
   environment.variables = {
-    XDG_STATE_HOME = "$HOME/.config";
-    XDG_DATA_HOME  = "$HOME/.config";
-    XDG_CACHE_HOME = "$HOME/.config";
+    # XDG_STATE_HOME = "$HOME/.config";
+    # XDG_DATA_HOME  = "$HOME/.config";
+   # XDG_CACHE_HOME = "$HOME/.config";
 
     ESPANSO_DIR = "/Users/ven/ven-dots/espanso";
   };
@@ -63,7 +63,7 @@
   environment.systemPackages = with pkgs; [
 
     # darwin-rebuild binary
-    inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
+    # inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
 
     # New Bash
     bashInteractive
