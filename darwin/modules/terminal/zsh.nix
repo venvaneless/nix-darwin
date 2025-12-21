@@ -17,7 +17,7 @@
 	    enable = true;
 	
 	    # Keeps zshrc owned by HM here
-	    dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
+	    dotDir = "${config.home.homeDirectory}/ven-dots/zsh-new";
 			
 			# Temporary
 	  };
