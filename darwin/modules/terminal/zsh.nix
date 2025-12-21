@@ -20,12 +20,10 @@
 	    dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
 			
 			# Temporary
-			history.size = 10000;
+			shellAliases = {};
 			
 			initContent = ''
 				echo "HM_MARKER: ZSH LOADED FROM HM at $(date)" >/dev/null
-			
-				programs.zsh.
 			'';
 	  };
 	 
