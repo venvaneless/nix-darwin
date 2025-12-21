@@ -20,6 +20,11 @@
 	    dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
 			
 			# Temporary
+			initExtra = ''
+    if [ -f /etc/profiles/per-user/${config.home.username}/etc/profile.d/hm-session-vars.sh ]; then
+      source /etc/profiles/per-user/${config.home.username}/etc/profile.d/hm-session-vars.sh
+    fi
+  '';
 	  };
 	 
 	  # ----------------------------------------------------------------- #
