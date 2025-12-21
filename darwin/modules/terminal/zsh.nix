@@ -18,12 +18,6 @@
 	
 	    # Keeps zshrc owned by HM here
 	    dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
-			
-			# Temporary
-			# TEMP: make sure initContent isn't empty and prove it's applied
-    initContent = ''
-      echo "[hm-zsh] initContent loaded at $(date +%s)" > "${config.home.homeDirectory}/ven-dots/zsh/.hm-zsh-init-proof"
-    '';
   };
 	 
 	  # ----------------------------------------------------------------- #
