@@ -27,7 +27,7 @@
     users.ven = {
       home.username      = "ven";
       home.homeDirectory = "/Users/ven";
-      home.stateVersion  = "25.11+relink";
+      home.stateVersion  = "25.11";
       
       # --- Astrovim config --- #
       home.packages = [
