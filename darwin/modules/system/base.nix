@@ -42,7 +42,7 @@
   };
   
   # Temporary - Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
+  
   
   # ------------------------------------------------------------
   # GLOBAL ENVIRONMENT VARIABLES
