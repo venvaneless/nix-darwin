@@ -44,10 +44,10 @@
   # GLOBAL ENVIRONMENT VARIABLES
   # ------------------------------------------------------------
   environment.variables = {
-  	XDG_CONFIG_HOME = "$HOME/ven-dots/conf";
-   	XDG_STATE_HOME  = "$HOME/ven-dots/state";
-    XDG_DATA_HOME   = "$HOME/ven-dots/data";
-    XDG_CACHE_HOME  = "$HOME/ven-dots/cache";
+  	XDG_CONFIG_HOME = "/Users/ven/ven-dots/conf";
+   	XDG_STATE_HOME  = "/Users/ven/ven-dots/state";
+    XDG_DATA_HOME   = "/Users/ven/ven-dots/data";
+    XDG_CACHE_HOME  = "/Users/ven/ven-dots/cache";
 
     ESPANSO_DIR = "/Users/ven/ven-dots/espanso";
   };
