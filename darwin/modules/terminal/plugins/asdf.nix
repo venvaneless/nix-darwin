@@ -29,7 +29,7 @@ in
       ASDF_DATA_DIR = asdfData;
     };
 
-    programs.zsh.initContent = lib.mkAfter ''
+    initContent = lib.mkAfter ''
       #### ASDF INITIALIZATION ####
 
       export ASDF_DATA_DIR="${asdfData}"
