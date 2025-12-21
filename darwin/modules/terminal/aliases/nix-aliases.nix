@@ -42,6 +42,7 @@
 		
 		# Updates the flake after new lockfile
 		# ------------------------------------
+		ndu  = "nix flake update --flake ~/.config/nix/nix-darwin";
 		
 		# Temporary
 		# 🔴 PROOF ALIAS (temporary)
