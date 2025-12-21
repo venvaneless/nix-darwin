@@ -30,6 +30,9 @@
 
     # Move ~/.nix-* into XDG directories
     use-xdg-base-directories = true;
+    
+    # Temporary - Allow unfree packages
+    nixpkgs.config.allowUnfree = true;
 
     # Official binary cache
     substituters = [
@@ -51,7 +54,7 @@
 
     ESPANSO_DIR = "/Users/ven/ven-dots/espanso";
   };
-
+  
   # ------------------------------------------------------------
   # STATE VERSION
   # ------------------------------------------------------------

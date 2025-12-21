@@ -27,6 +27,7 @@
   
   users.users.ven.home = "/Users/ven";
   home-manager.backupFileExtension = "bak";
+
   # ------------------------------------------------------------
   # 
   # --- MODULE IMPORTS ---
