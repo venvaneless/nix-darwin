@@ -30,7 +30,6 @@
       home.stateVersion  = "25.11";
       home.file.".zshenv".text = ''export ZDOTDIR="$HOME/ven-dots/zsh"'';
       home.file."ven-dots/zsh/.zshrc".text = "";
-      };
       
       # --- Astrovim config --- #
       home.packages = [
