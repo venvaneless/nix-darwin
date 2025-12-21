@@ -43,7 +43,7 @@
     home-manager.darwinModules.home-manager
 
     # User configuration for Home-Manager
-    # ./modules/system/home-manager.nix
+    ./modules/system/home-manager.nix
 
     # --- SYSTEM MODULES ---
     ./modules/system/base.nix
