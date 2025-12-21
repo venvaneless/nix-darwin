@@ -31,8 +31,6 @@
     # Move ~/.nix-* into XDG directories
     use-xdg-base-directories = true;
     
-    # Temporary - Allow unfree packages
-    nixpkgs.config.allowUnfree = true;
 
     # Official binary cache
     substituters = [
@@ -42,7 +40,10 @@
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
     ];
   };
-
+  
+  # Temporary - Allow unfree packages
+  nixpkgs.config.allowUnfree = true;
+  
   # ------------------------------------------------------------
   # GLOBAL ENVIRONMENT VARIABLES
   # ------------------------------------------------------------
