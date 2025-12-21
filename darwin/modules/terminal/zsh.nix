@@ -25,6 +25,11 @@
 			initContent = ''
 				echo "HM_MARKER: ZSH LOADED FROM HM at $(date)" >/dev/null
 			'';
+			
+			# HM_REGEN_MARKER_DO_NOT_KEEP
+			extraConfig = lib.mkAfter ''
+				
+			'';
 	  };
 	 
 	  # ----------------------------------------------------------------- #
