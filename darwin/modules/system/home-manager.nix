@@ -21,7 +21,7 @@
   # --- Main User ---
   home-manager = {
     useGlobalPkgs   = true;
-    useUserPackages = true;
+    useUserPackages = false;
     extraSpecialArgs = { inherit inputs; };
 
     users.ven = {
