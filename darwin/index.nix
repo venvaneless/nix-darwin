@@ -26,11 +26,7 @@
   system.stateVersion = lib.mkForce 6;
   
   users.users.ven.home = "/Users/ven";
-  
-  home-manager.backupFileExtension = "bak";
 
-
-  
   # ------------------------------------------------------------
   # 
   # --- MODULE IMPORTS ---

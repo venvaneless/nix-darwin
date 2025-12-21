@@ -27,11 +27,7 @@
     users.ven = {
       home.username      = "ven";
       home.homeDirectory = "/Users/ven";
-      home.stateVersion  = "25.11";
-      
-      # HM: DEBUG MARKER (temporary)
-           # Forces home-manager-files derivation to change
-           home.file."ven-dots/zsh/.hm-relink-marker".text = "relink";
+      home.stateVersion  = "25.11+relink";
       
       # --- Astrovim config --- #
       home.packages = [
