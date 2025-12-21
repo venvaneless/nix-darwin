@@ -17,19 +17,9 @@
 	    enable = true;
 	
 	    # Keeps zshrc owned by HM here
-	    dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
+	    dotDir = "${config.home.homeDirectory}/ven-dots/zsh-new";
 			
 			# Temporary
-			shellAliases = {};
-			
-			initContent = ''
-				echo "HM_MARKER: ZSH LOADED FROM HM at $(date)" >/dev/null
-			'';
-			
-			# HM_REGEN_MARKER_DO_NOT_KEEP
-			extraConfig = lib.mkAfter ''
-				
-			'';
 	  };
 	 
 	  # ----------------------------------------------------------------- #
