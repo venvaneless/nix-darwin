@@ -28,6 +28,8 @@
       home.username      = "ven";
       home.homeDirectory = "/Users/ven";
       home.stateVersion  = "25.11";
+      home.file."ven-dots/zsh/.keep".text = "";
+
       
       # --- Astrovim config --- #
       home.packages = [
