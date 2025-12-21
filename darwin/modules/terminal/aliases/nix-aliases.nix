@@ -4,7 +4,7 @@
 
 {
   programs.zsh.shellAliases = {
-  	ex = "exec zsh";
+  	ess = "exec zsh";
    
 		# -------------------------------------
 		# Evaluates the flake
