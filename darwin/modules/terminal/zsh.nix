@@ -24,10 +24,6 @@
     initContent = ''
       echo "[hm-zsh] initContent loaded at $(date +%s)" > "${config.home.homeDirectory}/ven-dots/zsh/.hm-zsh-init-proof"
     '';
-
-    shellAliases = {
-      ess = "echo HM_ALIAS_OK";
-    };
   };
 	 
 	  # ----------------------------------------------------------------- #
