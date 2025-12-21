@@ -3,7 +3,7 @@
 # NIX GARBAGE COLLECTION & GENERATION HELPERS
 # ===========================================
 
-{ ... }:
+{ lib, ... }:
 
 {
   # --- Simple aliases ---
