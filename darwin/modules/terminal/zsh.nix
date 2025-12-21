@@ -18,6 +18,10 @@
 	
 	    # Keeps zshrc owned by HM here
 	    dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
+					
+			initContent = ''
+				echo "HM_MARKER: ZSH LOADED FROM HM at $(date)" >/dev/null
+			'';
 	  };
 	 
 	  # ----------------------------------------------------------------- #
