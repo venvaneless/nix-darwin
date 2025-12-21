@@ -49,6 +49,7 @@
     XDG_CACHE_HOME = "$HOME/.config";
 
     ESPANSO_DIR = "/Users/ven/ven-dots/espanso";
+    ZDOTDIR = "/Users/ven/ven-dots/zsh";
   };
 
   # ------------------------------------------------------------
