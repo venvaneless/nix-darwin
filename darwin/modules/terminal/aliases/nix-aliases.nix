@@ -45,8 +45,6 @@
 		ndu  = "nix flake update --flake ~/.config/nix/nix-darwin";
 		
 		# Temporary
-		# 🔴 PROOF ALIAS (temporary)
-		HMPROOF = "echo HM_SEES_THIS";
-		dcc  = "sudo -H nix flake check ~/ven-dots/conf/nix/nix-darwin";
+		exs  = "exec zsh";
   };
 }
