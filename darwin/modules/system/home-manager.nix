@@ -28,9 +28,6 @@
       home.username      = "ven";
       home.homeDirectory = "/Users/ven";
       home.stateVersion  = "25.11";
-      home.file.".zshenv".text = ''
-        export ZDOTDIR="$HOME/ven-dots/zsh"
-      '';
       
       # --- Astrovim config --- #
       home.packages = [
@@ -52,7 +49,7 @@
         ../terminal/zsh.nix
         ../apps/user-data/symlinking.nix
         ./hm-options.nix
-        ./icloud-symlink.nix
+       # ./icloud-symlink.nix
       ];
     };
   };
