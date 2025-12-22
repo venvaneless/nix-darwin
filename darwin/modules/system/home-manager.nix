@@ -34,7 +34,9 @@
 
       # --- Session variables kept in HM (intentionally) ---
       home.sessionVariables = {
-        RAYCAST_CONFIG_DIR = "/Users/ven/ven-dots/user-data/raycast";
+       # RAYCAST_CONFIG_DIR = "/Users/ven/ven-dots/user-data/apps/raycast";
+       LANG = "en_US.UTF-8";
+       LC_ALL = "en_US.UTF-8";
       };
 
       # --- User modules ---

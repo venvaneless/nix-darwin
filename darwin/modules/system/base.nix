@@ -52,8 +52,8 @@
    	XDG_STATE_HOME  = "/Users/ven/ven-dots/state";
     XDG_DATA_HOME   = "/Users/ven/ven-dots/data";
     XDG_CACHE_HOME  = "/Users/ven/ven-dots/cache";
-
-    ESPANSO_DIR = "/Users/ven/ven-dots/espanso";
+    RAYCAST_DIR = "/Users/ven/ven-dots/user-data/apps/raycast";
+    ESPANSO_DIR = "/Users/ven/ven-dots/user-data/apps/espanso";
   };
   
   # ------------------------------------------------------------

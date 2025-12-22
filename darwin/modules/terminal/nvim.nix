@@ -14,6 +14,6 @@
   };
 
   home.sessionVariables = {
-    NEOVIDE_CONFIG = "/Users/ven/ven-dots/user-data/neovide";
+    NEOVIDE_CONFIG = "/Users/ven/ven-dots/user-data/apps/neovide";
   };
 }
