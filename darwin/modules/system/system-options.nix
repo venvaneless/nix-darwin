@@ -70,6 +70,7 @@
     ./finder-options-noscript.nix
     ./fonts.nix
     ./keyboard.nix
+    ./locale.nix
     ./mouse.nix
     ./screenshot-options.nix
     ./statusbar.nix

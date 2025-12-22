@@ -18,11 +18,6 @@
 		
 	  # Keeps zshrc owned by HM here
 		dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
-		
-		envExtra = ''
-    export LANG=en_US.UTF-8
-    export LC_ALL=en_US.UTF-8
-  '';
   };
 	 
 	  # ----------------------------------------------------------------- #

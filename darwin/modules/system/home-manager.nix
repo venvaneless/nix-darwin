@@ -37,6 +37,8 @@
        # RAYCAST_CONFIG_DIR = "/Users/ven/ven-dots/user-data/apps/raycast";
        LANG = "en_US.UTF-8";
        LC_ALL = "en_US.UTF-8";
+       ESPANSO_CONFIG_DIR = "/Users/ven/ven-dots/user-data/apps/espanso/config";
+       ESPANSO_DATA_DIR   = "/Users/ven/ven-dots/user-data/apps/espanso/data";
       };
 
       # --- User modules ---
