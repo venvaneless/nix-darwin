@@ -41,7 +41,6 @@
       imports = [
         ../terminal/zsh.nix
         ../terminal/nvim.nix
-        ../apps/raycast-hm.nix
         ../apps/user-data/symlinking.nix
         ./hm-options.nix
         ./icloud-symlink.nix
