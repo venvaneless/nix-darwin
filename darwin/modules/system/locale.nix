@@ -2,9 +2,9 @@
 { ... }:
 
 {
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  i18n.extraLocaleSettings = {
+  launchd.user.environment = {
+    LANG   = "en_US.UTF-8";
     LC_ALL = "en_US.UTF-8";
   };
 }
+
