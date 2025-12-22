@@ -114,7 +114,11 @@ in
       Label            = "com.ven.nginx-custom";
       ProgramArguments = [ "/etc/ven/services/run-nginx-custom" ];
       RunAtLoad        = true;
-      KeepAlive        = true;
+      KeepAlive = {
+          Crashed = true;
+          SuccessfulExit = false;
+        };
+        ThrottleInterval = 10;
       WorkingDirectory = "${confRoot}";
     };
   };

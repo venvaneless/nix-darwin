@@ -27,6 +27,7 @@
       home.username      = "ven";
       home.homeDirectory = "/Users/ven";
       home.stateVersion  = "25.11";
+      home.file."hm-proof.txt".text = "HM was here";
 
       # --- Reserved for future user packages ---
       home.packages = [
