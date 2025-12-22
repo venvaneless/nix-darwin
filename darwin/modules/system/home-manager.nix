@@ -18,7 +18,6 @@
 { pkgs, lib, inputs, ... }:
 
 {
-  # --- Main User ---
   home-manager = {
     useGlobalPkgs   = true;
     useUserPackages = true;
@@ -28,28 +27,24 @@
       home.username      = "ven";
       home.homeDirectory = "/Users/ven";
       home.stateVersion  = "25.11";
-      
-      # --- Astrovim config --- #
+
+      # --- Reserved for future user packages ---
       home.packages = [
-        pkgs.neovim
       ];
-      
-      programs.neovide = {
-        enable = true;
-      
-        settings = {
-          frame = "full";
-          idle = true;
-          maximized = true;
-        };
+
+      # --- Session variables kept in HM (intentionally) ---
+      home.sessionVariables = {
+        RAYCAST_CONFIG_DIR = "/Users/ven/ven-dots/user-data/raycast";
       };
-      
+
       # --- User modules ---
       imports = [
         ../terminal/zsh.nix
+        ../terminal/nvim.nix
+        ../apps/raycast-hm.nix
         ../apps/user-data/symlinking.nix
         ./hm-options.nix
-       ./icloud-symlink.nix
+        ./icloud-symlink.nix
       ];
     };
   };
