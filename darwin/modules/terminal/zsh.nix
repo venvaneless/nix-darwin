@@ -18,6 +18,7 @@
 		
 	  # Keeps zshrc owned by HM here
 		dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
+  };
 	 
 	  # ----------------------------------------------------------------- #
 	  # HOME-LEVEL VARIABLES
