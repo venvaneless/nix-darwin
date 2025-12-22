@@ -2,8 +2,8 @@
 { ... }:
 
 {
-  launchd.user.environment = {
-    LANG   = "en_US.UTF-8";
+  environment.variables = {
+    LANG = "en_US.UTF-8";
     LC_ALL = "en_US.UTF-8";
   };
 }
