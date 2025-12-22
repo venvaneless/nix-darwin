@@ -16,7 +16,7 @@ let
   icloudLink   = "/Users/ven/iCloudDocs";
 in
 {
-  home.activation.icloudDocsSymlink = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+	home.activation.icloudDocsSymlink = lib.hm.dag.entryBefore [ "writeBoundary" ] ''
     set -euo pipefail
 
     LOG_PREFIX="[home-manager][icloud]"
