@@ -19,7 +19,7 @@
 	  # Keeps zshrc owned by HM here
 		dotDir = "${config.home.homeDirectory}/ven-dots/zsh";
 		initContent = ''
-  # Zsh bootstrap — required so Home Manager generates .zshrc
+  echo "HM ZSH LOADED: $(date)" > /tmp/hm-zsh-proof
 '';
   };
 	 
