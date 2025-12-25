@@ -125,10 +125,7 @@ in
       Label            = "com.ven.vaultwarden";
       ProgramArguments = [ "/etc/ven/services/run-vaultwarden" ];
       RunAtLoad        = true;
-      KeepAlive = {
-          Crashed = true;
-          SuccessfulExit = false;
-        };
+      KeepAlive        = true; 
         ThrottleInterval = 10;  # <<< FIXED
     };
   };
