@@ -17,8 +17,9 @@ let
 
     USER="ven"
     HOME_DIR="/Users/ven"
-    CONFIG_DIR="$HOME_DIR/ven-dots/conf/nvim"
-    NVIM_DIR="$CONFIG_DIR/nvim"
+    NVIM_DIR="$HOME_DIR/ven-dots/nvim"
+    CONFIG_DIR="$NVIM_DIR/conf"
+    
 
     echo ">>> [astrovim] Installing AstroNvim config"
 
