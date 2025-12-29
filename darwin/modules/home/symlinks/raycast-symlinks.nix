@@ -39,8 +39,8 @@ let
   # RUNTIME PATHS
   asMacosPath  = "${home}/Library/Application Support/com.raycast.macos";
   asSharedPath = "${home}/Library/Application Support/com.raycast.shared";
-  plistPath   = "${home}/Library/Preferences/com.raycast.macos.plist";
-  confPath    = "${home}/.config/raycast";
+  plistPath    = "${home}/Library/Preferences/com.raycast.macos.plist";
+  confPath     = "${home}/.config/raycast";
 in
 {
   home.activation.raycastUserData =
@@ -53,6 +53,7 @@ in
       # ------------------------------------------------------------
       mkdir -p "${dotRaycast}"
       mkdir -p "${dotConf}"
+      mkdir -p "${home}/.config"
 
       # ------------------------------------------------------------
       # ~/.config/raycast → dotfiles/conf
@@ -67,9 +68,7 @@ in
         fi
       fi
 
-      mkdir -p "${home}/.config"
-
-      if [ ! -L "${confPath}" ] || [ "$(readlink "${confPath}")" != "${dotConf}" ]; then
+      if [ ! -L "${confPath}" ] || [ "$(readlink "${confPath}" 2>/dev/null || true)" != "${dotConf}" ]; then
         rm -rf "${confPath}"
         ln -sfn "${dotConf}" "${confPath}"
         echo "Symlinked ~/.config/raycast → dotfiles/conf"
@@ -78,47 +77,64 @@ in
       fi
 
       # ------------------------------------------------------------
-      # Application Support: com.raycast.macos (MOVE ONCE, THEN HANDS-OFF)
+      # Application Support: com.raycast.macos
+      # IMPORTANT: do NOT pre-create ${dotMacos} if we might mv into it,
+      # or mv will nest: ${dotMacos}/com.raycast.macos/...
       # ------------------------------------------------------------
-      mkdir -p "${dotMacos}"
+      mkdir -p "$(dirname "${dotMacos}")"
 
       if [ -d "${asMacosPath}" ] && [ ! -L "${asMacosPath}" ]; then
-        if [ "$(ls -A "${dotMacos}" 2>/dev/null || true)" != "" ]; then
-          echo "WARNING: com.raycast.macos exists and dotfiles copy is not empty. Skipping move."
+        if [ -e "${dotMacos}" ]; then
+          if [ -d "${dotMacos}" ] && [ "$(ls -A "${dotMacos}" 2>/dev/null || true)" = "" ]; then
+            echo "dotfiles com.raycast.macos exists but is empty placeholder — removing to allow move."
+            rmdir "${dotMacos}" 2>/dev/null || rm -rf "${dotMacos}"
+            echo "Moving Application Support/com.raycast.macos → dotfiles"
+            mv "${asMacosPath}" "${dotMacos}"
+          else
+            echo "WARNING: dotfiles com.raycast.macos already exists and is not empty. Skipping move."
+          fi
         else
           echo "Moving Application Support/com.raycast.macos → dotfiles"
           mv "${asMacosPath}" "${dotMacos}"
         fi
       fi
 
-      if [ ! -L "${asMacosPath}" ]; then
+      if [ ! -L "${asMacosPath}" ] || [ "$(readlink "${asMacosPath}" 2>/dev/null || true)" != "${dotMacos}" ]; then
         rm -rf "${asMacosPath}"
         ln -sfn "${dotMacos}" "${asMacosPath}"
         echo "Symlinked com.raycast.macos → dotfiles"
       else
-        echo "com.raycast.macos already symlinked — leaving untouched"
+        echo "com.raycast.macos symlink already correct."
       fi
 
       # ------------------------------------------------------------
-      # Application Support: com.raycast.shared (MOVE ONCE, THEN HANDS-OFF)
+      # Application Support: com.raycast.shared
+      # Same nesting bug fix as above.
       # ------------------------------------------------------------
-      mkdir -p "${dotShared}"
+      mkdir -p "$(dirname "${dotShared}")"
 
       if [ -d "${asSharedPath}" ] && [ ! -L "${asSharedPath}" ]; then
-        if [ "$(ls -A "${dotShared}" 2>/dev/null || true)" != "" ]; then
-          echo "WARNING: com.raycast.shared exists and dotfiles copy is not empty. Skipping move."
+        if [ -e "${dotShared}" ]; then
+          if [ -d "${dotShared}" ] && [ "$(ls -A "${dotShared}" 2>/dev/null || true)" = "" ]; then
+            echo "dotfiles com.raycast.shared exists but is empty placeholder — removing to allow move."
+            rmdir "${dotShared}" 2>/dev/null || rm -rf "${dotShared}"
+            echo "Moving Application Support/com.raycast.shared → dotfiles"
+            mv "${asSharedPath}" "${dotShared}"
+          else
+            echo "WARNING: dotfiles com.raycast.shared already exists and is not empty. Skipping move."
+          fi
         else
           echo "Moving Application Support/com.raycast.shared → dotfiles"
           mv "${asSharedPath}" "${dotShared}"
         fi
       fi
 
-      if [ ! -L "${asSharedPath}" ]; then
+      if [ ! -L "${asSharedPath}" ] || [ "$(readlink "${asSharedPath}" 2>/dev/null || true)" != "${dotShared}" ]; then
         rm -rf "${asSharedPath}"
         ln -sfn "${dotShared}" "${asSharedPath}"
         echo "Symlinked com.raycast.shared → dotfiles"
       else
-        echo "com.raycast.shared already symlinked — leaving untouched"
+        echo "com.raycast.shared symlink already correct."
       fi
 
       # ------------------------------------------------------------
@@ -131,7 +147,7 @@ in
 
       [ -f "${dotPlist}" ] || : > "${dotPlist}"
 
-      if [ ! -L "${plistPath}" ] || [ "$(readlink "${plistPath}")" != "${dotPlist}" ]; then
+      if [ ! -L "${plistPath}" ] || [ "$(readlink "${plistPath}" 2>/dev/null || true)" != "${dotPlist}" ]; then
         rm -f "${plistPath}" 2>/dev/null || true
         ln -sfn "${dotPlist}" "${plistPath}"
         echo "Symlinked plist → dotfiles"
