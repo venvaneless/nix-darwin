@@ -1,20 +1,28 @@
-# darwin/modules/terminal/nvim.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/nvim.nix
 #
 # USER: NEOVIM + ASTROVIM
 # ============================================================
 # - Installs Neovim + Neovide
-# - Uses a private XDG root at ven-dots/zsh/nvim
-# - Installs AstroNvim declaratively
-# - Wraps binaries so only Neovim is affected
+# - Uses a private Neovim root at:
+#     /Users/ven/ven-dots/zsh/nvim
+#   with:
+#     conf/  data/  cache/
+# - Installs AstroNvim declaratively (config only)
+# - Fully isolates Neovide state at:
+#     /Users/ven/ven-dots/user-data/apps/neovide
 # ============================================================
 
 { pkgs, lib, inputs, ... }:
 
 let
-  nvimRoot = "/Users/ven/ven-dots/zsh/nvim";
+  # ------------------------------------------------------------
+  # PATHS
+  # ------------------------------------------------------------
+  nvimRoot    = "/Users/ven/ven-dots/zsh/nvim";
+  neovideRoot = "/Users/ven/ven-dots/user-data/apps/neovide";
 
   # ------------------------------------------------------------
-  # ASTROVIM INSTALLER
+  # ASTROVIM INSTALLER (CONFIG ONLY)
   # ------------------------------------------------------------
   astroInstall = pkgs.writeShellScriptBin "install-astrovim" ''
     #!/bin/bash
@@ -29,31 +37,41 @@ let
 
     if [ ! -f "${nvimRoot}/conf/init.lua" ]; then
       echo ">>> [nvim] Installing AstroNvim config"
-      ${pkgs.rsync}/bin/rsync -a "${inputs.astronvim}/" "${nvimRoot}/conf/"
+      ${pkgs.rsync}/bin/rsync -a --delete "${inputs.astronvim}/" "${nvimRoot}/conf/"
     else
       echo ">>> [nvim] AstroNvim already present, skipping"
     fi
   '';
 
   # ------------------------------------------------------------
-  # NVIM WRAPPER
+  # NVIM WRAPPER (NO XDG, FULLY CONTROLLED ROOT)
   # ------------------------------------------------------------
   nvimWrapped = pkgs.writeShellScriptBin "nvim" ''
     #!/bin/bash
-    export XDG_CONFIG_HOME="${nvimRoot}/conf"
-    export XDG_DATA_HOME="${nvimRoot}/data"
-    export XDG_CACHE_HOME="${nvimRoot}/cache"
+    set -e
+
+    # Neovim root (conf/, data/, cache/)
+    export HOME="${nvimRoot}"
+    export NVIM_APPNAME="nvim"
+
+    # Required for AstroNvim / Lazy.nvim bootstrap
+    export PATH="${pkgs.git}/bin:${pkgs.curl}/bin:${pkgs.nodejs}/bin:$PATH"
+
     exec ${pkgs.neovim}/bin/nvim "$@"
   '';
 
   # ------------------------------------------------------------
-  # NEOVIDE WRAPPER
+  # NEOVIDE WRAPPER (STRICTLY NEOVIDE STATE)
   # ------------------------------------------------------------
   neovideWrapped = pkgs.writeShellScriptBin "neovide" ''
     #!/bin/bash
-    export XDG_CONFIG_HOME="${nvimRoot}/conf"
-    export XDG_DATA_HOME="${nvimRoot}/data"
-    export XDG_CACHE_HOME="${nvimRoot}/cache"
+    set -e
+
+    mkdir -p "${neovideRoot}"
+
+    # Neovide gets its own isolated HOME
+    export HOME="${neovideRoot}"
+
     exec ${pkgs.neovide}/bin/neovide "$@"
   '';
 in
