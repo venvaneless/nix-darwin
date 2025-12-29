@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/yate-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/yate-symlinks.nix
 #
 # DARWIN: YATE USER-DATA BACKUP
 # ============================================================

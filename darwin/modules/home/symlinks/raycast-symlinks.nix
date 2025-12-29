@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/raycast-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/raycast-symlinks.nix
 #
 # RAYCAST: USER-DATA MIDDLE-MAN
 # ============================================================

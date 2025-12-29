@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/home-manager.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/home-manager.nix
 #
 # DARWIN: HOME MANAGER (INTEGRATED)
 # ================================================
@@ -37,7 +37,7 @@
       imports = [
         ../terminal/zsh.nix
         ../terminal/nvim.nix
-        ../apps/user-data/symlinking.nix
+        ./symlinks/symlinking.nix
         ./hm-options.nix
       ];
     };

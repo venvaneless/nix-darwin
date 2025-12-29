@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/symlinking.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/symlinking.nix
 #
 # APP USER-DATA SYMLINK LOADER
 # ============================================================
@@ -18,7 +18,7 @@
     # ./chromium-symlinks.nix
     # ./espanso-symlinks.nix
     # ./iterm-symlinks.nix
-    	./raycast-symlinks.nix
+    #	./raycast-symlinks.nix
     # ./yate-symlinks.nix
     # ./vlc-symlinks.nix
     # ./zed-symlinks.nix

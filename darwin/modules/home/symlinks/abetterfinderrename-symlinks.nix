@@ -1,5 +1,5 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/abetterfinderrename-symlinks.nix
-#
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/abetterfinderrename-symlinks.nix
+# 
 # DARWIN: A BETTER FINDER RENAME USER-DATA
 # ============================================================
 # Bulk file renaming utility.

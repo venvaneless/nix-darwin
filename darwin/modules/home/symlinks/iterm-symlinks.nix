@@ -1,3 +1,5 @@
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/iterm-symlinks.nix
+# 
 # DARWIN: ITERM USER-DATA (NO PLIST HANDLING)
 # ============================================================
 # Source of truth:

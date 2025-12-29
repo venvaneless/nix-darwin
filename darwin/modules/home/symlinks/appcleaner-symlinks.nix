@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/appcleaner-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/appcleaner-symlinks.nix
 #
 # DARWIN: APPCLEANER USER-DATA
 # ============================================================

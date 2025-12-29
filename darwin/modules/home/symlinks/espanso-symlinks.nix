@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/user-data/espanso-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/espanso-symlinks.nix
 #
 # DARWIN: ESPANSO USER-DATA
 # ============================================================
