@@ -1,25 +1,13 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/raycast-symlinks.nix
 #
-# RAYCAST: USER-DATA MIDDLE-MAN
+# RAYCAST: USER-DATA MIDDLE-MAN (SAFE, NON-DESTRUCTIVE)
 # ============================================================
-# Source of truth:
-#     /Users/ven/ven-dots/user-data/apps/raycast
-#
-# Runtime paths:
-#     ~/Library/Application Support/com.raycast.macos
-#     ~/Library/Application Support/com.raycast.shared
-#     ~/Library/Preferences/com.raycast.macos.plist
-#     ~/.config/raycast
-#
-# Responsibilities:
-#   - Ensure Raycast dotfiles root exists
-#   - Move real system folders/files into dotfiles if needed (ONE-TIME)
-#   - Ensure Application Support folders are SYMLINKS → dotfiles (STABLE)
-#   - Ensure ~/.config/raycast is a SYMLINK → dotfiles/conf
-#   - Ensure Preferences plist is moved + symlinked
-#   - Never overwrite dotfiles
-#   - Never partially symlink contents (folders only)
-#   - Never install, update, or launch Raycast
+# RULES:
+#   - NEVER delete Raycast data
+#   - NEVER rm -rf Application Support paths
+#   - ONLY move aside (timestamped backup)
+#   - ONLY then create symlinks
+#   - Idempotent across rebuilds
 # ============================================================
 
 { config, lib, ... }:
@@ -27,134 +15,96 @@
 let
   home = config.home.homeDirectory;
 
-  # MAIN RAYCAST DOTFILES ROOT
+  tsCmd = "date +%Y%m%d-%H%M%S";
+
+  # DOTFILES ROOT (LOCAL, NON-ICLOUD)
   dotRaycast = "/Users/ven/ven-dots/user-data/apps/raycast";
 
-  # SOURCE-OF-TRUTH PATHS
-  dotMacos   = "${dotRaycast}/com.raycast.macos";
-  dotShared  = "${dotRaycast}/com.raycast.shared";
-  dotConf    = "${dotRaycast}/conf";
-  dotPlist   = "${dotRaycast}/com.raycast.macos.plist";
+  dotMacos  = "${dotRaycast}/com.raycast.macos";
+  dotShared = "${dotRaycast}/com.raycast.shared";
+  dotConf   = "${dotRaycast}/conf";
+  dotPlist  = "${dotRaycast}/com.raycast.macos.plist";
 
-  # RUNTIME PATHS
   asMacosPath  = "${home}/Library/Application Support/com.raycast.macos";
   asSharedPath = "${home}/Library/Application Support/com.raycast.shared";
-  plistPath    = "${home}/Library/Preferences/com.raycast.macos.plist";
-  confPath     = "${home}/.config/raycast";
+  plistPath   = "${home}/Library/Preferences/com.raycast.macos.plist";
+  confPath    = "${home}/.config/raycast";
 in
 {
   home.activation.raycastUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Managing Raycast user-data..."
 
-      # ------------------------------------------------------------
-      # Ensure dotfiles root exists
-      # ------------------------------------------------------------
+      echo "Raycast HM: starting safe user-data sync"
+
       mkdir -p "${dotRaycast}"
       mkdir -p "${dotConf}"
       mkdir -p "${home}/.config"
 
       # ------------------------------------------------------------
-      # ~/.config/raycast → dotfiles/conf
+      # ~/.config/raycast  (SAFE)
       # ------------------------------------------------------------
-      if [ -d "${confPath}" ] && [ ! -L "${confPath}" ]; then
-        if [ "$(ls -A "${dotConf}" 2>/dev/null || true)" != "" ]; then
-          echo "WARNING: ~/.config/raycast exists and dotfiles/conf is not empty. Skipping move."
-        else
-          echo "Moving ~/.config/raycast → dotfiles/conf"
-          rm -rf "${dotConf}"
-          mv "${confPath}" "${dotConf}"
-        fi
+      if [ -e "${confPath}" ] && { [ ! -L "${confPath}" ] || [ "$(readlink "${confPath}" 2>/dev/null || true)" != "${dotConf}" ]; }; then
+        ts="$(${tsCmd})"
+        echo "Backing up ~/.config/raycast → ${confPath}.bak-${ts}"
+        mv "${confPath}" "${confPath}.bak-${ts}"
       fi
 
-      if [ ! -L "${confPath}" ] || [ "$(readlink "${confPath}" 2>/dev/null || true)" != "${dotConf}" ]; then
-        rm -rf "${confPath}"
+      if [ ! -L "${confPath}" ]; then
         ln -sfn "${dotConf}" "${confPath}"
-        echo "Symlinked ~/.config/raycast → dotfiles/conf"
-      else
-        echo "~/.config/raycast symlink already correct."
+        echo "Symlinked ~/.config/raycast → dotfiles"
       fi
 
       # ------------------------------------------------------------
-      # Application Support: com.raycast.macos
-      # IMPORTANT: do NOT pre-create ${dotMacos} if we might mv into it,
-      # or mv will nest: ${dotMacos}/com.raycast.macos/...
+      # Application Support: com.raycast.macos  (SAFE)
       # ------------------------------------------------------------
       mkdir -p "$(dirname "${dotMacos}")"
 
-      if [ -d "${asMacosPath}" ] && [ ! -L "${asMacosPath}" ]; then
-        if [ -e "${dotMacos}" ]; then
-          if [ -d "${dotMacos}" ] && [ "$(ls -A "${dotMacos}" 2>/dev/null || true)" = "" ]; then
-            echo "dotfiles com.raycast.macos exists but is empty placeholder — removing to allow move."
-            rmdir "${dotMacos}" 2>/dev/null || rm -rf "${dotMacos}"
-            echo "Moving Application Support/com.raycast.macos → dotfiles"
-            mv "${asMacosPath}" "${dotMacos}"
-          else
-            echo "WARNING: dotfiles com.raycast.macos already exists and is not empty. Skipping move."
-          fi
-        else
-          echo "Moving Application Support/com.raycast.macos → dotfiles"
-          mv "${asMacosPath}" "${dotMacos}"
-        fi
+      if [ -e "${asMacosPath}" ] && { [ ! -L "${asMacosPath}" ] || [ "$(readlink "${asMacosPath}" 2>/dev/null || true)" != "${dotMacos}" ]; }; then
+        ts="$(${tsCmd})"
+        echo "Backing up com.raycast.macos → ${asMacosPath}.bak-${ts}"
+        mv "${asMacosPath}" "${asMacosPath}.bak-${ts}"
       fi
 
-      if [ ! -L "${asMacosPath}" ] || [ "$(readlink "${asMacosPath}" 2>/dev/null || true)" != "${dotMacos}" ]; then
-        rm -rf "${asMacosPath}"
+      if [ ! -L "${asMacosPath}" ]; then
         ln -sfn "${dotMacos}" "${asMacosPath}"
         echo "Symlinked com.raycast.macos → dotfiles"
-      else
-        echo "com.raycast.macos symlink already correct."
       fi
 
       # ------------------------------------------------------------
-      # Application Support: com.raycast.shared
-      # Same nesting bug fix as above.
+      # Application Support: com.raycast.shared  (SAFE)
       # ------------------------------------------------------------
       mkdir -p "$(dirname "${dotShared}")"
 
-      if [ -d "${asSharedPath}" ] && [ ! -L "${asSharedPath}" ]; then
-        if [ -e "${dotShared}" ]; then
-          if [ -d "${dotShared}" ] && [ "$(ls -A "${dotShared}" 2>/dev/null || true)" = "" ]; then
-            echo "dotfiles com.raycast.shared exists but is empty placeholder — removing to allow move."
-            rmdir "${dotShared}" 2>/dev/null || rm -rf "${dotShared}"
-            echo "Moving Application Support/com.raycast.shared → dotfiles"
-            mv "${asSharedPath}" "${dotShared}"
-          else
-            echo "WARNING: dotfiles com.raycast.shared already exists and is not empty. Skipping move."
-          fi
-        else
-          echo "Moving Application Support/com.raycast.shared → dotfiles"
-          mv "${asSharedPath}" "${dotShared}"
-        fi
+      if [ -e "${asSharedPath}" ] && { [ ! -L "${asSharedPath}" ] || [ "$(readlink "${asSharedPath}" 2>/dev/null || true)" != "${dotShared}" ]; }; then
+        ts="$(${tsCmd})"
+        echo "Backing up com.raycast.shared → ${asSharedPath}.bak-${ts}"
+        mv "${asSharedPath}" "${asSharedPath}.bak-${ts}"
       fi
 
-      if [ ! -L "${asSharedPath}" ] || [ "$(readlink "${asSharedPath}" 2>/dev/null || true)" != "${dotShared}" ]; then
-        rm -rf "${asSharedPath}"
+      if [ ! -L "${asSharedPath}" ]; then
         ln -sfn "${dotShared}" "${asSharedPath}"
         echo "Symlinked com.raycast.shared → dotfiles"
-      else
-        echo "com.raycast.shared symlink already correct."
       fi
 
       # ------------------------------------------------------------
-      # Preferences plist
+      # Preferences plist  (SAFE)
       # ------------------------------------------------------------
-      if [ -f "${plistPath}" ] && [ ! -L "${plistPath}" ] && [ ! -f "${dotPlist}" ]; then
-        echo "Moving real plist → dotfiles"
-        mv "${plistPath}" "${dotPlist}"
+      if [ -e "${plistPath}" ] && { [ ! -L "${plistPath}" ] || [ "$(readlink "${plistPath}" 2>/dev/null || true)" != "${dotPlist}" ]; }; then
+        ts="$(${tsCmd})"
+        echo "Backing up plist → ${plistPath}.bak-${ts}"
+        mv "${plistPath}" "${plistPath}.bak-${ts}"
       fi
 
-      [ -f "${dotPlist}" ] || : > "${dotPlist}"
+      if [ ! -f "${dotPlist}" ]; then
+        : > "${dotPlist}"
+      fi
 
-      if [ ! -L "${plistPath}" ] || [ "$(readlink "${plistPath}" 2>/dev/null || true)" != "${dotPlist}" ]; then
-        rm -f "${plistPath}" 2>/dev/null || true
+      if [ ! -L "${plistPath}" ]; then
         ln -sfn "${dotPlist}" "${plistPath}"
         echo "Symlinked plist → dotfiles"
-      else
-        echo "Preferences plist symlink already correct."
       fi
 
-      echo "Raycast: User-data sync complete"
+      echo "Raycast HM: user-data sync complete (safe mode)"
     '';
 }
