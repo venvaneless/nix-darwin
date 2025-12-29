@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/hm-options.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/hm-options.nix
 #
 # HOME MANAGER — MACOS OPTIONS (GLUE)
 # ============================================================
@@ -14,6 +14,9 @@
 { config, lib, ... }:
 
 {
+	home.file."hm-test-hm-options.txt".text = ''
+  hm-options.nix was executed
+'';
   # ------------------------------------------------------------
   # HOME MANAGER — RAW MACOS DEFAULTS
   # ------------------------------------------------------------

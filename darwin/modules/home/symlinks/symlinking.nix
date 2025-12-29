@@ -13,12 +13,12 @@
 
 {
   imports = [
-  	#	./abetterfinderattributes-symlinks.nix
-   	#	./abetterfinderrename-symlinks.nix
+    # ./abetterfinderattributes-symlinks.nix
+    # ./abetterfinderrename-symlinks.nix
     # ./chromium-symlinks.nix
     # ./espanso-symlinks.nix
     # ./iterm-symlinks.nix
-    #	./raycast-symlinks.nix
+    ./raycast-symlinks.nix
     # ./yate-symlinks.nix
     # ./vlc-symlinks.nix
     # ./zed-symlinks.nix

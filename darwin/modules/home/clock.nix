@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/clock.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/clock.nix
 #
 # MENU BAR CLOCK
 # ============================================================

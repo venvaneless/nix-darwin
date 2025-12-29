@@ -13,8 +13,8 @@
 #
 # Responsibilities:
 #   - Ensure Raycast dotfiles root exists
-#   - Move real system folders/files into dotfiles if needed
-#   - Ensure Application Support folders are SYMLINKS → dotfiles
+#   - Move real system folders/files into dotfiles if needed (ONE-TIME)
+#   - Ensure Application Support folders are SYMLINKS → dotfiles (STABLE)
 #   - Ensure ~/.config/raycast is a SYMLINK → dotfiles/conf
 #   - Ensure Preferences plist is moved + symlinked
 #   - Never overwrite dotfiles
@@ -78,7 +78,7 @@ in
       fi
 
       # ------------------------------------------------------------
-      # Application Support: com.raycast.macos
+      # Application Support: com.raycast.macos (MOVE ONCE, THEN HANDS-OFF)
       # ------------------------------------------------------------
       mkdir -p "${dotMacos}"
 
@@ -87,21 +87,20 @@ in
           echo "WARNING: com.raycast.macos exists and dotfiles copy is not empty. Skipping move."
         else
           echo "Moving Application Support/com.raycast.macos → dotfiles"
-          rm -rf "${dotMacos}"
           mv "${asMacosPath}" "${dotMacos}"
         fi
       fi
 
-      if [ ! -L "${asMacosPath}" ] || [ "$(readlink "${asMacosPath}")" != "${dotMacos}" ]; then
+      if [ ! -L "${asMacosPath}" ]; then
         rm -rf "${asMacosPath}"
         ln -sfn "${dotMacos}" "${asMacosPath}"
         echo "Symlinked com.raycast.macos → dotfiles"
       else
-        echo "com.raycast.macos symlink already correct."
+        echo "com.raycast.macos already symlinked — leaving untouched"
       fi
 
       # ------------------------------------------------------------
-      # Application Support: com.raycast.shared
+      # Application Support: com.raycast.shared (MOVE ONCE, THEN HANDS-OFF)
       # ------------------------------------------------------------
       mkdir -p "${dotShared}"
 
@@ -110,17 +109,16 @@ in
           echo "WARNING: com.raycast.shared exists and dotfiles copy is not empty. Skipping move."
         else
           echo "Moving Application Support/com.raycast.shared → dotfiles"
-          rm -rf "${dotShared}"
           mv "${asSharedPath}" "${dotShared}"
         fi
       fi
 
-      if [ ! -L "${asSharedPath}" ] || [ "$(readlink "${asSharedPath}")" != "${dotShared}" ]; then
+      if [ ! -L "${asSharedPath}" ]; then
         rm -rf "${asSharedPath}"
         ln -sfn "${dotShared}" "${asSharedPath}"
         echo "Symlinked com.raycast.shared → dotfiles"
       else
-        echo "com.raycast.shared symlink already correct."
+        echo "com.raycast.shared already symlinked — leaving untouched"
       fi
 
       # ------------------------------------------------------------
