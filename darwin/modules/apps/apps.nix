@@ -13,7 +13,7 @@
     ./abetterfinderattributes.nix
     ./abetterfinderrename.nix
     ./appcleaner.nix
-    #./astrovim.nix
+    # ./astrovim.nix
     ./espanso.nix
     ./hammerspoon.nix
     ./iterm.nix
