@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/iterm.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/espanso.nix
 
 # ITERM2: INSTALL APP
 # ============================================================

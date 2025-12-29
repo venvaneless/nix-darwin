@@ -39,7 +39,6 @@
         ../terminal/nvim.nix
         ../apps/user-data/symlinking.nix
         ./hm-options.nix
-        ./icloud-symlink.nix
       ];
     };
   };

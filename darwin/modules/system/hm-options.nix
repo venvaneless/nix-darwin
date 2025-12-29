@@ -39,20 +39,18 @@
   # HOME MANAGER — SESSION ENVIRONMENT
   # ------------------------------------------------------------
   home.sessionVariables = {
-
-    # ----------------------------------------------------------
-    # USER-SCOPED PATH OVERRIDES
-    # ----------------------------------------------------------
-    
-    # ---- Espanso path overrides ----
-    ESPANSO_CONFIG_DIR = "/Users/ven/ven-dots/user-data/apps/espanso/config";
-    ESPANSO_DATA_DIR   = "/Users/ven/ven-dots/user-data/apps/espanso/data";
   };
 
   # ------------------------------------------------------------
   # MODULES
   # ------------------------------------------------------------
   imports = [
+  
+  	# --- User-level setting modules ---
     ./clock.nix
+    
+    # --- Home Manager services ---
+    ../services/espanso-launchd.nix
+    ../services/icloud-symlink.nix
   ];
 }

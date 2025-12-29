@@ -45,7 +45,7 @@
 			./aliases/nix-aliases.nix
 			./aliases/gc-aliases.nix
 			./aliases/git-aliases.nix
-			./aliases/test-aliases.nix
+			./aliases/shell-aliases.nix
 			
 			# ---- Plugins ------ #
     	./plugins/asdf.nix
