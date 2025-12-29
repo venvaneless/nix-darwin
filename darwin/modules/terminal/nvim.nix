@@ -29,7 +29,7 @@ let
 
     if [ ! -f "${nvimRoot}/conf/init.lua" ]; then
       echo ">>> [nvim] Installing AstroNvim config"
-      rsync -a "${inputs.astronvim}/" "${nvimRoot}/conf/"
+      ${pkgs.rsync}/bin/rsync -a "${inputs.astronvim}/" "${nvimRoot}/conf/"
     else
       echo ">>> [nvim] AstroNvim already present, skipping"
     fi
