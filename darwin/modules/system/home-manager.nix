@@ -33,13 +33,6 @@
       home.packages = [
       ];
 
-      # --- Session variables kept in HM (intentionally) ---
-      home.sessionVariables = {
-       # RAYCAST_CONFIG_DIR = "/Users/ven/ven-dots/user-data/apps/raycast";
-       ESPANSO_CONFIG_DIR = "/Users/ven/ven-dots/user-data/apps/espanso/config";
-       ESPANSO_DATA_DIR   = "/Users/ven/ven-dots/user-data/apps/espanso/data";
-      };
-
       # --- User modules ---
       imports = [
         ../terminal/zsh.nix

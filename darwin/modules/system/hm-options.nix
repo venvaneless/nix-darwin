@@ -5,6 +5,7 @@
 # Aggregates Home Manager–only macOS defaults:
 # - Locale / language / measurement units
 # - Menu bar clock
+# - User-session environment variables
 #
 # These options are user-scoped and not available in
 # nix-darwin system modules.
@@ -23,19 +24,33 @@
     # ==========================================================
     NSGlobalDomain = {
 
-      # Preferred UI languages (order matters)
+      # ---- Preferred UI languages (order matters) ----
       AppleLanguages = [ "en" "de" "pl" ];
 
-      # Locale (controls formats like dates, numbers)
+      # ---- Locale (controls formats like dates, numbers) ----
       AppleLocale = "en_DE";
 
-      # Measurement units
+      # ---- Measurement units ----
       AppleMeasurementUnits = "Centimeters";
     };
   };
 
   # ------------------------------------------------------------
-  # FEATURE MODULES
+  # HOME MANAGER — SESSION ENVIRONMENT
+  # ------------------------------------------------------------
+  home.sessionVariables = {
+
+    # ----------------------------------------------------------
+    # USER-SCOPED PATH OVERRIDES
+    # ----------------------------------------------------------
+    
+    # ---- Espanso path overrides ----
+    ESPANSO_CONFIG_DIR = "/Users/ven/ven-dots/user-data/apps/espanso/config";
+    ESPANSO_DATA_DIR   = "/Users/ven/ven-dots/user-data/apps/espanso/data";
+  };
+
+  # ------------------------------------------------------------
+  # MODULES
   # ------------------------------------------------------------
   imports = [
     ./clock.nix
