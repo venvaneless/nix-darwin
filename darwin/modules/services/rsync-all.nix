@@ -1,43 +1,17 @@
-# /Users/ven/dotfiles/nix/darwin/modules/services/rsync-all.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/rsync-all.nix
 #
-# SYSTEM: RSYNC-ALL WRAPPER
+# SYSTEM: RSYNC-ALL (DISPATCHER MODE)
 # ============================================================
-# Embeds your rsync-all.sh script into the Nix store.
-# This version simply calls all rsync-*.sh scripts that
-# you maintain outside Nix.
+# Runs rsync-all.sh during darwin-rebuild switch.
+# All selection logic lives in the shell script.
 # ============================================================
 
 { lib, pkgs, ... }:
 
-let
-  rsyncScript = pkgs.writeShellScriptBin "rsync-all" ''
-    #!/bin/bash
-    set -euo pipefail
-
-    SCRIPT_DIR="/Users/ven/dotfiles/nix/scripts"
-
-    echo "▶ Running all app backup scripts…"
-
-    for script in "$SCRIPT_DIR"/rsync-*.sh; do
-      # Skip this wrapper itself if present
-      [ "$script" = "$SCRIPT_DIR/rsync-all.sh" ] && continue
-
-      if [ -x "$script" ]; then
-        echo "----------------------------------------"
-        echo "Running: $(basename "$script")"
-        "$script"
-      else
-        echo "Skipping $script (not executable)"
-      fi
-    done
-
-    echo "✔ All backup scripts complete."
-  '';
-in
 {
-	system.activationScripts.extraActivation.text = lib.mkAfter ''
-  echo ">>> rsync-all: starting selective backups (system activation)"
-  /Users/ven/.config/nix/nix-scripts/rsync-all2.sh \
-    || echo ">>> rsync-all: failed (ignored)"
-'';
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
+    echo ">>> rsync-all: starting dispatcher backups (system activation)"
+    /Users/ven/.config/nix/nix-scripts/rsync-all.sh \
+      || echo ">>> rsync-all: failed (ignored)"
+  '';
 }
