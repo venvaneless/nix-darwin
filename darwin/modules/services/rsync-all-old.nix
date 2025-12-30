@@ -14,14 +14,14 @@ let
   dispatcher = "/Users/ven/.config/nix/nix-scripts/rsync-all.sh";
 in
 {
-  system.activationScripts.rsyncAll = lib.mkAfter ''
-    echo ">>> [rsync-all] starting dispatcher"
+	system.activationScripts.rsyncAll.text = lib.mkAfter ''
+  echo ">>> [rsync-all] starting dispatcher"
 
-    if [ ! -x "${dispatcher}" ]; then
-      echo ">>> [rsync-all] ERROR: dispatcher not executable"
-      exit 0
-    fi
+  if [ ! -x "${dispatcher}" ]; then
+    echo ">>> [rsync-all] ERROR: dispatcher not executable"
+    exit 0
+  fi
 
-    "${dispatcher}" || echo ">>> [rsync-all] dispatcher failed (ignored)"
-  '';
+  "${dispatcher}" || echo ">>> [rsync-all] dispatcher failed (ignored)"
+'';
 }
