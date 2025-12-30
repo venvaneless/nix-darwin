@@ -13,8 +13,8 @@
 
 {
   imports = [
-    # ./abetterfinderattributes-symlinks.nix
-    # ./abetterfinderrename-symlinks.nix
+    ./abetterfinderattributes-symlinks.nix
+    ./abetterfinderrename-symlinks.nix
     # ./chromium-symlinks.nix
     # ./espanso-symlinks.nix
     # ./iterm-symlinks.nix
