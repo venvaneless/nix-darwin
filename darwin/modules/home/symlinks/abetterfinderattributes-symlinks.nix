@@ -18,20 +18,26 @@
 
 let
   # ------------------------------------------------------------
-  # --- PATHS ---
+  # --- PATH DEFINITIONS ---
   # ------------------------------------------------------------
   home = config.home.homeDirectory;
 
-  dotsApps = "/Users/ven/ven-dots/user-data/apps";
-  appFolder = "a_better_finder_attributes";
+  # Root directory for all app user-data
+  dirRoot = "/Users/ven/ven-dots/user-data/apps";
 
-  dotRoot = "${dotsApps}/${appFolder}";
-  dotConf = "${dotRoot}/conf";
-  dotPref = "${dotRoot}/pref";
+  # App-specific source-of-truth root
+  appName = "a_better_finder_attributes";
+  dirSRC  = "${dirRoot}/${appName}";
 
+  # Source-of-truth subdirectories
+  dirConf = "${dirSRC}/conf";
+  dirPref = "${dirSRC}/pref";
+
+  # Application Support runtime path
   asRealName = "A Better Finder Attributes";
-  asPath = "${home}/Library/Application Support/${asRealName}";
+  asPath     = "${home}/Library/Application Support/${asRealName}";
 
+  # Preferences runtime items
   prefItems = [
     "${home}/Library/Preferences/net.publicspace.abfa7.plist"
     "${home}/Library/Preferences/com.publicspace.abfa.plist"
@@ -42,7 +48,7 @@ let
   # --- ICLOUD PREFLIGHT (CHECK ONLY) ---
   # ------------------------------------------------------------
   iCloudBase =
-    "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/my-system/user-data/${appFolder}";
+    "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/my-system/user-data/${appName}";
   iCloudConf = "${iCloudBase}/conf";
   iCloudPref = "${iCloudBase}/pref";
 in
@@ -60,18 +66,6 @@ in
       # ------------------------------------------------------------
       # --- HELPERS ---
       # ------------------------------------------------------------
-      is_symlink() {
-        [ -L "$1" ]
-      }
-
-      is_dir() {
-        [ -d "$1" ]
-      }
-
-      is_file() {
-        [ -f "$1" ]
-      }
-
       ensure_dir() {
         local d="$1"
         if [ ! -d "$d" ]; then
@@ -110,7 +104,6 @@ in
           fi
 
           echo "[$APP] Symlink wrong: $linkPath → $currentTarget (expected $targetPath) ⚠️"
-          echo "[$APP] Fixing symlink: $linkPath → $targetPath 🔧"
           safe_unlink_if_symlink "$linkPath"
           ln -s "$targetPath" "$linkPath"
           echo "[$APP] Symlink fixed: $linkPath → $targetPath ✅"
@@ -127,27 +120,23 @@ in
         echo "[$APP] Symlink created: $linkPath → $targetPath ✅"
       }
 
-      move_to_target_with_backup_if_needed() {
+      move_with_backup_if_needed() {
         local src="$1"
         local dst="$2"
 
         if [ -e "$dst" ] && [ ! -L "$dst" ]; then
-          if [ -d "$dst" ]; then
-            if ! dir_is_empty "$dst"; then
-              local ts
-              ts="$(date +%Y%m%d-%H%M%S)"
-              local backup="${dst}.backup-${ts}"
-              echo "[$APP] Destination exists and non-empty. Backing up: $dst → $backup 📦"
-              mv "$dst" "$backup"
-              echo "[$APP] Backup complete: $backup ✅"
-            else
-              echo "[$APP] Destination exists but empty. Removing empty dir: $dst 🧹"
-              rmdir "$dst" || true
-            fi
-          else
-            local ts
+          if [ -d "$dst" ] && ! dir_is_empty "$dst"; then
             ts="$(date +%Y%m%d-%H%M%S)"
-            local backup="${dst}.backup-${ts}"
+            backup="${dst}.backup-${ts}"
+            echo "[$APP] Destination exists and non-empty. Backing up: $dst → $backup 📦"
+            mv "$dst" "$backup"
+            echo "[$APP] Backup complete: $backup ✅"
+          elif [ -d "$dst" ]; then
+            echo "[$APP] Destination exists but empty. Removing empty dir: $dst 🧹"
+            rmdir "$dst" || true
+          else
+            ts="$(date +%Y%m%d-%H%M%S)"
+            backup="${dst}.backup-${ts}"
             echo "[$APP] Destination exists (file). Backing up: $dst → $backup 📦"
             mv "$dst" "$backup"
             echo "[$APP] Backup complete: $backup ✅"
@@ -167,17 +156,12 @@ in
       for p in "${iCloudConf}" "${iCloudPref}"; do
         if [ -e "$p" ]; then
           if [ -L "$p" ]; then
-            echo "[$APP] iCloud gate: path is a symlink (must NOT be). Blocking run: $p ⛔"
+            echo "[$APP] iCloud gate: path is a symlink. Blocking run: $p ⛔"
             iCloudGateOk="0"
-          elif [ -d "$p" ]; then
-            if dir_is_empty "$p"; then
-              echo "[$APP] iCloud gate: empty directory OK (not a symlink): $p ✅"
-            else
-              echo "[$APP] iCloud gate: directory not empty. Blocking run: $p ⛔"
-              iCloudGateOk="0"
-            fi
+          elif [ -d "$p" ] && dir_is_empty "$p"; then
+            echo "[$APP] iCloud gate: empty directory OK: $p ✅"
           else
-            echo "[$APP] iCloud gate: path exists but is not a directory. Blocking run: $p ⛔"
+            echo "[$APP] iCloud gate: path exists and is not empty. Blocking run: $p ⛔"
             iCloudGateOk="0"
           fi
         else
@@ -193,94 +177,51 @@ in
       # ------------------------------------------------------------
       # --- SOURCE OF TRUTH ROOT GUARD ---
       # ------------------------------------------------------------
-      if [ ! -d "${dotRoot}" ]; then
-        echo "[$APP] Source-of-truth root missing. Creating: ${dotRoot} 📁"
-        mkdir -p "${dotRoot}"
-      else
-        echo "[$APP] Source-of-truth root exists: ${dotRoot} ✅"
-      fi
+      ensure_dir "${dirSRC}"
 
       allowMigrate="0"
-      if dir_is_empty "${dotRoot}"; then
+      if dir_is_empty "${dirSRC}"; then
         echo "[$APP] Source-of-truth root is empty. Migration allowed ✅"
         allowMigrate="1"
       else
         echo "[$APP] Source-of-truth root is not empty. Migration skipped ⚠️"
-        allowMigrate="0"
       fi
 
-      # ------------------------------------------------------------
-      # --- SOURCE OF TRUTH SUBDIRS ---
-      # ------------------------------------------------------------
-      ensure_dir "${dotConf}"
-      ensure_dir "${dotPref}"
+      ensure_dir "${dirConf}"
+      ensure_dir "${dirPref}"
 
       # ------------------------------------------------------------
-      # --- APPLICATION SUPPORT: MOVE + SYMLINK ---
+      # --- APPLICATION SUPPORT ---
       # ------------------------------------------------------------
       if [ -e "${asPath}" ]; then
         if [ -L "${asPath}" ]; then
-          echo "[$APP] Application Support is a symlink. Verifying target… 🔎"
-          ensure_symlink "${asPath}" "${dotConf}" || true
+          ensure_symlink "${asPath}" "${dirConf}" || true
+        elif [ "$allowMigrate" = "1" ]; then
+          echo "[$APP] '${asRealName}' is being moved from Application Support → ${dirConf} 📦"
+          move_with_backup_if_needed "${asPath}" "${dirConf}"
+          ensure_symlink "${asPath}" "${dirConf}" || true
         else
-          if [ "$allowMigrate" = "1" ]; then
-            echo "[$APP] '${asRealName}' is being moved from Application Support → ${dotConf} 📦"
-            move_to_target_with_backup_if_needed "${asPath}" "${dotConf}"
-
-            echo "[$APP] '${asRealName}' is being symlinked back to Application Support 🔗"
-            ensure_symlink "${asPath}" "${dotConf}" || {
-              echo "[$APP] ERROR: Could not create symlink at Application Support (path exists and is not a symlink) ⛔"
-            }
-          else
-            echo "[$APP] Application Support exists and is not a symlink, but migration is skipped ⚠️"
-            echo "[$APP] Leaving Application Support untouched: ${asPath} ✅"
-          fi
+          echo "[$APP] Application Support exists but migration skipped ⚠️"
         fi
       else
-        echo "[$APP] No Application Support data found. Skipping Application Support section ✅"
+        echo "[$APP] No Application Support data found. Skipping section ✅"
       fi
 
       # ------------------------------------------------------------
-      # --- PREFERENCES: MOVE + SYMLINK ---
+      # --- PREFERENCES ---
       # ------------------------------------------------------------
       for pref in ${lib.concatStringsSep " " prefItems}; do
         name="$(basename "$pref")"
-        dst="${dotPref}/$name"
+        dst="${dirPref}/$name"
 
         if [ -e "$pref" ]; then
           if [ -L "$pref" ]; then
-            echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
             ensure_symlink "$pref" "$dst" || true
           else
-            echo "[$APP] Preferences item is NOT a symlink. Ensuring it is moved + linked: $pref ⚠️"
-
-            if [ -e "$dst" ] && [ ! -L "$dst" ]; then
-              if [ -d "$dst" ] && ! dir_is_empty "$dst"; then
-                ts="$(date +%Y%m%d-%H%M%S)"
-                backup="${dst}.backup-${ts}"
-                echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
-                mv "$dst" "$backup"
-                echo "[$APP] Backup complete: $backup ✅"
-              elif [ -d "$dst" ]; then
-                echo "[$APP] Destination dir exists but empty. Removing empty dir: $dst 🧹"
-                rmdir "$dst" || true
-              else
-                ts="$(date +%Y%m%d-%H%M%S)"
-                backup="${dst}.backup-${ts}"
-                echo "[$APP] Destination file collision. Backing up: $dst → $backup 📦"
-                mv "$dst" "$backup"
-                echo "[$APP] Backup complete: $backup ✅"
-              fi
+            if [ "$allowMigrate" = "1" ]; then
+              move_with_backup_if_needed "$pref" "$dst"
             fi
-
-            echo "[$APP] '$name' is being moved from Preferences → ${dotPref} 📄"
-            mv "$pref" "$dst"
-            echo "[$APP] '$name' has been successfully moved from $pref to $dst ✅"
-
-            echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
-            ensure_symlink "$pref" "$dst" || {
-              echo "[$APP] ERROR: Could not create symlink in Preferences (path exists and is not a symlink) ⛔"
-            }
+            ensure_symlink "$pref" "$dst" || true
           fi
         else
           echo "[$APP] Preferences item missing. Skipping: $pref ✅"
