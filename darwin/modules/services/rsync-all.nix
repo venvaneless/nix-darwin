@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/rsync-all.nix
+# /Users/ven/dotfiles/nix/darwin/modules/services/rsync-all.nix
 #
 # SYSTEM: RSYNC-ALL WRAPPER
 # ============================================================
@@ -14,7 +14,7 @@ let
     #!/bin/bash
     set -euo pipefail
 
-    SCRIPT_DIR="/Users/ven/.config/nix/nix-scripts"
+    SCRIPT_DIR="/Users/ven/dotfiles/nix/scripts"
 
     echo "▶ Running all app backup scripts…"
 
