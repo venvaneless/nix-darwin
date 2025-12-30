@@ -28,16 +28,22 @@ let
   # ------------------------------------------------------------
   home = config.home.homeDirectory;
 
+  # Source-of-truth root for all apps
   dirRoot = "/Users/ven/ven-dots/user-data/apps";
+  
+  # App slug (rules-compliant name)
   appSlug = "a_better_finder_rename";
 
+  # App source-of-truth directory
   dirSRC  = "${dirRoot}/${appSlug}";
   dirConf = "${dirSRC}/conf";
   dirPref = "${dirSRC}/pref";
 
+  # Application Support runtime path
   asRealName = "A Better Finder Rename 12";
   asPath     = "${home}/Library/Application Support/${asRealName}";
 
+  # Preferences runtime items
   prefItems = [
     "${home}/Library/Preferences/net.publicspace.abfr12.plist"
     "${home}/Library/Preferences/ABFR Registration"

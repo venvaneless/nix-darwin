@@ -1,127 +1,176 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/chromium-symlinks.nix
-# 
-# DARWIN: CHROMIUM USER-DATA + PROFILE SYMLINKING
+#
+# DARWIN: CHROMIUM USER-DATA
 # ============================================================
+# Chromium browser user-data management.
+#
 # Source of truth:
-#     /Users/ven/ven-dots/user-data/apps/chromium
+# - Application Support content lives in:  <dirSRC>/conf
+# - Preferences plist lives in:            <dirSRC>/org.chromium.Chromium.plist
 #
-# Runtime paths:
-#     ~/Library/Application Support/Chromium
-#     ~/Library/Preferences/org.chromium.Chromium.plist
+# Runtime paths (what Chromium still "sees"):
+# - ~/Library/Application Support/Chromium
+# - ~/Library/Preferences/org.chromium.Chromium.plist
 #
-# Responsibilities:
-#   - Ensure ven-dots/apps/chromium exists
-#   - Move real Chromium profile into ven-dots if present
-#   - Ensure Application Support/Chromium is a symlink → ven-dots/apps/chromium
-#   - Move any new system-created files/dirs into source-of-truth
-#   - Ensure plist is moved + symlinked just like Zed’s plist handling
-#   - Never overwrite dotfiles unless file does not exist on ven-dots
+# Safety model:
+# - If <dirSRC> is non-empty, migration is skipped
+# - Exception: if runtime paths are NOT symlinks, they are repaired
+# - Never creates duplicate profiles
+# - Never overwrites existing dotfiles
 # ============================================================
 
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
 let
+  # ------------------------------------------------------------
+  # --- PATHS ---
+  # ------------------------------------------------------------
   home = config.home.homeDirectory;
 
-  dotChromium = "/Users/ven/ven-dots/user-data/apps/chromium";
-  asChromium  = "${home}/Library/Application Support/Chromium";
+  # Source-of-truth root for all apps
+  dirRoot = "/Users/ven/ven-dots/user-data/apps";
+  
+  # App name
+  asRealName = "Chromium";
+  
+  # App slug (rules-compliant name)
+  appSlug = "chromium";
 
-  prefPlist   = "${home}/Library/Preferences/org.chromium.Chromium.plist";
-  dotPlist    = "${dotChromium}/org.chromium.Chromium.plist";
+  # App source-of-truth directory
+  dirSRC  = "${dirRoot}/${appSlug}";
+  dirConf = "${dirSRC}/conf";
+
+  # Application Support runtime path
+  asPath     = "${home}/Library/Application Support/${asRealName}";
+
+  # Preferences runtime items
+  prefPlist = "${home}/Library/Preferences/org.chromium.Chromium.plist";
+  dotPlist  = "${dirSRC}/org.chromium.Chromium.plist";
 in
 {
   home.activation.chromiumUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Managing Chromium user-data..."
 
       # ------------------------------------------------------------
-      # Ensure dotfiles root exists
+      # --- START LOG ---
       # ------------------------------------------------------------
-      if [ ! -d "${dotChromium}" ]; then
-        echo "Creating Chromium dotfiles root → ${dotChromium}"
-        mkdir -p "${dotChromium}"
+      APP="${asRealName}"
+      echo "[$APP] User-data sync starting… 🚀"
 
-        # If Application Support/Chromium exists, copy its contents
-        if [ -d "${asChromium}" ] && [ ! -L "${asChromium}" ]; then
-          echo "Copying existing Application Support → dotfiles"
-          cp -a "${asChromium}/." "${dotChromium}/" 2>/dev/null || true
+      # ------------------------------------------------------------
+      # --- HELPERS: FILESYSTEM CHECKS ---
+      # ------------------------------------------------------------
+      ensure_dir() {
+        local d="$1"
+        if [ ! -d "$d" ]; then
+          echo "[$APP] Creating directory: $d 📁"
+          mkdir -p "$d"
         fi
+      }
 
-        # Copy plist if it exists
-        if [ -f "${prefPlist}" ]; then
-          echo "Copying existing plist → dotfiles"
-          cp -a "${prefPlist}" "${dotPlist}" || true
+      dir_is_empty() {
+        local d="$1"
+        [ -d "$d" ] || return 1
+        [ -z "$(ls -A "$d" 2>/dev/null || true)" ]
+      }
+
+      unlink_if_symlink() {
+        local p="$1"
+        if [ -L "$p" ]; then
+          echo "[$APP] Removing existing symlink: $p 🧹"
+          unlink "$p"
         fi
-      fi
-
-
-      # ------------------------------------------------------------
-      # Ensure Application Support/Chromium is a REAL DIR before symlinking
-      # ------------------------------------------------------------
-      if [ -L "${asChromium}" ]; then
-        echo "Fixing: Application Support/Chromium must not be a symlink pre-migration"
-        rm -f "${asChromium}"
-      fi
-
-      if [ -d "${asChromium}" ]; then
-        echo "Found real Chromium directory → preparing for migration"
-      fi
-
+      }
 
       # ------------------------------------------------------------
-      # Move system-created files/dirs from AS → dotfiles (same logic as Zed)
+      # --- HELPERS: SAFE BACKUPS + MOVES ---
+      # Non-empty directory or file → create timestamped backup
+      # This ensures no existing data is destroyed and allows rollback
       # ------------------------------------------------------------
-      if [ -d "${asChromium}" ] && [ ! -L "${asChromium}" ]; then
-        echo "Migrating Chromium items into dotfiles..."
+      backup_dest_if_needed() {
+        local dst="$1"
 
-        for item in "${asChromium}"/*; do
-          [ -e "$item" ] || continue
-          name="$(basename "$item")"
-
-          if [ -e "${dotChromium}/$name" ]; then
-            echo "  Skipping existing: $name"
-            rm -rf "$item"
-            ln -sfn "${dotChromium}/$name" "${asChromium}/$name"
-            continue
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+          if [ -d "$dst" ] && dir_is_empty "$dst"; then
+            rmdir "$dst" || true
+            return 0
           fi
 
-          echo "  Moving: $name"
-          mv "$item" "${dotChromium}/$name"
-          ln -sfn "${dotChromium}/$name" "${asChromium}/$name"
-        done
+          local ts
+          ts="$(date +%Y%m%d-%H%M%S)"
+          local backup
+          backup="$dst.backup-$ts"
+
+          echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
+          mv "$dst" "$backup"
+        fi
+      }
+
+      move_with_backup() {
+        local src="$1"
+        local dst="$2"
+
+        backup_dest_if_needed "$dst"
+        echo "[$APP] Moving: $src → $dst 📦"
+        mv "$src" "$dst"
+      }
+
+      # ------------------------------------------------------------
+      # --- SOURCE OF TRUTH SETUP ---
+      # ------------------------------------------------------------
+      ensure_dir "${dirSRC}"
+
+      allowMigrate="0"
+      if dir_is_empty "${dirSRC}"; then
+        echo "[$APP] Source-of-truth root is empty. Migration allowed ✅"
+        allowMigrate="1"
+      else
+        echo "[$APP] Source-of-truth root is not empty. Migration skipped (repair still allowed) ⚠️"
       fi
 
+      ensure_dir "${dirConf}"
 
       # ------------------------------------------------------------
-      # Recreate Application Support/Chromium as a symlink → dotfiles
+      # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
       # ------------------------------------------------------------
-      rm -rf "${asChromium}"
-      ln -sfn "${dotChromium}" "${asChromium}"
-      echo "Symlink created: Chromium → ${dotChromium}"
-
-
-      # ------------------------------------------------------------
-      # PLIST HANDLING (same style as Zed)
-      # ------------------------------------------------------------
-      echo "Managing Chromium plist..."
-
-      # If real plist exists and source-of-truth copy is missing → move it
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -f "${dotPlist}" ]; then
-        echo "Moving real plist → dotfiles"
-        mv "${prefPlist}" "${dotPlist}"
+      if [ -e "${asPath}" ]; then
+        if [ -L "${asPath}" ]; then
+          echo "[$APP] Application Support is a symlink. Verifying… 🔎"
+        else
+          if [ "$allowMigrate" = "1" ]; then
+          echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
+            move_with_backup "${asPath}" "${dirConf}"
+          else
+            echo "[$APP] Application Support exists but migration skipped ⚠️"
+          fi
+        fi
       fi
 
-      # Ensure dotfiles plist exists
-      if [ ! -f "${dotPlist}" ]; then
-        echo "Creating empty plist in dotfiles"
-        : > "${dotPlist}"
+      unlink_if_symlink "${asPath}"
+      ln -sfn "${dirConf}" "${asPath}"
+      echo "[$APP] Application Support symlinked → ${dirConf} 🔗"
+
+      # ------------------------------------------------------------
+      # --- PREFERENCES: PLIST MOVE + SYMLINK ---
+      # ------------------------------------------------------------
+      if [ -e "${prefPlist}" ]; then
+        if [ -L "${prefPlist}" ]; then
+          echo "[$APP] Preferences plist already symlinked. Verifying… 🔎"
+        else
+          if [ ! -e "${dotPlist}" ]; then
+            echo "[$APP] Moving plist → ${dotPlist} 📄"
+            move_with_backup "${prefPlist}" "${dotPlist}"
+          fi
+        fi
       fi
 
-      # Ensure Preferences plist symlink exists
       ln -sfn "${dotPlist}" "${prefPlist}"
-      echo "Plist symlinked: ${prefPlist} → ${dotPlist}"
+      echo "[$APP] Preferences plist symlinked → ${dotPlist} 🔗"
 
-      echo "Chrome: User-data sync complete"
+      # ------------------------------------------------------------
+      # --- END LOG ---
+      # ------------------------------------------------------------
+      echo "[$APP] User-data sync complete ✅"
     '';
 }
