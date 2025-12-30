@@ -40,12 +40,12 @@ let
    # "${scriptDir}/rsync-chromium.sh"
    # "${scriptDir}/rsync-espanso.sh"
    # "${scriptDir}/rsync-iterm.sh"
-   "${scriptDir}/rsync-obsidian.sh"
+   # "${scriptDir}/rsync-obsidian.sh"
    # "${scriptDir}/rsync-paste.sh"
    # "${scriptDir}/rsync-vaultwarden.sh"
    # "${scriptDir}/rsync-vlc.sh"
-   "${scriptDir}/rsync-yate.sh"
-   "${scriptDir}/rsync-zed.sh"
+   # "${scriptDir}/rsync-yate.sh"
+   # "${scriptDir}/rsync-zed.sh"
   ];
 
   runner = pkgs.writeShellScriptBin "rsync-all2-direct" ''
