@@ -9,10 +9,6 @@
 # Backup scripts location (outside Nix store):
 #   /Users/ven/.config/nix/nix-scripts/rsync-*.sh
 #
-# How to enable / disable backups:
-#   - Comment / uncomment entries in ENABLED_SCRIPTS below
-#   - A script must also be executable to run
-#
 # Safety guarantees (DISPATCHER ONLY):
 #   - Does NOT touch iCloud data
 #   - Does NOT modify filesystem state (no rm/mv/ln)
@@ -32,13 +28,13 @@ let
     SCRIPT_DIR="/Users/ven/.config/nix/nix-scripts"
 
     echo "$LOG_PREFIX Starting selective backups"
-    echo "$LOG_PREFIX DARWIN_REBUILD_REASON=${DARWIN_REBUILD_REASON:-<unset>}"
+    echo "$LOG_PREFIX DARWIN_REBUILD_REASON=''${DARWIN_REBUILD_REASON:-<unset>}"
 
     # ----------------------------------------------------------
     # SAFETY GUARD — RUN ONLY DURING darwin-rebuild switch
     # ----------------------------------------------------------
-    if [ "${DARWIN_REBUILD_REASON:-switch}" != "switch" ]; then
-      echo "$LOG_PREFIX Skipping backups (reason=${DARWIN_REBUILD_REASON:-unknown})"
+    if [ "''${DARWIN_REBUILD_REASON:-switch}" != "switch" ]; then
+      echo "$LOG_PREFIX Skipping backups (reason=''${DARWIN_REBUILD_REASON:-unknown})"
       exit 0
     fi
 
@@ -85,9 +81,6 @@ let
       echo "----------------------------------------"
       echo "$LOG_PREFIX Running: $script_name"
 
-      # --------------------------------------------------------
-      # EXECUTION — NEVER FAIL ACTIVATION
-      # --------------------------------------------------------
       "$script" || echo "$LOG_PREFIX WARNING: $script_name failed (ignored)"
     done
 
