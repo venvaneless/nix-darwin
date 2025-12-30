@@ -20,9 +20,9 @@
   imports = [
     # Cleanup
     ./generations-cleanup.nix
-    # ./rsync-all.nix
-    ./rsync-all-old.nix
-    ./rsync-separate.nix
+   # ./rsync-all.nix
+   # ./rsync-all-old.nix
+   ./rsync-separate.nix
     
     # Docker + containers + tooling
     ./docker/docker.nix
