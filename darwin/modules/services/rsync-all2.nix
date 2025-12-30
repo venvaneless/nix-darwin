@@ -13,9 +13,9 @@
 { lib, ... }:
 
 {
-  system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> rsync-all: starting selective backups (system activation)"
-    /Users/ven/dotfiles/nix/scripts/rsync-all.sh \
-      || echo ">>> rsync-all: failed (ignored)"
-  '';
+	system.activationScripts.extraActivation.text = lib.mkAfter ''
+  echo ">>> rsync-all: starting selective backups (system activation)"
+  /Users/ven/.config/nix/nix-scripts/rsync-all2.sh \
+    || echo ">>> rsync-all: failed (ignored)"
+'';
 }
