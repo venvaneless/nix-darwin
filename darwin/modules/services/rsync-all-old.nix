@@ -14,7 +14,7 @@ let
   dispatcher = "/Users/ven/.config/nix/nix-scripts/rsync-all-old.sh";
 in
 {
-	system.activationScripts.rsyncAll.text = lib.mkAfter ''
+	system.activationScripts.extraActivation.text = lib.mkAfter ''
   echo ">>> [rsync-all] starting dispatcher"
 
   if [ ! -x "${dispatcher}" ]; then
