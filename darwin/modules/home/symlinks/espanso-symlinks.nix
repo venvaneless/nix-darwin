@@ -2,87 +2,180 @@
 #
 # DARWIN: ESPANSO USER-DATA
 # ============================================================
-# Espanso is a system-wide text expansion and productivity tool.
+# Espanso text expansion engine user-data management.
 #
-# SOURCE OF TRUTH:
-#   /Users/ven/ven-dots/user-data/apps/espanso
+# Source of truth:
+# - Application Support content lives in:  <dirSRC>/conf
+# - Preferences plist lives in:            <dirSRC>/pref
 #
-# RUNTIME LOCATIONS:
-#   ~/Library/Application Support/espanso
-#   ~/Library/Preferences/com.federicoterzi.espanso.plist
+# Runtime paths (what Espanso still "sees"):
+# - ~/Library/Application Support/espanso
+# - ~/Library/Preferences/com.federicoterzi.espanso.plist
 #
-# RESPONSIBILITIES:
-#   - Move Application Support directory into dotfiles
-#   - Symlink it back under the original name
-#   - Move preferences plist into dotfiles
-#   - Symlink plist back
+# Safety model:
+# - If <dirSRC> is non-empty, migration is skipped
+# - Exception: if runtime paths are NOT symlinks, they are repaired
+# - Never creates duplicate profiles
+# - Never overwrites existing dotfiles
 # ============================================================
 
 { config, lib, ... }:
 
 let
-  home    = config.home.homeDirectory;
-  dotsApp = "/Users/ven/ven-dots/user-data/apps";
+  # ------------------------------------------------------------
+  # --- PATHS ---
+  # ------------------------------------------------------------
+  home = config.home.homeDirectory;
 
-  appFolder  = "espanso";
+  # Source-of-truth root for all apps
+  dirRoot = "/Users/ven/ven-dots/user-data/apps";
+
+  # App slug (rules-compliant name)
+  appSlug = "espanso";
+
+  # App source-of-truth directories
+  dirSRC  = "${dirRoot}/${appSlug}";
+  dirConf = "${dirSRC}/conf";
+  dirPref = "${dirSRC}/pref";
+
+  # Application Support runtime path
   asRealName = "espanso";
+  asPath     = "${home}/Library/Application Support/${asRealName}";
 
-  asPath    = "${home}/Library/Application Support/${asRealName}";
-  prefPlist = "${home}/Library/Preferences/com.federicoterzi.espanso.plist";
-
-  dotRoot  = "${dotsApp}/${appFolder}";
-  dotPlist = "${dotRoot}/com.federicoterzi.espanso.plist";
+  # Preferences runtime items
+  prefItems = [
+    "${home}/Library/Preferences/com.federicoterzi.espanso.plist"
+  ];
 in
 {
   home.activation.espansoUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "[Espanso] Syncing user-data"
 
       # ------------------------------------------------------------
-      # --- SOURCE OF TRUTH ---
+      # --- START LOG ---
       # ------------------------------------------------------------
-      mkdir -p "${dotsApp}"
+      APP="Espanso"
+      echo "[$APP] User-data sync starting… 🚀"
 
-      if [ ! -d "${dotRoot}" ]; then
-        echo "[Espanso] ${dotRoot} doesn't exist for Espanso yet. Creating. 📁"
-        mkdir -p "${dotRoot}"
+      # ------------------------------------------------------------
+      # --- HELPERS: FILESYSTEM CHECKS ---
+      # ------------------------------------------------------------
+      ensure_dir() {
+        local d="$1"
+        if [ ! -d "$d" ]; then
+          echo "[$APP] Creating directory: $d 📁"
+          mkdir -p "$d"
+        fi
+      }
+
+      dir_is_empty() {
+        local d="$1"
+        [ -d "$d" ] || return 1
+        [ -z "$(ls -A "$d" 2>/dev/null || true)" ]
+      }
+
+      unlink_if_symlink() {
+        local p="$1"
+        if [ -L "$p" ]; then
+          echo "[$APP] Removing existing symlink: $p 🧹"
+          unlink "$p"
+        fi
+      }
+
+      # ------------------------------------------------------------
+      # --- HELPERS: SAFE BACKUPS + MOVES ---
+      # Non-empty directory or file → create timestamped backup
+      # This ensures no existing data is destroyed and allows rollback
+      # ------------------------------------------------------------
+      backup_dest_if_needed() {
+        local dst="$1"
+
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+          if [ -d "$dst" ] && dir_is_empty "$dst"; then
+            rmdir "$dst" || true
+            return 0
+          fi
+
+          local ts
+          ts="$(date +%Y%m%d-%H%M%S)"
+          local backup
+          backup="$dst.backup-$ts"
+
+          echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
+          mv "$dst" "$backup"
+        fi
+      }
+
+      move_with_backup() {
+        local src="$1"
+        local dst="$2"
+
+        backup_dest_if_needed "$dst"
+        echo "[$APP] Moving: $src → $dst 📦"
+        mv "$src" "$dst"
+      }
+
+      # ------------------------------------------------------------
+      # --- SOURCE OF TRUTH SETUP ---
+      # ------------------------------------------------------------
+      ensure_dir "${dirSRC}"
+      ensure_dir "${dirConf}"
+      ensure_dir "${dirPref}"
+
+      allowMigrate="0"
+      if dir_is_empty "${dirSRC}"; then
+        echo "[$APP] Source-of-truth root is empty. Migration allowed ✅"
+        allowMigrate="1"
+      else
+        echo "[$APP] Source-of-truth root is not empty. Migration skipped (repair still allowed) ⚠️"
       fi
 
       # ------------------------------------------------------------
-      # --- APPLICATION SUPPORT ---
+      # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
       # ------------------------------------------------------------
-      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        if [ -e "${dotRoot}" ] && [ "$(ls -A "${dotRoot}" 2>/dev/null || true)" != "" ]; then
-          echo "[Espanso] WARNING: '${asRealName}' exists in Application Support and '${dotRoot}' is not empty. Skipping move. ⚠️"
+      if [ -e "${asPath}" ]; then
+        if [ -L "${asPath}" ]; then
+          echo "[$APP] Application Support is a symlink. Verifying… 🔎"
         else
-          echo "[Espanso] '${asRealName}' is being moved from Application Support to ${dotRoot} 📦"
-          rm -rf "${dotRoot}" 2>/dev/null || true
-          mv "${asPath}" "${dotRoot}"
-          echo "[Espanso] '${asRealName}' has been successfully moved from ${asPath} to ${dotRoot} ✅"
+          if [ "$allowMigrate" = "1" ]; then
+            echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
+            move_with_backup "${asPath}" "${dirConf}"
+          else
+            echo "[$APP] Application Support exists but migration skipped ⚠️"
+          fi
         fi
       fi
 
-      rm -rf "${asPath}" 2>/dev/null || true
-      ln -sfn "${dotRoot}" "${asPath}"
-      echo "[Espanso] '${asRealName}' is being symlinked back to ${asPath} 🔗"
+      unlink_if_symlink "${asPath}"
+      ln -sfn "${dirConf}" "${asPath}"
+      echo "[$APP] Application Support symlinked → ${dirConf} 🔗"
 
       # ------------------------------------------------------------
-      # --- PREFERENCES ---
+      # --- PREFERENCES: PLIST MOVE + SYMLINK ---
       # ------------------------------------------------------------
-      name="$(basename "${prefPlist}")"
+      for pref in ${lib.concatStringsSep " " prefItems}; do
+        name="$(basename "$pref")"
+        dst="${dirPref}/$name"
 
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -e "${dotPlist}" ]; then
-        echo "[Espanso] '$name' is being moved from Preferences to ${dotRoot} 📄"
-        mv "${prefPlist}" "${dotPlist}"
-        echo "[Espanso] '$name' has been successfully moved from ${prefPlist} to ${dotPlist} ✅"
-      fi
+        if [ -e "$pref" ]; then
+          if [ -L "$pref" ]; then
+            echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
+          else
+            if [ ! -e "$dst" ]; then
+              echo "[$APP] Moving '$name' → ${dirPref} 📄"
+              move_with_backup "$pref" "$dst"
+            fi
+          fi
+        fi
 
-      [ -e "${dotPlist}" ] || : > "${dotPlist}"
+        ln -sfn "$dst" "$pref"
+        echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
+      done
 
-      ln -sfn "${dotPlist}" "${prefPlist}"
-      echo "[Espanso] '$name' is being symlinked back to ${prefPlist} 🔗"
-
-      echo "Espanso: User-data sync complete ✅"
+      # ------------------------------------------------------------
+      # --- END LOG ---
+      # ------------------------------------------------------------
+      echo "[$APP] User-data sync complete ✅"
     '';
 }

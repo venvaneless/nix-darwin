@@ -50,76 +50,76 @@ let
   # PATH ROOTS
   # ------------------------------------------------------------
   home    = config.home.homeDirectory;
-  dotsApp = "/Users/ven/ven-dots/user-data/apps";
+  dirRoot = "/Users/ven/ven-dots/user-data/apps";
 
   # ------------------------------------------------------------
   # APP IDENTIFIERS
   # ------------------------------------------------------------
-  appFolder  = "vlc";
+  appSlug    = "vlc";
   asRealName = "org.videolan.vlc";
+
+  # ------------------------------------------------------------
+  # SOURCE-OF-TRUTH PATHS
+  # ------------------------------------------------------------
+  dirSRC     = "${dirRoot}/${appSlug}";
+  dirConf    = "${dirSRC}/conf";
+  dirPref    = "${dirSRC}/pref";
 
   # ------------------------------------------------------------
   # RUNTIME PATHS
   # ------------------------------------------------------------
-  asPath   = "${home}/Library/Application Support/${asRealName}";
-  prefDir  = "${home}/Library/Preferences/${asRealName}";
+  asPath    = "${home}/Library/Application Support/${asRealName}";
+  prefDir   = "${home}/Library/Preferences/${asRealName}";
   prefPlist = "${home}/Library/Preferences/org.videolan.vlc.plist";
 
   # ------------------------------------------------------------
   # DOTFILES PATHS
   # ------------------------------------------------------------
-  dotRoot  = "${dotsApp}/${appFolder}";
-  dotPrefs = "${dotRoot}/Preferences";
-  dotPrefDir = "${dotPrefs}/${asRealName}";
-  dotPlist = "${dotRoot}/org.videolan.vlc.plist";
+  dotPrefDir = "${dirPref}/${asRealName}";
+  dotPlist   = "${dirSRC}/org.videolan.vlc.plist";
 in
 {
   home.activation.vlcUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "[VLC] Syncing user-data"
+      APP="VLC"
+
+      echo "[$APP] User-data sync starting… 🚀"
 
       # ------------------------------------------------------------
-      # --- SOURCE OF TRUTH ---
+      # --- SOURCE OF TRUTH SETUP ---
       # ------------------------------------------------------------
-      mkdir -p "${dotsApp}"
-
-      if [ ! -d "${dotRoot}" ]; then
-        echo "[VLC] ${dotRoot} doesn't exist for VLC yet. Creating. 📁"
-        mkdir -p "${dotRoot}"
-      fi
+      mkdir -p "${dirSRC}"
+      mkdir -p "${dirConf}"
+      mkdir -p "${dirPref}"
 
       # ------------------------------------------------------------
       # --- APPLICATION SUPPORT ---
       # ------------------------------------------------------------
       if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        if [ "$(ls -A "${dotRoot}" 2>/dev/null || true)" != "" ]; then
-          echo "[VLC] WARNING: '${asRealName}' exists in Application Support and '${dotRoot}' is not empty. Skipping move. ⚠️"
+        if [ "$(ls -A "${dirConf}" 2>/dev/null || true)" != "" ]; then
+          echo "[$APP] Application Support exists but source-of-truth not empty. Skipping move ⚠️"
         else
-          echo "[VLC] '${asRealName}' is being moved from Application Support to ${dotRoot} 📦"
-          mv "${asPath}" "${dotRoot}"
-          echo "[VLC] '${asRealName}' has been successfully moved from ${asPath} to ${dotRoot} ✅"
+          echo "[$APP] Moving Application Support → ${dirConf} 📦"
+          mv "${asPath}" "${dirConf}"
         fi
       fi
 
       rm -rf "${asPath}" 2>/dev/null || true
-      ln -sfn "${dotRoot}" "${asPath}"
-      echo "[VLC] '${asRealName}' is being symlinked back to ${asPath} 🔗"
+      ln -sfn "${dirConf}" "${asPath}"
+      echo "[$APP] Application Support symlinked → ${dirConf} 🔗"
 
       # ------------------------------------------------------------
       # --- PREFERENCES DIRECTORY ---
       # ------------------------------------------------------------
-      mkdir -p "${dotPrefs}"
-
       if [ -d "${prefDir}" ] && [ ! -L "${prefDir}" ] && [ ! -d "${dotPrefDir}" ]; then
-        echo "[VLC] '${asRealName}' preferences directory is being moved from Preferences to ${dotPrefs} 📄"
+        echo "[$APP] Moving preferences directory → ${dirPref} 📄"
         mv "${prefDir}" "${dotPrefDir}"
-        echo "[VLC] '${asRealName}' preferences directory has been successfully moved to ${dotPrefDir} ✅"
       fi
 
       rm -rf "${prefDir}" 2>/dev/null || true
       ln -sfn "${dotPrefDir}" "${prefDir}"
-      echo "[VLC] '${asRealName}' preferences directory is being symlinked back to ${prefDir} 🔗"
+      echo "[$APP] Preferences directory symlinked → ${dotPrefDir} 🔗"
 
       # ------------------------------------------------------------
       # --- PREFERENCES PLIST ---
@@ -127,14 +127,13 @@ in
       name="$(basename "${prefPlist}")"
 
       if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -e "${dotPlist}" ]; then
-        echo "[VLC] '$name' is being moved from Preferences to ${dotRoot} 📄"
+        echo "[$APP] Moving plist → ${dotPlist} 📄"
         mv "${prefPlist}" "${dotPlist}"
-        echo "[VLC] '$name' has been successfully moved from ${prefPlist} to ${dotPlist} ✅"
       fi
 
       ln -sfn "${dotPlist}" "${prefPlist}"
-      echo "[VLC] '$name' is being symlinked back to ${prefPlist} 🔗"
+      echo "[$APP] Preferences plist symlinked → ${dotPlist} 🔗"
 
-      echo "VLC: User-data sync complete ✅"
+      echo "[$APP] User-data sync complete ✅"
     '';
 }

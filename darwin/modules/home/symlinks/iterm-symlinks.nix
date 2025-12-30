@@ -1,69 +1,183 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/iterm-symlinks.nix
-# 
-# DARWIN: ITERM USER-DATA (NO PLIST HANDLING)
+#
+# DARWIN: ITERM USER-DATA
 # ============================================================
+# iTerm2 terminal emulator user-data management.
+#
 # Source of truth:
-#     /Users/ven/ven-dots/user-data/apps/iterm
+# - Application Support content lives in:  <dirSRC>/conf
+# - Preferences plists live in:            <dirSRC>/pref
 #
-# Runtime paths:
-#     ~/Library/Application Support/iTerm2
+# Runtime paths (what iTerm still "sees"):
+# - ~/Library/Application Support/iTerm2
+# - ~/Library/Preferences/com.googlecode.iterm2.plist
+# - ~/Library/Preferences/com.googlecode.iterm2.private.plist
 #
-# Responsibilities:
-#   - Move CONTENTS of App Support/iTerm2 to dotfiles
-#   - Symlink iTerm2 folder back to dotfiles path
-#   - DO NOT touch plist files at all (iTerm handles them)
+# Safety model:
+# - If <dirSRC> is non-empty, migration is skipped
+# - Exception: if runtime paths are NOT symlinks, they are repaired
+# - Never creates duplicate profiles
+# - Never overwrites existing dotfiles
 # ============================================================
 
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
 let
+  # ------------------------------------------------------------
+  # --- PATHS ---
+  # ------------------------------------------------------------
   home = config.home.homeDirectory;
 
-  dotIterm = "/Users/ven/ven-dots/user-data/apps/iterm";
-  asIterm  = "${home}/Library/Application Support/iTerm2";
+  # Source-of-truth root for all apps
+  dirRoot = "/Users/ven/ven-dots/user-data/apps";
 
+  # App slug (rules-compliant name)
+  appSlug = "iterm";
+
+  # App source-of-truth directories
+  dirSRC  = "${dirRoot}/${appSlug}";
+  dirConf = "${dirSRC}/conf";
+  dirPref = "${dirSRC}/pref";
+
+  # Application Support runtime path
+  asRealName = "iTerm2";
+  asPath     = "${home}/Library/Application Support/${asRealName}";
+
+  # Preferences runtime items
+  prefItems = [
+    "${home}/Library/Preferences/com.googlecode.iterm2.plist"
+    "${home}/Library/Preferences/com.googlecode.iterm2.private.plist"
+  ];
 in
 {
   home.activation.itermUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "Managing iTerm user-data (no plist moves)..."
 
       # ------------------------------------------------------------
-      # Ensure dotfiles root exists
+      # --- START LOG ---
       # ------------------------------------------------------------
-      mkdir -p "${dotIterm}"
+      APP="iTerm2"
+      echo "[$APP] User-data sync starting… 🚀"
 
       # ------------------------------------------------------------
-      # Move CONTENTS of Application Support/iTerm2 → dotfiles
+      # --- HELPERS: FILESYSTEM CHECKS ---
       # ------------------------------------------------------------
-      if [ -d "${asIterm}" ] && [ ! -L "${asIterm}" ]; then
-        echo "Migrating iTerm2 contents → dotfiles"
+      ensure_dir() {
+        local d="$1"
+        if [ ! -d "$d" ]; then
+          echo "[$APP] Creating directory: $d 📁"
+          mkdir -p "$d"
+        fi
+      }
 
-        for item in "${asIterm}"/*; do
-          [ -e "$item" ] || continue
-          name="$(basename "$item")"
+      dir_is_empty() {
+        local d="$1"
+        [ -d "$d" ] || return 1
+        [ -z "$(ls -A "$d" 2>/dev/null || true)" ]
+      }
 
-          if [ -e "${dotIterm}/$name" ]; then
-            echo "  Skipping existing: $name"
-            rm -rf "$item"
-            ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
-            continue
+      unlink_if_symlink() {
+        local p="$1"
+        if [ -L "$p" ]; then
+          echo "[$APP] Removing existing symlink: $p 🧹"
+          unlink "$p"
+        fi
+      }
+
+      # ------------------------------------------------------------
+      # --- HELPERS: SAFE BACKUPS + MOVES ---
+      # Non-empty directory or file → create timestamped backup
+      # This ensures no existing data is destroyed and allows rollback
+      # ------------------------------------------------------------
+      backup_dest_if_needed() {
+        local dst="$1"
+
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+          if [ -d "$dst" ] && dir_is_empty "$dst"; then
+            rmdir "$dst" || true
+            return 0
           fi
 
-          echo "  Moving: $name"
-          mv "$item" "${dotIterm}/$name"
-          ln -sfn "${dotIterm}/$name" "${asIterm}/$name"
-        done
+          local ts
+          ts="$(date +%Y%m%d-%H%M%S)"
+          local backup
+          backup="$dst.backup-$ts"
+
+          echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
+          mv "$dst" "$backup"
+        fi
+      }
+
+      move_with_backup() {
+        local src="$1"
+        local dst="$2"
+
+        backup_dest_if_needed "$dst"
+        echo "[$APP] Moving: $src → $dst 📦"
+        mv "$src" "$dst"
+      }
+
+      # ------------------------------------------------------------
+      # --- SOURCE OF TRUTH SETUP ---
+      # ------------------------------------------------------------
+      ensure_dir "${dirSRC}"
+      ensure_dir "${dirConf}"
+      ensure_dir "${dirPref}"
+
+      allowMigrate="0"
+      if dir_is_empty "${dirSRC}"; then
+        echo "[$APP] Source-of-truth root is empty. Migration allowed ✅"
+        allowMigrate="1"
+      else
+        echo "[$APP] Source-of-truth root is not empty. Migration skipped (repair still allowed) ⚠️"
       fi
 
       # ------------------------------------------------------------
-      # Replace the entire iTerm2 folder with a symlink → dotfiles
+      # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
       # ------------------------------------------------------------
-      rm -rf "${asIterm}"
-      ln -sfn "${dotIterm}" "${asIterm}"
-      echo "Symlink created: iTerm2 → ${dotIterm}"
+      if [ -e "${asPath}" ]; then
+        if [ -L "${asPath}" ]; then
+          echo "[$APP] Application Support is a symlink. Verifying… 🔎"
+        else
+          if [ "$allowMigrate" = "1" ]; then
+            echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
+            move_with_backup "${asPath}" "${dirConf}"
+          else
+            echo "[$APP] Application Support exists but migration skipped ⚠️"
+          fi
+        fi
+      fi
 
-      echo "iTerm Application Support relocation complete (plists untouched)."
+      unlink_if_symlink "${asPath}"
+      ln -sfn "${dirConf}" "${asPath}"
+      echo "[$APP] Application Support symlinked → ${dirConf} 🔗"
+
+      # ------------------------------------------------------------
+      # --- PREFERENCES: PLISTS MOVE + SYMLINK ---
+      # ------------------------------------------------------------
+      for pref in ${lib.concatStringsSep " " prefItems}; do
+        name="$(basename "$pref")"
+        dst="${dirPref}/$name"
+
+        if [ -e "$pref" ]; then
+          if [ -L "$pref" ]; then
+            echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
+          else
+            if [ ! -e "$dst" ]; then
+              echo "[$APP] Moving '$name' → ${dirPref} 📄"
+              move_with_backup "$pref" "$dst"
+            fi
+          fi
+        fi
+
+        ln -sfn "$dst" "$pref"
+        echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
+      done
+
+      # ------------------------------------------------------------
+      # --- END LOG ---
+      # ------------------------------------------------------------
+      echo "[$APP] User-data sync complete ✅"
     '';
 }
