@@ -4,77 +4,51 @@
 # ============================================================
 # VLC is a media player for macOS.
 #
-# This module relocates VLC user data into ven-dots so it can be
-# versioned, backed up, and synced as a single source of truth.
+# Source of truth:
+# - Application Support content lives in:  <dirSRC>/conf
+# - Preferences directory lives in:        <dirSRC>/pref
+# - Preferences plist lives in:            <dirSRC>
 #
-# ------------------------------------------------------------
-# SOURCE OF TRUTH
-# ------------------------------------------------------------
-#   /Users/ven/ven-dots/user-data/apps/vlc
+# Runtime paths (what VLC still "sees"):
+# - ~/Library/Application Support/org.videolan.vlc
+# - ~/Library/Preferences/org.videolan.vlc
+# - ~/Library/Preferences/org.videolan.vlc.plist
 #
-# This directory is ALWAYS:
-#   - a real directory
-#   - never a symlink
-#   - the authoritative location for VLC state
-#
-# ------------------------------------------------------------
-# RUNTIME LOCATIONS (macOS EXPECTS THESE)
-# ------------------------------------------------------------
-#   ~/Library/Application Support/org.videolan.vlc
-#   ~/Library/Preferences/org.videolan.vlc
-#   ~/Library/Preferences/org.videolan.vlc.plist
-#
-# ------------------------------------------------------------
-# RESPONSIBILITIES
-# ------------------------------------------------------------
-#   - Ensure dotfiles root exists
-#   - Move VLC Application Support directory into dotfiles
-#   - Recreate Application Support path as a symlink
-#   - Move VLC Preferences directory into dotfiles
-#   - Symlink Preferences directory back
-#   - Move VLC plist into dotfiles
-#   - Symlink plist back to Preferences
-#
-# ------------------------------------------------------------
-# IMPORTANT
-# ------------------------------------------------------------
-#   - No symlinks are ever created INSIDE the dotfiles folder
-#   - The Application Support DIRECTORY is the unit of state
-#   - Folder names may differ between dotfiles and runtime
+# Safety model:
+# - If <dirSRC> is non-empty, migration is skipped
+# - Exception: if runtime paths are NOT symlinks, they are repaired
+# - Never creates duplicate profiles
+# - Never overwrites existing dotfiles
 # ============================================================
 
 { config, lib, ... }:
 
 let
   # ------------------------------------------------------------
-  # PATH ROOTS
+  # --- PATHS ---
   # ------------------------------------------------------------
-  home    = config.home.homeDirectory;
+  home = config.home.homeDirectory;
+
+  # Source-of-truth root for all apps
   dirRoot = "/Users/ven/ven-dots/user-data/apps";
 
-  # ------------------------------------------------------------
-  # APP IDENTIFIERS
-  # ------------------------------------------------------------
-  appSlug    = "vlc";
+  # App slug (rules-compliant name)
+  appSlug = "vlc";
+
+  # App source-of-truth directories
+  dirSRC  = "${dirRoot}/${appSlug}";
+  dirConf = "${dirSRC}/conf";
+  dirPref = "${dirSRC}/pref";
+
+  # Application Support runtime path
   asRealName = "org.videolan.vlc";
+  asPath     = "${home}/Library/Application Support/${asRealName}";
 
-  # ------------------------------------------------------------
-  # SOURCE-OF-TRUTH PATHS
-  # ------------------------------------------------------------
-  dirSRC     = "${dirRoot}/${appSlug}";
-  dirConf    = "${dirSRC}/conf";
-  dirPref    = "${dirSRC}/pref";
-
-  # ------------------------------------------------------------
-  # RUNTIME PATHS
-  # ------------------------------------------------------------
-  asPath    = "${home}/Library/Application Support/${asRealName}";
+  # Preferences runtime directory + plist
   prefDir   = "${home}/Library/Preferences/${asRealName}";
   prefPlist = "${home}/Library/Preferences/org.videolan.vlc.plist";
 
-  # ------------------------------------------------------------
-  # DOTFILES PATHS
-  # ------------------------------------------------------------
+  # Preferences dotfiles destinations
   dotPrefDir = "${dirPref}/${asRealName}";
   dotPlist   = "${dirSRC}/org.videolan.vlc.plist";
 in
@@ -82,58 +56,170 @@ in
   home.activation.vlcUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      APP="VLC"
 
+      # ------------------------------------------------------------
+      # --- START LOG ---
+      # ------------------------------------------------------------
+      APP="VLC"
       echo "[$APP] User-data sync starting… 🚀"
+
+      # ------------------------------------------------------------
+      # --- HELPERS: FILESYSTEM CHECKS ---
+      # ------------------------------------------------------------
+      ensure_dir() {
+        local d="$1"
+        if [ ! -d "$d" ]; then
+          echo "[$APP] Creating directory: $d 📁"
+          mkdir -p "$d"
+        fi
+      }
+
+      dir_is_empty() {
+        local d="$1"
+        [ -d "$d" ] || return 1
+        [ -z "$(ls -A "$d" 2>/dev/null || true)" ]
+      }
+
+      unlink_if_symlink() {
+        local p="$1"
+        if [ -L "$p" ]; then
+          echo "[$APP] Removing existing symlink: $p 🧹"
+          unlink "$p"
+        fi
+      }
+
+      # ------------------------------------------------------------
+      # --- HELPERS: SAFE BACKUPS + MOVES ---
+      # Non-empty directory or file → create timestamped backup
+      # This ensures no existing data is destroyed and allows rollback
+      # ------------------------------------------------------------
+      backup_dest_if_needed() {
+        local dst="$1"
+
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+          if [ -d "$dst" ] && dir_is_empty "$dst"; then
+            rmdir "$dst" || true
+            return 0
+          fi
+
+          local ts
+          ts="$(date +%Y%m%d-%H%M%S)"
+          local backup
+          backup="$dst.backup-$ts"
+
+          echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
+          mv "$dst" "$backup"
+        fi
+      }
+
+      move_with_backup() {
+        local src="$1"
+        local dst="$2"
+
+        backup_dest_if_needed "$dst"
+        echo "[$APP] Moving: $src → $dst 📦"
+        mv "$src" "$dst"
+      }
 
       # ------------------------------------------------------------
       # --- SOURCE OF TRUTH SETUP ---
       # ------------------------------------------------------------
-      mkdir -p "${dirSRC}"
-      mkdir -p "${dirConf}"
-      mkdir -p "${dirPref}"
+      ensure_dir "${dirSRC}"
+      ensure_dir "${dirConf}"
+      ensure_dir "${dirPref}"
 
-      # ------------------------------------------------------------
-      # --- APPLICATION SUPPORT ---
-      # ------------------------------------------------------------
-      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        if [ "$(ls -A "${dirConf}" 2>/dev/null || true)" != "" ]; then
-          echo "[$APP] Application Support exists but source-of-truth not empty. Skipping move ⚠️"
-        else
-          echo "[$APP] Moving Application Support → ${dirConf} 📦"
-          mv "${asPath}" "${dirConf}"
-        fi
+      allowMigrate="0"
+      if dir_is_empty "${dirSRC}"; then
+        echo "[$APP] Source-of-truth root is empty. Migration allowed ✅"
+        allowMigrate="1"
+      else
+        echo "[$APP] Source-of-truth root is not empty. Migration skipped (repair still allowed) ⚠️"
       fi
 
-      rm -rf "${asPath}" 2>/dev/null || true
+      # ------------------------------------------------------------
+      # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
+      # ------------------------------------------------------------
+      if [ -e "${asPath}" ]; then
+        if [ -L "${asPath}" ]; then
+          echo "[$APP] Application Support is a symlink. Verifying… 🔎"
+        else
+          if [ "$allowMigrate" = "1" ]; then
+            echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
+          else
+            echo "[$APP] Application Support is not a symlink. Repairing into ${dirConf} 🔧"
+          fi
+
+          move_with_backup "${asPath}" "${dirConf}"
+        fi
+      else
+        echo "[$APP] No Application Support data found. Skipping Application Support ✅"
+      fi
+
+      # Critical: avoid creating ${asPath}/conf via ln behavior
+      backup_dest_if_needed "${asPath}"
+      unlink_if_symlink "${asPath}"
+
       ln -sfn "${dirConf}" "${asPath}"
       echo "[$APP] Application Support symlinked → ${dirConf} 🔗"
 
       # ------------------------------------------------------------
-      # --- PREFERENCES DIRECTORY ---
+      # --- PREFERENCES: DIRECTORY MOVE + SYMLINK ---
       # ------------------------------------------------------------
-      if [ -d "${prefDir}" ] && [ ! -L "${prefDir}" ] && [ ! -d "${dotPrefDir}" ]; then
-        echo "[$APP] Moving preferences directory → ${dirPref} 📄"
-        mv "${prefDir}" "${dotPrefDir}"
+      if [ -e "${prefDir}" ]; then
+        if [ -L "${prefDir}" ]; then
+          echo "[$APP] Preferences directory is a symlink. Verifying… 🔎"
+        else
+          if [ "$allowMigrate" = "1" ]; then
+            echo "[$APP] Moving '${asRealName}' preferences directory → ${dirPref} 📄"
+          else
+            echo "[$APP] Preferences directory is not a symlink. Repairing into ${dirPref} 🔧"
+          fi
+
+          move_with_backup "${prefDir}" "${dotPrefDir}"
+        fi
+      else
+        echo "[$APP] Preferences directory missing. Skipping: ${prefDir} ✅"
       fi
 
-      rm -rf "${prefDir}" 2>/dev/null || true
+      # Ensure runtime path becomes a symlink (and does not become ${prefDir}/${asRealName})
+      backup_dest_if_needed "${prefDir}"
+      unlink_if_symlink "${prefDir}"
+
       ln -sfn "${dotPrefDir}" "${prefDir}"
       echo "[$APP] Preferences directory symlinked → ${dotPrefDir} 🔗"
 
       # ------------------------------------------------------------
-      # --- PREFERENCES PLIST ---
+      # --- PREFERENCES: PLIST MOVE + SYMLINK ---
       # ------------------------------------------------------------
       name="$(basename "${prefPlist}")"
 
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -e "${dotPlist}" ]; then
-        echo "[$APP] Moving plist → ${dotPlist} 📄"
-        mv "${prefPlist}" "${dotPlist}"
+      if [ -e "${prefPlist}" ]; then
+        if [ -L "${prefPlist}" ]; then
+          if [ ! -e "${dotPlist}" ]; then
+            echo "[$APP] Preferences symlink exists but destination missing. Repairing: ${prefPlist} 🔧"
+            unlink_if_symlink "${prefPlist}"
+            : > "${dotPlist}"
+          else
+            echo "[$APP] Preferences item is a symlink. Verifying: ${prefPlist} 🔎"
+          fi
+        else
+          if [ ! -e "${dotPlist}" ]; then
+            echo "[$APP] Moving '$name' → ${dirSRC} 📄"
+            move_with_backup "${prefPlist}" "${dotPlist}"
+          fi
+        fi
+      else
+        echo "[$APP] Preferences item missing. Skipping: ${prefPlist} ✅"
       fi
 
-      ln -sfn "${dotPlist}" "${prefPlist}"
-      echo "[$APP] Preferences plist symlinked → ${dotPlist} 🔗"
+      if [ -e "${dotPlist}" ]; then
+        ln -sfn "${dotPlist}" "${prefPlist}"
+        echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
+      fi
 
+      # ------------------------------------------------------------
+      # --- END LOG ---
+      # ------------------------------------------------------------
       echo "[$APP] User-data sync complete ✅"
     '';
 }

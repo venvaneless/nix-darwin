@@ -30,7 +30,7 @@ let
   # Source-of-truth root for all apps
   dirRoot = "/Users/ven/ven-dots/user-data/apps";
 
-  # App slug (rules-compliant name)
+  # App slug
   appSlug = "espanso";
 
   # App source-of-truth directories
@@ -85,8 +85,6 @@ in
 
       # ------------------------------------------------------------
       # --- HELPERS: SAFE BACKUPS + MOVES ---
-      # Non-empty directory or file → create timestamped backup
-      # This ensures no existing data is destroyed and allows rollback
       # ------------------------------------------------------------
       backup_dest_if_needed() {
         local dst="$1"
@@ -99,8 +97,7 @@ in
 
           local ts
           ts="$(date +%Y%m%d-%H%M%S)"
-          local backup
-          backup="$dst.backup-$ts"
+          local backup="$dst.backup-$ts"
 
           echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
           mv "$dst" "$backup"
@@ -120,7 +117,6 @@ in
       # --- SOURCE OF TRUTH SETUP ---
       # ------------------------------------------------------------
       ensure_dir "${dirSRC}"
-      ensure_dir "${dirConf}"
       ensure_dir "${dirPref}"
 
       allowMigrate="0"
@@ -134,16 +130,12 @@ in
       # ------------------------------------------------------------
       # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
       # ------------------------------------------------------------
-      if [ -e "${asPath}" ]; then
-        if [ -L "${asPath}" ]; then
-          echo "[$APP] Application Support is a symlink. Verifying… 🔎"
+      if [ -e "${asPath}" ] && [ ! -L "${asPath}" ]; then
+        if [ "$allowMigrate" = "1" ]; then
+          echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
+          move_with_backup "${asPath}" "${dirConf}"
         else
-          if [ "$allowMigrate" = "1" ]; then
-            echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
-            move_with_backup "${asPath}" "${dirConf}"
-          else
-            echo "[$APP] Application Support exists but migration skipped ⚠️"
-          fi
+          echo "[$APP] Application Support exists but migration skipped ⚠️"
         fi
       fi
 
@@ -158,15 +150,9 @@ in
         name="$(basename "$pref")"
         dst="${dirPref}/$name"
 
-        if [ -e "$pref" ]; then
-          if [ -L "$pref" ]; then
-            echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
-          else
-            if [ ! -e "$dst" ]; then
-              echo "[$APP] Moving '$name' → ${dirPref} 📄"
-              move_with_backup "$pref" "$dst"
-            fi
-          fi
+        if [ -e "$pref" ] && [ ! -L "$pref" ] && [ ! -e "$dst" ]; then
+          echo "[$APP] Moving '$name' → ${dirPref} 📄"
+          move_with_backup "$pref" "$dst"
         fi
 
         ln -sfn "$dst" "$pref"

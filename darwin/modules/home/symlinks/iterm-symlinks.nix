@@ -142,14 +142,20 @@ in
         else
           if [ "$allowMigrate" = "1" ]; then
             echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
-            move_with_backup "${asPath}" "${dirConf}"
           else
-            echo "[$APP] Application Support exists but migration skipped ⚠️"
+            echo "[$APP] Application Support is not a symlink. Repairing into ${dirConf} 🔧"
           fi
+
+          move_with_backup "${asPath}" "${dirConf}"
         fi
+      else
+        echo "[$APP] No Application Support data found. Skipping Application Support ✅"
       fi
 
+      # Critical: avoid creating ${asPath}/conf via ln behavior
+      backup_dest_if_needed "${asPath}"
       unlink_if_symlink "${asPath}"
+
       ln -sfn "${dirConf}" "${asPath}"
       echo "[$APP] Application Support symlinked → ${dirConf} 🔗"
 
@@ -162,17 +168,27 @@ in
 
         if [ -e "$pref" ]; then
           if [ -L "$pref" ]; then
-            echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
+            if [ ! -e "$dst" ]; then
+              echo "[$APP] Preferences symlink exists but destination missing. Repairing: $pref 🔧"
+              unlink_if_symlink "$pref"
+              : > "$dst"
+            else
+              echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
+            fi
           else
             if [ ! -e "$dst" ]; then
               echo "[$APP] Moving '$name' → ${dirPref} 📄"
               move_with_backup "$pref" "$dst"
             fi
           fi
+        else
+          echo "[$APP] Preferences item missing. Skipping: $pref ✅"
         fi
 
-        ln -sfn "$dst" "$pref"
-        echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
+        if [ -e "$dst" ]; then
+          ln -sfn "$dst" "$pref"
+          echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
+        fi
       done
 
       # ------------------------------------------------------------
