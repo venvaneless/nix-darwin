@@ -11,7 +11,7 @@
 { lib, pkgs, ... }:
 
 let
-  dispatcher = "/Users/ven/.config/nix/nix-scripts/rsync-all.sh";
+  dispatcher = "/Users/ven/.config/nix/nix-scripts/rsync-all-old.sh";
 in
 {
 	system.activationScripts.rsyncAll.text = lib.mkAfter ''
