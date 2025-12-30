@@ -1,59 +1,42 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/services/rsync-all.nix
 #
-# SYSTEM: RSYNC-ALL (EXTERNAL DISPATCHER)
+# SYSTEM: RSYNC-ALL WRAPPER
 # ============================================================
-# Purpose:
-#   - Run your external dispatcher script during darwin activation:
-#       /Users/ven/.config/nix/nix-scripts/rsync-all.sh
-#
-# Guarantees:
-#   - Does NOT run rsync-*.sh by glob from Nix
-#   - Selection happens ONLY inside rsync-all.sh
-#   - Hard timeout ensures activation cannot hang forever
-#   - Does NOT touch iCloud / FileProvider / permissions
+# Embeds your rsync-all.sh script into the Nix store.
+# This version simply calls all rsync-*.sh scripts that
+# you maintain outside Nix.
 # ============================================================
 
 { lib, pkgs, ... }:
 
 let
-  dispatcherScript = "/Users/ven/.config/nix/nix-scripts/rsync-all.sh";
-
-  runDispatcher = pkgs.writeShellScriptBin "rsync-all-external" ''
+  rsyncScript = pkgs.writeShellScriptBin "rsync-all" ''
     #!/bin/bash
     set -euo pipefail
 
-    LOG_PREFIX="[system][rsync-all][external]"
-    TIMEOUT_BIN="${pkgs.coreutils}/bin/timeout"
+    SCRIPT_DIR="/Users/ven/.config/nix/nix-scripts"
 
-    echo "$LOG_PREFIX Starting external dispatcher"
-    echo "$LOG_PREFIX Dispatcher: ${dispatcherScript}"
+    echo "▶ Running all app backup scripts…"
 
-    if [ ! -f "${dispatcherScript}" ]; then
-      echo "$LOG_PREFIX WARNING: dispatcher not found — skipping"
-      exit 0
-    fi
+    for script in "$SCRIPT_DIR"/rsync-*.sh; do
+      # Skip this wrapper itself if present
+      [ "$script" = "$SCRIPT_DIR/rsync-all.sh" ] && continue
 
-    if [ ! -x "${dispatcherScript}" ]; then
-      echo "$LOG_PREFIX WARNING: dispatcher not executable — skipping"
-      echo "$LOG_PREFIX Fix with: chmod +x ${dispatcherScript}"
-      exit 0
-    fi
+      if [ -x "$script" ]; then
+        echo "----------------------------------------"
+        echo "Running: $(basename "$script")"
+        "$script"
+      else
+        echo "Skipping $script (not executable)"
+      fi
+    done
 
-    # ----------------------------------------------------------
-    # HARD TIMEOUT (prevents drs from hanging indefinitely)
-    # ----------------------------------------------------------
-    # If you want a different limit, change 30m.
-    # ----------------------------------------------------------
-    echo "$LOG_PREFIX Running with timeout: 30m"
-    "$TIMEOUT_BIN" 30m "${dispatcherScript}" \
-      || echo "$LOG_PREFIX WARNING: dispatcher failed or timed out (ignored)"
-
-    echo "$LOG_PREFIX External dispatcher complete"
+    echo "✔ All backup scripts complete."
   '';
 in
 {
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> Running rsync-all (external)"
-    ${runDispatcher}/bin/rsync-all-external
+    echo ">>> Running rsync-all (system)"
+    ${rsyncScript}/bin/rsync-all || echo "rsync-all failed (ignored)"
   '';
 }
