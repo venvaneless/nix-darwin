@@ -83,6 +83,8 @@ in
 
       # ------------------------------------------------------------
       # --- HELPERS: SAFE BACKUPS + MOVES ---
+      # Non-empty directory or file → create timestamped backup
+      # This ensures no existing data is destroyed and allows rollback
       # ------------------------------------------------------------
       backup_dest_if_needed() {
         local dst="$1"
@@ -94,10 +96,11 @@ in
             return 0
           fi
 
+          # Non-empty dir or file -> backup
           local ts
           ts="$(date +%Y%m%d-%H%M%S)"
           local backup
-          backup="${dst}.backup-${ts}"
+          backup="$dst.backup-$ts"
 
           echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
           mv "$dst" "$backup"
