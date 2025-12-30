@@ -35,8 +35,9 @@ let
   '';
 in
 {
-  system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> Running rsync-all (system)"
-    ${rsyncScript}/bin/rsync-all || echo "rsync-all failed (ignored)"
-  '';
+	system.activationScripts.extraActivation.text = lib.mkAfter ''
+  echo ">>> rsync-all: starting selective backups (system activation)"
+  /Users/ven/.config/nix/nix-scripts/rsync-all2.sh \
+    || echo ">>> rsync-all: failed (ignored)"
+'';
 }
