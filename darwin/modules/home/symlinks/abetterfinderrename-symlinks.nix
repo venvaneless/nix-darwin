@@ -200,15 +200,24 @@ in
       for pref in ${lib.concatStringsSep " " prefItems}; do
         name="$(basename "$pref")"
         dst="${dirPref}/$name"
-
+      
         if [ -e "$pref" ]; then
           if [ -L "$pref" ]; then
-            echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
-            ensure_symlink "$pref" "$dst" || true
+            # Symlink exists → verify OR repair if destination is missing
+            if [ ! -e "$dst" ]; then
+              echo "[$APP] Preferences symlink exists but destination missing. Repairing: $pref 🔧"
+              unlink_if_symlink "$pref"
+              move_with_backup "$pref" "$dst"
+              ensure_symlink "$pref" "$dst" || true
+            else
+              echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
+              ensure_symlink "$pref" "$dst" || true
+            fi
           else
+            # Not a symlink → always repair (move + link)
             echo "[$APP] '$name' is NOT a symlink. Moving into ${dirPref} 📄"
             move_with_backup "$pref" "$dst"
-
+      
             echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
             ensure_symlink "$pref" "$dst" || {
               echo "[$APP] ERROR: Could not create symlink in Preferences ⛔"
