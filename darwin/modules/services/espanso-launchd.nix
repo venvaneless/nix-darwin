@@ -15,6 +15,10 @@
 { lib, ... }:
 
 {
+	home.file."hm-test-espanso-launchd.txt".text = ''
+    espanso-launchd.nix evaluated
+  '';
+  
   launchd.agents.espanso-env = {
     # IMPORTANT:
     # In Home Manager, the agent name does NOT have to match

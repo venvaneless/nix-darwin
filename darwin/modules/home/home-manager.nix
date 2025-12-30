@@ -27,7 +27,6 @@
       home.username      = "ven";
       home.homeDirectory = "/Users/ven";
       home.stateVersion  = "25.11";
-      home.file."hm-testing.txt".text = "HM files were moved";
 
       # --- Reserved for future user packages ---
       home.packages = [

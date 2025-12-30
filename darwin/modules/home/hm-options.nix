@@ -14,9 +14,6 @@
 { config, lib, ... }:
 
 {
-	home.file."hm-test-hm-options.txt".text = ''
-  hm-options.nix was executed
-'';
   # ------------------------------------------------------------
   # HOME MANAGER — RAW MACOS DEFAULTS
   # ------------------------------------------------------------

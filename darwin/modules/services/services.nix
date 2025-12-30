@@ -13,6 +13,10 @@
 { ... }:
 
 {
+	environment.etc."hm-test-services.txt".text = ''
+  services.nix was evaluated
+	'';
+  
   imports = [
     # Cleanup
     ./generations-cleanup.nix
