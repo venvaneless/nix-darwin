@@ -189,7 +189,7 @@ in
 
           # Move runtime item into dotfiles if dotfiles doesn't have it yet
           if [ ! -e "$dst" ]; then
-            echo "[$APP] Moving '${name}' → ${dirConf} 📦"
+          echo "[$APP] Moving '$(basename "$item")' → ${dirConf} 📦"
             move_with_backup "$item" "$dst"
           fi
         done
