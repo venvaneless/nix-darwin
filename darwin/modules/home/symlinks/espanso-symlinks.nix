@@ -6,7 +6,7 @@
 #
 # Source of truth:
 # - Application Support content lives in:  <dirSRC>/conf
-# - Preferences plist lives in:            <dirSRC>/pref
+# - Preferences plist lives in:            <dirSRC>/com.federicoterzi.espanso.plist
 #
 # Runtime paths (what Espanso still "sees"):
 # - ~/Library/Application Support/espanso
@@ -36,7 +36,6 @@ let
   # App source-of-truth directories
   dirSRC  = "${dirRoot}/${appSlug}";
   dirConf = "${dirSRC}/conf";
-  dirPref = "${dirSRC}/pref";
 
   # Application Support runtime path
   asRealName = "espanso";
@@ -93,6 +92,7 @@ in
 
         if [ -e "$dst" ] && [ ! -L "$dst" ]; then
           if [ -d "$dst" ] && dir_is_empty "$dst"; then
+            echo "[$APP] Destination exists but empty. Removing empty dir: $dst 🧹"
             rmdir "$dst" || true
             return 0
           fi
@@ -104,6 +104,7 @@ in
 
           echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
           mv "$dst" "$backup"
+          echo "[$APP] Backup complete: $backup ✅"
         fi
       }
 
@@ -112,8 +113,10 @@ in
         local dst="$2"
 
         backup_dest_if_needed "$dst"
+
         echo "[$APP] Moving: $src → $dst 📦"
         mv "$src" "$dst"
+        echo "[$APP] Move complete: $src → $dst ✅"
       }
 
       # ------------------------------------------------------------
@@ -155,7 +158,6 @@ in
       # ------------------------------------------------------------
       ensure_dir "${dirSRC}"
       ensure_dir "${dirConf}"
-      ensure_dir "${dirPref}"
 
       allowMigrate="0"
       if dir_is_empty "${dirSRC}"; then
@@ -166,44 +168,31 @@ in
       fi
 
       # ------------------------------------------------------------
-      # --- APPLICATION SUPPORT: CONTENTS MIGRATE + REPAIR ---
+      # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
       # ------------------------------------------------------------
-      # IMPORTANT:
-      # - ${asPath} must remain a REAL directory
-      # - We only symlink items INSIDE it
-      ensure_dir "${asPath}"
-
-      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        # Migrate runtime items into source-of-truth (only if missing there)
-        shopt -s dotglob nullglob
-
-        for item in "${asPath}"/*; do
-          [ -e "$item" ] || continue
-          name="$(basename "$item")"
-          dst="${dirConf}/$name"
-
-          # Skip symlinks inside runtime if they already exist (repair handled below)
-          if [ -L "$item" ]; then
-            continue
+      if [ -e "${asPath}" ]; then
+        if [ -L "${asPath}" ]; then
+          echo "[$APP] Application Support is a symlink. Verifying… 🔎"
+          ensure_symlink "${asPath}" "${dirConf}" || true
+        else
+          # If runtime item is not a symlink, we repair it:
+          # - If allowMigrate=1 -> normal migration
+          # - If allowMigrate=0 -> repair mode (exception rule)
+          if [ "$allowMigrate" = "1" ]; then
+            echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
+          else
+            echo "[$APP] Application Support is not a symlink. Repairing into ${dirConf} 🔧"
           fi
 
-          # Move runtime item into dotfiles if dotfiles doesn't have it yet
-          if [ ! -e "$dst" ]; then
-          echo "[$APP] Moving '$(basename "$item")' → ${dirConf} 📦"
-            move_with_backup "$item" "$dst"
-          fi
-        done
+          move_with_backup "${asPath}" "${dirConf}"
 
-        # Ensure runtime items are symlinked back to dotfiles
-        for src in "${dirConf}"/*; do
-          [ -e "$src" ] || continue
-          name="$(basename "$src")"
-          link="${asPath}/$name"
-
-          backup_dest_if_needed "$link"
-          unlink_if_symlink "$link"
-          ensure_symlink "$link" "$src" || true
-        done
+          echo "[$APP] '${asRealName}' is being symlinked back to Application Support 🔗"
+          ensure_symlink "${asPath}" "${dirConf}" || {
+            echo "[$APP] ERROR: Could not create symlink at Application Support ⛔"
+          }
+        fi
+      else
+        echo "[$APP] No Application Support data found. Skipping Application Support ✅"
       fi
 
       # ------------------------------------------------------------
@@ -211,32 +200,28 @@ in
       # ------------------------------------------------------------
       for pref in ${lib.concatStringsSep " " prefItems}; do
         name="$(basename "$pref")"
-        dst="${dirPref}/$name"
-
+        dst="${dirSRC}/$name"
+      
         if [ -e "$pref" ]; then
           if [ -L "$pref" ]; then
-            if [ ! -e "$dst" ]; then
-              echo "[$APP] Preferences symlink exists but destination missing. Repairing: $pref 🔧"
-              unlink_if_symlink "$pref"
-              : > "$dst"
-            else
-              echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
-            fi
+            echo "[$APP] Preferences plist is a symlink. Verifying… 🔎"
+            ensure_symlink "$pref" "$dst" || true
           else
             if [ ! -e "$dst" ]; then
-              echo "[$APP] Moving '$name' → ${dirPref} 📄"
+              echo "[$APP] Moving '$name' → ${dirSRC} 📄"
               move_with_backup "$pref" "$dst"
+            else
+              echo "[$APP] Destination plist already exists. Skipping move ⚠️"
             fi
+      
+            ensure_symlink "$pref" "$dst" || true
+            echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
           fi
         else
-          echo "[$APP] Preferences item missing. Skipping: $pref ✅"
-        fi
-
-        if [ -e "$dst" ]; then
-          ln -sfn "$dst" "$pref"
-          echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
+          echo "[$APP] Preferences plist missing. Skipping ✅"
         fi
       done
+
 
       # ------------------------------------------------------------
       # --- END LOG ---
