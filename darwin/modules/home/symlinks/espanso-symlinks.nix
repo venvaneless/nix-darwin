@@ -30,7 +30,7 @@ let
   # Source-of-truth root for all apps
   dirRoot = "/Users/ven/ven-dots/user-data/apps";
 
-  # App slug
+  # App slug (rules-compliant name)
   appSlug = "espanso";
 
   # App source-of-truth directories
@@ -85,6 +85,8 @@ in
 
       # ------------------------------------------------------------
       # --- HELPERS: SAFE BACKUPS + MOVES ---
+      # Non-empty directory or file → create timestamped backup
+      # This ensures no existing data is destroyed and allows rollback
       # ------------------------------------------------------------
       backup_dest_if_needed() {
         local dst="$1"
@@ -97,7 +99,8 @@ in
 
           local ts
           ts="$(date +%Y%m%d-%H%M%S)"
-          local backup="$dst.backup-$ts"
+          local backup
+          backup="$dst.backup-$ts"
 
           echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
           mv "$dst" "$backup"
@@ -114,9 +117,44 @@ in
       }
 
       # ------------------------------------------------------------
+      # --- HELPERS: SYMLINK MANAGEMENT ---
+      # ------------------------------------------------------------
+      ensure_symlink() {
+        local linkPath="$1"
+        local targetPath="$2"
+
+        if [ -L "$linkPath" ]; then
+          local currentTarget
+          currentTarget="$(readlink "$linkPath" || true)"
+
+          if [ "$currentTarget" = "$targetPath" ]; then
+            echo "[$APP] Symlink OK: $linkPath → $targetPath ✅"
+            return 0
+          fi
+
+          echo "[$APP] Symlink wrong: $linkPath → $currentTarget (expected $targetPath) ⚠️"
+          echo "[$APP] Fixing symlink: $linkPath → $targetPath 🔧"
+          unlink_if_symlink "$linkPath"
+          ln -s "$targetPath" "$linkPath"
+          echo "[$APP] Symlink fixed: $linkPath → $targetPath ✅"
+          return 0
+        fi
+
+        if [ -e "$linkPath" ]; then
+          echo "[$APP] Not a symlink at: $linkPath (will not delete automatically) ⚠️"
+          return 1
+        fi
+
+        echo "[$APP] Creating symlink: $linkPath → $targetPath 🔗"
+        ln -s "$targetPath" "$linkPath"
+        echo "[$APP] Symlink created: $linkPath → $targetPath ✅"
+      }
+
+      # ------------------------------------------------------------
       # --- SOURCE OF TRUTH SETUP ---
       # ------------------------------------------------------------
       ensure_dir "${dirSRC}"
+      ensure_dir "${dirConf}"
       ensure_dir "${dirPref}"
 
       allowMigrate="0"
@@ -128,20 +166,45 @@ in
       fi
 
       # ------------------------------------------------------------
-      # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
+      # --- APPLICATION SUPPORT: CONTENTS MIGRATE + REPAIR ---
       # ------------------------------------------------------------
-      if [ -e "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        if [ "$allowMigrate" = "1" ]; then
-          echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
-          move_with_backup "${asPath}" "${dirConf}"
-        else
-          echo "[$APP] Application Support exists but migration skipped ⚠️"
-        fi
-      fi
+      # IMPORTANT:
+      # - ${asPath} must remain a REAL directory
+      # - We only symlink items INSIDE it
+      ensure_dir "${asPath}"
 
-      unlink_if_symlink "${asPath}"
-      ln -sfn "${dirConf}" "${asPath}"
-      echo "[$APP] Application Support symlinked → ${dirConf} 🔗"
+      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
+        # Migrate runtime items into source-of-truth (only if missing there)
+        shopt -s dotglob nullglob
+
+        for item in "${asPath}"/*; do
+          [ -e "$item" ] || continue
+          name="$(basename "$item")"
+          dst="${dirConf}/$name"
+
+          # Skip symlinks inside runtime if they already exist (repair handled below)
+          if [ -L "$item" ]; then
+            continue
+          fi
+
+          # Move runtime item into dotfiles if dotfiles doesn't have it yet
+          if [ ! -e "$dst" ]; then
+            echo "[$APP] Moving '${name}' → ${dirConf} 📦"
+            move_with_backup "$item" "$dst"
+          fi
+        done
+
+        # Ensure runtime items are symlinked back to dotfiles
+        for src in "${dirConf}"/*; do
+          [ -e "$src" ] || continue
+          name="$(basename "$src")"
+          link="${asPath}/$name"
+
+          backup_dest_if_needed "$link"
+          unlink_if_symlink "$link"
+          ensure_symlink "$link" "$src" || true
+        done
+      fi
 
       # ------------------------------------------------------------
       # --- PREFERENCES: PLIST MOVE + SYMLINK ---
@@ -150,13 +213,29 @@ in
         name="$(basename "$pref")"
         dst="${dirPref}/$name"
 
-        if [ -e "$pref" ] && [ ! -L "$pref" ] && [ ! -e "$dst" ]; then
-          echo "[$APP] Moving '$name' → ${dirPref} 📄"
-          move_with_backup "$pref" "$dst"
+        if [ -e "$pref" ]; then
+          if [ -L "$pref" ]; then
+            if [ ! -e "$dst" ]; then
+              echo "[$APP] Preferences symlink exists but destination missing. Repairing: $pref 🔧"
+              unlink_if_symlink "$pref"
+              : > "$dst"
+            else
+              echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
+            fi
+          else
+            if [ ! -e "$dst" ]; then
+              echo "[$APP] Moving '$name' → ${dirPref} 📄"
+              move_with_backup "$pref" "$dst"
+            fi
+          fi
+        else
+          echo "[$APP] Preferences item missing. Skipping: $pref ✅"
         fi
 
-        ln -sfn "$dst" "$pref"
-        echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
+        if [ -e "$dst" ]; then
+          ln -sfn "$dst" "$pref"
+          echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
+        fi
       done
 
       # ------------------------------------------------------------

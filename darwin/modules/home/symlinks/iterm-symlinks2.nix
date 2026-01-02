@@ -1,18 +1,17 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/vlc-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/iterm-symlinks.nix
 #
-# DARWIN: VLC USER-DATA
+# DARWIN: ITERM USER-DATA
 # ============================================================
-# VLC is a media player for macOS.
+# iTerm2 terminal emulator user-data management.
 #
 # Source of truth:
 # - Application Support content lives in:  <dirSRC>/conf
-# - Preferences directory lives in:        <dirSRC>/pref
-# - Preferences plist lives in:            <dirSRC>
+# - Preferences plists live in:            <dirSRC>/pref
 #
-# Runtime paths (what VLC still "sees"):
-# - ~/Library/Application Support/org.videolan.vlc
-# - ~/Library/Preferences/org.videolan.vlc
-# - ~/Library/Preferences/org.videolan.vlc.plist
+# Runtime paths (what iTerm still "sees"):
+# - ~/Library/Application Support/iTerm2
+# - ~/Library/Preferences/com.googlecode.iterm2.plist
+# - ~/Library/Preferences/com.googlecode.iterm2.private.plist
 #
 # Safety model:
 # - If <dirSRC> is non-empty, migration is skipped
@@ -33,7 +32,7 @@ let
   dirRoot = "/Users/ven/ven-dots/user-data/apps";
 
   # App slug (rules-compliant name)
-  appSlug = "vlc";
+  appSlug = "iterm";
 
   # App source-of-truth directories
   dirSRC  = "${dirRoot}/${appSlug}";
@@ -41,26 +40,24 @@ let
   dirPref = "${dirSRC}/pref";
 
   # Application Support runtime path
-  asRealName = "org.videolan.vlc";
+  asRealName = "iTerm2";
   asPath     = "${home}/Library/Application Support/${asRealName}";
 
-  # Preferences runtime directory + plist
-  prefDir   = "${home}/Library/Preferences/${asRealName}";
-  prefPlist = "${home}/Library/Preferences/org.videolan.vlc.plist";
-
-  # Preferences dotfiles destinations
-  dotPrefDir = "${dirPref}/${asRealName}";
-  dotPlist   = "${dirSRC}/org.videolan.vlc.plist";
+  # Preferences runtime items
+  prefItems = [
+    "${home}/Library/Preferences/com.googlecode.iterm2.plist"
+    "${home}/Library/Preferences/com.googlecode.iterm2.private.plist"
+  ];
 in
 {
-  home.activation.vlcUserData =
+  home.activation.itermUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
 
       # ------------------------------------------------------------
       # --- START LOG ---
       # ------------------------------------------------------------
-      APP="VLC"
+      APP="iTerm2"
       echo "[$APP] User-data sync starting… 🚀"
 
       # ------------------------------------------------------------
@@ -161,7 +158,6 @@ in
       ensure_dir "${dirSRC}"
       ensure_dir "${dirConf}"
       ensure_dir "${dirPref}"
-      ensure_dir "${dotPrefDir}"
 
       allowMigrate="0"
       if dir_is_empty "${dirSRC}"; then
@@ -209,70 +205,44 @@ in
       fi
 
       # ------------------------------------------------------------
-      # --- PREFERENCES: DIRECTORY CONTENTS MIGRATE + REPAIR ---
+      # --- APP-SPECIFIC: LOGGING DIRECTORY ---
       # ------------------------------------------------------------
-      # IMPORTANT:
-      # - ${prefDir} must remain a REAL directory
-      # - We only symlink items INSIDE it
-      ensure_dir "${prefDir}"
-
-      if [ -d "${prefDir}" ] && [ ! -L "${prefDir}" ]; then
-        shopt -s dotglob nullglob
-
-        for item in "${prefDir}"/*; do
-          [ -e "$item" ] || continue
-          name="$(basename "$item")"
-          dst="${dotPrefDir}/$name"
-
-          if [ -L "$item" ]; then
-            continue
-          fi
-
-          if [ ! -e "$dst" ]; then
-            echo "[$APP] Moving '${name}' → ${dotPrefDir} 📄"
-            move_with_backup "$item" "$dst"
-          fi
-        done
-
-        for src in "${dotPrefDir}"/*; do
-          [ -e "$src" ] || continue
-          name="$(basename "$src")"
-          link="${prefDir}/$name"
-
-          backup_dest_if_needed "$link"
-          unlink_if_symlink "$link"
-          ensure_symlink "$link" "$src" || true
-        done
-      fi
+      # iTerm can be configured to log into:
+      #   /Users/ven/ven-dots/user-data/apps/iterm/logs
+      # If this directory is missing, iTerm will prompt every launch.
+      ensure_dir "${dirSRC}/logs"
 
       # ------------------------------------------------------------
-      # --- PREFERENCES: PLIST MOVE + SYMLINK ---
+      # --- PREFERENCES: PLISTS MOVE + SYMLINK ---
       # ------------------------------------------------------------
-      name="$(basename "${prefPlist}")"
+      for pref in ${lib.concatStringsSep " " prefItems}; do
+        name="$(basename "$pref")"
+        dst="${dirPref}/$name"
 
-      if [ -e "${prefPlist}" ]; then
-        if [ -L "${prefPlist}" ]; then
-          if [ ! -e "${dotPlist}" ]; then
-            echo "[$APP] Preferences symlink exists but destination missing. Repairing: ${prefPlist} 🔧"
-            unlink_if_symlink "${prefPlist}"
-            : > "${dotPlist}"
+        if [ -e "$pref" ]; then
+          if [ -L "$pref" ]; then
+            if [ ! -e "$dst" ]; then
+              echo "[$APP] Preferences symlink exists but destination missing. Repairing: $pref 🔧"
+              unlink_if_symlink "$pref"
+              : > "$dst"
+            else
+              echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
+            fi
           else
-            echo "[$APP] Preferences item is a symlink. Verifying: ${prefPlist} 🔎"
+            if [ ! -e "$dst" ]; then
+              echo "[$APP] Moving '$name' → ${dirPref} 📄"
+              move_with_backup "$pref" "$dst"
+            fi
           fi
         else
-          if [ ! -e "${dotPlist}" ]; then
-            echo "[$APP] Moving '$name' → ${dirSRC} 📄"
-            move_with_backup "${prefPlist}" "${dotPlist}"
-          fi
+          echo "[$APP] Preferences item missing. Skipping: $pref ✅"
         fi
-      else
-        echo "[$APP] Preferences item missing. Skipping: ${prefPlist} ✅"
-      fi
 
-      if [ -e "${dotPlist}" ]; then
-        ln -sfn "${dotPlist}" "${prefPlist}"
-        echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
-      fi
+        if [ -e "$dst" ]; then
+          ln -sfn "$dst" "$pref"
+          echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
+        fi
+      done
 
       # ------------------------------------------------------------
       # --- END LOG ---

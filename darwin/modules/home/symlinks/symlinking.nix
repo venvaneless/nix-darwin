@@ -17,7 +17,8 @@
     # ./abetterfinderrename-symlinks.nix
     # ./chromium-symlinks.nix
      ./espanso-symlinks.nix
-     ./iterm-symlinks.nix
+     # ./iterm-symlinks.nix
+     ./iterm-symlinks2.nix
     # ./raycast-symlinks.nix
     # ./yate-symlinks.nix
      ./vlc-symlinks.nix
