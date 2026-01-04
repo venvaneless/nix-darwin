@@ -257,7 +257,7 @@ in
             echo "[$APP] Destination plist already exists. Not overwriting: ${dotPlist} ⚠️"
             echo "[$APP] If runtime plist is not a symlink, fix manually or remove destination first (safely) 🧰"
           else
-            echo "[$APP] '${plistName}' is being moved from Preferences to ${dirSRC} 📄"
+          	echo "[$APP] ''${plistName} is being moved from Preferences to ${dirSRC} 📄"
             move_with_backup "${prefPlist}" "${dotPlist}"
 
             echo "[$APP] '${plistName}' is being symlinked back to Preferences 🔗"
