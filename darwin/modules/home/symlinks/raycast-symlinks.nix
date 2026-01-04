@@ -2,24 +2,25 @@
 #
 # DARWIN: RAYCAST USER-DATA
 # ============================================================
-# Raycast launcher user-data management.
+# Raycast launcher user-data backup.
 #
-# Source of truth:
-# - Application Support content lives in:  <dirSRC>/appsupport
-# - Config directory lives in:             <dirSRC>/conf
-# - Preferences plist lives in:            <dirSRC>
+# Backup destination (repo):
+# - /Users/ven/ven-dots/user-data/apps/raycast
 #
-# Runtime paths (what Raycast still "sees"):
-# - ~/Library/Application Support/com.raycast.macos
-# - ~/Library/Application Support/com.raycast.shared
-# - ~/.config/raycast
-# - ~/Library/Preferences/com.raycast.macos.plist
+# What is backed up (no symlinks):
+# - ~/Library/Application Support/com.raycast.macos/   → <dirSRC>/app_support
+# - ~/Library/Preferences/com.raycast.macos.plist     → <dirSRC>/com.raycast.macos.plist
+# - ~/.config/raycast/extensions/                     → <dirSRC>/extensions
+# - ~/.config/raycast/ai/                             → <dirSRC>/ai
+# - ~/.config/raycast/ca.pem                          → <dirSRC>/ca.pem
+# - ~/.config/raycast/config.json                     → <dirSRC>/config.json
 #
 # Safety model:
-# - Runtime directories remain REAL directories
-# - Only CONTENTS are migrated and symlinked
-# - Existing data is ALWAYS migrated first
-# - Never creates duplicate or empty state
+# - Does NOT create or manage symlinks
+# - Does NOT delete any destination content
+# - Copies only when source is newer / changed
+# - Never touches iCloud paths
+# - Never blocks Home Manager activation
 # ============================================================
 
 { config, lib, ... }:
@@ -33,31 +34,41 @@ let
   # Source-of-truth root for all apps
   dirRoot = "/Users/ven/ven-dots/user-data/apps";
 
-  # App slug
+  # App slug (rules-compliant name)
   appSlug = "raycast";
 
-  # App source-of-truth directories
-  dirSRC        = "${dirRoot}/${appSlug}";
-  dirConf       = "${dirSRC}/conf";
-  dirAppSupport = "${dirSRC}/appsupport";
+  # Backup destination root
+  dirSRC = "${dirRoot}/${appSlug}";
 
-  # Runtime Application Support paths (MUST KEEP NAMES)
-  asMacosName   = "com.raycast.macos";
-  asSharedName  = "com.raycast.shared";
+  # Application Support (runtime)
+  asName = "com.raycast.macos";
+  asPath = "${home}/Library/Application Support/${asName}";
 
-  asMacosPath   = "${home}/Library/Application Support/${asMacosName}";
-  asSharedPath  = "${home}/Library/Application Support/${asSharedName}";
+  # Application Support (backup destination, renamed)
+  dotAppSupport = "${dirSRC}/app_support";
 
-  # Dotfiles Application Support paths
-  dotMacosPath  = "${dirAppSupport}/${asMacosName}";
-  dotSharedPath = "${dirAppSupport}/${asSharedName}";
+  # Preferences plist (runtime)
+  prefPlist = "${home}/Library/Preferences/com.raycast.macos.plist";
 
-  # Runtime config + plist
-  runtimeConf   = "${home}/.config/raycast";
-  prefPlist     = "${home}/Library/Preferences/com.raycast.macos.plist";
+  # Preferences plist (backup destination)
+  dotPlist = "${dirSRC}/com.raycast.macos.plist";
 
-  # Dotfiles plist
-  dotPlist      = "${dirSRC}/com.raycast.macos.plist";
+  # Raycast config root (runtime)
+  rcRoot = "${home}/.config/raycast";
+
+  # Runtime config dirs
+  rcExt = "${rcRoot}/extensions";
+  rcAI  = "${rcRoot}/ai";
+
+  # Runtime config files
+  rcCa   = "${rcRoot}/ca.pem";
+  rcConf = "${rcRoot}/config.json";
+
+  # Backup destinations
+  dotExt  = "${dirSRC}/extensions";
+  dotAI   = "${dirSRC}/ai";
+  dotCa   = "${dirSRC}/ca.pem";
+  dotConf = "${dirSRC}/config.json";
 in
 {
   home.activation.raycastUserData =
@@ -68,26 +79,107 @@ in
       # --- START LOG ---
       # ------------------------------------------------------------
       APP="Raycast"
-      echo "[$APP] User-data sync starting… 🚀"
+      echo "[$APP] User-data backup starting… 🚀"
 
       # ------------------------------------------------------------
-      # --- HELPERS: FILESYSTEM CHECKS ---
+      # --- HELPERS: SAFE DIRECTORY CREATION ---
       # ------------------------------------------------------------
       ensure_dir() {
         local d="$1"
         if [ ! -d "$d" ]; then
           echo "[$APP] Creating directory: $d 📁"
-          mkdir -p "$d"
+          mkdir -p "$d" || true
         fi
       }
 
-      dir_is_empty() {
-        local d="$1"
-        [ -d "$d" ] || return 1
-        [ -z "$(ls -A "$d" 2>/dev/null || true)" ]
+      # ------------------------------------------------------------
+      # --- HELPERS: SAFE FILE COPY (mtime-aware) ---
+      # Copies only if source exists and is newer than destination
+      # ------------------------------------------------------------
+      copy_file_if_newer() {
+        local src="$1"
+        local dst="$2"
+
+        if [ ! -e "$src" ]; then
+          echo "[$APP] Missing source file. Skipping: $src ✅"
+          return 0
+        fi
+
+        ensure_dir "$(dirname "$dst")"
+
+        if [ -e "$dst" ]; then
+          local sm dm
+          sm="$(stat -f %m "$src" 2>/dev/null || echo 0)"
+          dm="$(stat -f %m "$dst" 2>/dev/null || echo 0)"
+
+          if [ "$sm" = "$dm" ]; then
+            echo "[$APP] File unchanged. Skipping: $src ✅"
+            return 0
+          fi
+
+          if [ "$sm" -le "$dm" ]; then
+            echo "[$APP] Destination newer or same. Skipping: $dst ✅"
+            return 0
+          fi
+        fi
+
+        echo "[$APP] Copying file: $src → $dst 📄"
+        cp -p "$src" "$dst" || true
+        echo "[$APP] File copied: $dst ✅"
       }
 
-      unlink_if_symlink() {
-        local p="$1"
-        if [ -L "$p" ]; then
-          echo "[$APP] Removing existin
+      # ------------------------------------------------------------
+      # --- HELPERS: SAFE DIRECTORY SYNC (no deletes) ---
+      # Uses rsync to copy only newer/changed items.
+      # No --delete is used (destination never gets wiped).
+      # ------------------------------------------------------------
+      sync_dir_update_only() {
+        local src="$1"
+        local dst="$2"
+
+        if [ ! -d "$src" ]; then
+          echo "[$APP] Missing source directory. Skipping: $src ✅"
+          return 0
+        fi
+
+        ensure_dir "$dst"
+
+        echo "[$APP] Syncing directory (update-only): $src → $dst 📦"
+        rsync -a --update "$src"/ "$dst"/ 2>/dev/null || rsync -a -u "$src"/ "$dst"/ || true
+        echo "[$APP] Directory sync complete: $dst ✅"
+      }
+
+      # ------------------------------------------------------------
+      # --- DESTINATION ROOT ---
+      # ------------------------------------------------------------
+      ensure_dir "${dirSRC}"
+
+      # ------------------------------------------------------------
+      # --- APPLICATION SUPPORT BACKUP ---
+      # ~/Library/Application Support/com.raycast.macos → <dirSRC>/app_support
+      # ------------------------------------------------------------
+      sync_dir_update_only "${asPath}" "${dotAppSupport}"
+
+      # ------------------------------------------------------------
+      # --- PREFERENCES PLIST BACKUP ---
+      # ~/Library/Preferences/com.raycast.macos.plist → <dirSRC>/com.raycast.macos.plist
+      # ------------------------------------------------------------
+      copy_file_if_newer "${prefPlist}" "${dotPlist}"
+
+      # ------------------------------------------------------------
+      # --- ~/.config/raycast BACKUP ---
+      # extensions/ and ai/ are directories
+      # ca.pem and config.json are files
+      # ------------------------------------------------------------
+      sync_dir_update_only "${rcExt}" "${dotExt}"
+      sync_dir_update_only "${rcAI}"  "${dotAI}"
+
+      copy_file_if_newer "${rcCa}"   "${dotCa}"
+      copy_file_if_newer "${rcConf}" "${dotConf}"
+
+      # ------------------------------------------------------------
+      # --- END LOG ---
+      # ------------------------------------------------------------
+      echo "[$APP] User-data backup complete ✅"
+    '';
+}
