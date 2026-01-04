@@ -1,155 +1,199 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/iterm-symlinks.nix
 #
-# DARWIN: ITERM USER-DATA (FINAL)
+# DARWIN: ITERM USER-DATA
 # ============================================================
-# iTerm2 user-data relocation with a single source of truth.
-#
-# Model:
-# This module moves the ENTIRE iTerm2 Application Support folder
-# into ven-dots and symlinks it back under its ORIGINAL NAME.
+# iTerm2 terminal emulator user-data management.
 #
 # Source of truth:
-#   /Users/ven/ven-dots/user-data/apps/iterm/app_support
+# - Application Support content lives in:  <dirSRC>/conf
+# - Preferences plists live in:            <dirSRC>/pref
 #
-# Runtime path (unchanged for the app):
-#   ~/Library/Application Support/iTerm2
+# Runtime paths (what iTerm still "sees"):
+# - ~/Library/Application Support/iTerm2
+# - ~/Library/Preferences/com.googlecode.iterm2.plist
+# - ~/Library/Preferences/com.googlecode.iterm2.private.plist
 #
-# Preferences:
-#   ~/Library/Preferences/com.googlecode.iterm2.plist
-#   ~/Library/Preferences/com.googlecode.iterm2.private.plist
-#
-# Preferences source of truth:
-#   /Users/ven/ven-dots/user-data/apps/iterm/pref
-#
-# Rules:
-# - Folder names NEVER change
-# - No empty files are ever created (missing plist = skip)
-# - Plists are MOVED first, then symlinked back
-# - No partial migrations
-# - If something already exists, it is reused
+# Safety model:
+# - If <dirSRC> is non-empty, migration is skipped
+# - Exception: if runtime paths are NOT symlinks, they are repaired
+# - Never creates duplicate profiles
+# - Never overwrites existing dotfiles
 # ============================================================
 
 { config, lib, ... }:
 
 let
+  # ------------------------------------------------------------
+  # --- PATHS ---
+  # ------------------------------------------------------------
   home = config.home.homeDirectory;
 
-  # ------------------------------------------------------------
-  # SOURCE OF TRUTH (APP ROOT)
-  # ------------------------------------------------------------
-  appRoot = "/Users/ven/ven-dots/user-data/apps/iterm";
+  # Source-of-truth root for all apps
+  dirRoot = "/Users/ven/ven-dots/user-data/apps";
 
-  # Application Support source of truth
-  dotAppSupport = "${appRoot}/app_support";
+  # App slug (rules-compliant name)
+  appSlug = "iterm";
 
-  # Preferences source of truth
-  dotPref = "${appRoot}/pref";
+  # App source-of-truth directories
+  dirSRC  = "${dirRoot}/${appSlug}";
+  dirConf = "${dirSRC}/conf";
+  dirPref = "${dirSRC}/pref";
 
-  # ------------------------------------------------------------
-  # RUNTIME PATHS (MUST KEEP ORIGINAL NAMES)
-  # ------------------------------------------------------------
-  asPath = "${home}/Library/Application Support/iTerm2";
+  # Application Support runtime path
+  asRealName = "iTerm2";
+  asPath     = "${home}/Library/Application Support/${asRealName}";
 
-  plistMain    = "${home}/Library/Preferences/com.googlecode.iterm2.plist";
-  plistPrivate = "${home}/Library/Preferences/com.googlecode.iterm2.private.plist";
+  # Preferences runtime items
+  prefItems = [
+    "${home}/Library/Preferences/com.googlecode.iterm2.plist"
+    "${home}/Library/Preferences/com.googlecode.iterm2.private.plist"
+  ];
 in
 {
   home.activation.itermUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      APP="iTerm2"
 
+      # ------------------------------------------------------------
+      # --- START LOG ---
+      # ------------------------------------------------------------
+      APP="iTerm2"
       echo "[$APP] User-data sync starting… 🚀"
 
       # ------------------------------------------------------------
-      # SOURCE OF TRUTH SETUP
+      # --- HELPERS: FILESYSTEM CHECKS ---
       # ------------------------------------------------------------
-      if [ ! -d "${appRoot}" ]; then
-        echo "[$APP] Creating app root: ${appRoot} 📁"
-        mkdir -p "${appRoot}"
+      ensure_dir() {
+        local d="$1"
+        if [ ! -d "$d" ]; then
+          echo "[$APP] Creating directory: $d 📁"
+          mkdir -p "$d"
+        fi
+      }
+
+      dir_is_empty() {
+        local d="$1"
+        [ -d "$d" ] || return 1
+        [ -z "$(ls -A "$d" 2>/dev/null || true)" ]
+      }
+
+      unlink_if_symlink() {
+        local p="$1"
+        if [ -L "$p" ]; then
+          echo "[$APP] Removing existing symlink: $p 🧹"
+          unlink "$p"
+        fi
+      }
+
+      # ------------------------------------------------------------
+      # --- HELPERS: SAFE BACKUPS + MOVES ---
+      # Non-empty directory or file → create timestamped backup
+      # This ensures no existing data is destroyed and allows rollback
+      # ------------------------------------------------------------
+      backup_dest_if_needed() {
+        local dst="$1"
+
+        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+          if [ -d "$dst" ] && dir_is_empty "$dst"; then
+            rmdir "$dst" || true
+            return 0
+          fi
+
+          local ts
+          ts="$(date +%Y%m%d-%H%M%S)"
+          local backup
+          backup="$dst.backup-$ts"
+
+          echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
+          mv "$dst" "$backup"
+        fi
+      }
+
+      move_with_backup() {
+        local src="$1"
+        local dst="$2"
+
+        backup_dest_if_needed "$dst"
+        echo "[$APP] Moving: $src → $dst 📦"
+        mv "$src" "$dst"
+      }
+
+      # ------------------------------------------------------------
+      # --- SOURCE OF TRUTH SETUP ---
+      # ------------------------------------------------------------
+      ensure_dir "${dirSRC}"
+      ensure_dir "${dirConf}"
+      ensure_dir "${dirPref}"
+
+      allowMigrate="0"
+      if dir_is_empty "${dirSRC}"; then
+        echo "[$APP] Source-of-truth root is empty. Migration allowed ✅"
+        allowMigrate="1"
+      else
+        echo "[$APP] Source-of-truth root is not empty. Migration skipped (repair still allowed) ⚠️"
       fi
 
-      if [ ! -d "${dotAppSupport}" ]; then
-        echo "[$APP] Creating Application Support source-of-truth: ${dotAppSupport} 📁"
-        mkdir -p "${dotAppSupport}"
-      fi
-
-      if [ ! -d "${dotPref}" ]; then
-        echo "[$APP] Creating Preferences source-of-truth: ${dotPref} 📁"
-        mkdir -p "${dotPref}"
-      fi
-
       # ------------------------------------------------------------
-      # APPLICATION SUPPORT (WHOLE FOLDER)
+      # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
       # ------------------------------------------------------------
-      # Goal:
-      # - Move:   ~/Library/Application Support/iTerm2
-      # - To:     ${dotAppSupport}
-      # - Then:   symlink ~/Library/Application Support/iTerm2 -> ${dotAppSupport}
-      #
-      # Runtime folder name MUST remain: iTerm2
-      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        if [ -z "$(ls -A "${dotAppSupport}")" ]; then
-          echo "[$APP] Moving iTerm2 Application Support → ${dotAppSupport} 📦"
-          rmdir "${dotAppSupport}" 2>/dev/null || true
-          mv "${asPath}" "${dotAppSupport}"
-          echo "[$APP] Move complete: ${asPath} → ${dotAppSupport} ✅"
+      if [ -e "${asPath}" ]; then
+        if [ -L "${asPath}" ]; then
+          echo "[$APP] Application Support is a symlink. Verifying… 🔎"
         else
-          echo "[$APP] Source-of-truth not empty. Skipping move ⚠️"
+          if [ "$allowMigrate" = "1" ]; then
+            echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
+          else
+            echo "[$APP] Application Support is not a symlink. Repairing into ${dirConf} 🔧"
+          fi
+
+          move_with_backup "${asPath}" "${dirConf}"
         fi
+      else
+        echo "[$APP] No Application Support data found. Skipping Application Support ✅"
       fi
 
-      # If runtime path is a symlink, ensure it points to dotAppSupport
-      if [ -L "${asPath}" ]; then
-        current="$(readlink "${asPath}")"
-        if [ "$current" != "${dotAppSupport}" ]; then
-          echo "[$APP] Fixing Application Support symlink 🔧"
-          unlink "${asPath}"
-          echo "[$APP] Removed wrong symlink: ${asPath} 🧹"
-        fi
-      fi
+      # Critical: avoid creating ${asPath}/conf via ln behavior
+      backup_dest_if_needed "${asPath}"
+      unlink_if_symlink "${asPath}"
 
-      # If runtime path doesn't exist, create the correct symlink
-      if [ ! -e "${asPath}" ]; then
-        echo "[$APP] Symlinking Application Support → ${dotAppSupport} 🔗"
-        ln -s "${dotAppSupport}" "${asPath}"
-        echo "[$APP] Symlink created: ${asPath} → ${dotAppSupport} ✅"
-      fi
+      ln -sfn "${dirConf}" "${asPath}"
+      echo "[$APP] Application Support symlinked → ${dirConf} 🔗"
 
       # ------------------------------------------------------------
-      # PREFERENCES PLISTS
+      # --- PREFERENCES: PLISTS MOVE + SYMLINK ---
       # ------------------------------------------------------------
-      # Rules:
-      # - If plist exists (and is NOT a symlink) -> MOVE to dotPref
-      # - Then symlink it back
-      # - If plist missing -> SKIP (no empty file creation, ever)
-      for pref in "${plistMain}" "${plistPrivate}"; do
+      for pref in ${lib.concatStringsSep " " prefItems}; do
         name="$(basename "$pref")"
-        dst="${dotPref}/${name}"
+        dst="${dirPref}/$name"
 
         if [ -e "$pref" ]; then
           if [ -L "$pref" ]; then
-            echo "[$APP] Preferences plist already symlinked. Skipping move: $pref 🔎"
+            if [ ! -e "$dst" ]; then
+              echo "[$APP] Preferences symlink exists but destination missing. Repairing: $pref 🔧"
+              unlink_if_symlink "$pref"
+              : > "$dst"
+            else
+              echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
+            fi
           else
             if [ ! -e "$dst" ]; then
-              echo "[$APP] Moving plist → ${dst} 📄"
-              mv "$pref" "$dst"
-              echo "[$APP] Move complete: $pref → $dst ✅"
-            else
-              echo "[$APP] Destination plist already exists. Skipping move ⚠️"
+              echo "[$APP] Moving '$name' → ${dirPref} 📄"
+              move_with_backup "$pref" "$dst"
             fi
           fi
-
-          if [ -e "$dst" ] && [ ! -L "$pref" ]; then
-            echo "[$APP] Symlinking plist → ${dst} 🔗"
-            ln -s "$dst" "$pref"
-            echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
-          fi
         else
-          echo "[$APP] Preferences plist missing. Skipping: $pref ✅"
+          echo "[$APP] Preferences item missing. Skipping: $pref ✅"
+        fi
+
+        if [ -e "$dst" ]; then
+          ln -sfn "$dst" "$pref"
+          echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
         fi
       done
 
+      # ------------------------------------------------------------
+      # --- END LOG ---
+      # ------------------------------------------------------------
       echo "[$APP] User-data sync complete ✅"
     '';
 }

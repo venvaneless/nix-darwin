@@ -119,40 +119,6 @@ in
       }
 
       # ------------------------------------------------------------
-      # --- HELPERS: SYMLINK MANAGEMENT ---
-      # ------------------------------------------------------------
-      ensure_symlink() {
-        local linkPath="$1"
-        local targetPath="$2"
-
-        if [ -L "$linkPath" ]; then
-          local currentTarget
-          currentTarget="$(readlink "$linkPath" || true)"
-
-          if [ "$currentTarget" = "$targetPath" ]; then
-            echo "[$APP] Symlink OK: $linkPath → $targetPath ✅"
-            return 0
-          fi
-
-          echo "[$APP] Symlink wrong: $linkPath → $currentTarget (expected $targetPath) ⚠️"
-          echo "[$APP] Fixing symlink: $linkPath → $targetPath 🔧"
-          unlink_if_symlink "$linkPath"
-          ln -s "$targetPath" "$linkPath"
-          echo "[$APP] Symlink fixed: $linkPath → $targetPath ✅"
-          return 0
-        fi
-
-        if [ -e "$linkPath" ]; then
-          echo "[$APP] Not a symlink at: $linkPath (will not delete automatically) ⚠️"
-          return 1
-        fi
-
-        echo "[$APP] Creating symlink: $linkPath → $targetPath 🔗"
-        ln -s "$targetPath" "$linkPath"
-        echo "[$APP] Symlink created: $linkPath → $targetPath ✅"
-      }
-
-      # ------------------------------------------------------------
       # --- SOURCE OF TRUTH SETUP ---
       # ------------------------------------------------------------
       ensure_dir "${dirSRC}"
@@ -168,49 +134,30 @@ in
       fi
 
       # ------------------------------------------------------------
-      # --- APPLICATION SUPPORT: CONTENTS MIGRATE + REPAIR ---
+      # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
       # ------------------------------------------------------------
-      # IMPORTANT:
-      # - ${asPath} must remain a REAL directory
-      # - We only symlink items INSIDE it
-      ensure_dir "${asPath}"
-
-      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        shopt -s dotglob nullglob
-
-        for item in "${asPath}"/*; do
-          [ -e "$item" ] || continue
-          name="$(basename "$item")"
-          dst="${dirConf}/$name"
-
-          if [ -L "$item" ]; then
-            continue
+      if [ -e "${asPath}" ]; then
+        if [ -L "${asPath}" ]; then
+          echo "[$APP] Application Support is a symlink. Verifying… 🔎"
+        else
+          if [ "$allowMigrate" = "1" ]; then
+            echo "[$APP] Moving ${asRealName} profile → ${dirConf} 📦"
+          else
+            echo "[$APP] Application Support is not a symlink. Repairing into ${dirConf} 🔧"
           fi
 
-          if [ ! -e "$dst" ]; then
-            echo "[$APP] Moving '${name}' → ${dirConf} 📦"
-            move_with_backup "$item" "$dst"
-          fi
-        done
-
-        for src in "${dirConf}"/*; do
-          [ -e "$src" ] || continue
-          name="$(basename "$src")"
-          link="${asPath}/$name"
-
-          backup_dest_if_needed "$link"
-          unlink_if_symlink "$link"
-          ensure_symlink "$link" "$src" || true
-        done
+          move_with_backup "${asPath}" "${dirConf}"
+        fi
+      else
+        echo "[$APP] No Application Support data found. Skipping Application Support ✅"
       fi
 
-      # ------------------------------------------------------------
-      # --- APP-SPECIFIC: LOGGING DIRECTORY ---
-      # ------------------------------------------------------------
-      # iTerm can be configured to log into:
-      #   /Users/ven/ven-dots/user-data/apps/iterm/logs
-      # If this directory is missing, iTerm will prompt every launch.
-      ensure_dir "${dirSRC}/logs"
+      # Critical: avoid creating ${asPath}/conf via ln behavior
+      backup_dest_if_needed "${asPath}"
+      unlink_if_symlink "${asPath}"
+
+      ln -sfn "${dirConf}" "${asPath}"
+      echo "[$APP] Application Support symlinked → ${dirConf} 🔗"
 
       # ------------------------------------------------------------
       # --- PREFERENCES: PLISTS MOVE + SYMLINK ---
