@@ -90,8 +90,8 @@ in
         echo "[$APP] Copying main plist → $mainDst 📄"
           cp -p "${plistMain}" "$mainDst"
         else
-          srcMtime="$(stat -f %m "${plistMain}")"
-          dstMtime="$(stat -f %m "$mainDst")"
+        	srcMtime="$(stat -f "%m" "${plistMain}")"
+         	dstMtime="$(stat -f "%m" "$mainDst")"
 
           if [ "$srcMtime" != "$dstMtime" ]; then
             echo "[$APP] Main plist changed. Updating copy 📄"
