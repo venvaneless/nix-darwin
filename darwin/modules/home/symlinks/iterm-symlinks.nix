@@ -1,32 +1,31 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/iterm-symlinks.nix
 #
-# DARWIN: ITERM USER-DATA (FINAL)
+# DARWIN: ITERM USER-DATA (FINAL, CORRECT)
 # ============================================================
-# iTerm2 user-data relocation with a single source of truth.
+# iTerm2 user-data handling with strict ownership boundaries.
 #
-# Model:
-# This module moves the ENTIRE iTerm2 Application Support folder
-# into ven-dots and symlinks it back under its ORIGINAL NAME.
+# MODEL
+# -----
+# - Application Support is managed by iTerm itself (DO NOT TOUCH)
+# - conf/ is user-controlled and untouched here
+# - Preference plists are handled explicitly and safely
 #
-# Source of truth:
-#   /Users/ven/ven-dots/user-data/apps/iterm/app_support
+# SOURCE OF TRUTH
+# ----------------
+#   /Users/ven/ven-dots/user-data/apps/iterm/pref
 #
-# Runtime path (unchanged for the app):
-#   ~/Library/Application Support/iTerm2
-#
-# Preferences:
+# RUNTIME PATHS (UNCHANGED)
+# ------------------------
 #   ~/Library/Preferences/com.googlecode.iterm2.plist
 #   ~/Library/Preferences/com.googlecode.iterm2.private.plist
 #
-# Preferences source of truth:
-#   /Users/ven/ven-dots/user-data/apps/iterm/pref
-#
-# Rules:
+# RULES
+# -----
 # - Folder names NEVER change
-# - No empty files are ever created (missing plist = skip)
-# - Plists are MOVED first, then symlinked back
+# - No empty files are ever created
 # - No partial migrations
-# - If something already exists, it is reused
+# - Existing data is reused
+# - Main plist is NEVER symlinked
 # ============================================================
 
 { config, lib, ... }:
@@ -35,21 +34,14 @@ let
   home = config.home.homeDirectory;
 
   # ------------------------------------------------------------
-  # SOURCE OF TRUTH (APP ROOT)
+  # SOURCE OF TRUTH
   # ------------------------------------------------------------
-  appRoot = "/Users/ven/ven-dots/user-data/apps/iterm";
-
-  # Application Support source of truth
-  dotAppSupport = "${appRoot}/app_support";
-
-  # Preferences source of truth
-  dotPref = "${appRoot}/pref";
+  dotRoot = "/Users/ven/ven-dots/user-data/apps/iterm";
+  dotPref = "${dotRoot}/pref";
 
   # ------------------------------------------------------------
-  # RUNTIME PATHS (MUST KEEP ORIGINAL NAMES)
+  # RUNTIME PLISTS
   # ------------------------------------------------------------
-  asPath = "${home}/Library/Application Support/iTerm2";
-
   plistMain    = "${home}/Library/Preferences/com.googlecode.iterm2.plist";
   plistPrivate = "${home}/Library/Preferences/com.googlecode.iterm2.private.plist";
 in
@@ -64,91 +56,53 @@ in
       # ------------------------------------------------------------
       # SOURCE OF TRUTH SETUP
       # ------------------------------------------------------------
-      if [ ! -d "${appRoot}" ]; then
-        echo "[$APP] Creating app root: ${appRoot} 📁"
-        mkdir -p "${appRoot}"
-      fi
-
-      if [ ! -d "${dotAppSupport}" ]; then
-        echo "[$APP] Creating Application Support source-of-truth: ${dotAppSupport} 📁"
-        mkdir -p "${dotAppSupport}"
-      fi
-
       if [ ! -d "${dotPref}" ]; then
-        echo "[$APP] Creating Preferences source-of-truth: ${dotPref} 📁"
+        echo "[$APP] Creating preferences source-of-truth: ${dotPref} 📁"
         mkdir -p "${dotPref}"
       fi
 
       # ------------------------------------------------------------
-      # APPLICATION SUPPORT (WHOLE FOLDER)
+      # PREFERENCES — PRIVATE PLIST (MOVE + SYMLINK)
       # ------------------------------------------------------------
-      # Goal:
-      # - Move:   ~/Library/Application Support/iTerm2
-      # - To:     ${dotAppSupport}
-      # - Then:   symlink ~/Library/Application Support/iTerm2 -> ${dotAppSupport}
-      #
-      # Runtime folder name MUST remain: iTerm2
-      if [ -d "${asPath}" ] && [ ! -L "${asPath}" ]; then
-        if [ -z "$(ls -A "${dotAppSupport}")" ]; then
-          echo "[$APP] Moving iTerm2 Application Support → ${dotAppSupport} 📦"
-          rmdir "${dotAppSupport}" 2>/dev/null || true
-          mv "${asPath}" "${dotAppSupport}"
-          echo "[$APP] Move complete: ${asPath} → ${dotAppSupport} ✅"
+      privateDst="${dotPref}/com.googlecode.iterm2.private.plist"
+
+      if [ -e "${plistPrivate}" ]; then
+        if [ ! -L "${plistPrivate}" ] && [ ! -e "$privateDst" ]; then
+          echo "[$APP] Moving private plist → ${privateDst} 📄"
+          mv "${plistPrivate}" "$privateDst"
+        fi
+
+        if [ -e "$privateDst" ] && [ ! -L "${plistPrivate}" ]; then
+          echo "[$APP] Symlinking private plist back → Preferences 🔗"
+          ln -s "$privateDst" "${plistPrivate}"
+        fi
+      else
+        echo "[$APP] Private plist missing. Skipping ✅"
+      fi
+
+      # ------------------------------------------------------------
+      # PREFERENCES — MAIN PLIST (COPY ONLY, NEVER SYMLINK)
+      # ------------------------------------------------------------
+      mainDst="${dotPref}/com.googlecode.iterm2.plist"
+
+      if [ -e "${plistMain}" ]; then
+        if [ ! -e "$mainDst" ]; then
+          echo "[$APP] Copying main plist → ${mainDst} 📄"
+          cp -p "${plistMain}" "$mainDst"
         else
-          echo "[$APP] Source-of-truth not empty. Skipping move ⚠️"
-        fi
-      fi
+          srcMtime="$(stat -f %m "${plistMain}")"
+          dstMtime="$(stat -f %m "$mainDst")"
 
-      # If runtime path is a symlink, ensure it points to dotAppSupport
-      if [ -L "${asPath}" ]; then
-        current="$(readlink "${asPath}")"
-        if [ "$current" != "${dotAppSupport}" ]; then
-          echo "[$APP] Fixing Application Support symlink 🔧"
-          unlink "${asPath}"
-          echo "[$APP] Removed wrong symlink: ${asPath} 🧹"
-        fi
-      fi
-
-      # If runtime path doesn't exist, create the correct symlink
-      if [ ! -e "${asPath}" ]; then
-        echo "[$APP] Symlinking Application Support → ${dotAppSupport} 🔗"
-        ln -s "${dotAppSupport}" "${asPath}"
-        echo "[$APP] Symlink created: ${asPath} → ${dotAppSupport} ✅"
-      fi
-
-      # ------------------------------------------------------------
-      # PREFERENCES PLISTS
-      # ------------------------------------------------------------
-      # Rules:
-      # - If plist exists (and is NOT a symlink) -> MOVE to dotPref
-      # - Then symlink it back
-      # - If plist missing -> SKIP (no empty file creation, ever)
-      for pref in "${plistMain}" "${plistPrivate}"; do
-        name="$(basename "$pref")"
-        dst="${dotPref}/${name}"
-
-        if [ -e "$pref" ]; then
-          if [ -L "$pref" ]; then
-            echo "[$APP] Preferences plist already symlinked. Skipping move: $pref 🔎"
+          if [ "$srcMtime" != "$dstMtime" ]; then
+            echo "[$APP] Main plist changed. Updating copy 📄"
+            cp -p "${plistMain}" "$mainDst"
           else
-            if [ ! -e "$dst" ]; then
-              echo "[$APP] Moving plist → ${dst} 📄"
-              mv "$pref" "$dst"
-              echo "[$APP] Move complete: $pref → $dst ✅"
-            else
-              echo "[$APP] Destination plist already exists. Skipping move ⚠️"
-            fi
+            echo "[$APP] Main plist unchanged. No copy needed ✅"
           fi
-
-          if [ -e "$dst" ] && [ ! -L "$pref" ]; then
-            echo "[$APP] Symlinking plist → ${dst} 🔗"
-            ln -s "$dst" "$pref"
-            echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
-          fi
-        else
-          echo "[$APP] Preferences plist missing. Skipping: $pref ✅"
         fi
-      done
+      else
+        echo "[$APP] Main plist missing. Skipping ✅"
+      fi
 
       echo "[$APP] User-data sync complete ✅"
     '';
