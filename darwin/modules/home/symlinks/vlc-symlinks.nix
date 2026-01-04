@@ -13,12 +13,14 @@
 # - ~/Library/Preferences/org.videolan.vlc.plist
 #
 # Safety model:
-# - If <dirSRC> or <dirConf> is polluted, migration is skipped
+# - "conf/" existence does NOT count as pollution
+# - "Polluted" means real migrated artifacts exist, or unexpected items exist
 # - Exception: if runtime paths are NOT symlinks, they are repaired
-#   ONLY when destination source-of-truth is empty / missing
+#   ONLY when destination source-of-truth is empty / missing (per-path)
 # - Never creates duplicate profiles
 # - Never overwrites existing dotfiles
-# - Never creates empty plist files
+# - CFPreferences exception (plist only): may create an empty destination plist
+#   to prevent macOS from recreating a real runtime plist and resetting settings
 # ============================================================
 
 { config, lib, ... }:
@@ -82,11 +84,6 @@ in
         [ -L "$p" ]
       }
 
-      path_exists() {
-        local p="$1"
-        [ -e "$p" ] || [ -L "$p" ]
-      }
-
       unlink_if_symlink() {
         local p="$1"
         if [ -L "$p" ]; then
@@ -125,6 +122,20 @@ in
         backup_dest_if_needed "$dst"
         echo "[$APP] Moving: $src → $dst 📦"
         mv "$src" "$dst" || true
+      }
+
+      backup_runtime_file_only() {
+        local src="$1"
+
+        if [ -e "$src" ] && [ ! -L "$src" ]; then
+          local ts
+          ts="$(date +%Y%m%d-%H%M%S)"
+          local backup
+          backup="$src.backup-$ts"
+
+          echo "[$APP] Runtime collision. Backing up: $src → $backup 📦"
+          mv "$src" "$backup" || true
+        fi
       }
 
       # ------------------------------------------------------------
@@ -166,25 +177,54 @@ in
       # --- SOURCE OF TRUTH SETUP ---
       # ------------------------------------------------------------
       ensure_dir "${dirSRC}"
-
-      # conf must exist as the source-of-truth folder (may be empty)
       ensure_dir "${dirConf}"
 
-      srcEmpty="0"
-      confEmpty="0"
-
-      if dir_is_empty "${dirSRC}"; then
-        srcEmpty="1"
+      # ------------------------------------------------------------
+      # --- SOURCE OF TRUTH: CLEAN / POLLUTED CHECK ---
+      # ------------------------------------------------------------
+      # Clean means:
+      # - conf exists (allowed) but is empty
+      # - destination plist does not exist
+      # - dirSRC contains no unexpected items (conf/ is allowed)
+      #
+      # Polluted means:
+      # - conf contains any files/folders (real migrated VLC data)
+      # - destination plist exists (real migrated VLC prefs)
+      # - any unexpected item exists in dirSRC
+      # ------------------------------------------------------------
+      confHasData="0"
+      if [ -d "${dirConf}" ] && ! dir_is_empty "${dirConf}"; then
+        confHasData="1"
       fi
 
-      if dir_is_empty "${dirConf}"; then
-        confEmpty="1"
+      plistExists="0"
+      if [ -e "${dotPlist}" ]; then
+        plistExists="1"
       fi
 
-      if [ "$srcEmpty" = "1" ] && [ "$confEmpty" = "1" ]; then
-        echo "[$APP] Source-of-truth is clean (dirSRC empty + conf empty). Migration allowed ✅"
+      unexpectedInSRC="0"
+      if [ -d "${dirSRC}" ]; then
+        # Allowed at dirSRC root:
+        # - conf/
+        # - org.videolan.vlc.plist
+        #
+        # Anything else counts as unexpected.
+        if ls -A "${dirSRC}" 2>/dev/null | while IFS= read -r item; do
+          [ -n "$item" ] || continue
+          if [ "$item" != "conf" ] && [ "$item" != "org.videolan.vlc.plist" ]; then
+            exit 10
+          fi
+        done; then
+          unexpectedInSRC="0"
+        else
+          unexpectedInSRC="1"
+        fi
+      fi
+
+      if [ "$confHasData" = "0" ] && [ "$plistExists" = "0" ] && [ "$unexpectedInSRC" = "0" ]; then
+        echo "[$APP] Source-of-truth is clean (no plist + conf empty + no extra items). Migration allowed ✅"
       else
-        echo "[$APP] Source-of-truth is not clean (dirSRC or conf not empty). Migration skipped (repair still allowed) ⚠️"
+        echo "[$APP] Source-of-truth is polluted (plist/conf/extra items detected). Migration skipped (repair still allowed) ⚠️"
       fi
 
       # ------------------------------------------------------------
@@ -195,32 +235,31 @@ in
       #   To:    /Users/ven/ven-dots/user-data/apps/vlc/conf
       # - Then:  symlink runtime folder name back to conf
       #
-      # Rules:
-      # - Never create nested symlinks
-      # - If runtime is already a symlink → skip or repair target only
-      # - Only move runtime folder when conf is empty / missing
+      # Per your rules:
+      # - We only do the move when conf is empty (no migrated data exists)
+      # - If runtime is already a symlink, we only verify/repair the symlink
       # ------------------------------------------------------------
       if path_is_symlink "${asPath}"; then
         echo "[$APP] Runtime folder already a symlink. Verifying: ${asPath} 🔎"
         ensure_symlink "${asPath}" "${dirConf}" || true
       else
         if [ -d "${asPath}" ]; then
-          if [ "$confEmpty" = "1" ]; then
+          if [ "$confHasData" = "0" ]; then
             echo "[$APP] '${asRealName}' is being moved from Application Support 📦"
             move_with_backup "${asPath}" "${dirConf}"
 
             echo "[$APP] '${asRealName}' is being symlinked back to Application Support 🔗"
             ensure_symlink "${asPath}" "${dirConf}" || true
           else
-            echo "[$APP] Skipping Application Support move: conf is not empty (would risk overwrite) ⚠️"
-            echo "[$APP] If you want migration, clear: ${dirConf} (and keep it safe) 🧼"
+            echo "[$APP] Skipping Application Support move: conf already has data (avoid overwrite) ⚠️"
+            echo "[$APP] Runtime folder will not be replaced automatically: ${asPath} 🧰"
           fi
         else
           if [ -e "${asPath}" ]; then
             echo "[$APP] Runtime path exists but is not a directory (unexpected). Skipping: ${asPath} ⚠️"
           else
-            if [ -d "${dirConf}" ] && [ "$confEmpty" = "0" ]; then
-              echo "[$APP] Runtime folder missing; conf exists. Creating runtime symlink 🔗"
+            if [ -d "${dirConf}" ] && [ "$confHasData" = "1" ]; then
+              echo "[$APP] Runtime folder missing; conf has data. Creating runtime symlink 🔗"
               ensure_symlink "${asPath}" "${dirConf}" || true
             else
               echo "[$APP] Runtime folder missing and conf empty; nothing to migrate. Skipping ✅"
@@ -237,27 +276,45 @@ in
       #   To:    /Users/ven/ven-dots/user-data/apps/vlc/org.videolan.vlc.plist
       # - Then:  symlink plist back to Preferences
       #
-      # Rules:
-      # - Never create empty plist files
-      # - If runtime plist is already a symlink → verify/repair symlink only
-      # - Only move runtime plist when destination plist does not exist
+      # IMPORTANT (CFPreferences / macOS):
+      # - VLC writes preferences via CFPreferences very early.
+      # - If the runtime plist is a symlink but the destination file does not exist,
+      #   macOS may recreate a REAL plist at the runtime path and VLC will reset settings.
+      #
+      # Exception (plist only):
+      # - If we need a destination file for the symlink to be respected,
+      #   we may create an empty destination plist file.
+      # - This prevents macOS from recreating the runtime plist outside of the source-of-truth.
       # ------------------------------------------------------------
       plistName="$(basename "${prefPlist}")"
 
       if path_is_symlink "${prefPlist}"; then
         echo "[$APP] Preferences item is already a symlink. Verifying: ${prefPlist} 🔎"
-        if [ -e "${dotPlist}" ]; then
-          ensure_symlink "${prefPlist}" "${dotPlist}" || true
-        else
-          echo "[$APP] Destination plist missing; will not create an empty file. Skipping repair ⚠️"
+
+        if [ ! -e "${dotPlist}" ]; then
+          echo "[$APP] CFPreferences requires a real destination plist. Creating: ${dotPlist} 🧩"
+          : > "${dotPlist}" || true
         fi
+
+        ensure_symlink "${prefPlist}" "${dotPlist}" || true
       else
         if [ -e "${prefPlist}" ]; then
           if [ -e "${dotPlist}" ]; then
-            echo "[$APP] Destination plist already exists. Not overwriting: ${dotPlist} ⚠️"
-            echo "[$APP] If runtime plist is not a symlink, fix manually or remove destination first (safely) 🧰"
+            # Common failure mode:
+            # - destination exists (source-of-truth)
+            # - macOS recreated runtime plist as a real file
+            #
+            # Fix:
+            # - backup runtime file
+            # - replace with symlink to destination
+            echo "[$APP] Runtime plist is a real file but destination exists. Repairing symlink 🔧"
+            backup_runtime_file_only "${prefPlist}"
+
+            echo "[$APP] ''${plistName} being symlinked back to Preferences 🔗"
+            ensure_symlink "${prefPlist}" "${dotPlist}" || true
           else
-          	echo "[$APP] ''${plistName} is being moved from Preferences to ${dirSRC} 📄"
+            # Destination missing → safe to migrate runtime plist into source-of-truth
+            echo "[$APP] ''${plistName} is being moved from Preferences to ${dirSRC} 📄"
             move_with_backup "${prefPlist}" "${dotPlist}"
 
             echo "[$APP] ''${plistName} being symlinked back to Preferences 🔗"
@@ -268,7 +325,14 @@ in
             echo "[$APP] Runtime plist missing; destination exists. Creating runtime symlink 🔗"
             ensure_symlink "${prefPlist}" "${dotPlist}" || true
           else
-            echo "[$APP] Preferences plist missing (and no destination). Skipping: ${prefPlist} ✅"
+            # Neither runtime nor destination exists.
+            # To prevent VLC from creating a fresh runtime plist and resetting settings,
+            # create an empty destination plist and symlink it back.
+            echo "[$APP] Preferences plist missing. Creating destination plist for CFPreferences 🧩"
+            : > "${dotPlist}" || true
+
+            echo "[$APP] ''${plistName} being symlinked back to Preferences 🔗"
+            ensure_symlink "${prefPlist}" "${dotPlist}" || true
           fi
         fi
       fi
