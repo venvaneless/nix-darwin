@@ -90,14 +90,11 @@ in
         echo "[$APP] Copying main plist → $mainDst 📄"
           cp -p "${plistMain}" "$mainDst"
         else
-        	srcMtime="$(stat -f "%m" "${plistMain}")"
-         	dstMtime="$(stat -f "%m" "$mainDst")"
-
-          if [ "$srcMtime" != "$dstMtime" ]; then
-            echo "[$APP] Main plist changed. Updating copy 📄"
-            cp -p "${plistMain}" "$mainDst"
-          else
-            echo "[$APP] Main plist unchanged. No copy needed ✅"
+       	if ! cmp -s "${plistMain}" "$mainDst"; then
+          echo "[$APP] Main plist changed. Updating copy 📄"
+          cp -p "${plistMain}" "$mainDst"
+        else
+          echo "[$APP] Main plist unchanged. No copy needed ✅"
           fi
         fi
       else
