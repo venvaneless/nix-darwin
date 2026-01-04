@@ -68,7 +68,7 @@ in
 
       if [ -e "${plistPrivate}" ]; then
         if [ ! -L "${plistPrivate}" ] && [ ! -e "$privateDst" ]; then
-          echo "[$APP] Moving private plist → ${privateDst} 📄"
+        echo "[$APP] Moving private plist → $privateDst 📄"
           mv "${plistPrivate}" "$privateDst"
         fi
 
@@ -87,7 +87,7 @@ in
 
       if [ -e "${plistMain}" ]; then
         if [ ! -e "$mainDst" ]; then
-          echo "[$APP] Copying main plist → ${mainDst} 📄"
+        echo "[$APP] Copying main plist → $mainDst 📄"
           cp -p "${plistMain}" "$mainDst"
         else
           srcMtime="$(stat -f %m "${plistMain}")"
