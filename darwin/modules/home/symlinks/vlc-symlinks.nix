@@ -260,7 +260,7 @@ in
           	echo "[$APP] ''${plistName} is being moved from Preferences to ${dirSRC} 📄"
             move_with_backup "${prefPlist}" "${dotPlist}"
 
-            echo "[$APP] '${plistName}' is being symlinked back to Preferences 🔗"
+            echo "[$APP] ''${plistName} being symlinked back to Preferences 🔗"
             ensure_symlink "${prefPlist}" "${dotPlist}" || true
           fi
         else
