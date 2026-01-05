@@ -66,6 +66,12 @@ let
           echo "[quarantine-fix] Quarantine flag found — removing"
           xattr -dr com.apple.quarantine "${app.path}"
           echo "[quarantine-fix] Quarantine removed successfully"
+          
+          echo "[quarantine-fix] Re-registering application with Launch Services"
+          "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister" \
+            -f "${app.path}" >/dev/null 2>&1
+          
+          echo "[quarantine-fix] Launch Services registration refreshed"
         else
           echo "[quarantine-fix] No quarantine flag present — nothing to do"
         fi
