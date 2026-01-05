@@ -47,10 +47,10 @@
     # ----- Casks -----
     casks = [
       {
-        #name = "ungoogled-chromium";
-        #args = {
-        #  appdir = "/Applications";
-        #};
+        name = "ungoogled-chromium";
+        args = {
+          appdir = "/Applications";
+        };
       }
     ];
   };
