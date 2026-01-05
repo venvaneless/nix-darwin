@@ -4,17 +4,11 @@
 # ============================================================
 # ForkLift file manager user-data handling.
 #
-# MODEL
-# -----
-# - Application Support is user-owned and redirected
-# - Runtime folder name MUST remain "ForkLift"
-# - Preferences plist is moved and symlinked back
-#
 # SOURCE OF TRUTH
 # ----------------
-#   /Users/ven/ven-dots/user-data/apps/ForkLift/
-#     ├─ app_support/          (Application Support content)
-#     └─ com.binarynights.ForkLift.plist
+#   /Users/ven/ven-dots/user-data/apps/forklift
+#     ├── app_support/        ← Application Support contents
+#     └── com.binarynights.ForkLift.plist
 #
 # RUNTIME PATHS (UNCHANGED)
 # ------------------------
@@ -24,10 +18,11 @@
 # RULES
 # -----
 # - Runtime folder name NEVER changes
+# - Runtime folder itself becomes the symlink
+# - No nested "ForkLift/" directories are ever created
 # - No empty files are created
-# - Existing data is reused
-# - No partial migrations
-# - Safe to run repeatedly
+# - Existing data is migrated once, then reused
+# - Safe for nix-darwin + Home Manager activation
 # ============================================================
 
 { config, lib, ... }:
@@ -36,14 +31,14 @@ let
   home = config.home.homeDirectory;
 
   # ------------------------------------------------------------
-  # SOURCE OF TRUTH
+  # SOURCE OF TRUTH (CANONICAL, LOWERCASE)
   # ------------------------------------------------------------
-  dotRoot = "/Users/ven/ven-dots/user-data/apps/ForkLift";
+  dotRoot = "/Users/ven/ven-dots/user-data/apps/forklift";
   dotAS   = "${dotRoot}/app_support";
   dotPlist = "${dotRoot}/com.binarynights.ForkLift.plist";
 
   # ------------------------------------------------------------
-  # RUNTIME PATHS
+  # RUNTIME PATHS (MUST NOT CHANGE)
   # ------------------------------------------------------------
   rtAS    = "${home}/Library/Application Support/ForkLift";
   rtPlist = "${home}/Library/Preferences/com.binarynights.ForkLift.plist";
@@ -80,61 +75,52 @@ in
       ensure_dir "${dotAS}"
 
       # ------------------------------------------------------------
-      # APPLICATION SUPPORT (MOVE + SYMLINK)
+      # APPLICATION SUPPORT (MOVE ONCE + SYMLINK)
       # ------------------------------------------------------------
       if [ -L "${rtAS}" ]; then
-        echo "[$APP] Application Support already a symlink. Verifying… 🔎"
-
-        if [ "$(readlink "${rtAS}")" != "${dotAS}" ]; then
-          echo "[$APP] Fixing Application Support symlink 🔧"
-          unlink_if_symlink "${rtAS}"
-          ln -s "${dotAS}" "${rtAS}"
-        else
-          echo "[$APP] Application Support symlink OK ✅"
-        fi
-
+        echo "[$APP] Application Support already symlinked. Verifying target… 🔎"
+        ln -sfn "${dotAS}" "${rtAS}"
       elif [ -d "${rtAS}" ]; then
         if [ -z "$(ls -A "${dotAS}" 2>/dev/null || true)" ]; then
-          echo "[$APP] Moving Application Support → ${dotAS} 📦"
-          mv "${rtAS}" "${dotAS}"
-
-          echo "[$APP] Symlinking Application Support back 🔗"
-          ln -s "${dotAS}" "${rtAS}"
+          echo "[$APP] Migrating Application Support → source of truth 📦"
+          mv "${rtAS}"/* "${dotAS}/"
+          rmdir "${rtAS}"
         else
-          echo "[$APP] Source-of-truth already populated. Skipping AS migration ⚠️"
+          echo "[$APP] Source-of-truth already populated. Not re-migrating ⚠️"
+          rm -rf "${rtAS}"
         fi
 
+        echo "[$APP] Symlinking Application Support → dotfiles 🔗"
+        ln -s "${dotAS}" "${rtAS}"
       else
-        echo "[$APP] No Application Support folder found. Skipping AS step ✅"
+        echo "[$APP] Application Support missing. Creating symlink 🔗"
+        ln -s "${dotAS}" "${rtAS}"
       fi
 
       # ------------------------------------------------------------
-      # PREFERENCES PLIST (MOVE + SYMLINK)
+      # PREFERENCES PLIST (MOVE ONCE + SYMLINK)
       # ------------------------------------------------------------
       if [ -L "${rtPlist}" ]; then
-        echo "[$APP] Preferences plist already a symlink. Verifying… 🔎"
+        echo "[$APP] Preferences plist already symlinked. Verifying… 🔎"
+        ln -sfn "${dotPlist}" "${rtPlist}"
+      elif [ -f "${rtPlist}" ]; then
+        if [ ! -f "${dotPlist}" ]; then
+          echo "[$APP] Migrating preferences plist → source of truth 📄"
+          mv "${rtPlist}" "${dotPlist}"
+        else
+          echo "[$APP] Source plist exists. Removing runtime copy ⚠️"
+          rm -f "${rtPlist}"
+        fi
 
-        if [ "$(readlink "${rtPlist}")" != "${dotPlist}" ]; then
-          echo "[$APP] Fixing plist symlink 🔧"
-          unlink_if_symlink "${rtPlist}"
+        echo "[$APP] Symlinking preferences plist back → Preferences 🔗"
+        ln -s "${dotPlist}" "${rtPlist}"
+      else
+        if [ -f "${dotPlist}" ]; then
+          echo "[$APP] Runtime plist missing. Creating symlink 🔗"
           ln -s "${dotPlist}" "${rtPlist}"
         else
-          echo "[$APP] Preferences symlink OK ✅"
+          echo "[$APP] Preferences plist missing. Skipping (ForkLift will recreate) ⚠️"
         fi
-
-      elif [ -e "${rtPlist}" ]; then
-        if [ ! -e "${dotPlist}" ]; then
-          echo "[$APP] Moving plist → source-of-truth 📄"
-          mv "${rtPlist}" "${dotPlist}"
-        fi
-
-        if [ ! -L "${rtPlist}" ]; then
-          echo "[$APP] Symlinking plist back 🔗"
-          ln -s "${dotPlist}" "${rtPlist}"
-        fi
-
-      else
-        echo "[$APP] Preferences plist missing. Skipping ✅"
       fi
 
       echo "[$APP] User-data sync complete ✅"

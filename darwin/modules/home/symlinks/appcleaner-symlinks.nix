@@ -24,10 +24,10 @@ let
   home    = config.home.homeDirectory;
   dotsApp = "/Users/ven/ven-dots/user-data/apps";
 
-  appFolder = "appcleaner";
+  appSlug = "appcleaner";
 
   prefPlist = "${home}/Library/Preferences/net.freemacsoft.AppCleaner.plist";
-  dotRoot   = "${dotsApp}/${appFolder}";
+  dotRoot   = "${dotsApp}/${appSlug}";
   dotPlist  = "${dotRoot}/net.freemacsoft.AppCleaner.plist";
 in
 {
