@@ -13,7 +13,7 @@
 
 {
   imports = [
-  	./abetterfinderattributes-symlinks.nix
+  	# ./abetterfinderattributes-symlinks.nix
     ./abetterfinderrename-symlinks.nix
     # ./appcleaner-symlinks.nix
     # ./chromium-symlinks.nix
@@ -21,7 +21,7 @@
     ./forklift-symlinks.nix
     # ./iterm-symlinks.nix
     # ./yate-symlinks.nix
-    ./vlc-symlinks.nix
+    # ./vlc-symlinks.nix
     # ./zed-symlinks.nix
   ];
 }
