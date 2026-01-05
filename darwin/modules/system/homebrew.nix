@@ -13,7 +13,7 @@
   # --- Loads Homebrew
   imports = [
     nix-homebrew.darwinModules.nix-homebrew
-    ./quarantine-fixes.nix
+    # ./quarantine-fixes.nix
   ];
 
   # --- Configures the nix-homebrew backend
