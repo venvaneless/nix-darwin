@@ -21,7 +21,7 @@
     ./forklift-symlinks.nix
     # ./iterm-symlinks.nix
     # ./yate-symlinks.nix
-    # ./vlc-symlinks.nix
+    ./vlc-symlinks.nix
     # ./zed-symlinks.nix
   ];
 }
