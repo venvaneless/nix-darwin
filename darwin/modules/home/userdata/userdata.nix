@@ -15,8 +15,8 @@
 
 {
   imports = [
-    ./raycast-userdata.nix
-    ./paste-userdata.nix
-    ./yate-userdata.nix
+    # ./raycast-userdata.nix
+    # ./paste-userdata.nix
+    # ./yate-userdata.nix
   ];
 }
