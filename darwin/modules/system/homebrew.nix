@@ -33,7 +33,7 @@
     
     onActivation = {
     		# If removed, uninstall it
-      	cleanup = "zap";
+      	cleanup = "uninstall";
         
         # Reinstall if missing
         upgrade = true;
