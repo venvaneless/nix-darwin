@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/paste-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/userdata/paste-userdata.nix
 #
 # DARWIN: PASTE USER-DATA (BACKUP)
 # ============================================================

@@ -37,6 +37,7 @@
         ../terminal/zsh.nix
         ../terminal/nvim.nix
         ./symlinks/symlinking.nix
+        ./userdata/userdata.nix
         ./hm-options.nix
       ];
     };
