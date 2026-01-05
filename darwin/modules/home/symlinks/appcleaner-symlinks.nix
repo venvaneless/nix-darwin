@@ -9,6 +9,13 @@
 #
 # RUNTIME LOCATION:
 #   ~/Library/Preferences/net.freemacsoft.AppCleaner.plist
+#
+# RULES
+# -----
+# - Only the plist is managed
+# - No empty files are created
+# - Existing data is reused
+# - Safe to run repeatedly
 # ============================================================
 
 { config, lib, ... }:
@@ -27,34 +34,32 @@ in
   home.activation.appCleanerUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      echo "[AppCleaner] Syncing user-data"
+      APP="AppCleaner"
+
+      echo "[$APP] User-data sync starting… 🚀"
 
       # ------------------------------------------------------------
-      # --- SOURCE OF TRUTH ---
+      # SOURCE OF TRUTH
       # ------------------------------------------------------------
-      mkdir -p "${dotsApp}"
+      mkdir -p "${dotRoot}"
 
-      if [ ! -d "${dotRoot}" ]; then
-        echo "[AppCleaner] ${dotRoot} doesn't exist for AppCleaner yet. Creating. 📁"
-        mkdir -p "${dotRoot}"
-      fi
-
-      # ------------------------------------------------------------
-      # --- PREFERENCES ---
-      # ------------------------------------------------------------
       name="$(basename "${prefPlist}")"
 
-      if [ -f "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -e "${dotPlist}" ]; then
-        echo "[AppCleaner] '$name' is being moved from Preferences to ${dotRoot} 📄"
-        mv "${prefPlist}" "${dotPlist}"
-        echo "[AppCleaner] '$name' has been successfully moved from ${prefPlist} to ${dotPlist} ✅"
+      # ------------------------------------------------------------
+      # PLIST MOVE + SYMLINK
+      # ------------------------------------------------------------
+      if [ -e "${prefPlist}" ] && [ ! -L "${prefPlist}" ]; then
+        if [ ! -e "${dotPlist}" ]; then
+          echo "[$APP] Moving '$name' → source-of-truth 📄"
+          mv "${prefPlist}" "${dotPlist}"
+        fi
       fi
 
-      [ -e "${dotPlist}" ] || : > "${dotPlist}"
+      if [ -e "${dotPlist}" ] && [ ! -L "${prefPlist}" ]; then
+        echo "[$APP] Symlinking '$name' back to Preferences 🔗"
+        ln -s "${dotPlist}" "${prefPlist}"
+      fi
 
-      ln -sfn "${dotPlist}" "${prefPlist}"
-      echo "[AppCleaner] '$name' is being symlinked back to ${prefPlist} 🔗"
-
-      echo "AppCleaner: User-data sync complete ✅"
+      echo "[$APP] User-data sync complete ✅"
     '';
 }
