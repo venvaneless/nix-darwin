@@ -19,7 +19,7 @@
     # ./espanso-symlinks.nix
     # ./iterm-symlinks.nix
     # ./raycast-symlinks.nix
-    ./paste.nix
+    ./paste-symlinks.nix
     # ./yate-symlinks.nix
     # ./vlc-symlinks.nix
     # ./zed-symlinks.nix
