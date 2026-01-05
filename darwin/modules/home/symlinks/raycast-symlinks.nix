@@ -79,7 +79,7 @@ in
 
         local name
         name="$(basename "$src")"
-        local dst="${dstParent}/${name}"
+        local dst="''${dstParent}/''${name}"
 
         ensure_dir "$dstParent"
 
