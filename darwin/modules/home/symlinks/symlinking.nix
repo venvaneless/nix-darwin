@@ -15,7 +15,7 @@
   imports = [
   # ./abetterfinderattributes-symlinks.nix
   # ./abetterfinderrename-symlinks.nix
-  # ./appcleaner-symlinks.nix
+  ./appcleaner-symlinks.nix
   # ./chromium-symlinks.nix
   # ./espanso-symlinks.nix
   # ./iterm-symlinks.nix
