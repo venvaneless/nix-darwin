@@ -12,6 +12,7 @@
 # - ~/Library/Application Support/A Better Finder Rename 12
 # - ~/Library/Preferences/net.publicspace.abfr12.plist
 # - ~/Library/Preferences/ABFR Registration
+# - ~/Library/Preferences/ABFSS Registration
 #
 # Safety model:
 # - If <dirSRC> is non-empty, migration is skipped
@@ -23,30 +24,22 @@
 { config, lib, ... }:
 
 let
-  # ------------------------------------------------------------
-  # --- PATHS ---
-  # ------------------------------------------------------------
   home = config.home.homeDirectory;
 
-  # Source-of-truth root for all apps
   dirRoot = "/Users/ven/ven-dots/user-data/apps";
-  
-  # App slug (rules-compliant name)
   appSlug = "a_better_finder_rename";
 
-  # App source-of-truth directory
   dirSRC  = "${dirRoot}/${appSlug}";
   dirConf = "${dirSRC}/conf";
   dirPref = "${dirSRC}/pref";
 
-  # Application Support runtime path
   asRealName = "A Better Finder Rename 12";
   asPath     = "${home}/Library/Application Support/${asRealName}";
 
-  # Preferences runtime items
   prefItems = [
     "${home}/Library/Preferences/net.publicspace.abfr12.plist"
     "${home}/Library/Preferences/ABFR Registration"
+    "${home}/Library/Preferences/ABFSS Registration"
   ];
 in
 {
@@ -61,176 +54,83 @@ in
       echo "[$APP] User-data sync starting… 🚀"
 
       # ------------------------------------------------------------
-      # --- HELPERS: FILESYSTEM CHECKS ---
+      # --- HELPERS ---
       # ------------------------------------------------------------
       ensure_dir() {
-        local d="$1"
-        if [ ! -d "$d" ]; then
-          echo "[$APP] Creating directory: $d 📁"
-          mkdir -p "$d"
-        else
-          echo "[$APP] Directory exists: $d ✅"
-        fi
+        [ -d "$1" ] || {
+          echo "[$APP] Creating directory: $1 📁"
+          mkdir -p "$1" || true
+        }
       }
 
-      dir_is_empty() {
-        local d="$1"
-        [ -d "$d" ] || return 1
-        [ -z "$(ls -A "$d" 2>/dev/null || true)" ]
-      }
+      path_is_symlink() { [ -L "$1" ]; }
 
       unlink_if_symlink() {
+        [ -L "$1" ] && {
+          echo "[$APP] Removing existing symlink: $1 🧹"
+          unlink "$1" || true
+        }
+      }
+
+      backup_runtime_item() {
         local p="$1"
-        if [ -L "$p" ]; then
-          echo "[$APP] Removing existing symlink: $p 🧹"
-          unlink "$p"
-        fi
-      }
-
-      # ------------------------------------------------------------
-      # --- HELPERS: SAFE BACKUPS + MOVES ---
-      # Non-empty directory or file → create timestamped backup
-      # This ensures no existing data is destroyed and allows rollback
-      # ------------------------------------------------------------
-      backup_dest_if_needed() {
-        local dst="$1"
-
-        if [ -e "$dst" ] && [ ! -L "$dst" ]; then
-          if [ -d "$dst" ] && dir_is_empty "$dst"; then
-            echo "[$APP] Destination exists but empty. Removing empty dir: $dst 🧹"
-            rmdir "$dst" || true
-            return 0
-          fi
-
-          # Non-empty dir or file -> backup
-          local ts
+        if [ -e "$p" ] && [ ! -L "$p" ]; then
+          local ts backup
           ts="$(date +%Y%m%d-%H%M%S)"
-          local backup
-          backup="$dst.backup-$ts"
-
-          echo "[$APP] Destination collision. Backing up: $dst → $backup 📦"
-          mv "$dst" "$backup"
-          echo "[$APP] Backup complete: $backup ✅"
+          backup="$p.backup-$ts"
+          echo "[$APP] Runtime collision. Backing up: $p → $backup 📦"
+          mv "$p" "$backup" || true
         fi
       }
 
-      move_with_backup() {
-        local src="$1"
-        local dst="$2"
-
-        backup_dest_if_needed "$dst"
-
-        echo "[$APP] Moving: $src → $dst 📦"
-        mv "$src" "$dst"
-        echo "[$APP] Move complete: $src → $dst ✅"
-      }
-
-      # ------------------------------------------------------------
-      # --- HELPERS: SYMLINK MANAGEMENT ---
-      # ------------------------------------------------------------
       ensure_symlink() {
-        local linkPath="$1"
-        local targetPath="$2"
+        local link="$1"
+        local target="$2"
 
-        if [ -L "$linkPath" ]; then
-          local currentTarget
-          currentTarget="$(readlink "$linkPath" || true)"
-
-          if [ "$currentTarget" = "$targetPath" ]; then
-            echo "[$APP] Symlink OK: $linkPath → $targetPath ✅"
-            return 0
-          fi
-
-          echo "[$APP] Symlink wrong: $linkPath → $currentTarget (expected $targetPath) ⚠️"
-          echo "[$APP] Fixing symlink: $linkPath → $targetPath 🔧"
-          unlink_if_symlink "$linkPath"
-          ln -s "$targetPath" "$linkPath"
-          echo "[$APP] Symlink fixed: $linkPath → $targetPath ✅"
-          return 0
-        fi
-
-        if [ -e "$linkPath" ]; then
-          echo "[$APP] Not a symlink at: $linkPath (will not delete automatically) ⚠️"
+        if path_is_symlink "$link"; then
+          [ "$(readlink "$link")" = "$target" ] && return 0
+          unlink_if_symlink "$link"
+        elif [ -e "$link" ]; then
+          echo "[$APP] Not a symlink at: $link (will not delete) ⚠️"
           return 1
         fi
 
-        echo "[$APP] Creating symlink: $linkPath → $targetPath 🔗"
-        ln -s "$targetPath" "$linkPath"
-        echo "[$APP] Symlink created: $linkPath → $targetPath ✅"
+        echo "[$APP] Creating symlink: $link → $target 🔗"
+        ln -s "$target" "$link" || true
       }
 
       # ------------------------------------------------------------
       # --- SOURCE OF TRUTH SETUP ---
       # ------------------------------------------------------------
       ensure_dir "${dirSRC}"
-
-      allowMigrate="0"
-      if dir_is_empty "${dirSRC}"; then
-        echo "[$APP] Source-of-truth root is empty. Migration allowed ✅"
-        allowMigrate="1"
-      else
-        echo "[$APP] Source-of-truth root is not empty. Migration skipped (repair still allowed) ⚠️"
-      fi
-
       ensure_dir "${dirConf}"
       ensure_dir "${dirPref}"
 
       # ------------------------------------------------------------
-      # --- APPLICATION SUPPORT: MIGRATE OR REPAIR ---
+      # --- APPLICATION SUPPORT ---
       # ------------------------------------------------------------
-      if [ -e "${asPath}" ]; then
-        if [ -L "${asPath}" ]; then
-          echo "[$APP] Application Support is a symlink. Verifying… 🔎"
-          ensure_symlink "${asPath}" "${dirConf}" || true
-        else
-          if [ "$allowMigrate" = "1" ]; then
-            echo "[$APP] '${asRealName}' is being moved from Application Support → ${dirConf} 📦"
-          else
-            echo "[$APP] Application Support is not a symlink. Repairing into ${dirConf} 🔧"
-          fi
-
-          move_with_backup "${asPath}" "${dirConf}"
-
-          echo "[$APP] '${asRealName}' is being symlinked back to Application Support 🔗"
-          ensure_symlink "${asPath}" "${dirConf}" || {
-            echo "[$APP] ERROR: Could not create symlink at Application Support ⛔"
-          }
-        fi
-      else
-        echo "[$APP] No Application Support data found. Skipping Application Support ✅"
+      if path_is_symlink "${asPath}"; then
+        ensure_symlink "${asPath}" "${dirConf}" || true
+      elif [ -e "${asPath}" ]; then
+        echo "[$APP] Migrating Application Support → conf 📦"
+        mv "${asPath}" "${dirConf}" || true
+        ensure_symlink "${asPath}" "${dirConf}" || true
       fi
 
       # ------------------------------------------------------------
-      # --- PREFERENCES: MIGRATE OR REPAIR ---
+      # --- PREFERENCES FILES ---
       # ------------------------------------------------------------
       for pref in ${lib.concatStringsSep " " prefItems}; do
         name="$(basename "$pref")"
         dst="${dirPref}/$name"
-      
-        if [ -e "$pref" ]; then
-          if [ -L "$pref" ]; then
-            # Symlink exists → verify OR repair if destination is missing
-            if [ ! -e "$dst" ]; then
-              echo "[$APP] Preferences symlink exists but destination missing. Repairing: $pref 🔧"
-              unlink_if_symlink "$pref"
-              move_with_backup "$pref" "$dst"
-              ensure_symlink "$pref" "$dst" || true
-            else
-              echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
-              ensure_symlink "$pref" "$dst" || true
-            fi
-          else
-            # Not a symlink → always repair (move + link)
-            echo "[$APP] '$name' is NOT a symlink. Moving into ${dirPref} 📄"
-            move_with_backup "$pref" "$dst"
-      
-            echo "[$APP] '$name' is being symlinked back to Preferences 🔗"
-            ensure_symlink "$pref" "$dst" || {
-              echo "[$APP] ERROR: Could not create symlink in Preferences ⛔"
-            }
-          fi
-        else
-          echo "[$APP] Preferences item missing. Skipping: $pref ✅"
+
+        if path_is_symlink "$pref"; then
+          ensure_symlink "$pref" "$dst" || true
+        elif [ -e "$pref" ]; then
+          backup_runtime_item "$pref"
+          echo "[$APP] Migrating preference file: $name 📄"
+          mv "$pref" "$dst" || true
+          ensure_symlink "$pref" "$dst" || true
         fi
       done
 
