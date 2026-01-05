@@ -19,6 +19,7 @@
   # ./chromium-symlinks.nix
   # ./espanso-symlinks.nix
   # ./iterm-symlinks.nix
+  ./masscode-symlinks.nix
   # ./yate-symlinks.nix
   # ./vlc-symlinks.nix
   # ./zed-symlinks.nix

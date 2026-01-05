@@ -18,7 +18,7 @@
   # ./forklift-userdata.nix
   # ./paste-userdata.nix
   # ./raycast-userdata.nix
-  ./snippetslab-userdata.nix
+  # ./snippetslab-userdata.nix
   # ./yate-userdata.nix
   ];
 }
