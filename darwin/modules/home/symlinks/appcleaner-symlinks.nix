@@ -4,55 +4,56 @@
 # ============================================================
 # AppCleaner is a lightweight app uninstaller.
 #
-# SOURCE OF TRUTH:
-#   /Users/ven/ven-dots/user-data/apps/appcleaner
+# SOURCE OF TRUTH
+# ----------------
+#   /Users/ven/ven-dots/user-data/apps/net.freemacsoft.AppCleaner.plist
 #
-# RUNTIME LOCATION:
+# RUNTIME LOCATION
+# ----------------
 #   ~/Library/Preferences/net.freemacsoft.AppCleaner.plist
 #
 # RULES
 # -----
 # - Only the plist is managed
+# - Plist is MOVED once, then SYMLINKED
 # - No empty files are created
-# - Existing data is reused
 # - Safe to run repeatedly
 # ============================================================
 
 { config, lib, ... }:
 
 let
-  home    = config.home.homeDirectory;
-  dotsApp = "/Users/ven/ven-dots/user-data/apps";
+  home = config.home.homeDirectory;
 
-  appSlug = "appcleaner";
+  dotsRoot = "/Users/ven/ven-dots/user-data/apps";
 
   prefPlist = "${home}/Library/Preferences/net.freemacsoft.AppCleaner.plist";
-  dotRoot   = "${dotsApp}/${appSlug}";
-  dotPlist  = "${dotRoot}/net.freemacsoft.AppCleaner.plist";
+  dotPlist  = "${dotsRoot}/net.freemacsoft.AppCleaner.plist";
 in
 {
   home.activation.appCleanerUserData =
     lib.hm.dag.entryAfter [ "writeBoundary" ] ''
       set -euo pipefail
-      APP="AppCleaner"
 
+      # ------------------------------------------------------------
+      # --- START LOG ---
+      # ------------------------------------------------------------
+      APP="AppCleaner"
       echo "[$APP] User-data sync starting… 🚀"
 
       # ------------------------------------------------------------
-      # SOURCE OF TRUTH
+      # --- SOURCE OF TRUTH ---
       # ------------------------------------------------------------
-      mkdir -p "${dotRoot}"
+      mkdir -p "${dotsRoot}"
 
       name="$(basename "${prefPlist}")"
 
       # ------------------------------------------------------------
-      # PLIST MOVE + SYMLINK
+      # --- PLIST MOVE + SYMLINK ---
       # ------------------------------------------------------------
-      if [ -e "${prefPlist}" ] && [ ! -L "${prefPlist}" ]; then
-        if [ ! -e "${dotPlist}" ]; then
-          echo "[$APP] Moving '$name' → source-of-truth 📄"
-          mv "${prefPlist}" "${dotPlist}"
-        fi
+      if [ -e "${prefPlist}" ] && [ ! -L "${prefPlist}" ] && [ ! -e "${dotPlist}" ]; then
+        echo "[$APP] Moving '$name' → source-of-truth 📄"
+        mv "${prefPlist}" "${dotPlist}"
       fi
 
       if [ -e "${dotPlist}" ] && [ ! -L "${prefPlist}" ]; then
@@ -60,6 +61,9 @@ in
         ln -s "${dotPlist}" "${prefPlist}"
       fi
 
+      # ------------------------------------------------------------
+      # --- END LOG ---
+      # ------------------------------------------------------------
       echo "[$APP] User-data sync complete ✅"
     '';
 }
