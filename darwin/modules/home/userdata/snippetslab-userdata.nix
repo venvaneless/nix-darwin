@@ -24,13 +24,13 @@
 # - Never touch FileProvider system folders
 # - Only operate inside the snippetslab backup subtree
 # - Mirror semantics:
-#   - New/changed files in source are copied to backup
-#   - Deleted files in source are deleted in backup (rsync --delete)
+#   - New/changed files are copied to backup
+#   - Deleted files are deleted in backup (rsync --delete)
 #   - If an entire source folder or plist disappears, its backup is removed too
 # - No daemons killed, no iCloud resets, no destructive global ops
 # ============================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   home = config.home.homeDirectory;
@@ -56,6 +56,11 @@ let
   srcMarkdownThemes = "${containerLib}/Application Support/Markdown Themes";
   srcSyntaxThemes   = "${containerLib}/Application Support/Themes";
   srcPlist          = "${containerLib}/Preferences/com.renfei.SnippetsLab.plist";
+
+  # ------------------------------------------------------------
+  # TOOLS
+  # ------------------------------------------------------------
+  rsyncBin = "${pkgs.rsync}/bin/rsync";
 in
 {
   home.activation.snippetslabUserData =
@@ -69,6 +74,7 @@ in
       echo "[$APP] User-data copy/mirror starting…"
       echo "[$APP] Source container: ${containerLib}"
       echo "[$APP] Backup root:      ${dirBackupRoot}"
+      echo "[$APP] Using rsync:      ${rsyncBin}"
 
       # ------------------------------------------------------------
       # HELPERS
@@ -93,16 +99,6 @@ in
         fi
       }
 
-      # Prefer system rsync on macOS.
-      RSYNC="/usr/bin/rsync"
-      if [ ! -x "$RSYNC" ]; then
-        echo "[$APP] ERROR: rsync not found at $RSYNC"
-        exit 1
-      fi
-
-      echo "[$APP] Using rsync: $RSYNC"
-      "$RSYNC" --version | head -n 1 || true
-
       # ------------------------------------------------------------
       # WARN IF APP IS RUNNING
       # ------------------------------------------------------------
@@ -123,11 +119,11 @@ in
       if dir_exists "${srcMarkdownThemes}"; then
         ensure_dir "${dirDstMarkdownThemes}"
 
-        echo "[$APP] Mirroring: Markdown Themes -> snippetslab-markdown-themes"
+        echo "[$APP] Mirroring: Markdown Themes → snippetslab-markdown-themes"
         echo "[$APP]   FROM: ${srcMarkdownThemes}/"
         echo "[$APP]   TO:   ${dirDstMarkdownThemes}/"
 
-        "$RSYNC" -a --delete --itemize-changes \
+        "${rsyncBin}" -a --delete --itemize-changes \
           "${srcMarkdownThemes}/" \
           "${dirDstMarkdownThemes}/" || {
             echo "[$APP] ERROR: rsync failed for Markdown Themes"
@@ -144,11 +140,11 @@ in
       if dir_exists "${srcSyntaxThemes}"; then
         ensure_dir "${dirDstSyntaxThemes}"
 
-        echo "[$APP] Mirroring: Themes -> snippetslab-syntax-themes"
+        echo "[$APP] Mirroring: Themes → snippetslab-syntax-themes"
         echo "[$APP]   FROM: ${srcSyntaxThemes}/"
         echo "[$APP]   TO:   ${dirDstSyntaxThemes}/"
 
-        "$RSYNC" -a --delete --itemize-changes \
+        "${rsyncBin}" -a --delete --itemize-changes \
           "${srcSyntaxThemes}/" \
           "${dirDstSyntaxThemes}/" || {
             echo "[$APP] ERROR: rsync failed for Themes"
@@ -167,12 +163,9 @@ in
         echo "[$APP]   FROM: ${srcPlist}"
         echo "[$APP]   TO:   ${dstPlist}"
 
-        # Ensure parent dir exists
         ensure_dir "${dirBackupRoot}"
 
-        # rsync for a single file:
-        # - replaces if size/mtime differ (matches your requirement)
-        "$RSYNC" -a --itemize-changes \
+        "${rsyncBin}" -a --itemize-changes \
           "${srcPlist}" \
           "${dstPlist}" || {
             echo "[$APP] ERROR: rsync failed for plist"
