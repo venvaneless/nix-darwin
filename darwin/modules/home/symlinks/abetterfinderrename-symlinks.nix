@@ -184,16 +184,17 @@ in
       # - Do NOT "backup runtime" BEFORE migration (that deletes the source)
       # - Backup destination only (if it exists and would be overwritten)
       # ------------------------------------------------------------
+      printf '%s\n' ${lib.concatStringsSep " " (map lib.escapeShellArg prefItems)} | \
       while IFS= read -r pref; do
         name="$(basename "$pref")"
         dst="${dirPref}/$name"
-      
+
         if path_is_symlink "$pref"; then
           echo "[$APP] Preferences item is a symlink. Verifying: $pref 🔎"
           ensure_symlink "$pref" "$dst" || true
           continue
         fi
-      
+
         if [ -e "$pref" ]; then
           if [ -e "$dst" ]; then
             echo "[$APP] Destination exists; repairing runtime into symlink: $name 🔧"
@@ -203,14 +204,12 @@ in
             backup_dest_if_needed "$dst"
             mv "$pref" "$dst" || true
           fi
-      
+
           ensure_symlink "$pref" "$dst" || true
         else
           echo "[$APP] Preferences item missing. Skipping: $pref ✅"
         fi
-        done <<'EOF'
-        ${lib.concatStringsSep "\n" prefItems}
-        EOF
+      done
         
         # ------------------------------------------------------------
         # --- END LOG ---
