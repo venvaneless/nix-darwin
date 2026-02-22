@@ -1,26 +1,39 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/espanso.nix
-
-# ITERM2: INSTALL APP
+# 
 # ============================================================
-# Installs the iTerm2 Terminal for macOS to a chosen folder
-# through homebrew
+# ESPANSO
+# 
+# Cross-platform Text Expander written in Rust.
 # ============================================================
-
-# nix-darwin system module: installs iTerm2.app system-wide.
 
 { ... }:
 
 let
-  appName   = "Espanso.app";
-  caskName  = "espanso";
+# App metadata
+# ------------------------------------------------------------
+	appName   = "Espanso.app";
+	caskName  = "espanso";
   targetDir = "/Applications/Tools";
 in
 {
+
+# Homebrew cask install
+# ------------------------------------------------------------
   homebrew.casks = [
-    { name = caskName; args = { appdir = targetDir; }; }
+    {
+      name = caskName;
+      args = { appdir = targetDir; };
+    }
   ];
 
-  system.activationScripts.ensureItermAppDir.text = ''
-    mkdir -p "${targetDir}"
+  # Ensure application directory exists
+  # ------------------------------------------------------------
+  system.activationScripts.ensureEspansoAppDir.text = ''
+    if [ ! -d "${targetDir}" ]; then
+      echo "[${appName}] Creating application directory: ${targetDir}"
+      mkdir -p "${targetDir}"
+    else
+      echo "[${appName}] Application directory already exists: ${targetDir}"
+    fi
   '';
 }

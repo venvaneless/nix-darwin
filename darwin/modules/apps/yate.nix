@@ -1,23 +1,24 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/yate.nix
 #
-# YATE: INSTALL APP
 # ============================================================
-# Installs "Yate" for macOS via Homebrew cask and places it
-# into a custom Applications directory.
+# YATE
+# 
+# macOS Media file tag editor
 # ============================================================
 
 { ... }:
 
 let
-  # APP METADATA
-  # ------------------------------------------------------------
-  appName   = "Yate.app";
-  caskName  = "yate";
+# App metadata
+# ------------------------------------------------------------
+	appName   = "Yate.app";
+	caskName  = "yate";
   targetDir = "/Applications/Multimedia";
 in
 {
-  # HOMEBREW CASK INSTALL
-  # ------------------------------------------------------------
+
+# Homebrew cask install
+# ------------------------------------------------------------
   homebrew.casks = [
     {
       name = caskName;
@@ -25,7 +26,7 @@ in
     }
   ];
 
-  # DARWIN: ENSURE APPLICATION DIRECTORY EXISTS
+  # Ensure application directory exists
   # ------------------------------------------------------------
   system.activationScripts.ensureYateAppDir.text = ''
     if [ ! -d "${targetDir}" ]; then

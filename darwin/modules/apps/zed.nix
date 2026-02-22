@@ -1,26 +1,39 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/zed.nix
 # 
-# ZED: INSTALL APP
 # ============================================================
-# Installs the Zed editor app to a chosen folder
-# through homebrew
+# ZED
+# 
+# Multiplayer code editor written in Rust
 # ============================================================
-
-# nix-darwin system module: installs Zed.app system-wide.
 
 { ... }:
 
 let
-  appName   = "Zed.app";
-  caskName  = "zed";
+# App metadata
+# ------------------------------------------------------------
+	appName   = "Zed.app";
+	caskName  = "zed";
   targetDir = "/Applications/Productivity";
 in
 {
+
+# Homebrew cask install
+# ------------------------------------------------------------
   homebrew.casks = [
-    { name = caskName; args = { appdir = targetDir; }; }
+    {
+      name = caskName;
+      args = { appdir = targetDir; };
+    }
   ];
-  
+
+  # Ensure application directory exists
+  # ------------------------------------------------------------
   system.activationScripts.ensureZedAppDir.text = ''
-    mkdir -p "${targetDir}"
+    if [ ! -d "${targetDir}" ]; then
+      echo "[${appName}] Creating application directory: ${targetDir}"
+      mkdir -p "${targetDir}"
+    else
+      echo "[${appName}] Application directory already exists: ${targetDir}"
+    fi
   '';
 }

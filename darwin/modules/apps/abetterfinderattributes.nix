@@ -1,23 +1,23 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/a-better-finder-attributes.nix
-#
-# A BETTER FINDER ATTRIBUTES: INSTALL APP
+# 
 # ============================================================
-# Installs "A Better Finder Attributes" for macOS via Homebrew
-# cask and places it into a custom Applications directory.
+# A BETTER FINDER ATTRIBUTES
+# 
+# File and photo tweaking tool.
 # ============================================================
 
 { ... }:
 
 let
-  # APP METADATA
-  # ------------------------------------------------------------
+# App metadata
+# ------------------------------------------------------------
   appName   = "A Better Finder Attributes.app";
   caskName  = "a-better-finder-attributes";
   targetDir = "/Applications/Tools";
 in
 {
-  # HOMEBREW CASK INSTALL
-  # ------------------------------------------------------------
+	# Homebrew cask install
+# ------------------------------------------------------------
   homebrew.casks = [
     {
       name = caskName;
@@ -25,7 +25,7 @@ in
     }
   ];
 
-  # DARWIN: ENSURE APPLICATION DIRECTORY EXISTS
+  # Ensure application directory exists
   # ------------------------------------------------------------
   system.activationScripts.ensureABFAttributesAppDir.text = ''
     if [ ! -d "${targetDir}" ]; then

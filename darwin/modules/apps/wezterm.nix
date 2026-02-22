@@ -1,26 +1,39 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/wezterm.nix
-
-# ITERM2: INSTALL APP
+# 
 # ============================================================
-# Installs the Wezterm Terminal for macOS to a chosen folder
-# through homebrew
+# WEZTERM
+# 
+# GPU-accelerated cross-platform terminal emulator and multiplexer
 # ============================================================
-
-# nix-darwin system module: installs iTerm2.app system-wide.
 
 { ... }:
 
 let
-  appName   = "Wezterm.app";
-  caskName  = "wezterm";
+# App metadata
+# ------------------------------------------------------------
+	appName   = "Wezterm.app";
+	caskName  = "wezterm";
   targetDir = "/Applications/Programming";
 in
 {
+
+# Homebrew cask install
+# ------------------------------------------------------------
   homebrew.casks = [
-    { name = caskName; args = { appdir = targetDir; }; }
+    {
+      name = caskName;
+      args = { appdir = targetDir; };
+    }
   ];
 
-  system.activationScripts.ensureItermAppDir.text = ''
-    mkdir -p "${targetDir}"
+  # Ensure application directory exists
+  # ------------------------------------------------------------
+  system.activationScripts.ensureWeztermAppDir.text = ''
+    if [ ! -d "${targetDir}" ]; then
+      echo "[${appName}] Creating application directory: ${targetDir}"
+      mkdir -p "${targetDir}"
+    else
+      echo "[${appName}] Application directory already exists: ${targetDir}"
+    fi
   '';
 }

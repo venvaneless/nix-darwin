@@ -1,8 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/apps.nix
 #
-# LOAD APPS
 # ============================================================
-# This file only imports individual installers for apps
+# LOAD APPS
+# 
+# This file imports individual installers for apps
 # and enables selected user-facing programs.
 # ============================================================
 
@@ -16,6 +17,7 @@
     # ./astrovim.nix
     ./espanso.nix
     ./hammerspoon.nix
+    ./helium-browser.nix
     ./iterm.nix
     ./obsidian.nix
     ./paste.nix

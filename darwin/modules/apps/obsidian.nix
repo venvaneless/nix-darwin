@@ -1,26 +1,40 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/obsidian.nix
-
-# ITERM2: INSTALL APP
+# 
 # ============================================================
-# Installs Obsidian for macOS to a chosen folder
-# through homebrew
+# OBSIDIAN
+# 
+# Knowledge base that works on top of a local folder
+# of plain text Markdown files.
 # ============================================================
-
-# nix-darwin system module: installs iTerm2.app system-wide.
 
 { ... }:
 
 let
-  appName   = "Obsidian.app";
-  caskName  = "obsidian";
+# App metadata
+# ------------------------------------------------------------
+	appName   = "Obsidian.app";
+	caskName  = "obsidian";
   targetDir = "/Applications/Productivity";
 in
 {
+
+# Homebrew cask install
+# ------------------------------------------------------------
   homebrew.casks = [
-    { name = caskName; args = { appdir = targetDir; }; }
+    {
+      name = caskName;
+      args = { appdir = targetDir; };
+    }
   ];
 
-  system.activationScripts.ensureItermAppDir.text = ''
-    mkdir -p "${targetDir}"
+  # Ensure application directory exists
+  # ------------------------------------------------------------
+  system.activationScripts.ensureObsidianAppDir.text = ''
+    if [ ! -d "${targetDir}" ]; then
+      echo "[${appName}] Creating application directory: ${targetDir}"
+      mkdir -p "${targetDir}"
+    else
+      echo "[${appName}] Application directory already exists: ${targetDir}"
+    fi
   '';
 }

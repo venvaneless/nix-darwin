@@ -1,26 +1,39 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/iterm.nix
-
-# ITERM2: INSTALL APP
+# 
 # ============================================================
-# Installs the iTerm2 Terminal for macOS to a chosen folder
-# through homebrew
+# ITERM2
+# 
+# Terminal emulator as alternative to Apple's Terminal app.
 # ============================================================
-
-# nix-darwin system module: installs iTerm2.app system-wide.
 
 { ... }:
 
 let
-  appName   = "iTerm.app";
-  caskName  = "iterm2";
+# App metadata
+# ------------------------------------------------------------
+	appName   = "iTerm.app";
+	caskName  = "iterm2";
   targetDir = "/Applications/Programming";
 in
 {
+
+# Homebrew cask install
+# ------------------------------------------------------------
   homebrew.casks = [
-    { name = caskName; args = { appdir = targetDir; }; }
+    {
+      name = caskName;
+      args = { appdir = targetDir; };
+    }
   ];
 
+  # Ensure application directory exists
+  # ------------------------------------------------------------
   system.activationScripts.ensureItermAppDir.text = ''
-    mkdir -p "${targetDir}"
+    if [ ! -d "${targetDir}" ]; then
+      echo "[${appName}] Creating application directory: ${targetDir}"
+      mkdir -p "${targetDir}"
+    else
+      echo "[${appName}] Application directory already exists: ${targetDir}"
+    fi
   '';
 }

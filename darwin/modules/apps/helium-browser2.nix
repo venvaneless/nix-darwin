@@ -1,9 +1,9 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/a-better-finder-rename.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/helium-browser.nix
 # 
 # ============================================================
-# A BETTER FINDER RENAME
+# HELIUM BROWSER
 # 
-# Renamer for files, music and photos.
+# Open-source Chromium-based web browser.
 # ============================================================
 
 { ... }:
@@ -11,11 +11,12 @@
 let
 # App metadata
 # ------------------------------------------------------------
-  appName   = "A Better Finder Rename.app";
-  caskName  = "a-better-finder-rename";
-  targetDir = "/Applications/Tools";
+	appName   = "Helium.app";
+	caskName  = "helium-browser";
+  targetDir = "/Applications/System";
 in
 {
+
 # Homebrew cask install
 # ------------------------------------------------------------
   homebrew.casks = [
@@ -25,9 +26,9 @@ in
     }
   ];
 
-# Ensure application directory exists
-# ------------------------------------------------------------
-  system.activationScripts.ensureABFRAppDir.text = ''
+  # Ensure application directory exists
+  # ------------------------------------------------------------
+  system.activationScripts.ensureHeliumAppDir.text = ''
     if [ ! -d "${targetDir}" ]; then
       echo "[${appName}] Creating application directory: ${targetDir}"
       mkdir -p "${targetDir}"

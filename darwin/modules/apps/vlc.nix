@@ -1,23 +1,24 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/vlc.nix
 #
-# VLC: INSTALL APP
 # ============================================================
-# Installs "VLC" for macOS via Homebrew cask and places it
-# into a custom Applications directory.
+# VLC
+# 
+# Multimedia player
 # ============================================================
 
 { ... }:
 
 let
-  # APP METADATA
-  # ------------------------------------------------------------
-  appName   = "VLC.app";
-  caskName  = "vlc";
+# App metadata
+# ------------------------------------------------------------
+	appName   = "VLC.app";
+	caskName  = "vlc";
   targetDir = "/Applications/Multimedia";
 in
 {
-  # HOMEBREW CASK INSTALL
-  # ------------------------------------------------------------
+
+# Homebrew cask install
+# ------------------------------------------------------------
   homebrew.casks = [
     {
       name = caskName;
@@ -25,7 +26,7 @@ in
     }
   ];
 
-  # DARWIN: ENSURE APPLICATION DIRECTORY EXISTS
+  # Ensure application directory exists
   # ------------------------------------------------------------
   system.activationScripts.ensureVLCAppDir.text = ''
     if [ ! -d "${targetDir}" ]; then

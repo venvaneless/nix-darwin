@@ -1,7 +1,12 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/services/astrovim.nix
 #
-# SYSTEM: ASTROVIM
 # ============================================================
+# ASTROVIM
+# 
+# AstroNvim is an aesthetically pleasing and feature-rich
+# Neovim configuration that focuses on extensibility and usability.
+# 
+# IMPORTANT:
 # Declaratively installs AstroNvim config by symlinking
 # the AstroNvim repo into ~/.config/nvim on every activation.
 # Uses writeShellScriptBin to ensure reliable execution
@@ -10,18 +15,24 @@
 
 { lib, pkgs, inputs, ... }:
 
+# Bash script wrapper
+# ------------------------------------------------------------
 let
   astroScript = pkgs.writeShellScriptBin "install-astrovim" ''
     #!/bin/bash
     set -euo pipefail
 
+  # Config directories
+  # ------------------------------------------------------------
     USER="ven"
     HOME_DIR="/Users/ven"
     CONFIG_DIR="$HOME_DIR/ven-dots/conf/nvim"
     NVIM_DIR="$CONFIG_DIR/nvim"
 
     echo ">>> [astrovim] Installing AstroNvim config"
-
+    
+  # Ensure directories exists
+  # ------------------------------------------------------------
     mkdir -p "$CONFIG_DIR"
     rm -rf "$NVIM_DIR"
     rsync -a --delete "${inputs.astronvim}/" "$NVIM_DIR/"
@@ -30,6 +41,9 @@ let
 
     echo ">>> [astrovim] AstroNvim linked successfully"
   '';
+  
+# Installing
+# ------------------------------------------------------------
 in
 {
   system.activationScripts.extraActivation.text = lib.mkAfter ''

@@ -1,23 +1,26 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/paste.nix
-#
-# PASTE: INSTALL APP
+# 
 # ============================================================
-# Installs "Paste" for macOS via Homebrew cask and places it
-# into a custom Applications directory.
+# PASTE
+# 
+# Your clipboard, supercharged and secure Paste keeps everything
+# you copy organized and searchable. Lightweight, intuitive,
+# packed with smart features, and private by design.
 # ============================================================
 
 { ... }:
 
 let
-  # APP METADATA
-  # ------------------------------------------------------------
-  appName   = "Paste.app";
-  caskName  = "paste";
+# App metadata
+# ------------------------------------------------------------
+	appName   = "Paste.app";
+	caskName  = "paste";
   targetDir = "/Applications/Tools";
 in
 {
-  # HOMEBREW CASK INSTALL
-  # ------------------------------------------------------------
+
+# Homebrew cask install
+# ------------------------------------------------------------
   homebrew.casks = [
     {
       name = caskName;
@@ -25,7 +28,7 @@ in
     }
   ];
 
-  # DARWIN: ENSURE APPLICATION DIRECTORY EXISTS
+  # Ensure application directory exists
   # ------------------------------------------------------------
   system.activationScripts.ensurePasteAppDir.text = ''
     if [ ! -d "${targetDir}" ]; then
