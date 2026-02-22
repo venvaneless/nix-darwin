@@ -19,6 +19,7 @@
     ./iterm.nix
     ./obsidian.nix
     ./paste.nix
+    ./pearcleaner
     ./raycast.nix
     ./vlc.nix
     ./wezterm.nix
