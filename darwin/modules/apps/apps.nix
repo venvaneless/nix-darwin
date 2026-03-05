@@ -13,15 +13,16 @@
   imports = [
     ./abetterfinderattributes.nix
     ./abetterfinderrename.nix
-    ./appcleaner.nix
     # ./astrovim.nix
     ./espanso.nix
     ./hammerspoon.nix
     ./helium-browser.nix
     ./iterm.nix
+    ./kiwix.nix
     ./obsidian.nix
     ./paste.nix
     ./pearcleaner.nix
+    ./proton-mail-bridge
     ./raycast.nix
     ./simplenote.nix
     ./vlc.nix

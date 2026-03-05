@@ -1,9 +1,9 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/appcleaner.nix
-#
-# ============================================================
-# APPCLEANER
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/proton-mail-bridge.nix
 # 
-# macOS Application uninstaller.
+# ============================================================
+# OBSIDIAN
+# 
+# Bridges Proton Mail to email clients supporting IMAP and SMTP protocols
 # ============================================================
 
 { ... }:
@@ -11,8 +11,8 @@
 let
 # App metadata
 # ------------------------------------------------------------
-	appName   = "AppCleaner.app";
-	caskName  = "appcleaner";
+	appName   = "Proton Mail Bridge.app";
+	caskName  = "proton-mail-bridge";
   targetDir = "/Applications/System";
 in
 {
@@ -28,7 +28,7 @@ in
 
   # Ensure application directory exists
   # ------------------------------------------------------------
-  system.activationScripts.ensureAppCleanerAppDir.text = ''
+  system.activationScripts.ensureProtonBridgeDir.text = ''
     if [ ! -d "${targetDir}" ]; then
       echo "[${appName}] Creating application directory: ${targetDir}"
       mkdir -p "${targetDir}"
