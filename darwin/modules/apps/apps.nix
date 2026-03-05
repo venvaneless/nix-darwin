@@ -23,6 +23,7 @@
     ./paste.nix
     ./pearcleaner.nix
     ./raycast.nix
+    ./simplenote.nix
     ./vlc.nix
     ./wezterm.nix
     ./zed.nix
