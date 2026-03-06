@@ -22,7 +22,7 @@
     ./obsidian.nix
     ./paste.nix
     ./pearcleaner.nix
-    ./proton-mail-bridge
+    ./proton-mail-bridge.nix
     ./raycast.nix
     ./simplenote.nix
     ./vlc.nix
