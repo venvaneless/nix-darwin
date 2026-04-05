@@ -74,12 +74,12 @@
     # wvous-tr-corner = 1; # top-right
 
     # ------ MISCELLANEOUS ------ #
-    # 
+    #
     # --- Dragging files through folders
     enable-spring-load-actions-on-all-items = true;
-    
+
     # ------ OTHER - DISABLED ------ #
-     
+
     # --- Mission Control animation duration
     # Changes the Mission Control animation duration (Exposé-style animation).
     # -----------------------------------------
@@ -87,7 +87,7 @@
     # Higher value → slower animation
     # -----------------------------------------
     # expose-animation-duration = 0.25;
-     
+
     # --- Toggles grouping of windows by application
     # ... when entering Mission Control / App Exposé.
     # -----------------------------------------
@@ -95,7 +95,7 @@
     # OFF = All windows shown individually
     # -----------------------------------------
     expose-group-apps = true;
-     
+
     # --- Highlight stack when hovering
     # When hovering over a “stack” (Downloads folder, etc.) in the Dock, the hovered item becomes highlighted
     # -----------------------------------------
@@ -103,14 +103,14 @@
     # OFF = No highlight
     # -----------------------------------------
     mouse-over-hilite-stack = true;
-     
+
     # --- Most Recently Used Spaces
     # -----------------------------------------
     # ON = macOS will automatically reorder your Spaces based on your usage.
     # OFF = Spaces stay exactly where you placed them.
     # -----------------------------------------
     # mru-spaces = false;
-     
+
     # --- Scroll to open app in Dock
     # ------------------------------------------------------
     # Allows scrolling (trackpad scroll gesture) upward
@@ -118,22 +118,23 @@
     # Scroll up on Safari icon → shows all Safari windows.
     # ------------------------------------------------------
     scroll-to-open = true;
-     
+
     # -----------------------------------------
     # --- Slow Motion while minimising
     # Hold Shift while minimizing or opening apps to play the slow-motion
     # -----------------------------------------
     # slow-motion-allowed = true;
-     
+
     # --- Dynamic Dock behaviour
     static-only = false;
 
     persistent-apps = [
-    "/Applications/System/ForkLift.app"
-    "/Applications/Chromium.app"
     "/Applications/Programming/iTerm.app"
     "/Applications/Programming/SnippetsLab.app"
     "/Applications/Productivity/Zed.app"
+    "/Applications/Helium.app"
+    "/Applications/LocalSend.app"
+    "/Applications/Webapps/ChatGPT.app"
     ];
   };
 }
