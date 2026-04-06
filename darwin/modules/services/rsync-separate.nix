@@ -37,7 +37,6 @@ let
   scripts = [
    "${scriptDir}/rsync-a_better_finder_attributes.sh"
    "${scriptDir}/rsync-a_better_finder_rename.sh"
-   # "${scriptDir}/rsync-chromium.sh"
    # "${scriptDir}/rsync-espanso.sh"
     "${scriptDir}/rsync-iterm.sh"
    # "${scriptDir}/rsync-obsidian.sh"

@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/chromium-symlinks.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/symlinks/helium-symlinks.nix
 #
 # DARWIN: CHROMIUM USER-DATA
 # ============================================================
@@ -31,10 +31,10 @@ let
   dirRoot = "/Users/ven/ven-dots/user-data/apps";
   
   # App name
-  asRealName = "Chromium";
+  asRealName = "Helium";
   
   # App slug (rules-compliant name)
-  appSlug = "chromium";
+  appSlug = "helium";
 
   # App source-of-truth directory
   dirSRC  = "${dirRoot}/${appSlug}";
@@ -45,7 +45,7 @@ let
 
   # Preferences runtime items
   prefPlist = "${home}/Library/Preferences/org.chromium.Chromium.plist";
-  dotPlist  = "${dirSRC}/org.chromium.Chromium.plist";
+  dotPlist  = "${dirSRC}/net.imput.helium.plist";
 in
 {
   home.activation.chromiumUserData =

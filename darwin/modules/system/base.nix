@@ -151,7 +151,9 @@
 
     # Directory tree viewer
     tree
-
+    
+    # Yazi
+    
     # YAML processor
     yq-go
   ];

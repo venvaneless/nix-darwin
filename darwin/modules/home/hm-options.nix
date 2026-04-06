@@ -51,6 +51,5 @@
     
     # --- Home Manager services ---
     # ../services/espanso-launchd.nix
-    # ../services/icloud-symlink.nix
   ];
 }

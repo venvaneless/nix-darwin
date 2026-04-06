@@ -5,5 +5,9 @@
 {
   programs.zsh.shellAliases = {
   	ess = "exec zsh";
+   	ff = "fastfetch";
+    yy = "yazi";
+    l-g = "lazygit";
+    ccx = "clear";
   };
 }
