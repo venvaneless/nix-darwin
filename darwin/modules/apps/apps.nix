@@ -25,6 +25,7 @@
     ./proton-mail-bridge.nix
     ./raycast.nix
     ./simplenote.nix
+    ./thaw.nix
     ./vlc.nix
     ./vesktop.nix
     ./wezterm.nix
