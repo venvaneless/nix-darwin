@@ -49,9 +49,9 @@
 
 			# ---- Plugins ------ #
     	./plugins/asdf.nix
+     	./plugins/autocomplete.nix
     	./plugins/autosuggestions.nix
      	./plugins/atuin.nix
-	    ./plugins/completion.nix
 			./plugins/delta.nix
 			./plugins/fzf.nix
 			./plugins/history.nix
