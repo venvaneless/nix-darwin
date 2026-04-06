@@ -26,6 +26,7 @@
     ./raycast.nix
     ./simplenote.nix
     ./vlc.nix
+    ./vesktop.nix
     ./wezterm.nix
     ./zed.nix
     ./yate.nix
