@@ -1,9 +1,9 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/Thaw.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/calibre.nix
 #
 # ============================================================
-# THAW
+# CALIBRE
 #
-# macOS Menu bar manager
+# E-books management software.
 # ============================================================
 
 { ... }:
@@ -11,8 +11,8 @@
 let
 # App metadata
 # ------------------------------------------------------------
-	appName   = "Thaw.app";
-	caskName  = "thaw";
+	appName   = "Calibre.app";
+	caskName  = "calibre";
   targetDir = "/Applications";
 in
 {
@@ -28,7 +28,7 @@ in
 
   # Ensure application directory exists
   # ------------------------------------------------------------
-  system.activationScripts.ensureThawAppDir.text = ''
+  system.activationScripts.ensureCalibreAppDir.text = ''
     if [ ! -d "${targetDir}" ]; then
       echo "[${appName}] Creating application directory: ${targetDir}"
       mkdir -p "${targetDir}"

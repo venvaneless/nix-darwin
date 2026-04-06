@@ -13,6 +13,7 @@
   imports = [
     ./abetterfinderattributes.nix
     ./abetterfinderrename.nix
+    ./calibre.nix
     # ./astrovim.nix
     ./espanso.nix
     ./hammerspoon.nix
