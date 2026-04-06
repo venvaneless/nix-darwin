@@ -62,7 +62,7 @@
 			./plugins/mise.nix
 			./plugins/starship.nix
 	  	./plugins/tmux.nix
-			./plugins/tmux-extras.nix
+			# ./plugins/tmux-extras.nix
 			./plugins/yazi.nix
 			./plugins/zoxide.nix
 	    ./plugins/syntax-highlighting.nix
