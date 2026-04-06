@@ -7,7 +7,12 @@
 { ... }:
 
 {
-  programs.zsh = {
-    historySubstringSearch.enable = true;
+  programs.zsh.historySubstringSearch = {
+    enable = true;
+    # ↑ Up
+    searchUpKey = [ "^[[A" ];
+    
+    # ↓ Down
+    searchDownKey = [ "^[[B" ];
   };
 }

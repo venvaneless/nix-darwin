@@ -23,74 +23,74 @@
   # builds, users, or settings
   # ---------------------------------------------------------
   nix.enable = true;
-  
+
   # ---- Hostname ----
   networking.hostName = "Vens-MacBook-Pro";
-  
+
   # ---- System State Version ----
   system.stateVersion = 6;
-  
+
   # ---- Allow unfree packages ----
   nixpkgs.config.allowUnfree = true;
-  
+
   # ---- Deduplicate store paths
   nix.optimise.automatic = true;
-  
+
   nix.settings = {
-  
+
     # ------ Flakes + modern CLI ------
     experimental-features = [ "nix-command" "flakes" ];
-    
+
     # ------ System build group ------
     build-users-group = "nixbld";
-    
+
     # Move ~/.nix-* into XDG directories
     use-xdg-base-directories = true;
-    
+
     # ------ LOGS ------
-    
+
     # --- Ignore dirty git tree warnings
     warn-dirty = false;
-    
+
     # --- Failure log length
     log-lines = 50;
-  
-  
+
+
     # ------ BUILD PERFORMANCE ------
-    
+
     # ---- Use all CPU cores
     max-jobs = 4;
-    
+
     # ---- Limit cores per build
     cores = 2;
-    
+
     # ---- Build locally if cache fails
     fallback = true;
-        
+
     # ---- Allow trusted users
     trusted-users = [ "root" "ven" ];
-  
-  
+
+
     # ------ STORE HYGIENE ------
-    
+
     # ---- Keep build recipes
     keep-derivations = true;
-    
+
     # ---- Keep build results
     keep-outputs = true;
-  
+
     # ---- Official binary cache ----
     substituters = [
       "https://cache.nixos.org"
     ];
-  
+
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
     ];
   };
-  
+
   # Temporary - Allow unfree packages
-  
+
   # ------------------------------------------------------------
   # GLOBAL ENVIRONMENT VARIABLES
   # ------------------------------------------------------------
@@ -100,7 +100,7 @@
     XDG_DATA_HOME   = "/Users/ven/ven-dots/data";
     XDG_CACHE_HOME  = "/Users/ven/ven-dots/cache";
   };
-  
+
   # ------------------------------------------------------------
   # SYSTEM PACKAGES
   # Core utilities with concise descriptions
@@ -110,9 +110,12 @@
     # darwin-rebuild binary
     inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
 
+    # Shell history sync and search
+    atuin
+
     # New Bash
     bashInteractive
-    
+
     # Bitwarden CLI
     bitwarden-cli
 
@@ -121,40 +124,84 @@
 
     # Fast alternative to find
     fd
-    
-    # Git Filtering
-    git-filter-repo
-    
-    # Git Large Files Storage
-    git-lfs
+
+    # System information fetch tool
+    fastfetch
 
     # Git encryption tool
     git-crypt
+
+    # Git Filtering
+    git-filter-repo
+
+    # Git Large Files Storage
+    git-lfs
 
     # Terminal UI helpers
     gum
 
     # Home Manager CLI
     home-manager
-    
-    # Tools for NSS certificates
-    nssTools
 
-    # Nix language server
-    nixd
+    # Terminal UI for Git
+    lazygit
+
+    # Terminal text editor
+    micro
 
     # Nix formatter
     nil
 
-    # Fast recursive search
+    # Nix language server
+    nixd
+
+    # Tools for NSS certificates
+    nssTools
+
+    # Fast recursive search tool
     ripgrep
 
     # Directory tree viewer
     tree
-    
-    # Yazi
-    
-    # YAML processor
-    yq-go
+
+    # Terminal multiplexer
+    tmux
+
+    # Terminal file manager
+    yazi
+
+    # Smarter directory jumping
+    zoxide
+
+    # Zsh history substring search widget
+    zsh-history-substring-search
+
+
+    # System information fetch tool
+    fastfetch
+
+    # Terminal file manager
+    yazi
+
+    # Smarter directory jumping
+    zoxide
+
+    # Shell history sync and search
+    atuin
+
+    # Terminal UI for Git
+    lazygit
+
+    # Terminal multiplexer
+    tmux
+
+    # Zsh history substring search widget
+    zsh-history-substring-search
+
+    # Fast recursive search tool
+    ripgrep
+
+    # Terminal text editor
+    micro
   ];
 }
