@@ -15,19 +15,19 @@
     searchDownKey = [ "^[[B" ];
   };
 
-  programs.zsh.interactiveShellInit = ''
+  programs.zsh.initContent = ''
     # Use emacs-style keybindings
     bindkey -e
-
+  
     # Terminal-aware arrow bindings
     if [[ -n "''${terminfo[kcuu1]}" ]]; then
       bindkey "''${terminfo[kcuu1]}" history-substring-search-up
     fi
-
+  
     if [[ -n "''${terminfo[kcud1]}" ]]; then
       bindkey "''${terminfo[kcud1]}" history-substring-search-down
     fi
-
+  
     # Extra fallback bindings
     bindkey '^[[A' history-substring-search-up
     bindkey '^[[B' history-substring-search-down
