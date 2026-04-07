@@ -28,10 +28,10 @@
     ];
 
     # Shell-level setup
-    interactiveShellInit = ''
+    initContent = ''
       # Ensure history directory exists
       mkdir -p "$(dirname "${config.home.homeDirectory}/ven-dots/zsh/.zsh_history")"
-
+    
       # Import history from file on shell startup
       fc -R
     '';
