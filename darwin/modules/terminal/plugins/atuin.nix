@@ -10,5 +10,12 @@
   programs.atuin = {
     enable = true;
     enableZshIntegration = true;
+
+    # Match:
+    # atuin init zsh --disable-up-arrow --disable-ctrl-r
+    flags = [
+      "--disable-up-arrow"
+      "--disable-ctrl-r"
+    ];
   };
 }

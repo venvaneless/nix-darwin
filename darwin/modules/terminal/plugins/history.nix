@@ -20,6 +20,22 @@
       extended = true;
     };
 
+    # Extra history behavior not covered by the history block
+    setOptions = [
+      "INC_APPEND_HISTORY"
+      "HIST_EXPIRE_DUPS_FIRST"
+      "HIST_REDUCE_BLANKS"
+    ];
+
+    # Shell-level setup
+    interactiveShellInit = ''
+      # Ensure history directory exists
+      mkdir -p "$(dirname "${config.home.homeDirectory}/ven-dots/zsh/.zsh_history")"
+
+      # Import history from file on shell startup
+      fc -R
+    '';
+
     # Substring search plugin
     historySubstringSearch.enable = true;
   };

@@ -4,10 +4,16 @@
 
 {
   programs.zsh.shellAliases = {
-  	ess = "exec zsh";
-   	ff = "fastfetch";
-    yy = "yazi";
-    l-g = "lazygit";
+    cat = "bat";
     ccx = "clear";
+    cd = "z";
+    ess = "exec zsh";
+    ff = "fastfetch";
+    gs = "git status";
+    l-g = "lazygit";
+    la = "ls -A";
+    lh = "ls -lah";
+    nano = "micro";
+    yy = "yazi";
   };
 }

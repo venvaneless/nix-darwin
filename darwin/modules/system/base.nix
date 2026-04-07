@@ -164,44 +164,16 @@
     # Directory tree viewer
     tree
 
-    # Terminal multiplexer
-    tmux
-
     # Terminal file manager
     yazi
 
     # Smarter directory jumping
     zoxide
 
-    # Zsh history substring search widget
-    zsh-history-substring-search
-
-
-    # System information fetch tool
-    fastfetch
-
-    # Terminal file manager
-    yazi
-
-    # Smarter directory jumping
-    zoxide
-
-    # Shell history sync and search
-    atuin
-
-    # Terminal UI for Git
-    lazygit
-
     # Terminal multiplexer
     tmux
 
     # Zsh history substring search widget
     zsh-history-substring-search
-
-    # Fast recursive search tool
-    ripgrep
-
-    # Terminal text editor
-    micro
   ];
 }

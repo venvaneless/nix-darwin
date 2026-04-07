@@ -16,7 +16,7 @@
   # ./appcleaner-symlinks.nix
   # ./chromium-symlinks.nix
   # ./espanso-symlinks.nix
-  ./helium-symlinks.nix
+  # ./helium-symlinks.nix
   # ./iterm-symlinks.nix
   # ./masscode-symlinks.nix
   # ./yate-symlinks.nix
