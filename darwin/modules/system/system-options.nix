@@ -57,9 +57,9 @@
   power.sleep = {
 
     # When plugged in
-    display  = 10;     # minutes
-    computer = 20;     # minutes
-    harddisk = "never";
+    # display  = 10;     # minutes
+    # computer = 20;     # minutes
+    # harddisk = "never";
   };
 
   # ------------------------------------------------------------

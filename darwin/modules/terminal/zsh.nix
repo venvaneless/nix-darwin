@@ -57,14 +57,13 @@
 			./plugins/history.nix
 			./plugins/history-substring-search.nix
 			./plugins/lazygit.nix
-			./plugins/payf.nix
 			./plugins/mcfly.nix
 			./plugins/mise.nix
+			./plugins/payf.nix
 			./plugins/starship.nix
+			./plugins/syntax-highlighting.nix
 	  	./plugins/tmux.nix
-			# ./plugins/tmux-extras.nix
 			./plugins/yazi.nix
 			./plugins/zoxide.nix
-	    ./plugins/syntax-highlighting.nix
 	  ];
 	}
