@@ -1,8 +1,11 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/history-substring-search.nix
 #
+# ============================================================
 # ZSH: HISTORY SUBSTRING SEARCH
-# =========================
-# Lets up/down search history by current typed substring.
+# - Up / Down arrows walk normal history when prompt is empty
+# - Up / Down arrows search matching history when text is typed
+# - Uses terminal-aware key bindings
+# ============================================================
 
 { ... }:
 
@@ -15,23 +18,44 @@
     searchDownKey = [ "^[[B" ];
   };
 
+
   programs.zsh.initContent = ''
-    # Use emacs-style keybindings
+    # ---------- Keymap mode ---------- #
+
+    # --- bindkey -e
+    # #### Use emacs-style keybindings unless you intentionally use vi mode.
     bindkey -e
-  
-    # Terminal-aware arrow bindings
+
+    # ---------- Terminal-aware bindings ---------- #
+
+    # --- terminfo Up
+    # #### Bind terminal-aware Up arrow to history substring search up.
     if [[ -n "''${terminfo[kcuu1]}" ]]; then
       bindkey "''${terminfo[kcuu1]}" history-substring-search-up
     fi
-  
+
+    # --- terminfo Down
+    # #### Bind terminal-aware Down arrow to history substring search down.
     if [[ -n "''${terminfo[kcud1]}" ]]; then
       bindkey "''${terminfo[kcud1]}" history-substring-search-down
     fi
-  
-    # Extra fallback bindings
+
+    # ---------- Fallback bindings ---------- #
+
+    # --- fallback ^[[A
+    # #### Bind common Up arrow escape sequence to history substring search up.
     bindkey '^[[A' history-substring-search-up
+
+    # --- fallback ^[[B
+    # #### Bind common Down arrow escape sequence to history substring search down.
     bindkey '^[[B' history-substring-search-down
+
+    # --- fallback ^[OA
+    # #### Bind alternate terminal Up arrow escape sequence to history substring search up.
     bindkey '^[OA' history-substring-search-up
+
+    # --- fallback ^[OB
+    # #### Bind alternate terminal Down arrow escape sequence to history substring search down.
     bindkey '^[OB' history-substring-search-down
   '';
 }

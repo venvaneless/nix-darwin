@@ -127,14 +127,16 @@
 
     # System information fetch tool
     fastfetch
-
+    
+    # GNU Awk text processing tool
+    gawk
     # Git encryption tool
     git-crypt
 
     # Git Filtering
     git-filter-repo
-
-    # Git Large Files Storage
+    
+    # Git Large File Storage
     git-lfs
 
     # Terminal UI helpers
