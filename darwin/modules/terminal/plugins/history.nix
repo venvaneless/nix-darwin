@@ -16,7 +16,7 @@
 
       # --- HISTFILE
       # #### Path to the zsh history file on disk.
-      path = "${config.home.homeDirectory}/ven-dots/zsh";
+      path = "${config.home.homeDirectory}/ven-dots/zsh/.zsh_history";
 
       # ---------- History size ---------- #
 
