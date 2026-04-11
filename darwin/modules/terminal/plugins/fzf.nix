@@ -56,7 +56,7 @@
     # ---------- FZF: COMMAND PICKER ---------- #
     fzf_command_picker() {
       local selected
-      selected=$(print -rl -- ${(ok)commands} | fzf)
+      selected=$(print -rl -- ''${(ok)commands} | fzf)
       if [[ -n "$selected" ]]; then
         LBUFFER="$selected"
       fi
