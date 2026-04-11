@@ -78,7 +78,7 @@
     rmpkg = "sudo pacman -Rdd";
 
     # Run Garuda update tool.
-    garuda -u = "/usr/bin/garuda-update";
+    "garuda -u" = "/usr/bin/garuda-update";
 
 
 
