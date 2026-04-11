@@ -46,7 +46,7 @@
 
     # ---------- Hide group headers ---------- #
     # Avoids extra visible completion group labels when possible
-    zstyle ':completion:*' group-name ''
+    zstyle ':completion:*' group-name ""
 
     # ---------- Enable completion cache ---------- #
     # Speeds up repeated completion lookups
