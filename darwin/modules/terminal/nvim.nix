@@ -9,7 +9,7 @@ let
   # ------------------------------------------------------------
   # PATHS
   # ------------------------------------------------------------
-  nvimConfigRoot = "/Users/ven/ven-dots/conf/nvim";
+  nvimConfigRoot = "/Users/ven/.config/nvim/";
   neovideRoot    = "/Users/ven/ven-dots/user-data/apps/neovide";
 
   # ------------------------------------------------------------
