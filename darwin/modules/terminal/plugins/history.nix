@@ -16,7 +16,7 @@
 
       # --- HISTFILE
       # #### Path to the zsh history file on disk.
-      path = "${config.home.homeDirectory}/ven-dots/zsh/.zsh_history";
+      path = "${config.home.homeDirectory}/.config/zsh/.zsh_history";
 
       # ---------- History size ---------- #
 
@@ -83,7 +83,7 @@
 
     initContent = ''
       # Ensure history directory exists
-      mkdir -p "$(dirname "${config.home.homeDirectory}/ven-dots/zsh/.zsh_history")"
+      mkdir -p "$(dirname "${config.home.homeDirectory}/.config/zsh/.zsh_history")"
       
       # ---------- History loading ---------- #
 
@@ -95,7 +95,6 @@
 
       # --- history()
       # #### Show command history with line numbers and timestamps.
-      # #### Use: history
       history() {
           builtin fc -il 1
       }

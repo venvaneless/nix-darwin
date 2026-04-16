@@ -11,7 +11,7 @@
 { config, pkgs, lib, ... }:
 
 let
-  asdfData = "${config.home.homeDirectory}/ven-dots/zsh/asdf";
+  asdfData = "${config.home.homeDirectory}/.config/zsh/asdf";
 in
 {
   # ------------------------------------------------------------

@@ -66,10 +66,10 @@
 
     # ---------- KEYBINDS ---------- #
 
-    # Rebind history search from Ctrl-R to Ctrl-L
-    bindkey -r '^R' 2>/dev/null
-    bindkey -r '^L' 2>/dev/null
-    bindkey '^L' fzf-history-widget
+    # Rebind history search from Ctrl-R to Ctrl-O
+    
+    bindkey -r '^O' 2>/dev/null
+    bindkey '^O' fzf-history-widget
 
     # Bind Ctrl-F to command picker
     bindkey -r '^F' 2>/dev/null

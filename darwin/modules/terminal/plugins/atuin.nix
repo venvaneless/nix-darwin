@@ -13,12 +13,6 @@
     enable = true;
     enableZshIntegration = true;
 
-    flags = [
-      "--disable-up-arrow"
-      "--disable-ctrl-r"
-    ];
-  };
-
   programs.zsh.sessionVariables = {
     # --- ATUIN_NOBIND
     # #### Prevent Atuin from automatically taking over keybindings.
