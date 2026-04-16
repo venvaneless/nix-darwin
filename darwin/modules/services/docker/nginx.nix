@@ -19,7 +19,7 @@
 let
   userHome = config.users.users.ven.home;
 
-  confRoot   = "${userHome}/ven-dots/conf";
+  confRoot   = "${userHome}/.config/nginx/";
   nginxConf  = "${confRoot}/nginx.conf";
   appsDir    = "${confRoot}/apps-enabled";
   logsDir    = "${confRoot}/logs";
