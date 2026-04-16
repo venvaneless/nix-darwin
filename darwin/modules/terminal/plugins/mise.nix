@@ -11,7 +11,7 @@
 { config, pkgs, ... }:
 
 let
-  miseDir = "${config.home.homeDirectory}/ven-dots/zsh/mise";
+  miseDir = "${config.home.homeDirectory}/.config/zsh/mise/";
 in
 {
   home.packages = [
