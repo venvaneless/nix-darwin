@@ -95,10 +95,10 @@
   # GLOBAL ENVIRONMENT VARIABLES
   # ------------------------------------------------------------
   environment.variables = {
-  	XDG_CONFIG_HOME = "/Users/ven/ven-dots/conf";
-   	XDG_STATE_HOME  = "/Users/ven/ven-dots/state";
-    XDG_DATA_HOME   = "/Users/ven/ven-dots/data";
-    XDG_CACHE_HOME  = "/Users/ven/ven-dots/cache";
+  	XDG_CONFIG_HOME = "/Users/ven/.config";
+   	XDG_STATE_HOME  = "/Users/ven/.config";
+    XDG_DATA_HOME   = "/Users/ven/.config";
+    XDG_CACHE_HOME  = "/Users/ven/.config/cache";
   };
 
   # ------------------------------------------------------------
@@ -127,7 +127,7 @@
 
     # System information fetch tool
     fastfetch
-    
+
     # GNU Awk text processing tool
     gawk
     # Git encryption tool
@@ -135,7 +135,7 @@
 
     # Git Filtering
     git-filter-repo
-    
+
     # Git Large File Storage
     git-lfs
 
