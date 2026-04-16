@@ -12,6 +12,7 @@
   programs.atuin = {
     enable = true;
     enableZshIntegration = true;
+  };
 
   programs.zsh.sessionVariables = {
     # --- ATUIN_NOBIND
