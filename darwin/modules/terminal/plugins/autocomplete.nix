@@ -41,7 +41,7 @@
     zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'
     
     # ---------- Hide group headers ---------- #
-    zstyle ':completion:*' group-name ''''
+    zstyle ':completion:*' group-name ""
 
     # ---------- Enable completion cache ---------- #
     zstyle ':completion:*' use-cache on
