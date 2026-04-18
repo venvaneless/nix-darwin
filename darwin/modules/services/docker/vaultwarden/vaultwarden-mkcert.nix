@@ -24,7 +24,7 @@ let
   userHome = config.users.users.${userName}.home;
   caroot   = "${userHome}/.config/mkcert";
 
-  certDir = "${userHome}/ven-dots/ssl/vaultwarden";
+  certDir = "${userHome}/.config/ssl/vaultwarden";
 
   # Server cert + key used by nginx
   certPem = "${certDir}/vaultwarden.local.pem";

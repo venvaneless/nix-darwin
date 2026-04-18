@@ -10,7 +10,7 @@
 
 let
   # Root directory for container data
-  containersRoot = "/Users/ven/ven-dots/user-data/containers";
+  containersRoot = "/Users/ven/.config/containers";
 
   # Docker binary for Docker Desktop on macOS
   dockerBin =
