@@ -35,6 +35,11 @@
 	      # Docker PATH
 	      "/Applications/Programming/Docker.app/Contents/Resources/bin"
 	    ];
+					
+					sessionVariables = {
+						COLORTERM = "truecolor";
+						MICRO_TRUECOLOR = "1";
+					};
 	  };
 
 	  # ----------------------------------------------------------------- #
