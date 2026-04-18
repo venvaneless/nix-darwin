@@ -54,7 +54,7 @@
 			./plugins/delta.nix
 			# ./plugins/bat.nix
 			# ./plugins/eza.nix
-			./plugins/fastfetch.nix
+			# ./plugins/fastfetch.nix
 			# ./plugins/fzf.nix
 			./plugins/history.nix
 			./plugins/history-substring-search.nix
