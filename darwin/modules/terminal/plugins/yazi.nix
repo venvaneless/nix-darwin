@@ -9,11 +9,18 @@
 { pkgs, lib, ... }:
 
 let
-  yaziFlavors = pkgs.fetchFromGitHub {
-    owner = "yazi-rs";
-    repo = "flavors";
+  catppuccinYazi = pkgs.fetchFromGitHub {
+    owner = "catppuccin";
+    repo = "yazi";
     rev = "main";
     hash = "sha256-Gm6ThktOLUR+KDs6f3s1WCgrw2TOKQ4tolVvVdCxnCM=";
+  };
+
+  catppuccinBat = pkgs.fetchFromGitHub {
+    owner = "catppuccin";
+    repo = "bat";
+    rev = "main";
+    hash = lib.fakeHash;
   };
 in
 {
@@ -21,15 +28,7 @@ in
     enable = true;
     enableZshIntegration = true;
 
-    flavors = {
-      catppuccin-mocha = "${yaziFlavors}/catppuccin-mocha.yazi";
-    };
-
     settings = {
-      flavor = {
-        dark = "catppuccin-mocha";
-      };
-
       mgr = {
         show_hidden = true;
         sort_by = "natural";
@@ -101,4 +100,10 @@ in
       mactag = pkgs.yaziPlugins.mactag;
     };
   };
+
+  xdg.configFile."yazi/theme.toml".text =
+    builtins.readFile "${catppuccinYazi}/themes/mocha/catppuccin-mocha-mauve.toml";
+
+  xdg.configFile."yazi/Catppuccin-mocha.tmTheme".text =
+    builtins.readFile "${catppuccinBat}/themes/Catppuccin Mocha.tmTheme";
 }

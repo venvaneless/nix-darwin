@@ -1,9 +1,8 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/micro.nix
 #
-# =============================================================
 # ZSH: MICRO
+# =========================
 # Modern and intuitive terminal-based text editor
-# =============================================================
 
 { pkgs, lib, ... }:
 
@@ -22,6 +21,11 @@ in
     settings = {
       colorscheme = "catppuccin-mocha";
     };
+  };
+
+  home.sessionVariables = {
+    MICRO_TRUECOLOR = "1";
+    COLORTERM = "truecolor";
   };
 
   xdg.configFile."micro/colorschemes/catppuccin-mocha.micro".text =
