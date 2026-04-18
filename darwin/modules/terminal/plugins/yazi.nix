@@ -66,6 +66,40 @@ in
   xdg.configFile."yazi/theme.toml".text = ''
     [flavor]
     dark = "catppuccin-mocha"
+  
+    [mgr]
+    cwd = { fg = "#b4befe" }
+    hovered = { fg = "#b4befe", bold = true }
+    preview_hovered = { underline = true }
+  
+    find_keyword  = { fg = "#f9e2af", italic = true }
+    find_position = { fg = "#b4befe", bg = "reset", italic = true }
+  
+    marker_selected = { fg = "#b4befe", bg = "#b4befe" }
+    count_selected  = { fg = "#1e1e2e", bg = "#b4befe" }
+  
+    [tabs]
+    active = { fg = "#1e1e2e", bg = "#cdd6f4", bold = true }
+  
+    [mode]
+    normal_main = { fg = "#1e1e2e", bg = "#b4befe", bold = true }
+    normal_alt  = { fg = "#b4befe", bg = "#313244" }
+  
+    [input]
+    border = { fg = "#b4befe" }
+  
+    [pick]
+    border = { fg = "#b4befe" }
+  
+    [confirm]
+    border = { fg = "#b4befe" }
+    title  = { fg = "#b4befe" }
+  
+    [cmp]
+    border = { fg = "#b4befe" }
+  
+    [tasks]
+    border = { fg = "#b4befe" }
   '';
 
   xdg.configFile."yazi/flavors/catppuccin-mocha.yazi/flavor.toml".source =
