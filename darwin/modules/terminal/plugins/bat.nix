@@ -16,7 +16,7 @@
           owner = "drluckyspin";
           repo = "rose-pine-bat";
           rev = "main";
-          hash = lib.fakeHash;
+          hash = "sha256-p0AR47OtBcQyyGJOjf+EjRQw0ckyUhcdeRqb7sA0zLI=";
         };
         file = "themes/Rose-Pine-Moon.tmTheme";
       };
