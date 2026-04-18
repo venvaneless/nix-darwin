@@ -17,173 +17,173 @@
     theme = {
       filekinds = {
         normal = {
-          foreground = "#e0def4";
+          foreground = "#ffffff";
         };
 
         directory = {
-          foreground = "#9ccfd8";
+          foreground = "#ffffff";
           is-bold = true;
         };
 
         symlink = {
-          foreground = "#c4a7e7";
+          foreground = "#ffffff";
         };
 
         executable = {
-          foreground = "#3e8fb0";
+          foreground = "#ffffff";
           is-bold = true;
         };
 
         pipe = {
-          foreground = "#f6c177";
+          foreground = "#ffffff";
         };
 
         socket = {
-          foreground = "#ea9a97";
+          foreground = "#ffffff";
         };
 
         block-device = {
-          foreground = "#eb6f92";
+          foreground = "#ffffff";
         };
 
         char-device = {
-          foreground = "#eb6f92";
+          foreground = "#ffffff";
         };
 
         special = {
-          foreground = "#908caa";
+          foreground = "#ffffff";
         };
       };
 
       perms = {
         user-read = {
-          foreground = "#9ccfd8";
+          foreground = "#ffffff";
         };
 
         user-write = {
-          foreground = "#f6c177";
+          foreground = "#ffffff";
         };
 
         user-execute = {
-          foreground = "#3e8fb0";
+          foreground = "#ffffff";
         };
 
         group-read = {
-          foreground = "#c4a7e7";
+          foreground = "#ffffff";
         };
 
         group-write = {
-          foreground = "#ea9a97";
+          foreground = "#ffffff";
         };
 
         group-execute = {
-          foreground = "#eb6f92";
+          foreground = "#ffffff";
         };
 
         other-read = {
-          foreground = "#908caa";
+          foreground = "#ffffff";
         };
 
         other-write = {
-          foreground = "#6e6a86";
+          foreground = "#ffffff";
         };
 
         other-execute = {
-          foreground = "#6e6a86";
+          foreground = "#ffffff";
         };
 
         special-user-file = {
-          foreground = "#eb6f92";
+          foreground = "#ffffff";
         };
 
         special-other = {
-          foreground = "#eb6f92";
+          foreground = "#ffffff";
         };
 
         attribute = {
-          foreground = "#6e6a86";
+          foreground = "#ffffff";
         };
       };
 
       size = {
         number = {
-          foreground = "#f6c177";
+          foreground = "#ffffff";
         };
 
         unit = {
-          foreground = "#908caa";
+          foreground = "#ffffff";
         };
       };
 
       users = {
         user-you = {
-          foreground = "#c4a7e7";
+          foreground = "#ffffff";
           is-bold = true;
         };
 
         user-root = {
-          foreground = "#eb6f92";
+          foreground = "#ffffff";
           is-bold = true;
         };
 
         user-other = {
-          foreground = "#e0def4";
+          foreground = "#ffffff";
         };
 
         group-your = {
-          foreground = "#9ccfd8";
+          foreground = "#ffffff";
         };
 
         group-other = {
-          foreground = "#908caa";
+          foreground = "#ffffff";
         };
 
         group-root = {
-          foreground = "#eb6f92";
+          foreground = "#ffffff";
         };
       };
 
       dates = {
         hour-old = {
-          foreground = "#3e8fb0";
+          foreground = "#ffffff";
         };
 
         day-old = {
-          foreground = "#9ccfd8";
+          foreground = "#ffffff";
         };
 
         older = {
-          foreground = "#6e6a86";
+          foreground = "#ffffff";
         };
       };
 
       git = {
         new = {
-          foreground = "#9ccfd8";
+          foreground = "#ffffff";
         };
 
         modified = {
-          foreground = "#ea9a97";
+          foreground = "#ffffff";
         };
 
         deleted = {
-          foreground = "#eb6f92";
+          foreground = "#ffffff";
         };
 
         renamed = {
-          foreground = "#3e8fb0";
+          foreground = "#ffffff";
         };
 
         typechange = {
-          foreground = "#f6c177";
+          foreground = "#ffffff";
         };
 
         ignored = {
-          foreground = "#6e6a86";
+          foreground = "#ffffff";
         };
 
         conflicted = {
-          foreground = "#eb6f92";
+          foreground = "#ffffff";
           is-bold = true;
         };
       };
