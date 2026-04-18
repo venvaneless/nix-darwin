@@ -13,7 +13,7 @@ let
     owner = "catppuccin";
     repo = "yazi";
     rev = "main";
-    hash = "sha256-Gm6ThktOLUR+KDs6f3s1WCgrw2TOKQ4tolVvVdCxnCM=";
+    hash = "sha256-lJapSgRVENTrbmpVyn+UQabC9fpV1G1e+CdlJ090uvg=";
   };
 
   catppuccinBat = pkgs.fetchFromGitHub {
