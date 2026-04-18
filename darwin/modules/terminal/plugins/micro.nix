@@ -12,7 +12,7 @@ let
     owner = "catppuccin";
     repo = "micro";
     rev = "main";
-    hash = lib.fakeHash;
+    hash = "sha256-Gm6ThktOLUR+KDs6f3s1WCgrw2TOKQ4tolVvVdCxnCM=";
   };
 in
 {
