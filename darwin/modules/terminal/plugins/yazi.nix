@@ -175,12 +175,12 @@ in
       };
     };
 
-    plugins = {
-      "full-border" = pkgs.yaziPlugins."full-border";
-      git = pkgs.yaziPlugins.git;
-      ouch = pkgs.yaziPlugins.ouch;
-      chmod = pkgs.yaziPlugins.chmod;
-      mactag = pkgs.yaziPlugins.mactag;
-    };
+    # plugins = {
+    #   "full-border" = pkgs.yaziPlugins."full-border";
+    #   git = pkgs.yaziPlugins.git;
+    #   ouch = pkgs.yaziPlugins.ouch;
+    #   chmod = pkgs.yaziPlugins.chmod;
+    #   mactag = pkgs.yaziPlugins.mactag;
+    # };
   };
 }
