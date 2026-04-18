@@ -26,7 +26,6 @@ in
 {
   programs.fzf = {
     enable = true;
-    fuzzyCompletion = true;
 
     defaultOptions = [
       "--height=40%"
