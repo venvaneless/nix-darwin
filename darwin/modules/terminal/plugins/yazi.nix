@@ -13,7 +13,7 @@ let
     owner = "yazi-rs";
     repo = "flavors";
     rev = "main";
-    hash = "lib.fakeHash";
+    hash = lib.fakeHash;
   };
 in
 {
