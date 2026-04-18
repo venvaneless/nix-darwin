@@ -60,6 +60,7 @@
 			./plugins/history-substring-search.nix
 			./plugins/lazygit.nix
 			./plugins/mcfly.nix
+			/plugins/micro.nix
 			./plugins/mise.nix
 			./plugins/payf.nix
 			./plugins/ripgrep.nix

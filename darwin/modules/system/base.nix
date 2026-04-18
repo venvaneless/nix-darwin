@@ -128,11 +128,14 @@
     # Git diff viewer with syntax highlighting
     delta
 
-    # Fast alternative to find
-    fd
-
     # System information fetch tool
     fastfetch
+    
+    # Fast alternative to find
+    fd
+    
+    # Create thumbnails for your video files
+    ffmpegthumbnailer
 
     # GNU Awk text processing tool
     gawk
@@ -150,9 +153,15 @@
 
     # Home Manager CLI
     home-manager
+    
+    # Tools and libraries to manipulate images in select formats
+    imagemagick
 
     # Terminal UI for Git
     lazygit
+    
+    # Supplies technical and tag information about a video or audio file
+    mediainfo
 
     # Terminal text editor
     micro
@@ -168,7 +177,13 @@
 
     # Tools for NSS certificates
     nssTools
-
+    
+    # 7-Zip (high compression file archiver) implementation
+    p7zip
+    
+    # PDF rendering library
+    poppler
+    
     # Fast recursive search tool
     ripgrep
 
