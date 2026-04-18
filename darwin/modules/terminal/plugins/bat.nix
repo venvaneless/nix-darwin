@@ -10,7 +10,6 @@
 {
   programs.bat = {
     enable = true;
-    enableGitIntegration = true;
 
     themes = {
       "Rose-Pine-Moon" = {
