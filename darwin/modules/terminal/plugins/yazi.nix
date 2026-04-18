@@ -181,6 +181,6 @@ in
        	ouch = pkgs.yaziPlugins.ouch;
         chmod = pkgs.yaziPlugins.chmod;
         mactag = pkgs.yaziPlugins.mactag;
-    # };
+    };
   };
 }
