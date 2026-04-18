@@ -26,7 +26,7 @@
     config = {
       theme = "Rose-Pine-Moon";
       paging = "auto";
-      pager = "less -R";
+      pager = "less -R -X";
       style = "numbers,changes,header";
       italic-text = "always";
     };
@@ -41,8 +41,15 @@
   };
 
   programs.zsh.shellAliases = {
+  
+  # --- cat -> bat
+  	# Use bat instead of cat for syntax highlighting and nicer output
     cat = "bat";
+    
+    # use batdiff instead of standard diff
     diff = "batdiff";
+    
+    # use batman for man pages
     man = "batman";
   };
 }

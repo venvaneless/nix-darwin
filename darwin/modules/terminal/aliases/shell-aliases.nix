@@ -6,10 +6,6 @@
   programs.zsh.shellAliases = {
     # ---------- Core ---------- #
 
-    # --- cat -> bat
-    ## Use bat instead of cat for syntax highlighting and nicer output
-    cat = "bat";
-
     # --- ccx -> clear
     ## Clear the terminal screen quickly
     ccx = "clear";
