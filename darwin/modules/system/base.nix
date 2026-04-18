@@ -113,6 +113,9 @@
     # Shell history sync and search
     atuin
 
+    # Cat clone with syntax highlighting and Git integration
+    # bat
+    
     # New Bash
     bashInteractive
 

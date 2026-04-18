@@ -53,6 +53,7 @@
     	./plugins/autosuggestions.nix
      	./plugins/atuin.nix
 			./plugins/delta.nix
+			./plugins/fastfetch.nix
 			./plugins/fzf.nix
 			./plugins/history.nix
 			./plugins/history-substring-search.nix
