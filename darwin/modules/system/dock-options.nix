@@ -129,11 +129,12 @@
     static-only = false;
 
     persistent-apps = [
-    "/Applications/Programming/iTerm.app"
+    "/Applications/LocalSend.app"
+    "/Applications/Multimedia/Cider.app"
+    "/Applications/Programming/WezTerm.app"
     "/Applications/Programming/SnippetsLab.app"
     "/Applications/Productivity/Zed.app"
     "/Applications/Helium.app"
-    "/Applications/LocalSend.app"
     "/Applications/Webapps/ChatGPT.app"
     ];
   };
