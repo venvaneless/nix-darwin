@@ -114,7 +114,7 @@
     atuin
 
     # Cat clone with syntax highlighting and Git integration
-    # bat
+    bat
     
     # New Bash
     bashInteractive
