@@ -4,32 +4,33 @@
 # =========================
 # Cat clone with syntax highlighting and Git integration
 
-{ ... }:
+{ pkgs, lib, ... }:
 
 {
-	programs.bat = {
-  enable = true;
-  enableGitIntegration = true;
+  programs.bat = {
+    enable = true;
+    enableGitIntegration = true;
 
-  themes = {
-    "Rose-Pine-Moon" = {
-      src = pkgs.fetchFromGitHub {
-        owner = "drluckyspin";
-        repo = "rose-pine-bat";
-        rev = "main";
-        hash = lib.fakeHash;
+    themes = {
+      "Rose-Pine-Moon" = {
+        src = pkgs.fetchFromGitHub {
+          owner = "drluckyspin";
+          repo = "rose-pine-bat";
+          rev = "main";
+          hash = lib.fakeHash;
+        };
+        file = "themes/Rose-Pine-Moon.tmTheme";
       };
-      file = "themes/Rose-Pine-Moon.tmTheme";
+    };
+
+    config = {
+      theme = "Rose-Pine-Moon";
+      paging = "auto";
+      pager = "less -R";
     };
   };
 
-  config = {
-    theme = "Rose-Pine-Moon";
-    paging = "auto";
-    pager = "less -R";
+  programs.zsh.shellAliases = {
+    cat = "bat";
   };
-};
-
-programs.zsh.shellAliases = {
-  cat = "bat";
-};
+}
