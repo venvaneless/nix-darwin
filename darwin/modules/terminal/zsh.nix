@@ -53,7 +53,7 @@
     	./plugins/autosuggestions.nix
      	./plugins/atuin.nix
 			./plugins/delta.nix
-			./plugins/bat.nix
+			# ./plugins/bat.nix
 			# ./plugins/eza.nix
 			./plugins/fastfetch.nix
 			./plugins/fzf.nix
