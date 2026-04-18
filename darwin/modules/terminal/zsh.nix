@@ -63,6 +63,7 @@
 			./plugins/mcfly.nix
 			./plugins/mise.nix
 			./plugins/payf.nix
+			./plugins/ripgrep.nix
 			./plugins/starship.nix
 			./plugins/syntax-highlighting.nix
 	  	./plugins/tmux.nix

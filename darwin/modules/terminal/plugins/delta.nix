@@ -2,7 +2,7 @@
 #
 # ZSH: DELTA
 # =========================
-# Enables delta for Git diffs.
+# Enables delta for Git diffs
 
 { ... }:
 
