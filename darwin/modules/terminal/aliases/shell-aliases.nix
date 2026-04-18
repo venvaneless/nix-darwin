@@ -275,18 +275,10 @@
     # --- dir
     ## Colorized dir output
     dir = "dir --color=auto";
-
-    # --- egrep
-    ## Use ugrep for extended regex searches
-    egrep = "ugrep -E --color=auto";
-
+    
     # --- fgrep
-    ## Use ugrep for fixed-string searches
-    fgrep = "ugrep -F --color=auto";
-
-    # --- grep
-    ## Use ripgrep instead of grep
-    grep = "ripgrep --color=auto";
+    ## fixed-string searches
+    fgrep = "rg -F --color=auto";
 
     # --- ip -> ifconfig
     ## Use ifconfig for network interface inspection on macOS
