@@ -23,5 +23,5 @@
   };
 
   xdg.configFile."eza/theme.yml".source =
-    config.lib.file.mkOutOfStoreSymlink "/Users/ven/.config/eza/rose-pine-moon.yml";
+    config.lib.file.mkOutOfStoreSymlink "/Users/ven/.config/eza/rose-pine-dawn.yml";
 }
