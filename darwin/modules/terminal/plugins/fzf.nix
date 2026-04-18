@@ -72,8 +72,10 @@ in
     # ---------- zsh-fzf-history-search ---------- #
     if [ -f "${pkgs.zsh-fzf-history-search}/share/zsh-fzf-history-search/history-search.plugin.zsh" ]; then
       source "${pkgs.zsh-fzf-history-search}/share/zsh-fzf-history-search/history-search.plugin.zsh"
-    else
-      echo "zsh-fzf-history-search plugin not found!"
+    elif [ -f "${pkgs.zsh-fzf-history-search}/share/history-search.plugin.zsh" ]; then
+      source "${pkgs.zsh-fzf-history-search}/share/history-search.plugin.zsh"
+    elif [ -f "${pkgs.zsh-fzf-history-search}/share/zsh/plugins/zsh-fzf-history-search/history-search.plugin.zsh" ]; then
+      source "${pkgs.zsh-fzf-history-search}/share/zsh/plugins/zsh-fzf-history-search/history-search.plugin.zsh"
     fi
 
     # ---------- forgit ---------- #
