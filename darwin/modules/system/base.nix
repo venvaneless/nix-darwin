@@ -153,6 +153,9 @@
 
     # Nix formatter
     nil
+    
+    # Nix search database
+    nix-index
 
     # Nix language server
     nixd
