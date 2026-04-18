@@ -19,6 +19,7 @@
     ./hammerspoon.nix
     ./helium-browser.nix
     ./iterm.nix
+    ./jdownloader.nix
     ./kiwix.nix
     ./obsidian.nix
     ./paste.nix
