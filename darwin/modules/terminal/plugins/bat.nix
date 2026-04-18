@@ -1,27 +1,35 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/eza.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/bat.nix
 #
-# ZSH: EZA
+# ZSH: BAT
 # =========================
-# A modern replacement for ls
+# Cat clone with syntax highlighting and Git integration
 
-{ config, ... }:
+{ ... }:
 
 {
-  programs.eza = {
-    enable = true;
-    enableZshIntegration = true;
+	programs.bat = {
+  enable = true;
+  enableGitIntegration = true;
 
-    colors = "auto";
-    icons = "auto";
-    git = true;
-
-    extraOptions = [
-      "--group-directories-first"
-      "--header"
-      "--all"
-    ];
+  themes = {
+    "Rose-Pine-Moon" = {
+      src = pkgs.fetchFromGitHub {
+        owner = "drluckyspin";
+        repo = "rose-pine-bat";
+        rev = "main";
+        hash = lib.fakeHash;
+      };
+      file = "themes/Rose-Pine-Moon.tmTheme";
+    };
   };
 
-  xdg.configFile."eza/theme.yml".source =
-    config.lib.file.mkOutOfStoreSymlink "/Users/ven/.config/eza/rose-pine-moon.yml";
-}
+  config = {
+    theme = "Rose-Pine-Moon";
+    paging = "auto";
+    pager = "less -R";
+  };
+};
+
+programs.zsh.shellAliases = {
+  cat = "bat";
+};
