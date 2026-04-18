@@ -20,7 +20,7 @@ let
     owner = "rose-pine";
     repo = "fzf";
     rev = "main";
-    hash = lib.fakeHash;
+    hash = sha256-WKREw1qzjuURqrCS6LI5ySc924W8d2n0rlA6AV1K5OE=;
   };
 in
 {
