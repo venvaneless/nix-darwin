@@ -1,8 +1,8 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/bat.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/eza.nix
 #
 # ZSH: BAT
 # =========================
-# Cat clone with syntax highlighting and Git integration
+# A modern replacement for ls
 
 { ... }:
 
