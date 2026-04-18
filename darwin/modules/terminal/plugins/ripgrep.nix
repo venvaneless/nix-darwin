@@ -9,6 +9,5 @@
 {
   programs.ripgrep = {
     enable = true;
-    enableGitIntegration = true;
   };
 }
