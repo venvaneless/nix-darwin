@@ -4,22 +4,16 @@
 # =========================
 # A modern replacement for ls
 
-{ pkgs, ... }:
+{ config, ... }:
 
-let
-  ezaThemeDir = pkgs.runCommand "eza-theme-dir" {} ''
-    mkdir -p "$out"
-    cp /Users/ven/.config/eza/rose-pine-moon.yml "$out/theme.yml"
-  '';
-in
 {
   programs.eza = {
     enable = true;
     enableZshIntegration = true;
+    git = true;
 
     colors = "auto";
     icons = "auto";
-    git = true;
 
     extraOptions = [
       "--group-directories-first"
@@ -28,7 +22,6 @@ in
     ];
   };
 
-  home.sessionVariables = {
-    EZA_CONFIG_DIR = "${ezaThemeDir}";
-  };
+  xdg.configFile."eza/theme.yml".source =
+    config.lib.file.mkOutOfStoreSymlink "/Users/ven/.config/eza/rose-pine-moon.yml";
 }
