@@ -1,15 +1,18 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/fastfetch.nix
 
-{ lib, pkgs, ... }:
+{ ... }:
 
 {
-  programs.fastfetch = {
-    enable = true;
-  };
+  programs.fastfetch.enable = true;
 
   programs.zsh.initContent = ''
     if [[ -o interactive ]] && command -v fastfetch >/dev/null 2>&1; then
-      fastfetch --config "$HOME/.config/fastfetch.jsonc"
+      FASTFETCH_SESSION_MARKER="${XDG_RUNTIME_DIR:-$TMPDIR}/fastfetch-shown-$USER"
+
+      if [[ ! -e "$FASTFETCH_SESSION_MARKER" ]]; then
+        fastfetch --config "$HOME/.config/fastfetch.jsonc"
+        : > "$FASTFETCH_SESSION_MARKER"
+      fi
     fi
   '';
-}
+}	

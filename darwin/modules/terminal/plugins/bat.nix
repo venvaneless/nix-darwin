@@ -1,19 +1,21 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/bat.nix
-#
-# ZSH: BAT
-# =========================
-# Cat clone with syntax highlighting and Git integration
+programs.bat = {
+  enable = true;
 
-{ ... }:
+  themes = {
+    rose-pine-moon = {
+      src = pkgs.fetchFromGitHub {
+        owner = "drluckyspin";
+        repo = "rose-pine-bat";
+        rev = "main";
+        hash = lib.fakeHash;
+      };
+      file = "Rose-Pine-Moon.tmTheme";
+    };
+  };
 
-{
-  programs.bat = {
-    enable = true;
-    enableGitIntegration = true;
+  settings = {
+    theme = "Rose-Pine-Moon";
+    paging = "auto";
+    pager = "less -R";
   };
-  
-  programs.zsh.sessionVariables = {
-    BAT_THEME = "Rose Pine";
-    BAT_PAGER = "less -R"; # ensures colors render correctly
-  };
-}
+};
