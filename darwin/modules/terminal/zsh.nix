@@ -52,15 +52,15 @@
     	./plugins/autosuggestions.nix
      	./plugins/atuin.nix
 			./plugins/delta.nix
-			# ./plugins/bat.nix
-			# ./plugins/eza.nix
-			# ./plugins/fastfetch.nix
-			# ./plugins/fzf.nix
+			./plugins/bat.nix
+			./plugins/eza.nix
+			./plugins/fastfetch.nix
+			./plugins/fzf.nix
 			./plugins/history.nix
 			./plugins/history-substring-search.nix
 			./plugins/lazygit.nix
 			./plugins/mcfly.nix
-			/plugins/micro.nix
+			./plugins/micro.nix
 			./plugins/mise.nix
 			./plugins/payf.nix
 			./plugins/ripgrep.nix
