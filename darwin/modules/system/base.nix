@@ -96,9 +96,9 @@
   # ------------------------------------------------------------
   environment.variables = {
   	XDG_CONFIG_HOME = "/Users/ven/.config";
-   	XDG_STATE_HOME  = "/Users/ven/.config";
-    XDG_DATA_HOME   = "/Users/ven/.config";
-    XDG_CACHE_HOME  = "/Users/ven/.config/cache";
+   	XDG_STATE_HOME  = "/Users/ven/.config/.state";
+    XDG_DATA_HOME   = "/Users/ven/.config/.local/share";
+    XDG_CACHE_HOME  = "/Users/ven/.config/.cache";
   };
 
   # ------------------------------------------------------------
