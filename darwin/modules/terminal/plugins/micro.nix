@@ -11,7 +11,7 @@ let
     owner = "catppuccin";
     repo = "micro";
     rev = "main";
-    hash = "sha256-XbhUwRz21/XLkdOb6VOqLwzxWtehf6qRms0YcepNQ0s=";
+    hash = "sha256-XbhUwRz21XLkdOb6VOqLwzxWtehf6qRms0YcepNQ0s=";
   };
 in
 {
