@@ -1,8 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/eza.nix
 #
-# ZSH: EZA
-# =========================
+# =============================================================
+# EZA
 # A modern replacement for ls
+# =============================================================
 
 { ... }:
 
@@ -25,13 +26,13 @@
       filekinds = {
         normal = { foreground = "#e0def4"; };
         directory = { foreground = "#9ccfd8"; };
-        symlink = { foreground = "#56526e"; };
+        symlink = { foreground = "#c4a7e7"; };
         pipe = { foreground = "#908caa"; };
         block_device = { foreground = "#ea9a97"; };
         char_device = { foreground = "#f6c177"; };
         socket = { foreground = "#2a283e"; };
         special = { foreground = "#c4a7e7"; };
-        executable = { foreground = "#c4a7e7"; };
+        executable = { foreground = "#e0def4"; };
         mount_point = { foreground = "#44415a"; };
       };
 
@@ -85,6 +86,7 @@
         modified = { foreground = "#f6c177"; };
         deleted = { foreground = "#eb6f92"; };
         renamed = { foreground = "#3e8fb0"; };
+        typechange = { foreground = "#c4a7e7"; };
         ignored = { foreground = "#6e6a86"; };
         conflicted = { foreground = "#ea9a97"; };
       };
@@ -108,6 +110,7 @@
         image = { foreground = "#f6c177"; };
         video = { foreground = "#eb6f92"; };
         music = { foreground = "#9ccfd8"; };
+        lossless = { foreground = "#6e6a86"; };
         crypto = { foreground = "#44415a"; };
         document = { foreground = "#908caa"; };
         compressed = { foreground = "#c4a7e7"; };
@@ -117,13 +120,46 @@
         source = { foreground = "#ea9a97"; };
       };
 
+      extensions = {
+        "cpp" = { filename = { foreground = "#ea9a97"; }; };
+        "rs" = { filename = { foreground = "#ea9a97"; }; };
+        "mp4" = { filename = { foreground = "#eb6f92"; }; };
+        "png" = { filename = { foreground = "#f6c177"; }; };
+        "tar.gz" = { filename = { foreground = "#c4a7e7"; }; };
+        "gz" = { filename = { foreground = "#c4a7e7"; }; };
+        "zip" = { filename = { foreground = "#c4a7e7"; }; };
+        "pdf" = { filename = { foreground = "#908caa"; }; };
+        "docx" = { filename = { foreground = "#908caa"; }; };
+        "pem" = { filename = { foreground = "#56526e"; }; };
+        "toml" = { filename = { foreground = "#908caa"; }; };
+        "yml" = { filename = { foreground = "#908caa"; }; };
+        "yaml" = { filename = { foreground = "#908caa"; }; };
+        "ini" = { filename = { foreground = "#e0def4"; }; };
+        "conf" = { filename = { foreground = "#e0def4"; }; };
+        "iso" = { filename = { foreground = "#c4a7e7"; }; };
+        "mp3" = { filename = { foreground = "#9ccfd8"; }; };
+        "flac" = { filename = { foreground = "#6e6a86"; }; };
+        "sh" = { filename = { foreground = "#c4a7e7"; }; };
+      };
+
+      filenames = {
+        "Cargo.lock" = { filename = { foreground = "#908caa"; }; };
+        "Cargo.toml" = { filename = { foreground = "#908caa"; }; };
+        ".pre-commit.yaml" = { filename = { foreground = "#908caa"; }; };
+        "README.md" = { filename = { foreground = "#908caa"; }; };
+        "Makefile" = { filename = { foreground = "#56526e"; }; };
+        "justfile" = { filename = { foreground = "#56526e"; }; };
+        "nginx.conf" = { filename = { foreground = "#e0def4"; }; };
+      };
+
       punctuation = { foreground = "#56526e"; };
       date = { foreground = "#3e8fb0"; };
       inode = { foreground = "#908caa"; };
-      blocks = { foreground = "#908caa"; };
+      blocks = { foreground = "#9399B2"; };
       header = { foreground = "#908caa"; };
       octal = { foreground = "#9ccfd8"; };
       flags = { foreground = "#c4a7e7"; };
+      symlink_path = { foreground = "#9ccfd8"; };
       control_char = { foreground = "#3e8fb0"; };
       broken_symlink = { foreground = "#eb6f92"; };
       broken_path_overlay = { foreground = "#56526e"; };

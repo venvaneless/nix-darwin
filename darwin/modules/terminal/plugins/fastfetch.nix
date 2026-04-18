@@ -1,8 +1,10 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/fastfetch.nix
 #
-# ZSH: FASTFETCH
-# =========================
-# Feature-rich and performance oriented, neofetch like system information tool
+# =============================================================
+# FASTFETCH
+# Feature-rich and performance oriented,
+# neofetch like system information tool
+# =============================================================
 
 { ... }:
 

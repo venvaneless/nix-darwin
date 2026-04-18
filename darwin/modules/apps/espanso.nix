@@ -1,10 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/espanso.nix
 # 
-# ============================================================
+# =============================================================
 # ESPANSO
-# 
-# Cross-platform Text Expander written in Rust.
-# ============================================================
+# Cross-platform Text Expander written in Rust
+# =============================================================
 
 { ... }:
 

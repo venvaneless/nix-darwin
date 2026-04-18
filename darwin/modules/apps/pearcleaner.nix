@@ -1,11 +1,10 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/pearcleaner.nix
 #
-# ============================================================
+# =============================================================
 # PEARCLEANER
-#
 # Utility to uninstall apps and remove leftover files
 # from old/uninstalled apps.
-# ============================================================
+# =============================================================
 
 { ... }:
 

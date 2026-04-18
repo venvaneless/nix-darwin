@@ -1,12 +1,18 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/mise.nix
 #
-# DARWIN: MISE VERSION MANAGER
-# ====================================================================
-# - Installs mise via Nix
-# - Forces ALL mise dirs into ~/ven-dots/zsh/mise
-# - Global tools in ~/ven-dots/zsh/mise/config.toml
-# - Shims on PATH from ~/ven-dots/zsh/mise/shims
-# ====================================================================
+# =============================================================
+# MISE VERSION MANAGER
+# Polyglot runtime manager
+# -----------------------------------------
+# 
+# ---- PATHS
+# -- Main mise dir
+# ~/ven-dots/zsh/mise
+# -- Global tools
+# ~/ven-dots/zsh/mise/config.toml
+# -- Shims on PATH
+# ~/ven-dots/zsh/mise/shims
+# =============================================================
 
 { config, pkgs, ... }:
 

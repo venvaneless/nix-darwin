@@ -1,17 +1,10 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/services/astrovim.nix
 #
-# ============================================================
+# =====================================================================
 # ASTROVIM
-# 
 # AstroNvim is an aesthetically pleasing and feature-rich
-# Neovim configuration that focuses on extensibility and usability.
-# 
-# IMPORTANT:
-# Declaratively installs AstroNvim config by symlinking
-# the AstroNvim repo into ~/.config/nvim on every activation.
-# Uses writeShellScriptBin to ensure reliable execution
-# under nix-darwin activation.
-# ============================================================
+# Neovim configuration that focuses on extensibility and usability
+# =====================================================================
 
 { lib, pkgs, inputs, ... }:
 

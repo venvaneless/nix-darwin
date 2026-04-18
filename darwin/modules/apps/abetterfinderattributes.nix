@@ -1,10 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/a-better-finder-attributes.nix
 # 
-# ============================================================
+# =============================================================
 # A BETTER FINDER ATTRIBUTES
-# 
-# File and photo tweaking tool.
-# ============================================================
+# File and photo tweaking tool
+# =============================================================
 
 { ... }:
 

@@ -1,9 +1,9 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/proton-mail-bridge.nix
-# 
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/vscode.nix
+#
 # ============================================================
-# OBSIDIAN
-# 
-# Bridges Proton Mail to email clients supporting IMAP and SMTP protocols
+# CALIBRE
+#
+# Open-source code editor
 # ============================================================
 
 { ... }:
@@ -11,9 +11,9 @@
 let
 # App metadata
 # ------------------------------------------------------------
-	appName   = "Proton Mail Bridge.app";
-	caskName  = "proton-mail-bridge";
-  targetDir = "/Applications/System";
+	appName   = "Visual Studio Code.app";
+	caskName  = "visual-studio-code";
+	targetDir = "/Applications/Programming";
 in
 {
 
@@ -28,7 +28,7 @@ in
 
   # Ensure application directory exists
   # ------------------------------------------------------------
-  system.activationScripts.ensureProtonBridgeDir.text = ''
+  system.activationScripts.ensureVisualStudioCodeAppDir.text = ''
     if [ ! -d "${targetDir}" ]; then
       echo "[${appName}] Creating application directory: ${targetDir}"
       mkdir -p "${targetDir}"

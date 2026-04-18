@@ -1,12 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/simplenote.nix
 # 
-# =========================================	===================
-# PASTE
-# 
-# Your clipboard, supercharged and secure Paste keeps everything
-# you copy organized and searchable. Lightweight, intuitive,
-# packed with smart features, and private by design.
-# ============================================================
+# =============================================================
+# SIMPLENOTE
+# Simple note-taking app written in React
+# =============================================================
 
 { ... }:
 

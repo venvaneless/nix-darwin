@@ -1,8 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/lazygit.nix
 #
-# ZSH: LAZYGIT
-# =========================
+# =============================================================
+# LAZYGIT
 # Installs and enables Lazygit configuration support.
+# =============================================================
 
 { ... }:
 

@@ -1,8 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/zoxide.nix
 #
-# ZSH: ZOXIDE
-# =========================
-# Enables smarter directory jumping for Zsh.
+# =============================================================
+# ZOXIDE
+# Shell extension to navigate your filesystem faster
+# =============================================================
 
 { ... }:
 

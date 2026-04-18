@@ -1,11 +1,10 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/obsidian.nix
 # 
-# ============================================================
+# =============================================================
 # OBSIDIAN
-# 
 # Knowledge base that works on top of a local folder
-# of plain text Markdown files.
-# ============================================================
+# of plain text Markdown files
+# =============================================================
 
 { ... }:
 

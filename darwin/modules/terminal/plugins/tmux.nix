@@ -1,8 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/tmux.nix
 #
-# ZSH: TMUX
-# =========================
-# Enables tmux with a sane default config.
+# =============================================================
+# TMUX
+# Enables tmux with a sane default config
+# =============================================================
 
 { ... }:
 

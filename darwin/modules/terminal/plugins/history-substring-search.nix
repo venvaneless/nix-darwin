@@ -2,8 +2,16 @@
 #
 # ============================================================
 # ZSH: HISTORY SUBSTRING SEARCH
-# - Up / Down arrows walk normal history when prompt is empty
-# - Up / Down arrows search matching history when text is typed
+# Zsh port of Fish shell's history search
+# -----------------------------------------
+# 
+# ---- Keybindings
+# -- Walk normal history when prompt is empty
+# Up / Down arrows
+# --Search matching history when text is typed
+# Up / Down arrow
+# 
+# ---- NOTE
 # - Uses terminal-aware key bindings
 # ============================================================
 

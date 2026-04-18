@@ -24,11 +24,11 @@
     ./obsidian.nix
     ./paste.nix
     ./pearcleaner.nix
-    ./proton-mail-bridge.nix
     ./raycast.nix
     ./simplenote.nix
     ./thaw.nix
     ./vlc.nix
+    ./vscode.nix
     ./vesktop.nix
     ./wezterm.nix
     ./zed.nix

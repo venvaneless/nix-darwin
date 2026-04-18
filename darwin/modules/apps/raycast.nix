@@ -1,16 +1,10 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/raycast.nix
 # 
-# ============================================================
+# =============================================================
 # RAYCAST
-# 
 # A collection of powerful productivity tools all within
-# an extendable macOS launcher.
-# 
-# Raycast is a blazingly fast macOS launcher that replaces
-# the clutter of menus, buried apps, and slow search with
-# a single command bar. Everything on your computer becomes
-# instantly accessible from your keyboard.
-# ============================================================
+# an extendable macOS launcher
+# =============================================================
 
 { ... }:
 

@@ -1,10 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/a-better-finder-rename.nix
 # 
-# ============================================================
+# =============================================================
 # A BETTER FINDER RENAME
-# 
-# Renamer for files, music and photos.
-# ============================================================
+# Renamer for files, music and photos
+# =============================================================
 
 { ... }:
 

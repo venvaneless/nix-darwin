@@ -1,12 +1,11 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/paste.nix
 # 
-# ============================================================
+# =============================================================
 # PASTE
-# 
 # Your clipboard, supercharged and secure Paste keeps everything
 # you copy organized and searchable. Lightweight, intuitive,
-# packed with smart features, and private by design.
-# ============================================================
+# packed with smart features, and private by design
+# =============================================================
 
 { ... }:
 

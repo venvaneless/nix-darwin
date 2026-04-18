@@ -1,7 +1,11 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/history.nix
 #
 # ============================================================
-# ZSH: HISTORY
+# ZSH HISTORY
+# zsh history settings
+# -----------------------------------------
+# 
+# ---- NOTES
 # - Persists command history across terminal restarts
 # - Shares history across shell sessions
 # - Keeps a large searchable history file
@@ -84,7 +88,7 @@
     initContent = ''
       # Ensure history directory exists
       mkdir -p "$(dirname "${config.home.homeDirectory}/.config/zsh/.zsh_history")"
-      
+
       # ---------- History loading ---------- #
 
       # --- fc -R

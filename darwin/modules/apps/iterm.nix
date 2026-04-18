@@ -1,10 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/iterm.nix
 # 
-# ============================================================
+# =============================================================
 # ITERM2
-# 
-# Terminal emulator as alternative to Apple's Terminal app.
-# ============================================================
+# Terminal emulator as alternative to Apple's Terminal app
+# =============================================================
 
 { ... }:
 

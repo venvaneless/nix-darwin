@@ -1,7 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/syntax-highlighting.nix
 #
-# ZSH: SYNTAX HIGHLIGHTING
-# ============================================================
+# =============================================================
+# ZSH SYNTAX HIGHLIGHTING
+# Fish shell like syntax highlighting for zsh
+# =============================================================
 
 { ... }:
 

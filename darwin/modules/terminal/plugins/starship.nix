@@ -1,6 +1,8 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/starship.nix
-#
-# ZSH: STARSHIP PROMPT
+# 
+# =============================================================
+# STARSHIP
+# Cross-shell prompt for astronauts
 # ============================================================
 
 { config, ... }:

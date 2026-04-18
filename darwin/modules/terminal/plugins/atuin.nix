@@ -1,10 +1,24 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/atuin.nix
 #
-# ============================================================
-# ZSH: ATUIN
-#
-# Enables Atuin and hooks it into Zsh history search.
-# ============================================================
+# =============================================================
+# ATUIN
+# Enables Atuin and hooks it into Zsh history search
+# =============================================================
+# 
+# ---- Keybindings
+# -- Start of line
+# Ctrl-A
+# -- End of line
+# Ctrl-E
+# -- Delete from cursor back to start
+# Ctrl-U
+# -- Delete from cursor to end
+# Ctrl-K
+# -- Delete previous word
+# Ctrl-W
+# -- Clear screen
+# Ctrl-L
+# =============================================================
 
 { ... }:
 
@@ -28,13 +42,5 @@
     # --- Ctrl-R -> atuin-search
     # #### Bind Ctrl-R to Atuin search.
     bindkey '^R' atuin-search
-
-    # Keybindings
-    # Ctrl-A = start of line
-    # Ctrl-E = end of line
-    # Ctrl-U = delete from cursor back to start
-    # Ctrl-K = delete from cursor to end
-    # Ctrl-W = delete previous word
-    # Ctrl-L = clear screen
   '';
 }

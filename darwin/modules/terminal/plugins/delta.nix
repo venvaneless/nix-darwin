@@ -1,8 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/delta.nix
 #
-# ZSH: DELTA
-# =========================
-# Enables delta for Git diffs
+# =============================================================
+# DELTA
+# Syntax-highlighting pager for git and diff output
+# =============================================================
 
 { ... }:
 

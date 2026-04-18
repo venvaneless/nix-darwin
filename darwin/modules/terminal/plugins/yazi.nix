@@ -1,8 +1,9 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/yazi.nix
 #
-# ZSH: YAZI
-# =========================
-# Enables Yazi and shell integration for directory jumping on exit.
+# =============================================================
+# YAZI
+# Blazing fast terminal file manager written in Rust, based on async I/O
+# =============================================================
 
 { ... }:
 

@@ -1,11 +1,10 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/hammerspoon.nix
 # 
-# ============================================================
+# =============================================================
 # HAMMERSPOOON
-# 
-# Hammerspoon is a tool for powerful automation of macOS.
+# Tool for powerful automation of macOS
 # At its core, Hammerspoon is just a bridge between
-# the operating system and a Lua scripting engine.
+# the operating system and a Lua scripting engine
 # ============================================================
 
 { ... }:

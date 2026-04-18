@@ -48,7 +48,6 @@
 			./aliases/shell-aliases.nix
 
 			# ---- Plugins ------ #
-    	./plugins/asdf.nix
      	./plugins/autocomplete.nix
     	./plugins/autosuggestions.nix
      	./plugins/atuin.nix
