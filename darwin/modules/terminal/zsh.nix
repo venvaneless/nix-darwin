@@ -67,7 +67,7 @@
 			./plugins/starship.nix
 			./plugins/syntax-highlighting.nix
 	  	./plugins/tmux.nix
-			# ./plugins/yazi.nix
+			./plugins/yazi.nix
 			./plugins/zoxide.nix
 	  ];
 	}
