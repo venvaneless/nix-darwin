@@ -3,12 +3,14 @@
 # ZSH: BAT
 # =========================
 # Cat clone with syntax highlighting and Git integration
+# Includes bat-extras helper tools
 
 { pkgs, lib, ... }:
 
 {
   programs.bat = {
     enable = true;
+    enableGitIntegration = true;
 
     themes = {
       "Rose-Pine-Moon" = {
@@ -26,10 +28,22 @@
       theme = "Rose-Pine-Moon";
       paging = "auto";
       pager = "less -R";
+      style = "numbers,changes,header";
+      italic-text = "always";
     };
+
+    extraPackages = with pkgs.bat-extras; [
+      batdiff
+      batman
+      batgrep
+      batpipe
+      batwatch
+    ];
   };
 
   programs.zsh.shellAliases = {
     cat = "bat";
+    diff = "batdiff";
+    man = "batman";
   };
 }
