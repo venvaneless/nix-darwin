@@ -285,8 +285,8 @@
     fgrep = "ugrep -F --color=auto";
 
     # --- grep
-    ## Use ugrep instead of grep
-    grep = "ugrep --color=auto";
+    ## Use ripgrep instead of grep
+    grep = "ripgrep --color=auto";
 
     # --- ip -> ifconfig
     ## Use ifconfig for network interface inspection on macOS
