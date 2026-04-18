@@ -7,7 +7,7 @@
 
   programs.zsh.initContent = ''
     if [[ -o interactive ]] && command -v fastfetch >/dev/null 2>&1; then
-      FASTFETCH_SESSION_MARKER="${XDG_RUNTIME_DIR:-$TMPDIR}/fastfetch-shown-$USER"
+      FASTFETCH_SESSION_MARKER="''${XDG_RUNTIME_DIR:-$TMPDIR}/fastfetch-shown-$USER"
 
       if [[ ! -e "$FASTFETCH_SESSION_MARKER" ]]; then
         fastfetch --config "$HOME/.config/fastfetch.jsonc"
@@ -15,4 +15,4 @@
       fi
     fi
   '';
-}	
+}
