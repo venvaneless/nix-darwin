@@ -121,7 +121,10 @@
 
     # Bitwarden CLI
     bitwarden-cli
-
+    
+    # Modern, maintained replacement for ls
+    eza
+    
     # Git diff viewer with syntax highlighting
     delta
 
