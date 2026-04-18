@@ -13,14 +13,14 @@ let
     owner = "catppuccin";
     repo = "yazi";
     rev = "main";
-    hash = "sha256-lJapSgRVENTrbmpVyn+UQabC9fpV1G1e+CdlJ090uvg=";
+    hash = lib.fakeHash;
   };
 
   catppuccinBat = pkgs.fetchFromGitHub {
     owner = "catppuccin";
     repo = "bat";
     rev = "main";
-    hash = lib.fakeHash;
+    hash = "sha256-lJapSgRVENTrbmpVyn+UQabC9fpV1G1e+CdlJ090uvg=";
   };
 in
 {
