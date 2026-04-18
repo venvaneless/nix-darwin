@@ -24,6 +24,4 @@
 
   xdg.configFile."eza/theme.yml".source =
     config.lib.file.mkOutOfStoreSymlink "/Users/ven/.config/eza/rose-pine-moon.yml";
-
-  environment.variables.EZA_CONFIG_DIR = "/Users/ven/.config/eza";
 }
