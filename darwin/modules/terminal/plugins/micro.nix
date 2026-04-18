@@ -12,7 +12,7 @@ let
     owner = "catppuccin";
     repo = "micro";
     rev = "main";
-    hash = "sha256-XbhUwRz21/XLkdOb6VOqLwzxWtehf6qRms0YcepNQ0s=";
+    hash = lib.fakeHash;
   };
 in
 {
@@ -24,6 +24,6 @@ in
     };
   };
 
-  xdg.configFile."micro/colorschemes/catppuccin-mocha.micro".source =
-    "${catppuccinMicro}/themes/catppuccin-mocha.micro";
+  xdg.configFile."micro/colorschemes/catppuccin-mocha.micro".text =
+    builtins.readFile "${catppuccinMicro}/themes/catppuccin-mocha.micro";
 }
