@@ -17,7 +17,8 @@ let
   internalPort = config.ven.vaultwarden.internalPort or 80;
   envVars      = config.ven.vaultwarden.envVars or [];
 
-  containersRoot = "/Users/ven/ven-dots/user-data/containers";
+  containersRoot = "/Users/ven/.config/containers";
+
 
   # Docker Desktop binary
   dockerBin =

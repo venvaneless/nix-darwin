@@ -35,8 +35,8 @@
       RunAtLoad = true;
 
       EnvironmentVariables = {
-        ESPANSO_CONFIG_DIR = "/Users/ven/ven-dots/user-data/apps/espanso/config";
-        ESPANSO_DATA_DIR   = "/Users/ven/ven-dots/user-data/apps/espanso/data";
+        ESPANSO_CONFIG_DIR = "/Users/ven/.config/espanso/config";
+        ESPANSO_DATA_DIR   = "/Users/ven/.config/espanso/config//data";
       };
 
       StandardOutPath = "/tmp/espanso.out";

@@ -9,8 +9,8 @@ let
   # ------------------------------------------------------------
   # PATHS
   # ------------------------------------------------------------
-  nvimConfigRoot = "/Users/ven/.config/nvim/";
-  neovideRoot    = "/Users/ven/ven-dots/user-data/apps/neovide";
+  nvimConfigRoot = "/Users/ven/.config/nvim";
+  neovideRoot    = "/Users/ven/.config/neovide";
 
   # ------------------------------------------------------------
   # ASTROVIM INSTALLER (CONFIG ONLY, REAL PATH)

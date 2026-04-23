@@ -250,17 +250,9 @@
 
     # ---------- Shell ---------- #
 
-    # --- fishcfg -> edit Fish config
-    ## Open the main Fish config in micro
-    fishcfg = "micro /Users/ven/.config/terminal/fish/config-ven.fish";
-
-    # --- reloadfish -> reload Fish config
-    ## Reload the main Fish config in the current shell
-    reloadfish = "source /Users/ven/.config/terminal/fish/config-ven.fish";
-
     # --- reloadzsh -> reload Zsh config
     ## Reload the main Zsh config in the current shell
-    reloadzsh = "source /Users/ven/.config/terminal/zsh/.zshrc";
+    reloadzsh = "source /Users/ven/.config/zsh/.zshrc";
 
     # --- zshcfg -> edit Zsh config
     ## Open the main Zsh config in micro
