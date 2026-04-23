@@ -7,11 +7,11 @@
 # - Generates server cert + key for:
 #       vaultwarden.local  AND  192.168.2.125
 # - Stores them in:
-#       ~/ven-dots/ssl/vaultwarden
+#       ~/.config/ssl/vaultwarden
 #       - vaultwarden.local.pem
 #       - vaultwarden.local-key.pem
 # - Exports mkcert CA root as:
-#       ~/ven-dots/ssl/vaultwarden/rootCA.crt
+#       ~/.config/ssl/vaultwarden/rootCA.crt
 #   for iOS/Android import.
 # - Fixes ownership + permissions.
 # - Logs all actions during activation.

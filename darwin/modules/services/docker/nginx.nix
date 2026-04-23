@@ -4,11 +4,11 @@
 # ============================================================
 # - Installs nginx from Nixpkgs.
 # - Writes a main nginx.conf to:
-#       ~/ven-dots/conf/nginx.conf
+#       ~/.config/conf/nginx.conf
 # - Includes virtual hosts from:
-#       ~/ven-dots/conf/apps-enabled/*.conf
+#       ~/.config/conf/apps-enabled/*.conf
 # - Logs to:
-#       ~/ven-dots/conf/logs/{access,error}.log
+#       ~/.config/conf/logs/{access,error}.log
 # - Provides a run-nginx-custom wrapper.
 # - Creates a launchd daemon:
 #       com.ven.nginx-custom
