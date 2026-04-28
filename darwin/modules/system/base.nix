@@ -189,6 +189,9 @@
 
     # Directory tree viewer
     tree
+    
+    # Command-line unarchiving tools supporting multiple formats
+    unar
 
     # Terminal file manager
     yazi
