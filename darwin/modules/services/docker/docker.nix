@@ -4,19 +4,21 @@
 # ============================
 # - Installs Docker Desktop via Homebrew cask
 # - Ensures /Applications/Programming exists
-# - Creates a launchd daemon to keep Docker Desktop running
+# - Starts Docker Desktop as a user LaunchAgent
 # ============================
 
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
-  # Ensure target Applications directory exists
   system.activationScripts.ensureDockerAppDir.text = lib.mkAfter ''
     echo ">>> [docker] Ensuring /Applications/Programming exists"
     mkdir -p "/Applications/Programming"
+
+    echo ">>> [docker] Removing old Docker Desktop system daemon if present"
+    launchctl bootout system/com.ven.docker-desktop 2>/dev/null || true
+    rm -f /Library/LaunchDaemons/com.ven.docker-desktop.plist
   '';
 
-  # Install Docker Desktop via Homebrew
   homebrew.casks = [
     {
       name = "docker";
@@ -24,15 +26,16 @@
     }
   ];
 
-  # Launchd daemon: keep Docker Desktop running
-  launchd.daemons.docker-desktop = {
+  launchd.agents.docker-desktop = {
     serviceConfig = {
-      Label           = "com.ven.docker-desktop";
+      Label = "com.ven.docker-desktop";
       ProgramArguments = [
-        "/Applications/Programming/Docker.app/Contents/MacOS/Docker"
+        "/usr/bin/open"
+        "-a"
+        "/Applications/Programming/Docker.app"
       ];
-      RunAtLoad       = true;
-      KeepAlive       = true;
+      RunAtLoad = true;
+      KeepAlive = false;
     };
   };
 }

@@ -3,14 +3,15 @@
 # VAULTWARDEN SERVICE (DARWIN ONLY)
 # =================================
 # - Ensures data dir exists
-# - Provides run-vaultwarden helper
-# - Creates launchd daemon to start/keep container running
+# - Starts Vaultwarden through Docker Desktop
+# - Uses Docker restart policy for container persistence
+# - Creates a user LaunchAgent, not a system daemon
 # =================================
 
 { config, pkgs, lib, ... }:
 
 let
-  appName  = "vaultwarden";
+  appName = "vaultwarden";
 
   dataDir      = config.ven.vaultwarden.dataDir or "/Users/ven/.config/containers/vaultwarden";
   hostPort     = config.ven.vaultwarden.hostPort or 8080;
@@ -19,16 +20,12 @@ let
 
   containersRoot = "/Users/ven/.config/containers";
 
-  # Docker Desktop binary
-  dockerBin =
-    "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
+  dockerBin = "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
-  # Convert env var list → "-e A=B -e C=D ..."
   envArgs =
     lib.concatStringsSep " "
-      (map (v: "-e ${v}") envVars);
+      (map (v: "-e ${lib.escapeShellArg v}") envVars);
 
-  # Ensures container data dir exists (same tool used by activation)
   ensureDirScript = pkgs.writeShellScriptBin "ensure-${appName}-data" ''
     #!/usr/bin/env bash
     set -euo pipefail
@@ -39,89 +36,72 @@ let
     chmod 700 "${dataDir}"
   '';
 
-  # ------------------------------------------------------------
-  # RUNNER SCRIPT — Launchd callback that starts the container
-  # ------------------------------------------------------------
   runner = pkgs.writeShellScriptBin "run-${appName}" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo ">>> [vaultwarden] Starting vaultwarden launchd runner"
+    echo ">>> [vaultwarden] Starting Vaultwarden runner"
 
-    # Ensure data directory exists BEFORE docker touches it
     "${ensureDirScript}/bin/ensure-${appName}-data"
 
-    # Make sure the Docker binary exists
-    if ! command -v "${dockerBin}" >/dev/null 2>&1; then
+    if [ ! -x "${dockerBin}" ]; then
       echo "!!! [vaultwarden] docker not found at ${dockerBin}"
       exit 1
     fi
 
-    # ------------------------------------------------------------
-    # WAIT FOR DOCKER ENGINE TO BE READY
-    # ------------------------------------------------------------
-    echo ">>> [vaultwarden] Waiting for Docker engine to become ready..."
+    echo ">>> [vaultwarden] Waiting for Docker engine..."
     until "${dockerBin}" info >/dev/null 2>&1; do
-      echo ">>> [vaultwarden] Docker not ready yet, retrying in 2s..."
       sleep 2
     done
-    echo ">>> [vaultwarden] Docker engine is ready"
 
-    # ------------------------------------------------------------
-    # Ensure Vaultwarden image exists
-    # ------------------------------------------------------------
-    echo ">>> [vaultwarden] Checking if Vaultwarden image exists"
+    echo ">>> [vaultwarden] Docker engine ready"
+
     if ! "${dockerBin}" image inspect vaultwarden/server:latest >/dev/null 2>&1; then
-      echo ">>> [vaultwarden] Image missing; pulling..."
+      echo ">>> [vaultwarden] Pulling image"
       "${dockerBin}" pull vaultwarden/server:latest
-    else
-      echo ">>> [vaultwarden] Image exists"
     fi
 
-    # ------------------------------------------------------------
-    # Ensure container exists
-    # ------------------------------------------------------------
-    echo ">>> [vaultwarden] Checking if container '${appName}' exists"
     if ! "${dockerBin}" ps -a --format '{{.Names}}' | grep -qx "${appName}"; then
-      echo ">>> [vaultwarden] Container missing; creating..."
+      echo ">>> [vaultwarden] Creating container"
       "${dockerBin}" run -d \
         --name ${appName} \
+        --restart unless-stopped \
         -p ${toString hostPort}:${toString internalPort} \
         -v "${dataDir}:/data" \
         ${envArgs} \
         vaultwarden/server:latest
     else
-      echo ">>> [vaultwarden] Container exists"
+      echo ">>> [vaultwarden] Container exists; updating restart policy"
+      "${dockerBin}" update --restart unless-stopped ${appName} >/dev/null
     fi
 
-    # ------------------------------------------------------------
-    # Start container
-    # ------------------------------------------------------------
-    echo ">>> [vaultwarden] Starting container '${appName}'"
-    "${dockerBin}" start ${appName} || true
+    echo ">>> [vaultwarden] Starting container"
+    "${dockerBin}" start ${appName} >/dev/null || true
+
+    echo ">>> [vaultwarden] Done"
   '';
 in
 {
-  # ------------------------------------------------------------
-  # ACTIVATION HOOK — ensures data dir exists on rebuilds
-  # ------------------------------------------------------------
+  environment.systemPackages = [
+    runner
+    ensureDirScript
+  ];
+
   system.activationScripts.extraActivation.text = lib.mkAfter ''
+    echo ">>> [vaultwarden] Removing old system daemon if present"
+    launchctl bootout system/com.ven.vaultwarden 2>/dev/null || true
+    rm -f /Library/LaunchDaemons/com.ven.vaultwarden.plist
+
     echo ">>> [vaultwarden] Ensuring data dir via activation"
-    ${ensureDirScript}/bin/ensure-${appName}-data || echo "!!! [vaultwarden] ensure data dir failed (continuing)"
+    ${ensureDirScript}/bin/ensure-${appName}-data || echo "!!! [vaultwarden] ensure data dir failed"
   '';
 
-  # Make runner & directory tool available in PATH
-  environment.systemPackages = [ runner ensureDirScript ];
-
-  # ------------------------------------------------------------
-  # LAUNCHD SERVICE — auto-start vaultwarden on boot
-  # ------------------------------------------------------------
-  launchd.daemons.vaultwarden = {
+  launchd.agents.vaultwarden = {
     serviceConfig = {
-      Label            = "com.ven.vaultwarden";
+      Label = "com.ven.vaultwarden";
       ProgramArguments = [ "${runner}/bin/run-${appName}" ];
-      RunAtLoad        = true;
-      KeepAlive        = true;   # <<< FIXED
+      RunAtLoad = true;
+      KeepAlive = false;
     };
   };
 }
