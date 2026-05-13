@@ -15,47 +15,21 @@
   ];
 
   programs.fish.shellInit = ''
-    # FISH: FASTFETCH
+    # FASTFETCH
     # =========================
+    # Run once per interactive Fish shell session.
 
-    function __find_terminal_pid
-      set -l pid $fish_pid
+    status is-interactive; or return
 
-      while test "$pid" -gt 1
-        set -l comm (ps -p $pid -o comm= 2>/dev/null | string trim)
+    set -l fastfetch_config "${config.home.homeDirectory}/.config/fastfetch/fastfetch-macos.jsonc"
+    set -l fastfetch_marker "$TMPDIR/fastfetch-shown-$USER-$fish_pid"
 
-        switch $comm
-          case wezterm-gui kitty alacritty ghostty Terminal iTerm2
-            echo $pid
-            return 0
+    if type -q fastfetch
+      if test -f "$fastfetch_config"
+        if not test -e "$fastfetch_marker"
+          touch "$fastfetch_marker"
+          fastfetch --config "$fastfetch_config"
         end
-
-        set pid (ps -p $pid -o ppid= 2>/dev/null | string trim)
-
-        if test -z "$pid"
-          return 1
-        end
-      end
-
-      return 1
-    end
-
-    for marker in /tmp/fastfetch-$UID-*
-      if test -e "$marker"
-        set -l marker_pid (basename "$marker" | string replace "fastfetch-$UID-" "")
-        kill -0 $marker_pid >/dev/null 2>&1
-        or rm -f "$marker"
-      end
-    end
-
-    set -l terminal_pid (__find_terminal_pid)
-
-    if test -n "$terminal_pid"
-      set -l marker "/tmp/fastfetch-$UID-$terminal_pid"
-
-      if not test -e "$marker"
-        touch "$marker"
-        fastfetch --config "${config.home.homeDirectory}/.config/fastfetch/fastfetch-current.jsonc"
       end
     end
   '';

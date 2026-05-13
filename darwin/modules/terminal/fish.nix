@@ -79,7 +79,7 @@
 
 			  # Environment
 					sessionVariables = {
-						COLORTERM = "truecolor";
+						# COLORTERM = "truecolor";
 						MICRO_TRUECOLOR = "1";
 					};
 	  };
