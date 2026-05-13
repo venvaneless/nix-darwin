@@ -13,7 +13,7 @@
 #   - User-level modules live under darwin/modules/system/home-manager.nix
 # ================================================
 
-{ lib, home-manager, ... }:
+{ lib, home-manager, pkgs, ... }:
 
 # ------------------------------------------------------------
 # --- SYSTEM --- 
@@ -27,6 +27,14 @@
   
   users.users.ven.home = "/Users/ven";
   home-manager.backupFileExtension = "bak";
+
+  # Enable fish shell
+  users.users.ven.shell = pkgs.fish;
+
+  # Fish shell
+  environment.shells = [
+      pkgs.fish
+    ];
 
   # ------------------------------------------------------------
   # 
