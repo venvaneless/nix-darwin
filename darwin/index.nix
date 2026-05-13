@@ -32,6 +32,7 @@
     knownUsers = [ "ven" ];
 
     users.ven = {
+    	uid = 502;
       home = "/Users/ven";
       shell = pkgs.fish;
     };
@@ -51,10 +52,6 @@
   # ------------------------------------------------------------
   # Fish shell
   # ------------------------------------------------------------
-  # Enables Fish system-wide and registers it
-  # as a valid login shell on macOS.
-  # ------------------------------------------------------------
-
   programs.fish.enable = true;
 
   environment.shells = [
@@ -63,33 +60,25 @@
 
   # ------------------------------------------------------------
   # Module imports
-  # ------------------------------------------------------------
+  # 
   # Loads all nix-darwin modules:
-  #   - Home Manager
-  #   - system config
-  #   - services
-  #   - apps
   # ------------------------------------------------------------
 
   imports = [
 
     # Home Manager
-    # User-level Home Manager configuration
     home-manager.darwinModules.home-manager
     ./modules/home/home-manager.nix
 
     # System
-    # Core nix-darwin system configuration
     ./modules/system/base.nix
     ./modules/system/homebrew.nix
 
     # Services
-    # System services and PDF tools
     ./modules/services/services.nix
     ./modules/services/pdf-tools.nix
 
     # Apps
-    # GUI applications and app bundles
     ./modules/apps/apps.nix
   ];
 }
