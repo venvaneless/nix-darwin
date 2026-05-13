@@ -102,9 +102,9 @@
     ./modules/eza.nix
     # ./modules/fastfetch.nix
     ./modules/fzf.nix
-    # ./modules/lazygit.nix
-    # ./modules/micro.nix
-    # ./modules/ranger.nix
+    ./modules/lazygit.nix
+    ./modules/micro.nix
+    ./modules/ranger.nix
     # ./modules/ripgrep.nix
     # ./modules/starship.nix
     # ./modules/zoxide.nix
