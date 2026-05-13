@@ -15,54 +15,81 @@
 
 { lib, home-manager, pkgs, ... }:
 
-# ------------------------------------------------------------
-# --- SYSTEM --- 
-# ------------------------------------------------------------
+{
+  # ------------------------------------------------------------
+  # Primary user
+  # ------------------------------------------------------------
+  # Main macOS user managed by nix-darwin.
+  # Fish is set as the default login shell.
+  # ------------------------------------------------------------
 
-{	
+  system = {
+    primaryUser = "ven";
+    stateVersion = lib.mkForce 6;
+  };
 
-  # ----- Primary user -----
-  system.primaryUser  = "ven";
-  system.stateVersion = lib.mkForce 6;
-  
-  users.users.ven.home = "/Users/ven";
-  home-manager.backupFileExtension = "bak";
+  users = {
+    knownUsers = [ "ven" ];
 
-  # Enable Fish at the nix-darwin system level
+    users.ven = {
+      home = "/Users/ven";
+      shell = pkgs.fish;
+    };
+  };
+
+  # ------------------------------------------------------------
+  # Home Manager
+  # ------------------------------------------------------------
+  # Home Manager runs fully through nix-darwin.
+  # Backup files use the .bak extension.
+  # ------------------------------------------------------------
+
+  home-manager = {
+    backupFileExtension = "bak";
+  };
+
+  # ------------------------------------------------------------
+  # Fish shell
+  # ------------------------------------------------------------
+  # Enables Fish system-wide and registers it
+  # as a valid login shell on macOS.
+  # ------------------------------------------------------------
+
   programs.fish.enable = true;
 
-  # Set Fish as Ven's login shell.
-  users.users.ven.shell = pkgs.fish;
-
-  # Register Fish as a valid login shell.
   environment.shells = [
     pkgs.fish
   ];
 
+  # ------------------------------------------------------------
+  # Module imports
+  # ------------------------------------------------------------
+  # Loads all nix-darwin modules:
+  #   - Home Manager
+  #   - system config
+  #   - services
+  #   - apps
+  # ------------------------------------------------------------
 
-  # ------------------------------------------------------------
-  # 
-  # --- MODULE IMPORTS ---
-  # ------------------------------------------------------------
   imports = [
 
-    # --- HOME MANAGER INTEGRATION ---
-    # ------------------------------------------------------------
-    # Enables Home Manager as part of nix-darwin.
+    # Home Manager
+    # User-level Home Manager configuration
     home-manager.darwinModules.home-manager
-
-    # User configuration for Home-Manager
     ./modules/home/home-manager.nix
 
-    # --- SYSTEM MODULES ---
+    # System
+    # Core nix-darwin system configuration
     ./modules/system/base.nix
     ./modules/system/homebrew.nix
 
-    # --- Services & Tools ---
+    # Services
+    # System services and PDF tools
     ./modules/services/services.nix
     ./modules/services/pdf-tools.nix
 
-    # --- Apps ---
+    # Apps
+    # GUI applications and app bundles
     ./modules/apps/apps.nix
   ];
 }
