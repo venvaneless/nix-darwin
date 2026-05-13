@@ -26,7 +26,7 @@
           owner = "jorgebucaran";
           repo = "autopair.fish";
           rev = "main";
-          hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+          hash = "sha256-qt3t1iKRRNuiLWiVoiAYOu+9E7jsyECyIqZJ/oRIT1A=";
         };
       }
 
