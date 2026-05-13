@@ -103,18 +103,18 @@
 		./aliases/shell-aliases.nix
 
     # ---- Fish modules ---- #
-    ./modules/modules/atuin.nix
-    ./modules/modules/bat.nix
-    ./modules/modules/bottom.nix
-    ./modules/modules/delta.nix
-    ./modules/modules/eza.nix
-    ./modules/modules/fastfetch.nix
-    ./modules/modules/fzf.nix
-    ./modules/modules/lazygit.nix
-    ./modules/modules/micro.nix
-    ./modules/modules/ranger.nix
-    ./modules/modules/ripgrep.nix
-    ./modules/modules/starship.nix
-    ./modules/modules/zoxide.nix
+    ./modules/atuin.nix
+    ./modules/bat.nix
+    ./modules/bottom.nix
+    ./modules/delta.nix
+    ./modules/eza.nix
+    ./modules/fastfetch.nix
+    ./modules/fzf.nix
+    ./modules/lazygit.nix
+    ./modules/micro.nix
+    ./modules/ranger.nix
+    ./modules/ripgrep.nix
+    ./modules/starship.nix
+    ./modules/zoxide.nix
   ];
 }
