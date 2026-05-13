@@ -28,13 +28,17 @@
   users.users.ven.home = "/Users/ven";
   home-manager.backupFileExtension = "bak";
 
-  # Enable fish shell
+  # Enable Fish at the nix-darwin system level
+  programs.fish.enable = true;
+
+  # Set Fish as Ven's login shell.
   users.users.ven.shell = pkgs.fish;
 
-  # Fish shell
+  # Register Fish as a valid login shell.
   environment.shells = [
-      pkgs.fish
-    ];
+    pkgs.fish
+  ];
+
 
   # ------------------------------------------------------------
   # 
