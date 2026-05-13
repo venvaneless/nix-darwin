@@ -21,6 +21,7 @@
     ./iterm.nix
     ./jdownloader.nix
     ./kiwix.nix
+    ./librewolf.nix
     ./obsidian.nix
     ./paste.nix
     ./pearcleaner.nix
