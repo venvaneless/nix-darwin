@@ -37,7 +37,7 @@
           owner = "rose-pine";
           repo = "fish";
           rev = "main";
-          hash = "sha256-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=";
+          hash = "sha256-3heI6nhItw5WfKGQT1FRQKfv+lONyn+DzwYjYqJjzLE=";
         };
       }
     ];
