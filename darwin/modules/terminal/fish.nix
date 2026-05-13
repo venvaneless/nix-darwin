@@ -104,6 +104,7 @@
     ./modules/fzf.nix
     ./modules/lazygit.nix
     ./modules/micro.nix
+    ./modules/mise.nix
     ./modules/ranger.nix
     ./modules/ripgrep.nix
     ./modules/starship.nix
