@@ -1,30 +1,23 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/fastfetch.nix
-# 
+#
 # =====================================================================
 # FASTFETCH
-# 
+#
 # Feature-rich and performance oriented,
 # neofetch like system information tool
 # =====================================================================
 
-{ pkgs, ... }:
+{ pkgs, config, ... }:
 
 {
-  home.packages = [ pkgs.fastfetch ];
+  home.packages = [
+    pkgs.fastfetch
+  ];
 
-  xdg.configFile."fastfetch.jsonc".source =
-    builtins.path {
-      path = "/Users/ven/.config/fastfetch.jsonc";
-      name = "fastfetch.jsonc";
-    };
+  programs.fish.shellInit = ''
+    # FISH: FASTFETCH
+    # =========================
 
-    xdg.configFile."ascii.txt".source =
-      builtins.path {
-        path = "/Users/ven/.config/ascii.txt";
-        name = "ascii.txt";
-      };
-
-  programs.fish.interactiveShellInit = ''
     function __find_terminal_pid
       set -l pid $fish_pid
 
@@ -62,7 +55,7 @@
 
       if not test -e "$marker"
         touch "$marker"
-        fastfetch --config "$HOME/.config/fastfetch.jsonc"
+        fastfetch --config "${config.home.homeDirectory}/.config/fastfetch.jsonc"
       end
     end
   '';
