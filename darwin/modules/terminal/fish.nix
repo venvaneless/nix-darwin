@@ -97,10 +97,10 @@
   # -------------------------------------------- #
   imports = [
     # ---- Aliases ---- #
-    ./modules/aliases/nix-aliases.nix
-    ./modules/aliases/gc-aliases.nix
-    ./modules/aliases/git-aliases.nix
-    ./modules/aliases/shell-aliases.nix
+    ./aliases/nix-aliases.nix
+		./aliases/gc-aliases.nix
+		./aliases/git-aliases.nix
+		./aliases/shell-aliases.nix
 
     # ---- Fish modules ---- #
     ./modules/modules/atuin.nix
