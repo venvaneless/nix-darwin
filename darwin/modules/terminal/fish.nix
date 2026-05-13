@@ -97,9 +97,9 @@
     # ---- Fish modules ---- #
     ./modules/atuin.nix
     ./modules/bat.nix
-    # ./modules/bottom.nix
-    # ./modules/delta.nix
-    # ./modules/eza.nix
+    ./modules/bottom.nix
+    ./modules/delta.nix
+    ./modules/eza.nix
     # ./modules/fastfetch.nix
     ./modules/fzf.nix
     # ./modules/lazygit.nix
