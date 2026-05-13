@@ -107,6 +107,6 @@
     ./modules/ranger.nix
     ./modules/ripgrep.nix
     ./modules/starship.nix
-    # ./modules/zoxide.nix
+    ./modules/zoxide.nix
   ];
 }
