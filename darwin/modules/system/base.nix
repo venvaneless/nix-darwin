@@ -121,6 +121,9 @@
 
     # Bitwarden CLI
     bitwarden-cli
+
+    # Cross-platform graphical process/system monitor
+    bottom
     
     # Modern, maintained replacement for ls
     eza
@@ -133,6 +136,9 @@
     
     # Fast alternative to find
     fd
+
+    # Friendly interactive shell
+    fish
     
     # Create thumbnails for your video files
     ffmpegthumbnailer
@@ -194,7 +200,7 @@
     unar
 
     # Terminal file manager
-    yazi
+    ranger
 
     # Smarter directory jumping
     zoxide

@@ -1,6 +1,6 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/mise.nix
 #
-# =============================================================
+# =====================================================================
 # MISE VERSION MANAGER
 # Polyglot runtime manager
 # -----------------------------------------
@@ -12,7 +12,7 @@
 # ~/ven-dots/zsh/mise/config.toml
 # -- Shims on PATH
 # ~/ven-dots/zsh/mise/shims
-# =============================================================
+# =====================================================================
 
 { config, pkgs, ... }:
 

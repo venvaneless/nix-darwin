@@ -34,7 +34,8 @@
 
       # --- User modules ---
       imports = [
-        ../terminal/zsh.nix
+      	../terminal/fish.nix
+       # ../terminal/zsh.nix
         ../terminal/nvim.nix
         ./hm-options.nix
       ];

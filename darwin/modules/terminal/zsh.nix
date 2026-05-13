@@ -46,13 +46,13 @@
 		# MODULES
 		# ----------------------------------------------------------------- #
 	  imports = [
-			# ---- Aliases ------ #
+			# ---- Aliases ---- #
 			./aliases/nix-aliases.nix
 			./aliases/gc-aliases.nix
 			./aliases/git-aliases.nix
 			./aliases/shell-aliases.nix
 
-			# ---- Plugins ------ #
+			# ---- Plugins ---- #
      	./plugins/autocomplete.nix
     	./plugins/autosuggestions.nix
      	./plugins/atuin.nix
@@ -72,7 +72,6 @@
 			./plugins/starship.nix
 			./plugins/syntax-highlighting.nix
 	  	./plugins/tmux.nix
-			./plugins/yazi.nix
 			./plugins/zoxide.nix
 	  ];
 	}

@@ -1,8 +1,10 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/micro.nix
 #
-# ZSH: MICRO
-# =========================
+# =====================================================================
+# MICRO
+# 
 # Modern and intuitive terminal-based text editor
+# =====================================================================
 
 { pkgs, lib, ... }:
 

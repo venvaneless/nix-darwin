@@ -1,7 +1,10 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/fzf.nix
 #
+# =====================================================================
 # FZF
-# =============================================================
+# Command-line fuzzy finder written in Go
+# -----------------------------------------
+# 
 # ---- Plugins
 # - zsh-fzf-tab: fzf UI on <TAB>
 # - zsh-fzf-history-search
@@ -15,7 +18,7 @@
 # Ctrl-F
 # -- fzf history search
 # Ctrl-O 
-# =============================================================
+# =====================================================================
 
 { pkgs, lib, ... }:
 

@@ -1,6 +1,6 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/history-substring-search.nix
 #
-# ============================================================
+# =====================================================================
 # ZSH: HISTORY SUBSTRING SEARCH
 # Zsh port of Fish shell's history search
 # -----------------------------------------
@@ -13,7 +13,7 @@
 # 
 # ---- NOTE
 # - Uses terminal-aware key bindings
-# ============================================================
+# =====================================================================
 
 { ... }:
 

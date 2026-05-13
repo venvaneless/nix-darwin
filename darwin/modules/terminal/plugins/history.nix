@@ -1,6 +1,6 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/history.nix
 #
-# ============================================================
+# =====================================================================
 # ZSH HISTORY
 # zsh history settings
 # -----------------------------------------
@@ -9,7 +9,7 @@
 # - Persists command history across terminal restarts
 # - Shares history across shell sessions
 # - Keeps a large searchable history file
-# ============================================================
+# =====================================================================
 
 { config, ... }:
 

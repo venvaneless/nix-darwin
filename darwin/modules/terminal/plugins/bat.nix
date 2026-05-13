@@ -1,10 +1,11 @@
 # /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/bat.nix
 #
-# =============================================================
+# =====================================================================
 # BAT
+# 
 # Cat clone with syntax highlighting and Git integration
 # Includes bat-extras helper tools
-# =============================================================
+# =====================================================================
 
 { pkgs, lib, ... }:
 
