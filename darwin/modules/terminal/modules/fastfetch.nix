@@ -13,15 +13,18 @@
   home.packages = [ pkgs.fastfetch ];
 
   xdg.configFile."fastfetch.jsonc".source =
-    /Users/ven/.config/fastfetch.jsonc;
+    builtins.path {
+      path = "/Users/ven/.config/fastfetch.jsonc";
+      name = "fastfetch.jsonc";
+    };
 
-  xdg.configFile."ascii.txt".source =
-    /Users/ven/.config/ascii.txt;
+    xdg.configFile."ascii.txt".source =
+      builtins.path {
+        path = "/Users/ven/.config/ascii.txt";
+        name = "ascii.txt";
+      };
 
   programs.fish.interactiveShellInit = ''
-    # FISH: FASTFETCH
-    # =========================
-
     function __find_terminal_pid
       set -l pid $fish_pid
 
