@@ -63,34 +63,26 @@
   };
 
   # -------------------------------------------- #
-  # SHELL REGISTRATION
+  # ENVIRONMENT
   # -------------------------------------------- #
-  environment.shells = [
-    pkgs.fish
-  ];
+  # Paths
+  home = {
+	    sessionPath = [
+	    	# homebrew PATHS
+	      "/opt/homebrew/bin"
+	      "/opt/homebrew/sbin"
+	      "${config.home.homeDirectory}/.local/bin"
 
-  users.users.ven.shell = pkgs.fish;
+	      # Docker PATH
+	      "/Applications/Programming/Docker.app/Contents/Resources/bin"
+	    ];
 
-  # Environment
-  environment.variables = {
-    COLORTERM = "truecolor";
-    MICRO_TRUECOLOR = "1";
-  };
-
-  # -------------------------------------------- #
-  # PATHS
-  # -------------------------------------------- #
-  environment.systemPath = [
-    # Homebrew paths
-    "/opt/homebrew/bin"
-    "/opt/homebrew/sbin"
-
-    # User-local binaries
-    "/Users/ven/.local/bin"
-
-    # Docker path
-    "/Applications/Programming/Docker.app/Contents/Resources/bin"
-  ];
+			  # Environment
+					sessionVariables = {
+						COLORTERM = "truecolor";
+						MICRO_TRUECOLOR = "1";
+					};
+	  };
 
   # -------------------------------------------- #
   # MODULES
