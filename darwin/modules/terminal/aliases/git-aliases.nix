@@ -3,7 +3,7 @@
 { ... }:
 
 {
-  programs.zsh.shellAliases = {
+  programs.fish.shellAliases = {
     # ---------- Git ---------- #
 
     # --- ga -> git add

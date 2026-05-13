@@ -55,7 +55,7 @@
 
       if not test -e "$marker"
         touch "$marker"
-        fastfetch --config "${config.home.homeDirectory}/.config/fastfetch.jsonc"
+        fastfetch --config "${config.home.homeDirectory}/.config/fastfetch/fastfetch-current.jsonc"
       end
     end
   '';

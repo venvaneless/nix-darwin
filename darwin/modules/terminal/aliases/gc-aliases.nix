@@ -7,7 +7,7 @@
 
 {
   # --- Simple aliases ---
-  programs.zsh.shellAliases = {
+  programs.fish.shellAliases = {
     # List system generations
     drg = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
   };
