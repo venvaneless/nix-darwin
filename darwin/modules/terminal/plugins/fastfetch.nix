@@ -3,6 +3,8 @@
 # =====================================================================
 # FASTFETCH
 #
+# Test text
+# 
 # Feature-rich and performance oriented,
 # neofetch like system information tool
 # =====================================================================
