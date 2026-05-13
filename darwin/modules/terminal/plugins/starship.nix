@@ -1,5 +1,5 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/starship.nix
-# 
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/plugins/starship.nix
+#
 # =====================================================================
 # STARSHIP
 # 
@@ -11,13 +11,12 @@
 {
   programs.starship = {
     enable = true;
-    enableZshIntegration = true;
+    enableFishIntegration = true;
   };
 
-  programs.zsh = {
-    sessionVariables = {
-      STARSHIP_CONFIG = "${config.home.homeDirectory}/.config/starship.toml";
-      STARSHIP_CACHE = "${config.home.homeDirectory}/.config/.cache/";
-    };
-  };
+  programs.fish.shellInit = ''
+    # ---------- Starship paths ---------- #
+    set -gx STARSHIP_CONFIG "${config.home.homeDirectory}/.config/starship.toml"
+    set -gx STARSHIP_CACHE "${config.home.homeDirectory}/.config/.cache/"
+  '';
 }

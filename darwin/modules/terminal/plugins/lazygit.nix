@@ -1,15 +1,17 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/lazygit.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/modules/lazygit.nix
 #
 # =====================================================================
 # LAZYGIT
 # 
-# Installs and enables Lazygit configuration support.
+# Simple terminal UI for git commands
 # =====================================================================
 
 { ... }:
 
 {
-  programs.lazygit = {
-    enable = true;
+  programs.fish.shellAliases = {
+    # --- l-g -> lazygit
+    # Open lazygit.
+    l-g = "lazygit";
   };
 }

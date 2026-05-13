@@ -1,10 +1,10 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/delta.nix
-#
-# =====================================================================
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/delta.nix
+# 
+# =============================================================
 # DELTA
 # 
 # Syntax-highlighting pager for git and diff output
-# =====================================================================
+# ============================================================
 
 { ... }:
 

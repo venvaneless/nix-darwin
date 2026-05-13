@@ -1,36 +1,26 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/micro.nix
-#
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/micro.nix
+# 
 # =====================================================================
 # MICRO
 # 
 # Modern and intuitive terminal-based text editor
 # =====================================================================
 
-{ pkgs, lib, ... }:
+{ pkgs, ... }:
 
-let
-  catppuccinMicro = pkgs.fetchFromGitHub {
-    owner = "catppuccin";
-    repo = "micro";
-    rev = "main";
-    hash ="sha256-XbhUwRz21/XLkdOb6VOqLwzxWtehf6qRms0YcepNQ0s=
-    ";
-  };
-in
 {
-  programs.micro = {
-    enable = true;
+  # Micro config already lives at:
+  # ~/.config/micro/
+  #
+  # No xdg.configFile.source is needed here.
 
-    settings = {
-      colorscheme = "catppuccin-mocha";
-    };
+  programs.fish.shellAliases = {
+    # --- nano -> micro
+    # Use micro instead of nano.
+    nano = "micro";
+
+    # --- smicro -> sudo micro with user config
+    # Open files with sudo while keeping your micro config.
+    smicro = "sudo micro -config-dir ~/.config/micro";
   };
-
-  home.sessionVariables = {
-    MICRO_TRUECOLOR = "1";
-    COLORTERM = "truecolor";
-  };
-
-  xdg.configFile."micro/colorschemes/catppuccin-mocha.micro".text =
-    builtins.readFile "${catppuccinMicro}/themes/catppuccin-mocha.micro";
 }

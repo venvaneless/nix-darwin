@@ -1,16 +1,29 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/ripgrep.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/modules/ripgrep.nix
 #
 # =====================================================================
 # RIPGREP
 # 
-# Utility that combines the usability of The Silver Searcher
-# with the raw speed of grep
+# Fast recursive search
 # =====================================================================
 
 { ... }:
 
 {
-  programs.ripgrep = {
-    enable = true;
+  programs.fish.shellAliases = {
+    # --- grep -> rg
+    # Use ripgrep instead of grep.
+    grep = "rg --color=auto";
+
+    # --- erg -> rg
+    # Extended regex search.
+    erg = "rg --color=auto";
+
+    # --- frg -> rg -F
+    # Fixed-string search.
+    frg = "rg -F --color=auto";
+
+    # --- fgrep -> rg -F
+    # Fixed-string search compatibility alias.
+    fgrep = "rg -F --color=auto";
   };
 }

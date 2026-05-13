@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/fzf.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/plugins/fzf.nix
 #
 # =====================================================================
 # FZF
@@ -20,24 +20,13 @@
 # Ctrl-O 
 # =====================================================================
 
-{ pkgs, lib, ... }:
+{ ... }:
 
-# ---------- Theme Source ---------- #
-let
-  # Rosé Pine FZF Theme
-  rosePineFzf = pkgs.fetchFromGitHub {
-    owner = "rose-pine";
-    repo = "fzf";
-    rev = "main";
-    hash = "sha256-WKREw1qzjuURqrCS6LI5ySc924W8d2n0rlA6AV1K5OE=";
-  };
-in
 {
-  # ---------- FZF Configuration ---------- #
   programs.fzf = {
     enable = true;
+    enableFishIntegration = true;
 
-    # Default Options
     defaultOptions = [
       "--height=40%"
       "--layout=reverse"
@@ -48,81 +37,40 @@ in
       "--marker=✓"
       "--scrollbar=▌"
       "--preview-window=right,60%,border-left"
+      "--color=bg+:#2a273f,bg:#232136,spinner:#f6c177,hl:#ea9a97"
+      "--color=fg:#e0def4,header:#ea9a97,info:#9ccfd8,pointer:#c4a7e7"
+      "--color=marker:#eb6f92,fg+:#e0def4,prompt:#c4a7e7,hl+:#ea9a97"
     ];
   };
 
-  # ---------- Plugin Packages ---------- #
-  home.packages = [
-    pkgs.zsh-fzf-tab
-    pkgs.zsh-fzf-history-search
-    pkgs.zsh-forgit
-  ];
+  programs.fish.interactiveShellInit = ''
+    # FISH: FZF KEYBINDS
+    # =========================
+    # Tab    = normal Fish completion
+    # Ctrl-F = fuzzy command picker
+    # Ctrl-L = fuzzy history picker
 
-  # ---------- Zsh Integration ---------- #
-  programs.zsh.initContent = ''
-    #### FZF-RELATED PLUGINS ####
+    function __ven_fzf_history
+      set -l selected (history | fzf)
 
-    # ---------- Theme ---------- #
-    # Rosé Pine Moon theme for fzf
-    if [ -f "${rosePineFzf}/dist/rose-pine-moon.sh" ]; then
-      source "${rosePineFzf}/dist/rose-pine-moon.sh"
-    else
-      echo "Rosé Pine Moon fzf theme not found!"
-    fi
+      if test -n "$selected"
+        commandline -r -- $selected
+      end
 
-    # ---------- fzf-tab ---------- #
-    # Use fzf for <TAB> completion
-    if [ -f "${pkgs.zsh-fzf-tab}/share/zsh/plugins/fzf-tab/fzf-tab.plugin.zsh" ]; then
-      source "${pkgs.zsh-fzf-tab}/share/zsh/plugins/fzf-tab/fzf-tab.plugin.zsh"
-    elif [ -f "${pkgs.zsh-fzf-tab}/share/zsh/plugins/fzf-tab/fzf-tab.zsh" ]; then
-      source "${pkgs.zsh-fzf-tab}/share/zsh/plugins/fzf-tab/fzf-tab.zsh"
-    elif [ -f "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh" ]; then
-      source "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.plugin.zsh"
-    elif [ -f "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.zsh" ]; then
-      source "${pkgs.zsh-fzf-tab}/share/fzf-tab/fzf-tab.zsh"
-    else
-      echo "fzf-tab plugin not found!"
-    fi
+      commandline -f repaint
+    end
 
-    # ---------- History Search ---------- #
-    # zsh-fzf-history-search
-    if [ -f "${pkgs.zsh-fzf-history-search}/share/zsh-fzf-history-search/history-search.plugin.zsh" ]; then
-      source "${pkgs.zsh-fzf-history-search}/share/zsh-fzf-history-search/history-search.plugin.zsh"
-    elif [ -f "${pkgs.zsh-fzf-history-search}/share/history-search.plugin.zsh" ]; then
-      source "${pkgs.zsh-fzf-history-search}/share/history-search.plugin.zsh"
-    elif [ -f "${pkgs.zsh-fzf-history-search}/share/zsh/plugins/zsh-fzf-history-search/history-search.plugin.zsh" ]; then
-      source "${pkgs.zsh-fzf-history-search}/share/zsh/plugins/zsh-fzf-history-search/history-search.plugin.zsh"
-    fi
+    function __ven_fzf_command_picker
+      set -l selected (complete -C "" | awk '{print $1}' | sort -u | fzf)
 
-    # ---------- Forgit ---------- #
-    # zsh-forgit
-    if [ -f "${pkgs.zsh-forgit}/share/zsh/zsh-forgit/forgit.plugin.zsh" ]; then
-      source "${pkgs.zsh-forgit}/share/zsh/zsh-forgit/forgit.plugin.zsh"
-    else
-      echo "forgit plugin not found!"
-    fi
+      if test -n "$selected"
+        commandline -r -- $selected
+      end
 
-    # ---------- Command Picker ---------- #
-    # FZF command picker widget
-    fzf_command_picker() {
-      local selected
-      selected=$(print -rl -- ''${(ok)commands} | fzf)
-      if [[ -n "$selected" ]]; then
-        LBUFFER="$selected"
-      fi
-      zle reset-prompt
-    }
-    zle -N fzf_command_picker
+      commandline -f repaint
+    end
 
-    # ---------- Keybindings ---------- #
-    # Custom FZF keybinds
-
-    # Rebind history search from Ctrl-R to Ctrl-O
-    bindkey -r '^O' 2>/dev/null
-    bindkey '^O' fzf-history-widget
-
-    # Bind Ctrl-F to command picker
-    bindkey -r '^F' 2>/dev/null
-    bindkey '^F' fzf_command_picker
+    bind \cf __ven_fzf_command_picker
+    bind \cl __ven_fzf_history
   '';
 }

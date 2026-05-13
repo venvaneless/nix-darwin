@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/plugins/atuin.nix
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/plugins/atuin.nix
 #
 # =====================================================================
 # ATUIN
@@ -26,18 +26,22 @@
 {
   programs.atuin = {
     enable = true;
-    enableFishIntegration = true;
+    enableZshIntegration = true;
   };
 
-  programs.fish.shellInit = ''
+  programs.zsh.sessionVariables = {
     # --- ATUIN_NOBIND
-    # Prevent Atuin from automatically taking over keybindings.
-    set -gx ATUIN_NOBIND true
-  '';
+    # #### Prevent Atuin from automatically taking over keybindings.
+    ATUIN_NOBIND = "true";
+  };
 
-  programs.fish.interactiveShellInit = ''
+  programs.zsh.initContent = ''
     # --- Ctrl-R
-    # Bind Ctrl-R to Atuin search.
-    bind \cr _atuin_search
+    # Clear any previous Ctrl-R binding first.
+    bindkey -r '^R' 2>/dev/null
+
+    # --- Ctrl-R -> atuin-search
+    # #### Bind Ctrl-R to Atuin search.
+    bindkey '^R' atuin-search
   '';
 }

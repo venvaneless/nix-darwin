@@ -3,8 +3,8 @@
 # FISH CONFIGURATION
 # =====================================================================
 # - Manages Fish through nix-darwin
-# - Aliases live in ./modules/aliases
-# - Larger Fish integrations live in ./modules/modules
+# - Aliases live in ./plugins/aliases
+# - Larger Fish integrations live in ./plugins/modules
 # - Small built-in Fish behavior stays here:
 #   completions, history name, autosuggestions, syntax highlighting
 # =====================================================================
@@ -95,19 +95,19 @@
 		./aliases/shell-aliases.nix
 
     # ---- Fish modules ---- #
-    ./modules/atuin.nix
-    ./modules/bat.nix
-    ./modules/bottom.nix
-    ./modules/delta.nix
-    ./modules/eza.nix
-    ./modules/fastfetch.nix
-    ./modules/fzf.nix
-    ./modules/lazygit.nix
-    ./modules/micro.nix
-    ./modules/mise.nix
-    ./modules/ranger.nix
-    ./modules/ripgrep.nix
-    ./modules/starship.nix
-    ./modules/zoxide.nix
+    ./plugins/atuin.nix
+    ./plugins/bat.nix
+    ./plugins/bottom.nix
+    ./plugins/delta.nix
+    ./plugins/eza.nix
+    ./plugins/fastfetch.nix
+    ./plugins/fzf.nix
+    ./plugins/lazygit.nix
+    ./plugins/micro.nix
+    ./plugins/mise.nix
+    ./plugins/ranger.nix
+    ./plugins/ripgrep.nix
+    ./plugins/starship.nix
+    ./plugins/zoxide.nix
   ];
 }
