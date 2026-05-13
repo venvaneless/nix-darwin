@@ -89,6 +89,7 @@
   # -------------------------------------------- #
   imports = [
     # ---- Aliases ---- #
+    ./aliases/fish-functions.nix
     ./aliases/nix-aliases.nix
 		./aliases/gc-aliases.nix
 		./aliases/git-aliases.nix
