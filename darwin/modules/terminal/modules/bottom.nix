@@ -9,8 +9,8 @@
 { pkgs, ... }:
 
 {
-  home.packages = [ pkgs.bottom ];
-
-  xdg.configFile."bottom".source =
-    /Users/ven/.config/bottom;
+  # Bottom config already lives at:
+  # ~/.config/bottom/
+  #
+  # No xdg.configFile.source is needed here.
 }

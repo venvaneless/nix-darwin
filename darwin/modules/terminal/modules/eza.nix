@@ -17,6 +17,8 @@
     git = true;
   };
 
-  xdg.configFile."eza/theme.yml".source =
-    /Users/ven/.config/eza/theme.yml;
+  programs.fish.shellInit = ''
+    # ---------- Eza config ---------- #
+    set -gx EZA_CONFIG_DIR "$HOME/.config/eza"
+  '';
 }

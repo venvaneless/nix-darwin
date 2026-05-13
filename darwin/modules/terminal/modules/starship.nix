@@ -15,6 +15,7 @@
   };
 
   programs.fish.shellInit = ''
+    # ---------- Starship paths ---------- #
     set -gx STARSHIP_CONFIG "${config.home.homeDirectory}/.config/starship.toml"
     set -gx STARSHIP_CACHE "${config.home.homeDirectory}/.config/.cache/"
   '';

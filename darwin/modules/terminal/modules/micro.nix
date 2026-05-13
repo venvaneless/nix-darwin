@@ -9,8 +9,18 @@
 { pkgs, ... }:
 
 {
-  home.packages = [ pkgs.micro ];
+  # Micro config already lives at:
+  # ~/.config/micro/
+  #
+  # No xdg.configFile.source is needed here.
 
-  xdg.configFile."micro".source =
-    /Users/ven/.config/micro;
+  programs.fish.shellAliases = {
+    # --- nano -> micro
+    # Use micro instead of nano.
+    nano = "micro";
+
+    # --- smicro -> sudo micro with user config
+    # Open files with sudo while keeping your micro config.
+    smicro = "sudo micro -config-dir ~/.config/micro";
+  };
 }
