@@ -15,10 +15,6 @@
   ];
 
   programs.fish.shellInit = ''
-    # FASTFETCH
-    # =========================
-    # Run once per interactive Fish shell session.
-
     status is-interactive; or return
 
     set -l fastfetch_config "${config.home.homeDirectory}/.config/fastfetch/fastfetch-macos.jsonc"

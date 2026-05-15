@@ -31,9 +31,6 @@ in
   '';
 
   programs.fish.interactiveShellInit = ''
-    # MISE: FISH INTEGRATION
-    # =========================
-
     if type -q mise
       mise activate fish | source
     end
