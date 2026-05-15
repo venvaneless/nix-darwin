@@ -45,7 +45,7 @@ let
    # "${scriptDir}/rsync-vlc.sh"
    # "${scriptDir}/rsync-yate.sh"
    # "${scriptDir}/rsync-zed.sh"
-  ]
+  ];
 
   runner = pkgs.writeShellScriptBin "rsync-all2-direct" ''
     #!/bin/bash
