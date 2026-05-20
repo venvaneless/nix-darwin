@@ -8,11 +8,11 @@
 
     # --- ga -> git add
     ## Stage files for commit
-    ga = "git add";
+    gad = "git add";
 
     # --- gaa -> git add .
     ## Stage everything in the current repo
-    gaa = "git add .";
+    ga = "git add -a";
 
     # --- gb -> git branch
     ## List or manage branches

@@ -31,5 +31,10 @@
       and git commit -m "$argv"
       and drs
     '';
+    gaa = ''
+      git add -A
+      and git commit -m "$argv"
+    '';
   };
+
 }
