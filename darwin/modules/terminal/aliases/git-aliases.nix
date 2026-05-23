@@ -4,62 +4,138 @@
 
 {
   programs.fish.shellAliases = {
-    # ---------- Git ---------- #
+    # ---------- Git Aliases ---------- #
 
-    # --- ga -> git add
-    ## Stage files for commit
-    gad = "git add";
+    # ---------------------------------------------------------
+    # ---- Stage selected files manually ---- #
+    # --- gd -> git add
+    gd = "git add";
+    # ---------------------------------------------------------
 
-    # --- gaa -> git add .
-    ## Stage everything in the current repo
-    ga = "git add -a";
+    # ---------------------------------------------------------
+    # ---- Stage all new, modified, and deleted files ---- #
+    gda = "git add -A";
+    # ---------------------------------------------------------
 
-    # --- gb -> git branch
-    ## List or manage branches
+    # ---------------------------------------------------------
+    # ---- List or manage branches ---- #
     gb = "git branch";
+    # ---------------------------------------------------------
 
+    # ---------------------------------------------------------
     # --- gc -> git commit
     ## Start a git commit
     gc = "git commit";
+    # ---------------------------------------------------------
 
-    # --- gca -> git commit -a
-    ## Commit tracked file changes without staging each file manually
+    # ---------------------------------------------------------
+    # ---- # Commit tracked file changes without staging each file ---- #
     gca = "git commit -a";
+    # ---------------------------------------------------------
 
-    # --- gcm -> git commit -m
-    ## Start a commit with inline message
+    # ---------------------------------------------------------
+    # --- # Start a commit with inline message ---- #
     gcm = "git commit -m";
+    # ---------------------------------------------------------
 
-    # --- gco -> git checkout
-    ## Switch branch or restore files with checkout
+    # ---------------------------------------------------------
+    # ---  Switch branch or restore files with checkout ---- #
     gco = "git checkout";
+    # ---------------------------------------------------------
 
-    # --- gd -> git diff
-    ## Show git diff.
-    gd = "git diff";
+    # ---------------------------------------------------------
+    # --- # Show git diff ---- #
+    gff = "git diff";
+    # ---------------------------------------------------------
 
-    # --- gl -> git pull
-    ## Pull changes from remote
-    gl = "git pull";
+    # ---------------------------------------------------------
+    # --- guu -> git pull
+    #
+    gpu = "git pull";
+    # ---------------------------------------------------------
 
-    # --- gp -> git push
+    # ---------------------------------------------------------
+    # --- ghh -> git push
     ## Push commits to remote
-    gp = "git push";
+    gph = "git push";
+    # ---------------------------------------------------------
 
-    # --- gs -> git status
+    # ---------------------------------------------------------
+    # --- gss -> git status
     ## Show git status
-    gs = "git status";
+    gss = "git status";
+    # ---------------------------------------------------------
 
-    # --- gsd
-    ## Open the dotfiles repo helper script
-    gsd = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/dotfiles-repo.sh";
-
-    # --- gsn
-    ## Open the nix repo helper script
-    gsn = "/Users/ven/iCloudDocs/my-system/00-sys_assets/scripts/git-scripts/nix-repo.sh";
-
-    # --- l-g -> lazygit
-    ## Open lazygit
+    # ---------------------------------------------------------
+    # --- l-g -> Open lazygit ---- 
+    #
     "l-g" = "lazygit";
+    # ---------------------------------------------------------
+  };
+
+  programs.fish.functions = {
+    # ---------- Git Functions ---------- #
+
+    # ---------------------------------------------------------
+    # ---- gm -> Stage all repo changes with drs ---- #
+    # Create a git commit using the provided message
+    # Run darwin-rebuild switch afterwards
+    # ---------------------------------------------------------
+    gm = ''
+      git add -A
+      and git commit -m "$argv"
+      and drs
+    '';
+    # ---------------------------------------------------------
+
+    # ---------------------------------------------------------
+    # ---- gaa -> Stage all repo changes ---- #
+    #
+    # Create a git commit using the provided message
+    # ---------------------------------------------------------
+    gaa = ''
+      git add -A
+      and git commit -m "$argv"
+    '';
+    # ---------------------------------------------------------
+    # 
+
+
+
+
+
+
+    # ---------------------------------------------------------
+    # sbranch
+    # ---------------------------------------------------------
+    # Show local Git branches in fzf
+    # Switch to the selected branch
+    #
+    # Example:
+    # sbranch
+    # ---------------------------------------------------------
+    sbranch = ''
+      if not command -q fzf
+        echo "fzf is required for sbranch."
+        return 1
+      end
+
+      if not git rev-parse --is-inside-work-tree >/dev/null 2>&1
+        echo "Not inside a Git repository."
+        return 1
+      end
+
+      set selected_branch (
+        git branch --format="%(refname:short)" \
+        | fzf --prompt="Switch branch: "
+      )
+
+      if test -z "$selected_branch"
+        echo "No branch selected."
+        return 0
+      end
+
+      git switch "$selected_branch"
+    '';
   };
 }

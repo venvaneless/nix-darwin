@@ -3,38 +3,29 @@
 # NIX GARBAGE COLLECTION & GENERATION HELPERS
 # ===========================================
 
-{ lib, ... }:
+{ ... }:
 
 {
-  # --- Simple aliases ---
   programs.fish.shellAliases = {
-    # List system generations
     drg = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
   };
 
-  # --- GC helper functions ---
-  programs.zsh.initContent = ''
-    # --- NIX MAINTENANCE HELPERS ---
-    # ------------------------------
-
-    # --- Delete old generations (interactive)
-    ddg() {
-      sudo -H nix-env --delete-generations "$@" \
+  programs.fish.functions = {
+    ddg = ''
+      sudo -H nix-env --delete-generations $argv \
         --profile /nix/var/nix/profiles/system
-    }
+    '';
 
-    # --- Garbage collector (by days)
-    ndg() {
-      sudo nix-collect-garbage --delete-older-than "$1"d
-    }
+    ndg = ''
+      sudo nix-collect-garbage --delete-older-than "$argv[1]"d
+    '';
 
-    # --- Delete old generations + collect garbage (30 days)
-    ndgcg30() {
+    ndgcg30 = ''
       echo "Deleting old generations (+5) and collecting garbage older than 30 days..."
       sudo -H nix-env --delete-generations +5 \
         --profile /nix/var/nix/profiles/system
       sudo nix-collect-garbage --delete-older-than 30d
       echo "Cleanup complete."
-    }
-  '';
+    '';
+  };
 }
