@@ -35,6 +35,20 @@
       git add -A
       and git commit -m "$argv"
     '';
+
+    vfix = ''
+      gaa "Reloading Vaultwarden"
+    
+      # Vaultwarden
+      sudo -H launchctl bootout system/com.ven.vaultwarden 2>/dev/null; or true
+      sudo -H rm -f /Library/LaunchDaemons/com.ven.vaultwarden.plist
+    
+      # Nginx
+      sudo -H launchctl bootout system/com.ven.nginx-custom 2>/dev/null; or true
+      sudo -H rm -f /Library/LaunchDaemons/com.ven.nginx-custom.plist
+    
+      drs
+    '';
   };
 
 }
