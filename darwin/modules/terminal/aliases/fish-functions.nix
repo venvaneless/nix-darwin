@@ -34,5 +34,12 @@
 
       drs
     '';
+
+    gsd = ''
+      set timestamp (date "+%Y-%m-%d %H:%M")
+    
+      gaa "$argv $timestamp"
+      and drs
+    '';
   };
 }
