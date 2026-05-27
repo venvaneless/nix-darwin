@@ -19,6 +19,7 @@ let
   hostPort = 8080;
 
   envVars = [
+  	"DOMAIN=https://vaultwarden.local"
     "WEBSOCKET_ENABLED=true"
     "ENABLE_DB_WAL=false"
     "ROCKET_LIMITS={forms=\"64KiB\"}"
