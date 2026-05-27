@@ -17,7 +17,7 @@
     # Cleanup
     ./generations-cleanup.nix
     # ./rsync-all.nix
-    ./rsync-separate.nix
+    # ./rsync-separate.nix
     ./ssh-agent.nix
     
     # Docker + containers + tooling
@@ -26,11 +26,15 @@
     ./docker/mkcert.nix
     ./docker/nginx.nix
 
-    # Vaultwarden stack
+    # Docker - Vaultwarden stack
     ./docker/vaultwarden/vaultwarden.nix
     ./docker/vaultwarden/vaultwarden-service.nix
     ./docker/vaultwarden/vaultwarden-mkcert.nix
     ./docker/vaultwarden/vaultwarden-nginx.nix
     ./docker/vaultwarden/vaultwarden-android-cert.nix
+
+    # Colima
+
+    # Colima - Vaultwarden stack
   ];
 }

@@ -124,6 +124,12 @@
 
     # Cross-platform graphical process/system monitor
     bottom
+
+    # Container runtimes on MacOS
+    colima
+
+    # Docker CLI
+    docker-client
     
     # Modern, maintained replacement for ls
     eza
