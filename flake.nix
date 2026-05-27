@@ -10,6 +10,7 @@
 
   # Allow committing even with build artefacts like ./result
   nixConfig.allow-dirty = true;
+  
 
   inputs = {
     # Core package set

@@ -30,9 +30,6 @@
   # ---- System State Version ----
   system.stateVersion = 6;
 
-  # ---- Allow unfree packages ----
-  nixpkgs.config.allowUnfree = true;
-
   # ---- Deduplicate store paths
   nix.optimise.automatic = true;
 
@@ -89,7 +86,6 @@
     ];
   };
 
-  # Temporary - Allow unfree packages
 
   # ------------------------------------------------------------
   # GLOBAL ENVIRONMENT VARIABLES
@@ -99,6 +95,21 @@
    	XDG_STATE_HOME  = "/Users/ven/.config/.state";
     XDG_DATA_HOME   = "/Users/ven/.config/.local/share";
     XDG_CACHE_HOME  = "/Users/ven/.config/.cache";
+  };
+
+  
+
+  # ------------------------------------------------------------
+  # NIXPKGS PACKAGE POLICY
+  # ------------------------------------------------------------
+  nixpkgs.config = {
+    # Allow packages with non-free licenses.
+    allowUnfree = true;
+
+    # Temporarily allow Colima's current Lima dependency.
+    permittedInsecurePackages = [
+      "lima-full-1.2.2"
+    ];
   };
 
   # ------------------------------------------------------------
