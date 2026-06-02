@@ -97,7 +97,13 @@
     XDG_CACHE_HOME  = "/Users/ven/.config/.cache";
   };
 
-  
+  # ------------------------------------------------------------
+  # GLOBAL SYSTEM PATH
+  # ------------------------------------------------------------
+  environment.systemPath = [
+  "/opt/homebrew/bin"
+  "/opt/homebrew/sbin"
+  ];
 
   # ------------------------------------------------------------
   # NIXPKGS PACKAGE POLICY
