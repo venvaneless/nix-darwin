@@ -19,6 +19,7 @@
     ./helium-browser.nix
     ./iterm.nix
     ./jdownloader.nix
+    ./keyboardSwitcher.nix
     ./kiwix.nix
     ./librewolf.nix
     ./obsidian.nix

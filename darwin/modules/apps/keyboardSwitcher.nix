@@ -1,0 +1,31 @@
+# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/keyboardSwitcher.nix
+#
+# =============================================================
+# KEYBOARD SWITCHER
+# Utility used by Raycast to switch keyboard layouts
+# Homebrew formula from lutzifer/homebrew-tap
+# =============================================================
+
+{ ... }:
+
+let
+# Package metadata
+# ------------------------------------------------------------
+  packageName = "keyboardSwitcher";
+  tapName     = "lutzifer/homebrew-tap";
+in
+{
+
+  # Homebrew tap
+  # ------------------------------------------------------------
+  homebrew.taps = [
+    tapName
+  ];
+
+  # Homebrew formula
+  # ------------------------------------------------------------
+  homebrew.brews = [
+    packageName
+  ];
+
+}
