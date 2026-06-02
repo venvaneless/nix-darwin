@@ -15,17 +15,15 @@ let
   tapName     = "lutzifer/homebrew-tap";
 in
 {
-
   # Homebrew tap
   # ------------------------------------------------------------
-  homebrew.taps = [
-    tapName
-  ];
+    homebrew.taps = [
+      "lutzifer/homebrew-tap"
+    ];
 
   # Homebrew formula
   # ------------------------------------------------------------
   homebrew.brews = [
-    packageName
+    "lutzifer/homebrew-tap/keyboardSwitcher"
   ];
-
 }
