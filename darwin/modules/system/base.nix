@@ -114,8 +114,6 @@
 
     # Temporarily allow Colima's current Lima dependency.
     permittedInsecurePackages = [
-      "lima-full-1.2.2"
-      "lima-additional-guestagents-1.2.2"
     ];
   };
 
