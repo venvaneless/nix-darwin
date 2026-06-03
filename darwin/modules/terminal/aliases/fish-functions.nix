@@ -66,5 +66,54 @@
       and drs
     '';
     # ---------------------------------------------------------
+
+    # ---------------------------------------------------------
+    # ---- ftrash -> Force delete stubborn iCloud files ---- #
+    # Force-remove files/folders that iCloud refuses to delete
+    # Clears common macOS flags and extended attributes first
+    #
+    # Example:
+    # ftrash ~/Library/Mobile\ Documents/com~apple~CloudDocs/file.txt
+    # ftrash ./stuck-folder
+    # ---------------------------------------------------------
+    ftrash = ''
+      if test (count $argv) -eq 0
+        echo "Usage: ftrash <path> [path...]"
+        return 1
+      end
+
+      for target in $argv
+        if not test -e "$target"
+          echo "Not found: $target"
+          continue
+        end
+
+        echo "Force deleting: $target"
+
+        # Remove macOS file flags that can block deletion
+        chflags -R nouchg,noschg "$target" 2>/dev/null; or true
+
+        # Remove extended attributes that can confuse iCloud/Finder
+        xattr -cr "$target" 2>/dev/null; or true
+
+        # Delete the target
+        rm -rf "$target"
+
+        if test -e "$target"
+          echo "Normal delete failed, trying sudo..."
+          sudo chflags -R nouchg,noschg "$target" 2>/dev/null; or true
+          sudo xattr -cr "$target" 2>/dev/null; or true
+          sudo rm -rf "$target"
+        end
+
+        if test -e "$target"
+          echo "Failed to delete: $target"
+          return 1
+        else
+          echo "Deleted: $target"
+        end
+      end
+    '';
+    # ---------------------------------------------------------
   };
 }
