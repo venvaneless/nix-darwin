@@ -141,9 +141,6 @@
     # Cross-platform graphical process/system monitor
     bottom
 
-    # Container runtimes on MacOS
-    colima
-
     # Docker CLI
     docker-client
     
@@ -167,6 +164,7 @@
 
     # GNU Awk text processing tool
     gawk
+    
     # Git encryption tool
     git-crypt
 
