@@ -136,6 +136,7 @@
     "/Applications/LibreWolf.app"
     "/Applications/Productivity/Zed.app"
     "/Applications/Programming/SnippetsLab.app"
+    "/Applications/Webapps/ChatGPT.app"
     ];
   };
 }

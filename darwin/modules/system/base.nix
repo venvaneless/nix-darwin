@@ -228,6 +228,9 @@
     # Terminal multiplexer
     tmux
 
+    # YouTube music client
+    YTMDesktop
+
     # Zsh history substring search widget
     zsh-history-substring-search
   ];
