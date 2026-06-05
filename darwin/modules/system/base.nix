@@ -229,7 +229,7 @@
     tmux
 
     # YouTube music client
-    YTMDesktop
+    ytmdesktop
 
     # Zsh history substring search widget
     zsh-history-substring-search
