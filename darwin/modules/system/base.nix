@@ -142,7 +142,7 @@
     bottom
 
     # Docker CLI
-    docker-client
+    docker_29
     
     # Modern, maintained replacement for ls
     eza
