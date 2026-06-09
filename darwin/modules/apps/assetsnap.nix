@@ -13,7 +13,7 @@ let
 # ------------------------------------------------------------
 	appName   = "Assetsnap.app";
 	caskName  = "assetsnap";
-  targetDir = "/Tools";
+  targetDir = "/Applications/Tools";
 in
 {
 
