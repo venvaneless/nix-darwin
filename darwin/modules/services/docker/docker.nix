@@ -21,7 +21,7 @@
 
   homebrew.casks = [
     {
-      name = "docker";
+      name = "docker-desktop";
       args = { appdir = "/Applications/Programming"; };
     }
   ];

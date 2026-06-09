@@ -44,6 +44,10 @@
     brews = [
     ];
 
+    taps = [
+    "binary-beam/tap"
+    ];
+    
     # ----- Casks -----
     casks = [
       {
