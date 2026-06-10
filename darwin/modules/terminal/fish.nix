@@ -59,6 +59,9 @@
 
       # Autosuggestions
       set -g fish_autosuggestion_enabled 1
+
+      # Common paths
+        set -gx ICLOUD "$HOME/Library/Mobile Documents/com~apple~CloudDocs"
     '';
   };
 
