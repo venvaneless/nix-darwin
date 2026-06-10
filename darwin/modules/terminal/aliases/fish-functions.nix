@@ -116,6 +116,30 @@
     '';
     # ---------------------------------------------------------
 
+
+    # ---------------------------------------------------------
+    # ---- zz -> Pick zoxide path with fzf and cd into it ---- #
+    # Shows zoxide tracked paths in fzf
+    # Press ENTER to cd into the selected path
+    #
+    # Example:
+    # zz
+    # ---------------------------------------------------------
+    zz = ''
+      set selected_path (
+        zoxide query -l |
+        fzf --height=60% --reverse --prompt="zoxide cd> "
+      )
+
+      if test -z "$selected_path"
+        return 0
+      end
+
+      builtin cd "$selected_path"
+    '';
+    # ---------------------------------------------------------
+    
+
     # ---------------------------------------------------------
     # ---- ia -> Internet Archive helper through mise Python ---- #
     # Download Internet Archive files by type

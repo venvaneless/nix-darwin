@@ -18,10 +18,6 @@
     ## Use zoxide for smarter directory jumping in Fish
     cd = "z";
 
-    # --- eff -> exec fish
-    ## Jump from the current shell into zsh
-    eff = "exec fish";
-
     # --- fishcfg -> edit Fish config
     ## Open the generated Fish config in micro
     fishcfg = "micro /Users/ven/.config/fish/config.fish";
