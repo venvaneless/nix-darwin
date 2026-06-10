@@ -31,6 +31,8 @@
       set app_support "$HOME/Library/Application Support"
       set preferences "$HOME/Library/Preferences"
     
+      set show_hidden "no"
+    
       set current_kind "root"
       set current_path "$home_path"
     
@@ -39,7 +41,6 @@
     
       function __cdf_pretty_container_name
         set raw (basename "$argv[1]")
-    
         set clean "$raw"
     
         set clean (string replace -r '^iCloud~' "" "$clean")
@@ -56,6 +57,18 @@
         printf "%s\t%s\t%s\n" "$argv[1]" "$argv[2]" "$argv[3]"
       end
     
+      function __cdf_should_skip_hidden
+        set base (basename "$argv[1]")
+    
+        if test "$show_hidden" = "no"
+          if string match -q ".*" "$base"
+            return 0
+          end
+        end
+    
+        return 1
+      end
+    
       while true
         set rows
     
@@ -65,6 +78,7 @@
             set -a rows (__cdf_add_row "iCloud" "$mobile_docs" "icloud-menu")
             set -a rows (__cdf_add_row "Application Support" "$app_support" "folder")
             set -a rows (__cdf_add_row "Preferences" "$preferences" "folder")
+            set -a rows (__cdf_add_row "Show Hidden Files: $show_hidden" "$current_path" "toggle-hidden")
     
           case icloud-menu
             set -a rows (__cdf_add_row "All Folders" "$mobile_docs" "icloud-all")
@@ -73,6 +87,10 @@
           case icloud-all
             if test -d "$icloud_drive"
               for dir in (find "$icloud_drive" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+                if __cdf_should_skip_hidden "$dir"
+                  continue
+                end
+    
                 set name (basename "$dir")
                 set -a rows (__cdf_add_row "$name" "$dir" "folder")
               end
@@ -80,13 +98,13 @@
     
             if test -d "$mobile_docs"
               for dir in (find "$mobile_docs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
-                set base (basename "$dir")
-    
-                if test "$base" = "com~apple~CloudDocs"
+                if __cdf_should_skip_hidden "$dir"
                   continue
                 end
     
-                if test "$base" = ".Trash"
+                set base (basename "$dir")
+    
+                if test "$base" = "com~apple~CloudDocs"
                   continue
                 end
     
@@ -98,13 +116,13 @@
           case icloud-containers
             if test -d "$mobile_docs"
               for dir in (find "$mobile_docs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
-                set base (basename "$dir")
-    
-                if test "$base" = "com~apple~CloudDocs"
+                if __cdf_should_skip_hidden "$dir"
                   continue
                 end
     
-                if test "$base" = ".Trash"
+                set base (basename "$dir")
+    
+                if test "$base" = "com~apple~CloudDocs"
                   continue
                 end
     
@@ -116,20 +134,27 @@
           case folder
             if test -d "$current_path"
               for dir in (find "$current_path" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+                if __cdf_should_skip_hidden "$dir"
+                  continue
+                end
+    
                 set name (basename "$dir")
                 set -a rows (__cdf_add_row "$name" "$dir" "folder")
               end
             end
         end
     
+        set prompt_name (basename "$current_path")
+    
         set result (
           printf "%s\n" $rows |
           fzf \
+            --header="cdf: $current_path" \
             --height=80% \
-            --reverse \
+            --layout=reverse-list \
+            --prompt="$prompt_name > " \
             --delimiter=(printf "\t") \
             --with-nth=1 \
-            --prompt="cdf: $current_path > " \
             --expect=enter,right,left,ctrl-l,ctrl-h \
             --preview='test -d {2:q} && eza -la --icons=always {2:q} 2>/dev/null || true'
         )
@@ -149,6 +174,18 @@
         set selected_name "$fields[1]"
         set selected_path "$fields[2]"
         set selected_kind "$fields[3]"
+    
+        if test "$selected_kind" = "toggle-hidden"
+          read -l -P "Show hidden files? [y/N]: " answer
+    
+          if string match -qi "y" "$answer"; or string match -qi "yes" "$answer"
+            set show_hidden "yes"
+          else
+            set show_hidden "no"
+          end
+    
+          continue
+        end
     
         switch "$key"
           case enter
