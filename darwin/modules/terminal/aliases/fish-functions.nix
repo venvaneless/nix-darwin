@@ -52,6 +52,16 @@
     
         echo "$label"
       end
+
+      function __cdf_container_content_path
+        set container_path "$argv[1]"
+      
+        if test -d "$container_path/Documents"
+          echo "$container_path/Documents"
+        else
+          echo "$container_path"
+        end
+      end
     
       function __cdf_add_row
         printf "%s\t%s\t%s\n" "$argv[1]" "$argv[2]" "$argv[3]"
@@ -109,7 +119,8 @@
                 end
     
                 set name (__cdf_pretty_container_name "$dir")
-                set -a rows (__cdf_add_row "$name" "$dir" "folder")
+set content_path (__cdf_container_content_path "$dir")
+set -a rows (__cdf_add_row "$name" "$content_path" "folder")
               end
             end
     
@@ -127,7 +138,8 @@
                 end
     
                 set name (__cdf_pretty_container_name "$dir")
-                set -a rows (__cdf_add_row "$name" "$dir" "folder")
+                set content_path (__cdf_container_content_path "$dir")
+                set -a rows (__cdf_add_row "$name" "$content_path" "folder")
               end
             end
     
@@ -138,8 +150,9 @@
                   continue
                 end
     
-                set name (basename "$dir")
-                set -a rows (__cdf_add_row "$name" "$dir" "folder")
+                set name (__cdf_pretty_container_name "$dir")
+                set content_path (__cdf_container_content_path "$dir")
+                set -a rows (__cdf_add_row "$name" "$content_path" "folder")
               end
             end
         end
