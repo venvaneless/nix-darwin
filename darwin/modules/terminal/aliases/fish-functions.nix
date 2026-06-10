@@ -119,8 +119,8 @@
                 end
     
                 set name (__cdf_pretty_container_name "$dir")
-set content_path (__cdf_container_content_path "$dir")
-set -a rows (__cdf_add_row "$name" "$content_path" "folder")
+                set content_path (__cdf_container_content_path "$dir")
+                set -a rows (__cdf_add_row "$name" "$content_path" "folder")
               end
             end
     
@@ -150,9 +150,8 @@ set -a rows (__cdf_add_row "$name" "$content_path" "folder")
                   continue
                 end
     
-                set name (__cdf_pretty_container_name "$dir")
-                set content_path (__cdf_container_content_path "$dir")
-                set -a rows (__cdf_add_row "$name" "$content_path" "folder")
+                set name (basename "$dir")
+                set -a rows (__cdf_add_row "$name" "$dir" "folder")
               end
             end
         end
