@@ -50,7 +50,7 @@
   	 # =====================================================================
        # NIXPKGS OVERLAYS (modular, imported from overlays/)
        # =====================================================================
-       overlays.macbook = import ./darwin/modules/overlays/overlays.nix;
+       overlays.macbook = final: prev: {};
        
       # DARWIN: MAIN SYSTEM
       # =========================
