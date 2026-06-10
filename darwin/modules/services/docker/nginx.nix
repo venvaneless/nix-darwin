@@ -109,7 +109,7 @@ in
   '';
 
   # Launchd daemon: com.ven.nginx-custom
-  launchd.daemons.nginx-custom = {
+  launchd.agents.nginx-custom = {
     serviceConfig = {
       Label            = "com.ven.nginx-custom";
       ProgramArguments = [ "/etc/ven/services/run-nginx-custom" ];
