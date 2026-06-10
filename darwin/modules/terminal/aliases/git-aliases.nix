@@ -103,10 +103,26 @@
     # ---- gm -> Stage all repo changes with drs ---- #
     # Create a git commit using the provided message
     # Run darwin-rebuild switch afterwards
+    #
+    # Example:
+    # gm "Adding fzf trash and iCloud functions"
     # ---------------------------------------------------------
     gm = ''
+      set message (string join " " $argv)
+
+      if test -z "$message"
+        echo "Usage: gm <commit-message>"
+        return 1
+      end
+
       git add -A
-      and git commit -m "$argv"
+
+      if git diff --cached --quiet
+        echo "Nothing to commit."
+        return 0
+      end
+
+      git commit -m "$message"
       and drs
     '';
     # ---------------------------------------------------------
