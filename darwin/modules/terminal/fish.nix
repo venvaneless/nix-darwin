@@ -51,9 +51,6 @@
 
       # Use a named Fish history file
       set -g fish_history ven
-
-      # Common paths
-        set -gx ICLOUD "$HOME/Library/Mobile Documents/com~apple~CloudDocs"
     '';
 
     interactiveShellInit = ''
@@ -84,6 +81,8 @@
 					sessionVariables = {
 						# COLORTERM = "truecolor";
 						MICRO_TRUECOLOR = "1";
+
+						ICLOUD = "$HOME/iCloudDocs";
 					};
 	  };
 
