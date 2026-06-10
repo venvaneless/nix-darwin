@@ -15,6 +15,8 @@
     ./abetterfinderrename.nix
     ./assetsnap.nix
     ./calibre.nix
+    ./devdocs.nix
+    ./devtoys.nix
     ./espanso.nix
     ./hammerspoon.nix
     ./helium-browser.nix
