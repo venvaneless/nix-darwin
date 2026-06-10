@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/statusbar.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/statusbar.nix
 #
 # STATUS BAR / CONTROL CENTER
 # ============================================================

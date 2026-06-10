@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/ssh-agent.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/services/ssh-agent.nix
 #
 # DARWIN: SSH AGENT
 # =========================

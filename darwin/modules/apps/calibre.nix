@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/calibre.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/apps/calibre.nix
 #
 # =============================================================
 # CALIBRE

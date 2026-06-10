@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/fish.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/fish.nix
 #
 # FISH CONFIGURATION
 # =====================================================================
@@ -111,7 +111,6 @@
     ./plugins/lazygit.nix
     ./plugins/micro.nix
     ./plugins/mise.nix
-    ./plugins/ranger.nix
     ./plugins/ripgrep.nix
     ./plugins/starship.nix
     ./plugins/zoxide.nix

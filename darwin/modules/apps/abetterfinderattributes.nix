@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/a-better-finder-attributes.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/apps/a-better-finder-attributes.nix
 # 
 # =============================================================
 # A BETTER FINDER ATTRIBUTES

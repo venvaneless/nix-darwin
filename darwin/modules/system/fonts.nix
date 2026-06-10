@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/fonts.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/fonts.nix
 #
 # SYSTEM FONTS
 # ============================================================

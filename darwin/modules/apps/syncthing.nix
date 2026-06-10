@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/syncthing.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/apps/syncthing.nix
 # 
 # =============================================================
 # SYNCTHING

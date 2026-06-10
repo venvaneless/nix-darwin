@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/vaultwarden/vaultwarden-nginx.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/vaultwarden/vaultwarden-nginx.nix
 #
 # VAULTWARDEN: NGINX VHOST (DARWIN)
 # =================================

@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/rsync-all.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/services/rsync-all.nix
 #
 # SYSTEM: RSYNC-ALL (DISPATCHER MODE)
 # ============================================================

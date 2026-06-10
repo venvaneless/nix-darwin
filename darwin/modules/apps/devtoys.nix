@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/devtoys.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/apps/devtoys.nix
 #
 # =============================================================
 # DevToys

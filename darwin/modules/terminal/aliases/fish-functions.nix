@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/aliases/fish-functions.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/aliases/fish-functions.nix
 #
 # FISH FUNCTIONS
 # =============================================================

@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/vaultwarden/vaultwarden-android-cert.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/vaultwarden/vaultwarden-android-cert.nix
 #
 # VAULTWARDEN: ANDROID CA EXPORT
 # ============================================================

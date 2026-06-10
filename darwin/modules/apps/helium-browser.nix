@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/helium-browser.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/apps/helium-browser.nix
 # 
 # =============================================================
 # HELIUM BROWSER

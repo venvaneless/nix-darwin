@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/overlays/overlays.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/overlays/overlays.nix
 #
 # OVERLAYS: GLUE FILE
 # ====================================================================

@@ -1,4 +1,4 @@
-# darwin/modules/system/locale.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/locale.nix
 { ... }:
 
 {

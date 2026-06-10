@@ -1,10 +1,14 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/aliases/nix-aliases.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/aliases/nix-aliases.nix
 #
 # NIX-DARWIN ALIASES
 # ===========================================
 
 { ... }:
 
+let
+  flakePath = "/Users/ven/.config/nix/nix-config";
+  flakeHost = "macbook";
+in
 {
   programs.fish.shellAliases = {
     # -------------------------------------
@@ -12,39 +16,35 @@
     # Builds all derivations
     # Doesn't switch to the current flake
     # -------------------------------------
-    drb = "sudo -H darwin-rebuild build --flake ~/.config/nix/nix-darwin#macbook";
+    drb = "sudo -H darwin-rebuild build --flake ${flakePath}#${flakeHost}";
 
     # -------------------------------------
     # Evaluates the flake
     # Builds all derivations
     # Switches to the current flake config
     # -------------------------------------
-    drs = "sudo -H darwin-rebuild switch --flake ~/.config/nix/nix-darwin#macbook";
+    drs = "sudo -H darwin-rebuild switch --flake ${flakePath}#${flakeHost}";
 
     # -------------------------------------
     # Checks the full nix-darwin system configuration
     # Analyses for bugs and syntax errors
     # No rebuilding/applying
     # -------------------------------------
-    drc = "sudo -H darwin-rebuild check --flake ~/.config/nix/nix-darwin#macbook";
+    drc = "sudo -H darwin-rebuild check --flake ${flakePath}#${flakeHost}";
 
     # ------------------------------------------------------------
-    # Checks the flake itself, NOT the Darwin configuration
-    # Checks if darwinConfigurations.macbook exists as an output
-    # Checks if flake.nix is syntactically valid
-    # Checks declared outputs
-    # Tests if checks/devShells/overlays evaluate
+    # Checks the flake itself, NOT only the Darwin configuration
     # ------------------------------------------------------------
-    ndc = "sudo -H nix flake check ~/.config/nix/nix-darwin";
+    ndc = "nix flake check ${flakePath}";
 
     # -------------------------------------------------
-    # Recreates the lock file of a flake
+    # Recreates / updates the lock file of the flake
     # -------------------------------------------------
-    ndl = "sudo -H nix flake update ~/.config/nix/nix-darwin";
+    ndl = "nix flake update --flake ${flakePath}";
 
     # ------------------------------------
-    # Updates the flake after new lockfile
+    # Updates flake inputs
     # ------------------------------------
-    ndu = "nix flake update --flake ~/.config/nix/nix-darwin";
+    ndu = "nix flake update --flake ${flakePath}";
   };
 }

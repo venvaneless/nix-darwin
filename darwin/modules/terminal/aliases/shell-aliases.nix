@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/aliases/shell-aliases.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/aliases/shell-aliases.nix
 
 { ... }:
 

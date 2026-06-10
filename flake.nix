@@ -1,9 +1,10 @@
-# /Users/ven/.config/nix/nix-darwin/flake.nix
+# /Users/ven/.config/nix/nix-config/flake.nix
 #
+# ==========================================================
 # FLAKE: MAIN ENTRYPOINT
-# =========================
 # - Provides nix-darwin configuration "macbook"
-# - Integrates Home Manager via darwin/index.nix
+# - Integrates Home Manager via darwin/index.nix 
+# ==========================================================
 
 {
   description = "Ven’s setup";
@@ -61,7 +62,7 @@
         };
 
         modules = [
-          ./darwin/index.nix
+          ./darwin/nix-darwin.nix
         ];
       };
 

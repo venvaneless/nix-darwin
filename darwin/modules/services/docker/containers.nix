@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/docker/containers.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/containers.nix
 #
 # DOCKER CONTAINERS (DARWIN-ONLY HELPER)
 # ======================================

@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/fastfetch.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/plugins/fastfetch.nix
 #
 # =====================================================================
 # FASTFETCH

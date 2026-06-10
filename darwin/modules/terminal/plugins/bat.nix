@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/modules/bat.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/plugins/bat.nix
 # 
 # =====================================================================
 # BAT

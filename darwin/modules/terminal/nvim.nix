@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/nvim.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/nvim.nix
 #
 # USER: NEOVIM + ASTROVIM (REALISTIC, NO SYMLINKS)
 # ============================================================

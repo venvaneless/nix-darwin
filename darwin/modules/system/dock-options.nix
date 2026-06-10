@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/dock-options.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/dock-options.nix
 #
 # DOCK OPTIONS
 # ============================================================

@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/system-options.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/system-options.nix
 #
 # SYSTEM OPTIONS (GLUE)
 # ============================================================

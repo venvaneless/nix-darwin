@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/apps/a-better-finder-rename.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/apps/a-better-finder-rename.nix
 # 
 # =============================================================
 # A BETTER FINDER RENAME

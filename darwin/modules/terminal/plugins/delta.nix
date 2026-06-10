@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/delta.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/plugins/delta.nix
 # 
 # =============================================================
 # DELTA

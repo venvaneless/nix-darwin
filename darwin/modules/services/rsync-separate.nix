@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/rsync-all2.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/services/rsync-all2.nix
 #
 # SYSTEM: RSYNC-ALL2 (DIRECT SCRIPT RUNNER)
 # ============================================================

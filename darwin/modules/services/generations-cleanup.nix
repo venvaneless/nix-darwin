@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/generations-cleanup.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/services/generations-cleanup.nix
 #
 # SYSTEM: GENERATIONS CLEANUP
 # ============================================================

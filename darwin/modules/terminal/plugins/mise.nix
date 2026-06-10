@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/mise.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/plugins/mise.nix
 #
 # =====================================================================
 # MISE VERSION MANAGER

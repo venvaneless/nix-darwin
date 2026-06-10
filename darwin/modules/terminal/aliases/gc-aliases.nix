@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/aliases/gc-aliases.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/aliases/gc-aliases.nix
 #
 # NIX GARBAGE COLLECTION & GENERATION HELPERS
 # ===========================================

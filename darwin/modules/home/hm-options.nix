@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/home/hm-options.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/home/hm-options.nix
 #
 # HOME MANAGER — MACOS OPTIONS (GLUE)
 # ============================================================

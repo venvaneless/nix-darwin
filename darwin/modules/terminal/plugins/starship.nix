@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/terminal/modules/plugins/starship.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/plugins/starship.nix
 #
 # =====================================================================
 # STARSHIP

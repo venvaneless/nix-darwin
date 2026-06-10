@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/finder-options-script.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/finder-options-script.nix
 #
 # FINDER OPTIONS
 # ============================================================

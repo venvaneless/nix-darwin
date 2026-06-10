@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/keyboard.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/keyboard.nix
 #
 # KEYBOARD OPTIONS
 # ============================================================

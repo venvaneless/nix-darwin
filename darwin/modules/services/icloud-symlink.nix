@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/services/icloud-symlink.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/services/icloud-symlink.nix
 #
 # DARWIN: ICLOUDDOCS HOME SYMLINK
 # ============================================================

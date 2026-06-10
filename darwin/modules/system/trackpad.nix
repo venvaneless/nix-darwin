@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-darwin/darwin/modules/system/trackpad.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/trackpad.nix
 #
 # TRACKPAD OPTIONS
 # ============================================================
