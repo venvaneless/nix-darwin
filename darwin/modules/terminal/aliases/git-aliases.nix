@@ -7,6 +7,40 @@
     # ---------- Git Aliases ---------- #
 
     # ---------------------------------------------------------
+    # ---- gm -> Stage all repo changes with drs ---- #
+    # Create a git commit using the provided message
+    # Run darwin-rebuild switch afterwards
+    # ---------------------------------------------------------
+    gm = ''
+      git add -A
+      and git commit -m "$argv"
+      and drs
+    '';
+    # ---------------------------------------------------------
+
+
+    # ---------------------------------------------------------
+    # ---- gsd -> Git commit with timestamp + drs ---- #
+    # Stage all repository changes
+    # Create commit with appended timestamp:
+    # yyyy-mm-dd hh:mm
+    # Run darwin-rebuild switch afterwards
+    #
+    # Example:
+    # gsd "Fixing nginx"
+    # -> "Fixing nginx 2026-05-23 19:42"
+    # ---------------------------------------------------------
+    gsd = ''
+      set timestamp (date "+%Y-%m-%d %H:%M")
+      set message (string join " " $argv)
+
+      gaa "$message $timestamp"
+      and drs
+    '';
+    # ---------------------------------------------------------
+
+    
+    # ---------------------------------------------------------
     # ---- Stage selected files manually ---- #
     # --- gd -> git add
     gd = "git add";
@@ -73,6 +107,8 @@
     # ---------------------------------------------------------
   };
 
+
+  
   programs.fish.functions = {
     # ---------- Git Functions ---------- #
 
@@ -87,6 +123,7 @@
     '';
     # ---------------------------------------------------------
 
+    
     # ---------------------------------------------------------
     # sbranch
     # ---------------------------------------------------------
@@ -119,5 +156,6 @@
 
       git switch "$selected_branch"
     '';
+    # ---------------------------------------------------------
   };
 }

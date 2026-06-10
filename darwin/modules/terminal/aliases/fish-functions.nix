@@ -12,60 +12,98 @@
     # ---------- General Fish Functions ---------- #
 
     # ---------------------------------------------------------
-    # vfix
-    # ---------------------------------------------------------
-    # Commit Vaultwarden reload changes
-    # Remove old Vaultwarden and Nginx launch daemon plists
-    # Run darwin-rebuild switch afterwards
+    # ---- cdf -> Navigate folders with fzf and cd into one ---- #
+    # ENTER selects the current folder
+    # RIGHT enters the highlighted folder
+    # LEFT goes to the parent folder
     #
     # Example:
-    # vfix
+    # cdf
     # ---------------------------------------------------------
-    vfix = ''
-      gaa "Reloading Vaultwarden"
+    cdf = ''
+      set current "$HOME"
 
-      # Vaultwarden
-      sudo -H launchctl bootout system/com.ven.vaultwarden 2>/dev/null; or true
-      sudo -H rm -f /Library/LaunchDaemons/com.ven.vaultwarden.plist
+      while true
+        set entries
 
-      # Nginx
-      sudo -H launchctl bootout system/com.ven.nginx-custom 2>/dev/null; or true
-      sudo -H rm -f /Library/LaunchDaemons/com.ven.nginx-custom.plist
+        if test "$current" = "$HOME"
+          set -a entries "[iCloud Drive]\t$HOME/iCloudDocs"
+          set -a entries "[iCloud Containers]\t$HOME/Library/Mobile Documents"
+        end
 
-      drs
+        set dirs (
+          find "$current" -mindepth 1 -maxdepth 1 -type d 2>/dev/null |
+          sort
+        )
+
+        for dir in $dirs
+          set name (basename "$dir")
+          set -a entries "$name\t$dir"
+        end
+
+        set result (
+          printf "%s\n" $entries |
+          fzf \
+            --prompt="cdf: $current > " \
+            --height=80% \
+            --reverse \
+            --delimiter="\t" \
+            --with-nth=1 \
+            --expect=enter,right,left \
+            --preview='eza -la --icons=always {2} 2>/dev/null'
+        )
+
+        if test (count $result) -eq 0
+          return 0
+        end
+
+        set key $result[1]
+        set row $result[2]
+
+        if test -z "$row"
+          continue
+        end
+
+        set selected_path (string split "\t" "$row")[2]
+
+        switch "$key"
+          case enter
+            builtin cd "$selected_path"
+            return 0
+
+          case right
+            set current "$selected_path"
+
+          case left
+            set current (dirname "$current")
+        end
+      end
     '';
+    # ---------------------------------------------------------
+
 
     # ---------------------------------------------------------
-    # ---- gsd -> Git commit with timestamp + drs ---- #
-    # Stage all repository changes
-    # Create commit with appended timestamp:
-    # yyyy-mm-dd hh:mm
-    # Run darwin-rebuild switch afterwards
+    # ---- zz -> Pick zoxide path with fzf and cd into it ---- #
+    # Shows zoxide tracked paths in fzf
+    # Press ENTER to cd into the selected path
     #
     # Example:
-    # gsd "Fixing nginx"
-    # -> "Fixing nginx 2026-05-23 19:42"
+    # zz
     # ---------------------------------------------------------
-    gsd = ''
-      set timestamp (date "+%Y-%m-%d %H:%M")
-      set message (string join " " $argv)
+    zz = ''
+      set selected_path (
+        zoxide query -l |
+        fzf --height=60% --reverse --prompt="zoxide cd> "
+      )
 
-      gaa "$message $timestamp"
-      and drs
+      if test -z "$selected_path"
+        return 0
+      end
+
+      builtin cd "$selected_path"
     '';
     # ---------------------------------------------------------
 
-    # ---------------------------------------------------------
-    # ---- gm -> Stage all repo changes with drs ---- #
-    # Create a git commit using the provided message
-    # Run darwin-rebuild switch afterwards
-    # ---------------------------------------------------------
-    gm = ''
-      git add -A
-      and git commit -m "$argv"
-      and drs
-    '';
-    # ---------------------------------------------------------
 
     # ---------------------------------------------------------
     # ---- ftrash -> Force delete stubborn iCloud files ---- #
@@ -118,28 +156,70 @@
 
 
     # ---------------------------------------------------------
-    # ---- zz -> Pick zoxide path with fzf and cd into it ---- #
-    # Shows zoxide tracked paths in fzf
-    # Press ENTER to cd into the selected path
-    #
-    # Example:
-    # zz
+    # ---- ftrash -> Force delete stubborn iCloud files ---- #
+    # Force-remove files/folders that iCloud refuses to delete
     # ---------------------------------------------------------
-    zz = ''
-      set selected_path (
-        zoxide query -l |
-        fzf --height=60% --reverse --prompt="zoxide cd> "
-      )
-
-      if test -z "$selected_path"
+    fstrash = ''
+      function __fstrash_delete_one
+        set target "$argv[1]"
+    
+        if not test -e "$target"
+          echo "Not found: $target"
+          return 0
+        end
+    
+        echo "Force deleting: $target"
+    
+        chflags -R nouchg,noschg "$target" 2>/dev/null; or true
+        xattr -cr "$target" 2>/dev/null; or true
+        rm -rf "$target" 2>/dev/null
+    
+        if test -e "$target"
+          echo "Normal delete failed, trying sudo..."
+          sudo chflags -R nouchg,noschg "$target" 2>/dev/null; or true
+          sudo xattr -cr "$target" 2>/dev/null; or true
+          sudo rm -rf "$target"
+        end
+    
+        if test -e "$target"
+          echo "Failed to delete: $target"
+          return 1
+        else
+          echo "Deleted: $target"
+        end
+      end
+    
+      if test (count $argv) -gt 0
+        for target in $argv
+          __ftrash_delete_one "$target"; or return 1
+        end
         return 0
       end
-
-      builtin cd "$selected_path"
+    
+      echo "Cleaning system Trash contents..."
+    
+      if test -d "$HOME/.Trash"
+        find "$HOME/.Trash" -mindepth 1 -maxdepth 1 -print0 |
+        while read -lz target
+          __ftrash_delete_one "$target"; or return 1
+        end
+      end
+    
+      echo "Cleaning iCloud container Trash contents..."
+    
+      find "$HOME/Library/Mobile Documents" -type d -name ".Trash" -print0 2>/dev/null |
+      while read -lz trash_dir
+        echo "Found Trash: $trash_dir"
+    
+        find "$trash_dir" -mindepth 1 -maxdepth 1 -print0 |
+        while read -lz target
+          __ftrash_delete_one "$target"; or return 1
+        end
+      end
     '';
     # ---------------------------------------------------------
-    
 
+    
     # ---------------------------------------------------------
     # ---- ia -> Internet Archive helper through mise Python ---- #
     # Download Internet Archive files by type
@@ -192,5 +272,31 @@
           mise x python@3.12 -- ia $argv
       end
     '';
+    # ---------------------------------------------------------
+
+
+    # ---------------------------------------------------------
+    # ---- vfix ---- #
+    # Commit Vaultwarden reload changes
+    # Remove old Vaultwarden and Nginx launch daemon plists
+    # Run darwin-rebuild switch afterwards
+    #
+    # Example:
+    # vfix
+    # ---------------------------------------------------------
+    vfix = ''
+      gaa "Reloading Vaultwarden"
+
+      # Vaultwarden
+      sudo -H launchctl bootout system/com.ven.vaultwarden 2>/dev/null; or true
+      sudo -H rm -f /Library/LaunchDaemons/com.ven.vaultwarden.plist
+
+      # Nginx
+      sudo -H launchctl bootout system/com.ven.nginx-custom 2>/dev/null; or true
+      sudo -H rm -f /Library/LaunchDaemons/com.ven.nginx-custom.plist
+
+      drs
+    '';
+    # ---------------------------------------------------------
   };
 }
