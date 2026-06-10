@@ -191,12 +191,14 @@
       end
     
       set current_branch (git branch --show-current)
+      set apply_to_all_option "+ Apply latest changes to all branches"
       set create_option "+ Create new branch"
-    
+      
       set selected_branch (
         begin
           git branch --format="%(refname:short)"
           echo "$create_option"
+          echo "$apply_to_all_option"
         end | fzf \
           --no-sort \
           --prompt="Switch branch [$current_branch]: " \
@@ -207,6 +209,86 @@
         echo "No branch selected."
         return 0
       end
+
+      if test "$selected_branch" = "$apply_to_all_option"
+        set original_branch "$current_branch"
+      
+        if test -z "$original_branch"
+          echo "Could not detect current branch."
+          return 1
+        end
+      
+        if not git diff --quiet; or not git diff --cached --quiet
+          read -l -P "Commit message: " commit_message
+      
+          if test -z "$commit_message"
+            echo "No commit message given."
+            return 1
+          end
+      
+          git add -A; or return 1
+          git commit -m "$commit_message"; or return 1
+        else
+          read -l -P "Working tree clean. Use latest existing commit? [y/N]: " use_latest
+      
+          if not string match -qi "y" "$use_latest"; and not string match -qi "yes" "$use_latest"
+            echo "Cancelled."
+            return 0
+          end
+        end
+      
+        set commit_hash (git rev-parse --short HEAD)
+        set commit_subject (git log -1 --format="%s")
+      
+        echo
+        echo "Commit to apply:"
+        echo "$commit_hash $commit_subject"
+        echo
+      
+        read -l -P "Push and apply this commit to all other local branches? [y/N]: " confirm_sync
+      
+        if not string match -qi "y" "$confirm_sync"; and not string match -qi "yes" "$confirm_sync"
+          echo "Cancelled."
+          return 0
+        end
+      
+        git push origin "$original_branch"; or return 1
+      
+        set target_branches (
+          git branch --format="%(refname:short)" |
+          grep -v "^$original_branch\$"
+        )
+      
+        for target_branch in $target_branches
+          git switch "$target_branch"; or begin
+            git switch "$original_branch"
+            return 1
+          end
+      
+          git cherry-pick "$commit_hash"
+      
+          if test $status -ne 0
+            echo "Cherry-pick failed on: $target_branch"
+            echo "Fix conflicts, then run:"
+            echo "  git add -A"
+            echo "  git cherry-pick --continue"
+            echo "Then return manually:"
+            echo "  git switch $original_branch"
+            return 1
+          end
+      
+          git push origin "$target_branch"; or begin
+            git switch "$original_branch"
+            return 1
+          end
+        end
+      
+        git switch "$original_branch"; or return 1
+      
+        echo "Done. Returned to: $original_branch"
+        return 0
+      end
+      
     
       if test "$selected_branch" = "$create_option"
         read -l -P "New branch name: " new_branch
