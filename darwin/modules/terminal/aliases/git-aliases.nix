@@ -7,19 +7,6 @@
     # ---------- Git Aliases ---------- #
 
     # ---------------------------------------------------------
-    # ---- gm -> Stage all repo changes with drs ---- #
-    # Create a git commit using the provided message
-    # Run darwin-rebuild switch afterwards
-    # ---------------------------------------------------------
-    gm = ''
-      git add -A
-      and git commit -m "$argv"
-      and drs
-    '';
-    # ---------------------------------------------------------
-
-
-    # ---------------------------------------------------------
     # ---- gsd -> Git commit with timestamp + drs ---- #
     # Stage all repository changes
     # Create commit with appended timestamp:
@@ -111,6 +98,19 @@
   
   programs.fish.functions = {
     # ---------- Git Functions ---------- #
+
+    # ---------------------------------------------------------
+    # ---- gm -> Stage all repo changes with drs ---- #
+    # Create a git commit using the provided message
+    # Run darwin-rebuild switch afterwards
+    # ---------------------------------------------------------
+    gm = ''
+      git add -A
+      and git commit -m "$argv"
+      and drs
+    '';
+    # ---------------------------------------------------------
+    
 
     # ---------------------------------------------------------
     # ---- gaa -> Stage all repo changes ---- #
