@@ -68,7 +68,7 @@
 
     # Home Manager
     home-manager.darwinModules.home-manager
-    ./modules/home/home-manager.nix
+    ./da/home/home-manager.nix
 
     # System
     ./modules/system/base.nix
