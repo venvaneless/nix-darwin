@@ -59,6 +59,9 @@
 
       # Autosuggestions
       set -g fish_autosuggestion_enabled 1
+
+      # Common paths
+        set -gx ICLOUD_MOBILE "$HOME/Library/Mobile Documents"
     '';
   };
 
@@ -83,7 +86,6 @@
 						MICRO_TRUECOLOR = "1";
 
 						ICLOUD = "$HOME/iCloudDocs";
-						ICLOUD_MOBILE = "$HOME/Library/Mobile_Documents";
 					};
 	  };
 
