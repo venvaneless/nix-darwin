@@ -16,7 +16,7 @@
   imports = [
     # Cleanup
     ./generations-cleanup.nix
-    # ./rsync-all.nix
+    ./rsync.nix
     # ./rsync-separate.nix
     ./ssh-agent.nix
     

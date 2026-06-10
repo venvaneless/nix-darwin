@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/modules/services/rsync-all2.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/services/rsync-all.nix
 #
 # SYSTEM: RSYNC-ALL2 (DIRECT SCRIPT RUNNER)
 # ============================================================
@@ -39,7 +39,7 @@ let
    # "${scriptDir}/rsync-a_better_finder_rename.sh"
    # "${scriptDir}/rsync-espanso.sh"
    # "${scriptDir}/rsync-iterm.sh"
-   # "${scriptDir}/rsync-obsidian.sh"
+   "${scriptDir}/rsync-obsidian.sh"
    # "${scriptDir}/rsync-paste.sh"
    # "${scriptDir}/rsync-vaultwarden.sh"
    # "${scriptDir}/rsync-vlc.sh"
