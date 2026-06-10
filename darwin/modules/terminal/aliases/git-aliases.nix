@@ -7,27 +7,6 @@
     # ---------- Git Aliases ---------- #
 
     # ---------------------------------------------------------
-    # ---- gsd -> Git commit with timestamp + drs ---- #
-    # Stage all repository changes
-    # Create commit with appended timestamp:
-    # yyyy-mm-dd hh:mm
-    # Run darwin-rebuild switch afterwards
-    #
-    # Example:
-    # gsd "Fixing nginx"
-    # -> "Fixing nginx 2026-05-23 19:42"
-    # ---------------------------------------------------------
-    gsd = ''
-      set timestamp (date "+%Y-%m-%d %H:%M")
-      set message (string join " " $argv)
-
-      gaa "$message $timestamp"
-      and drs
-    '';
-    # ---------------------------------------------------------
-
-    
-    # ---------------------------------------------------------
     # ---- Stage selected files manually ---- #
     # --- gd -> git add
     gd = "git add";
@@ -136,6 +115,27 @@
     gaa = ''
       git add -A
       and git commit -m "$argv"
+    '';
+    # ---------------------------------------------------------
+
+
+    # ---------------------------------------------------------
+    # ---- gsd -> Git commit with timestamp + drs ---- #
+    # Stage all repository changes
+    # Create commit with appended timestamp:
+    # yyyy-mm-dd hh:mm
+    # Run darwin-rebuild switch afterwards
+    #
+    # Example:
+    # gsd "Fixing nginx"
+    # -> "Fixing nginx 2026-05-23 19:42"
+    # ---------------------------------------------------------
+    gsd = ''
+      set timestamp (date "+%Y-%m-%d %H:%M")
+      set message (string join " " $argv)
+
+      gaa "$message $timestamp"
+      and drs
     '';
     # ---------------------------------------------------------
 
