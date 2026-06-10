@@ -115,5 +115,58 @@
       end
     '';
     # ---------------------------------------------------------
+
+    # ---------------------------------------------------------
+    # ---- ia -> Internet Archive helper through mise Python ---- #
+    # Download Internet Archive files by type
+    #
+    # Examples:
+    # ia dll https://archive.org/details/NARA-26300439
+    # ia dll pdf https://archive.org/details/NARA-26300439
+    # ia dll epub https://archive.org/details/NARA-26300439
+    # ---------------------------------------------------------
+    ia = ''
+      if test (count $argv) -eq 0
+        echo "Usage:"
+        echo "  ia dll <archive-url-or-id>"
+        echo "  ia dll pdf <archive-url-or-id>"
+        echo "  ia dll epub <archive-url-or-id>"
+        return 1
+      end
+
+      switch $argv[1]
+        case dll
+          set filetype pdf
+          set target ""
+
+          if test (count $argv) -eq 2
+            set target $argv[2]
+          else if test (count $argv) -ge 3
+            set filetype $argv[2]
+            set target $argv[3]
+          else
+            echo "Usage: ia dll [pdf|epub] <archive-url-or-id>"
+            return 1
+          end
+
+          set filetype (string replace -r '^\\.' "" "$filetype")
+
+          if string match -q '*archive.org/details/*' "$target"
+            set identifier (string replace -r '^.*archive\\.org/details/([^/?#]+).*$' '$1' "$target")
+          else if string match -q '*archive.org/download/*' "$target"
+            set identifier (string replace -r '^.*archive\\.org/download/([^/?#]+).*$' '$1' "$target")
+          else
+            set identifier "$target"
+          end
+
+          echo "Downloading .$filetype files from:"
+          echo "$identifier"
+
+          mise x python@3.12 -- ia download "$identifier" "--glob=*.$filetype"
+
+        case '*'
+          mise x python@3.12 -- ia $argv
+      end
+    '';
   };
 }
