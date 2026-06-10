@@ -12,10 +12,14 @@
     # ---------- General Fish Functions ---------- #
 
     # ---------------------------------------------------------
-    # ---- cdf -> Navigate folders with fzf and cd into one ---- #
-    # ENTER selects the current folder
-    # RIGHT enters the highlighted folder
-    # LEFT goes to the parent folder
+    # ---- cdf -> Folder picker with fzf ---- #
+    # Navigate folders from HOME using fzf
+    # Includes iCloud Drive and iCloud container folders
+    #
+    # Controls:
+    # ENTER       cd into selected folder
+    # RIGHT/CTRL-L enter highlighted folder
+    # LEFT/CTRL-H  go to parent folder
     #
     # Example:
     # cdf
@@ -24,32 +28,27 @@
       set current "$HOME"
 
       while true
-        set entries
+        set rows
 
         if test "$current" = "$HOME"
-          set -a entries "[iCloud Drive]\t$HOME/iCloudDocs"
-          set -a entries "[iCloud Containers]\t$HOME/Library/Mobile Documents"
+          set -a rows (printf "%s\t%s" "iCloud Drive" "$HOME/iCloudDocs")
+          set -a rows (printf "%s\t%s" "iCloud Containers" "$HOME/Library/Mobile Documents")
         end
 
-        set dirs (
-          find "$current" -mindepth 1 -maxdepth 1 -type d 2>/dev/null |
-          sort
-        )
-
-        for dir in $dirs
+        for dir in (find "$current" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
           set name (basename "$dir")
-          set -a entries "$name\t$dir"
+          set -a rows (printf "%s\t%s" "$name" "$dir")
         end
 
         set result (
-          printf "%s\n" $entries |
+          printf "%s\n" $rows |
           fzf \
-            --prompt="cdf: $current > " \
             --height=80% \
             --reverse \
-            --delimiter="\t" \
+            --delimiter=(printf "\t") \
             --with-nth=1 \
-            --expect=enter,right,left \
+            --prompt="cdf: $current > " \
+            --expect=enter,right,left,ctrl-l,ctrl-h \
             --preview='eza -la --icons=always {2} 2>/dev/null'
         )
 
@@ -64,23 +63,23 @@
           continue
         end
 
-        set selected_path (string split "\t" "$row")[2]
+        set selected_path (string split (printf "\t") "$row")[2]
 
         switch "$key"
           case enter
             builtin cd "$selected_path"
             return 0
 
-          case right
+          case right ctrl-l
             set current "$selected_path"
 
-          case left
+          case left ctrl-h
             set current (dirname "$current")
         end
       end
     '';
     # ---------------------------------------------------------
-
+    
 
     # ---------------------------------------------------------
     # ---- zz -> Pick zoxide path with fzf and cd into it ---- #
@@ -106,17 +105,87 @@
 
 
     # ---------------------------------------------------------
-    # ---- ftrash -> Force delete stubborn iCloud files ---- #
+    # ---- ftrash -> Trash manager with fzf ---- #
+    # View or clean System Trash and iCloud container Trash
+    # Does not delete the Trash folders themselves
+    #
+    # Options:
+    # System Trash / View Trash
+    # System Trash / Clean Trash
+    # iCloud Trash / View Trash
+    # iCloud Trash / Clean Trash
+    #
+    # Example:
+    # ftrash
+    # ---------------------------------------------------------
+    ftrash = ''
+      set system_trash "$HOME/.Trash"
+      set icloud_root "$HOME/Library/Mobile Documents"
+
+      function __ftrash_clean_dir
+        set trash_dir "$argv[1]"
+
+        if not test -d "$trash_dir"
+          echo "Trash not found: $trash_dir"
+          return 0
+        end
+
+        find "$trash_dir" -mindepth 1 -maxdepth 1 -print0 |
+        while read -lz target
+          echo "Deleting: $target"
+          chflags -R nouchg,noschg "$target" 2>/dev/null; or true
+          xattr -cr "$target" 2>/dev/null; or true
+          rm -rf "$target" 2>/dev/null; or true
+        end
+      end
+
+      set choice (
+        printf "%s\n" \
+          "System Trash / View Trash" \
+          "System Trash / Clean Trash" \
+          "iCloud Trash / View Trash" \
+          "iCloud Trash / Clean Trash" |
+        fzf --height=40% --reverse --prompt="trash> "
+      )
+
+      switch "$choice"
+        case "System Trash / View Trash"
+          eza -la --icons=always "$system_trash"
+
+        case "System Trash / Clean Trash"
+          __ftrash_clean_dir "$system_trash"
+
+        case "iCloud Trash / View Trash"
+          find "$icloud_root" -type d -name ".Trash" -print0 2>/dev/null |
+          while read -lz trash_dir
+            echo
+            echo "Trash: $trash_dir"
+            eza -la --icons=always "$trash_dir"
+          end
+
+        case "iCloud Trash / Clean Trash"
+          find "$icloud_root" -type d -name ".Trash" -print0 2>/dev/null |
+          while read -lz trash_dir
+            echo "Cleaning: $trash_dir"
+            __ftrash_clean_dir "$trash_dir"
+          end
+      end
+    '';
+    # ---------------------------------------------------------
+
+    
+    # ---------------------------------------------------------
+    # ---- dtrash -> Force delete stubborn iCloud files ---- #
     # Force-remove files/folders that iCloud refuses to delete
     # Clears common macOS flags and extended attributes first
     #
     # Example:
-    # ftrash ~/Library/Mobile\ Documents/com~apple~CloudDocs/file.txt
-    # ftrash ./stuck-folder
+    # dtrash ~/Library/Mobile\ Documents/com~apple~CloudDocs/file.txt
+    # dtrash ./stuck-folder
     # ---------------------------------------------------------
-    ftrash = ''
+    dtrash = ''
       if test (count $argv) -eq 0
-        echo "Usage: ftrash <path> [path...]"
+        echo "Usage: dtrash <path> [path...]"
         return 1
       end
 
@@ -156,11 +225,11 @@
 
 
     # ---------------------------------------------------------
-    # ---- ftrash -> Force delete stubborn iCloud files ---- #
+    # ---- strash -> Force delete Trash ---- #
     # Force-remove files/folders that iCloud refuses to delete
     # ---------------------------------------------------------
-    fstrash = ''
-      function __fstrash_delete_one
+    strash = ''
+      function __strash_delete_one
         set target "$argv[1]"
     
         if not test -e "$target"
@@ -191,7 +260,7 @@
     
       if test (count $argv) -gt 0
         for target in $argv
-          __ftrash_delete_one "$target"; or return 1
+          __strash_delete_one "$target"; or return 1
         end
         return 0
       end
@@ -201,7 +270,7 @@
       if test -d "$HOME/.Trash"
         find "$HOME/.Trash" -mindepth 1 -maxdepth 1 -print0 |
         while read -lz target
-          __ftrash_delete_one "$target"; or return 1
+          __strash_delete_one "$target"; or return 1
         end
       end
     
@@ -213,7 +282,7 @@
     
         find "$trash_dir" -mindepth 1 -maxdepth 1 -print0 |
         while read -lz target
-          __ftrash_delete_one "$target"; or return 1
+          __strash_delete_one "$target"; or return 1
         end
       end
     '';
