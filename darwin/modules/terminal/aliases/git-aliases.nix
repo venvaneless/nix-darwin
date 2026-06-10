@@ -154,22 +154,26 @@
         echo "fzf is required for sbranch."
         return 1
       end
-
+    
       if not git rev-parse --is-inside-work-tree >/dev/null 2>&1
         echo "Not inside a Git repository."
         return 1
       end
-
+    
+      set current_branch (git branch --show-current)
+    
       set selected_branch (
         git branch --format="%(refname:short)" \
-        | fzf --prompt="Switch branch: "
+        | fzf \
+          --prompt="Switch branch [$current_branch]: " \
+          --header="Current branch: $current_branch"
       )
-
+    
       if test -z "$selected_branch"
         echo "No branch selected."
         return 0
       end
-
+    
       git switch "$selected_branch"
     '';
     # ---------------------------------------------------------
