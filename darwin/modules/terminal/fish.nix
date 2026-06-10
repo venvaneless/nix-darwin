@@ -51,6 +51,9 @@
 
       # Use a named Fish history file
       set -g fish_history ven
+
+      # Common paths
+        set -gx ICLOUD "$HOME/Library/Mobile Documents/com~apple~CloudDocs"
     '';
 
     interactiveShellInit = ''
@@ -59,9 +62,6 @@
 
       # Autosuggestions
       set -g fish_autosuggestion_enabled 1
-
-      # Common paths
-        set -gx ICLOUD "$HOME/Library/Mobile Documents/com~apple~CloudDocs"
     '';
   };
 
