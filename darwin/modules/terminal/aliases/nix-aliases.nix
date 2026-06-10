@@ -11,44 +11,30 @@ let
 in
 {
   programs.fish.shellAliases = {
-	  # ------------------------------------------------------------
-    # ---- Evaluate the flake
-    # Builds all derivations
-    # Doesn't switch to the current flake
-    # ------------------------------------------------------------
-    drb = "sudo -H darwin-rebuild build --flake ${flakePath}#${flakeHost}";
 
-    # ------------------------------------------------------------
-    # ---- Evaluate and build derivations
-    # Switches to the current flake config
-    # ------------------------------------------------------------
+    # ---- Evaluate and build derivations / Switch flake config
+    # Switches to the current 
     drs = "sudo -H darwin-rebuild switch --flake ${flakePath}#${flakeHost}";
-
-    # ------------------------------------------------------------
-    # ---- Check the nix-darwin system configuration
-    # Analyses for bugs and syntax errors
-    # No rebuilding/applying
-    # ------------------------------------------------------------
-    rcheck = "sudo -H darwin-rebuild check --flake ${flakePath}#${flakeHost}";
-
-    # ------------------------------------------------------------
-    # Check the flake structure, NOT only the Darwin configuration
-    # ------------------------------------------------------------
+    
+    # ---- Validate the flake and configuration structure 
     ncheck = "nix flake check ${flakePath}";
 
-    # ------------------------------------------------------------
-    # Shows the flake configuration
-    # ------------------------------------------------------------
+    # ---- Same as "ncheck" but with logs
+    "nl-check" = "nix flake check ${flakePath} --print-build-logs";
+    
+    # ---- Safely validate if the system can evaluate/build
+    rsafe = "sudo -H nix build ${flakePath}#darwinConfigurations.${flakeHost}.system --no-link";
+
+    # ---- Evaluate and build the flake (No switch)
+     drb = "sudo -H darwin-rebuild build --flake ${flakePath}#${flakeHost}";
+    
+    # ---- Analyse the configuration for bugs and syntax errors
+    rcheck = "sudo -H darwin-rebuild check --flake ${flakePath}#${flakeHost}";
+
+    # ---- Show the flake configuration
     nshow = "nix flake show ${flakePath}";
 
-    # ------------------------------------------------------------
-    # Safely check nix configuration
-    rsafe = "sudo -H nix build ${flakePath}#darwinConfigurations.${flakeHost}.system --no-link";
-    # ------------------------------------------------------------
-
-    # ------------------------------------------------------------
-    # Recreates / updates the lock file of the flake
-    # ------------------------------------------------------------
+    # ---- Recreate / update flake's lock file
     "nix-update" = "nix flake update --flake ${flakePath}";
   };
 }
