@@ -83,6 +83,7 @@
 						MICRO_TRUECOLOR = "1";
 
 						ICLOUD = "$HOME/iCloudDocs";
+						ICLOUD_MOBILE = "$HOME/Library/Mobile Documents";
 					};
 	  };
 
