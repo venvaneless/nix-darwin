@@ -25,21 +25,103 @@
     # cdf
     # ---------------------------------------------------------
     cdf = ''
-      set current "$HOME"
-
+      set home_path "$HOME"
+      set mobile_docs "$HOME/Library/Mobile Documents"
+      set icloud_drive "$mobile_docs/com~apple~CloudDocs"
+      set app_support "$HOME/Library/Application Support"
+      set preferences "$HOME/Library/Preferences"
+    
+      set current_kind "root"
+      set current_path "$home_path"
+    
+      set stack_kind
+      set stack_path
+    
+      function __cdf_pretty_container_name
+        set raw (basename "$argv[1]")
+    
+        set clean "$raw"
+    
+        set clean (string replace -r '^iCloud~' "" "$clean")
+        set clean (string replace -r '^[A-Z0-9]+~' "" "$clean")
+        set clean (string replace -r '^com~apple~' "" "$clean")
+    
+        set parts (string split "~" "$clean")
+        set label "$parts[-1]"
+    
+        echo "$label"
+      end
+    
+      function __cdf_add_row
+        printf "%s\t%s\t%s\n" "$argv[1]" "$argv[2]" "$argv[3]"
+      end
+    
       while true
         set rows
-
-        if test "$current" = "$HOME"
-          set -a rows (printf "%s\t%s" "iCloud Drive" "$HOME/iCloudDocs")
-          set -a rows (printf "%s\t%s" "iCloud Containers" "$HOME/Library/Mobile Documents")
+    
+        switch "$current_kind"
+          case root
+            set -a rows (__cdf_add_row "Home" "$home_path" "folder")
+            set -a rows (__cdf_add_row "iCloud" "$mobile_docs" "icloud-menu")
+            set -a rows (__cdf_add_row "Application Support" "$app_support" "folder")
+            set -a rows (__cdf_add_row "Preferences" "$preferences" "folder")
+    
+          case icloud-menu
+            set -a rows (__cdf_add_row "All Folders" "$mobile_docs" "icloud-all")
+            set -a rows (__cdf_add_row "App Containers" "$mobile_docs" "icloud-containers")
+    
+          case icloud-all
+            if test -d "$icloud_drive"
+              for dir in (find "$icloud_drive" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+                set name (basename "$dir")
+                set -a rows (__cdf_add_row "$name" "$dir" "folder")
+              end
+            end
+    
+            if test -d "$mobile_docs"
+              for dir in (find "$mobile_docs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+                set base (basename "$dir")
+    
+                if test "$base" = "com~apple~CloudDocs"
+                  continue
+                end
+    
+                if test "$base" = ".Trash"
+                  continue
+                end
+    
+                set name (__cdf_pretty_container_name "$dir")
+                set -a rows (__cdf_add_row "$name" "$dir" "folder")
+              end
+            end
+    
+          case icloud-containers
+            if test -d "$mobile_docs"
+              for dir in (find "$mobile_docs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+                set base (basename "$dir")
+    
+                if test "$base" = "com~apple~CloudDocs"
+                  continue
+                end
+    
+                if test "$base" = ".Trash"
+                  continue
+                end
+    
+                set name (__cdf_pretty_container_name "$dir")
+                set -a rows (__cdf_add_row "$name" "$dir" "folder")
+              end
+            end
+    
+          case folder
+            if test -d "$current_path"
+              for dir in (find "$current_path" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+                set name (basename "$dir")
+                set -a rows (__cdf_add_row "$name" "$dir" "folder")
+              end
+            end
         end
-
-        for dir in (find "$current" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
-          set name (basename "$dir")
-          set -a rows (printf "%s\t%s" "$name" "$dir")
-        end
-
+    
         set result (
           printf "%s\n" $rows |
           fzf \
@@ -47,34 +129,58 @@
             --reverse \
             --delimiter=(printf "\t") \
             --with-nth=1 \
-            --prompt="cdf: $current > " \
+            --prompt="cdf: $current_path > " \
             --expect=enter,right,left,ctrl-l,ctrl-h \
-            --preview='eza -la --icons=always {2} 2>/dev/null'
+            --preview='test -d {2:q} && eza -la --icons=always {2:q} 2>/dev/null || true'
         )
-
+    
         if test (count $result) -eq 0
           return 0
         end
-
+    
         set key $result[1]
         set row $result[2]
-
+    
         if test -z "$row"
           continue
         end
-
-        set selected_path (string split (printf "\t") "$row")[2]
-
+    
+        set fields (string split (printf "\t") "$row")
+        set selected_name "$fields[1]"
+        set selected_path "$fields[2]"
+        set selected_kind "$fields[3]"
+    
         switch "$key"
           case enter
-            builtin cd "$selected_path"
-            return 0
-
+            if test "$selected_kind" = "folder"
+              builtin cd "$selected_path"
+              return 0
+            else
+              set -a stack_kind "$current_kind"
+              set -a stack_path "$current_path"
+    
+              set current_kind "$selected_kind"
+              set current_path "$selected_path"
+            end
+    
           case right ctrl-l
-            set current "$selected_path"
-
+            set -a stack_kind "$current_kind"
+            set -a stack_path "$current_path"
+    
+            set current_kind "$selected_kind"
+            set current_path "$selected_path"
+    
           case left ctrl-h
-            set current (dirname "$current")
+            if test (count $stack_kind) -gt 0
+              set current_kind "$stack_kind[-1]"
+              set current_path "$stack_path[-1]"
+    
+              set -e stack_kind[-1]
+              set -e stack_path[-1]
+            else
+              set current_kind "root"
+              set current_path "$home_path"
+            end
         end
       end
     '';
