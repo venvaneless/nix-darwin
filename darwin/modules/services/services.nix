@@ -17,8 +17,6 @@
     # Cleanup
     ./generations-cleanup.nix
     ./rsync.nix
-    # ./rsync-separate.nix
-    ./ssh-agent.nix
     
     # Docker + containers + tooling
     ./docker/docker.nix

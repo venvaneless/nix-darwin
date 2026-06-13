@@ -1,4 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/locale.nix
+#
+# SYSTEM LOCALE: SETTINGS
+# ============================================================
+
 { ... }:
 
 {

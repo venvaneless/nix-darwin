@@ -1,16 +1,29 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/rsync-all.nix
 #
-# SYSTEM: RSYNC-ALL2 (DIRECT SCRIPT RUNNER)
+# SYSTEM: BACKUP SCRIPT RUNNER
 # ============================================================
-# Purpose:
-#   - Run your backup scripts directly during `darwin-rebuild switch`
-#   - Does NOT call rsync-all.sh or rsync-all2.sh as a dispatcher
-#   - Uses an explicit list of scripts (no globbing)
+# Executes backup scripts during darwin-rebuild activation.
 #
-# Guarantees:
-#   - Never blocks rebuild indefinitely (hard timeout + kill)
-#   - Never fails activation (best-effort, logs + continues)
-#   - Logs each script start/skip/failure/timeout
+# Features:
+# - Runs an explicit list of backup scripts
+# - No globbing or automatic script discovery
+# - Supports application, container, certificate,
+#   terminal, and user-data backups
+# - Runs scripts independently with per-script timeouts
+# - Continues even if a script fails
+# - Logs start, skip, success, failure, and timeout events
+# 
+# Safety:
+# - Missing scripts are skipped
+# - Non-executable scripts are skipped
+# - Timeouts prevent activation from hanging
+# - Activation never fails because a backup script failed
+#
+# Script Location:
+# - /Users/ven/.config/nix/nix-scripts
+#
+# Trigger:
+# - Runs automatically during darwin-rebuild switch
 # ============================================================
 
 { lib, pkgs, ... }:
@@ -35,23 +48,32 @@ let
   # SCRIPT LIST (EXPLICIT)
   # ------------------------------------------------------------
   scripts = [
-   # "${scriptDir}/rsync-a_better_finder_attributes.sh"
    # "${scriptDir}/rsync-a_better_finder_rename.sh"
+   # "${scriptDir}/rsync-browsers.sh"
+   # "${scriptDir}/rsync-dash.sh"
    # "${scriptDir}/rsync-espanso.sh"
    # "${scriptDir}/rsync-iterm.sh"
-   "${scriptDir}/rsync-obsidian.sh"
+   # "${scriptDir}/rsync-lumineo.sh"
+   # "${scriptDir}/rsync-mkcert.sh"
+   # "${scriptDir}/rsync-obsidian.sh"
+   # "${scriptDir}/rsync-other-pref.sh"
    # "${scriptDir}/rsync-paste.sh"
+   # "${scriptDir}/rsync-pearcleaner.sh"
+   # "${scriptDir}/rsync-raycast.sh"
+   # "${scriptDir}/rsync-snippetslab.sh"
    # "${scriptDir}/rsync-vaultwarden.sh"
+   # "${scriptDir}/rsync-vesktop.sh"
    # "${scriptDir}/rsync-vlc.sh"
+   # "${scriptDir}/rsync-wezterm.sh"
    # "${scriptDir}/rsync-yate.sh"
    # "${scriptDir}/rsync-zed.sh"
   ];
 
-  runner = pkgs.writeShellScriptBin "rsync-all2-direct" ''
+  runner = pkgs.writeShellScriptBin "rsync-all" ''
     #!/bin/bash
     set -euo pipefail
 
-    LOG_PREFIX="[system][rsync-all2]"
+    LOG_PREFIX="[system][rsync-all]"
     SCRIPT_DIR="${scriptDir}"
     TIMEOUT_BIN="${timeoutBin}"
     TIMEOUT_SEC="${timeoutSec}"

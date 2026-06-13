@@ -1,5 +1,17 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/base.nix
+## /Users/ven/.config/nix/nix-config/darwin/modules/system/base.nix
 #
+# SYSTEM: BASE CONFIGURATION
+# ============================================================
+# Defines the core nix-darwin system foundation:
+# - Nix daemon and flake settings
+# - Hostname and system state version
+# - Global XDG environment paths
+# - Homebrew system PATH entries
+# - nixpkgs package policy
+# - Core system packages available machine-wide
+# ============================================================
+
 { config, pkgs, lib, inputs, ... }:
 
 {
@@ -228,6 +240,9 @@
     # Terminal multiplexer
     tmux
 
+    # Internet file retriever
+    wget
+    
     # YouTube music client
     ytmdesktop
 

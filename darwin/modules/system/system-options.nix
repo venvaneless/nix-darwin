@@ -75,6 +75,6 @@
     ./screenshot-options.nix
     ./statusbar.nix
     ./trackpad.nix
-    ./wallpaper.nix
+    # ./wallpaper.nix
   ];
 }
