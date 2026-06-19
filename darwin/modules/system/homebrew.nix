@@ -1,22 +1,25 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/homebrew.nix
 #
-# HOMEBREW (Unified)
+# HOMEBREW: UNIFIED PACKAGE MANAGER
 # ============================================================
-# - Bootstraps Homebrew via nix-homebrew
-# - Enables declarative brews & casks
-# - Works cleanly with nix-darwin + Determinate
+# Bootstraps Homebrew through nix-homebrew and manages declarative
+# brews, casks, taps, and activation cleanup for nix-darwin.
 # ============================================================
 
-{ config, lib, pkgs, inputs, nix-homebrew, ... }:
+{ nix-homebrew, ... }:
 
 {
-  # --- Loads Homebrew
+  # HOMEBREW: MODULE IMPORTS
+  # ============================================================
+  # Load the nix-homebrew module used by nix-darwin.
   imports = [
     nix-homebrew.darwinModules.nix-homebrew
     # ./quarantine-fixes.nix
   ];
 
-  # --- Configures the nix-homebrew backend
+  # HOMEBREW: BACKEND
+  # ============================================================
+  # Configure the nix-homebrew installation and migration behavior.
   nix-homebrew = {
     enable = true;
     user = "ven";
@@ -24,37 +27,36 @@
     autoMigrate = true;
   };
 
-  # --- Homebrew package management ---
+  # HOMEBREW: PACKAGES
+  # ============================================================
+  # Declaratively manage Homebrew taps, brews, and casks.
   homebrew = {
     enable = true;
 
-    # auto-update when switching
     global.autoUpdate = true;
-    
-    onActivation = {
-    		# If removed, uninstall it
-      	cleanup = "uninstall";
-        
-        # Reinstall if missing
-        upgrade = true;
-      };
-      
 
-    # ----- Brews -----
+    onActivation = {
+      cleanup = "uninstall";
+      upgrade = true;
+    };
+
+    taps = [
+      "binary-beam/tap"
+    ];
+
     brews = [
     ];
 
-    taps = [
-    "binary-beam/tap"
-    ];
-    
-    # ----- Casks -----
     casks = [
       {
         name = "ungoogled-chromium";
         args = {
           appdir = "/Applications";
         };
+      }
+
+      {
+        name = "swiftdialog";
       }
     ];
   };
