@@ -433,6 +433,59 @@
 
     
     # ---------------------------------------------------------
+    # ---- sscript -> chmod script file or scripts in folder ---- #
+    # Makes one script executable, or all scripts in a folder
+    # ---------------------------------------------------------
+    sscript = ''
+      if test (count $argv) -eq 0
+        echo "Usage:"
+        echo "  sscript <script-file>"
+        echo "  sscript <folder>"
+        return 1
+      end
+
+      set target (string join " " $argv)
+
+      function __sscript_chmod_file
+        set file "$argv[1]"
+        set ext (string lower (path extension "$file"))
+
+        if contains "$ext" .py .sh .bash .zsh .fish .command
+          chmod +x "$file"
+          echo "Executable: $file"
+          return 0
+        end
+
+        if head -n 1 "$file" 2>/dev/null | string match -q '#!*'
+          chmod +x "$file"
+          echo "Executable: $file"
+          return 0
+        end
+
+        return 1
+      end
+
+      if test -f "$target"
+        __sscript_chmod_file "$target"; or echo "Skipped, not detected as script: $target"
+        return 0
+      end
+
+      if test -d "$target"
+        find "$target" -maxdepth 1 -type f -print0 |
+        while read -lz file
+          __sscript_chmod_file "$file"
+        end
+
+        return 0
+      end
+
+      echo "Not found: $target"
+      return 1
+    '';
+    # ---------------------------------------------------------
+    
+    
+    # ---------------------------------------------------------
     # ---- ia -> Internet Archive helper through mise Python ---- #
     # Download Internet Archive files by type
     #
