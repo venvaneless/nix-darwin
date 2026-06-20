@@ -12,6 +12,15 @@
     # ---------- General Fish Functions ---------- #
 
     # ---------------------------------------------------------
+    # ---- freload -> Reload Fish config/shell ---- #
+    # Replaces the current Fish process with a fresh Fish shell
+    # ---------------------------------------------------------
+    freload = ''
+      exec /etc/profiles/per-user/ven/bin/fish
+    '';
+    # ---------------------------------------------------------
+
+    # ---------------------------------------------------------
     # ---- cdf -> Folder picker with fzf ---- #
     # Navigate folders from HOME using fzf
     # Includes iCloud Drive and iCloud container folders

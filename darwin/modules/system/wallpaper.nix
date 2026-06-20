@@ -1,5 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/wallpaper.nix
 
+# WALLPAPER: SETTINGS
+# ============================================================
+
 { pkgs, ... }:
 
 let

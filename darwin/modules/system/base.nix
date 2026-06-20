@@ -245,8 +245,5 @@
     
     # YouTube music client
     ytmdesktop
-
-    # Zsh history substring search widget
-    zsh-history-substring-search
   ];
 }

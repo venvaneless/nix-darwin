@@ -94,11 +94,11 @@
   # -------------------------------------------- #
   imports = [
     # ---- Aliases ---- #
+    ./aliases/shell-aliases.nix
     ./aliases/fish-functions.nix
-    ./aliases/nix-aliases.nix
 		./aliases/gc-aliases.nix
 		./aliases/git-aliases.nix
-		./aliases/shell-aliases.nix
+    ./aliases/nix-aliases.nix
 
     # ---- Fish modules ---- #
     ./plugins/atuin.nix
