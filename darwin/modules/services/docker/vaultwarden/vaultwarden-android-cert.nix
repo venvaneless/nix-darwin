@@ -1,7 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/vaultwarden/vaultwarden-android-cert.nix
 #
+# =====================================================================
 # VAULTWARDEN: ANDROID CA EXPORT
-# ============================================================
+# 
 # - DOES NOT touch nginx or server certs
 # - Reads existing mkcert CA:
 #       ~/.config/mkcert/rootCA.pem
@@ -9,7 +10,7 @@
 #       ~/.config/mkcert/rootCA-android.crt  (PEM)
 #       ~/.config/mkcert/rootCA-android.der  (DER)
 # - Safe to run at every activation.
-# ============================================================
+# =====================================================================
 
 { config, pkgs, lib, ... }:
 

@@ -1,10 +1,10 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/containers.nix
 #
+# =====================================================================
 # DOCKER CONTAINERS (DARWIN-ONLY HELPER)
-# ======================================
 # - Provides mkContainer helper for future use.
 # - Only defines launchd services (no systemd here).
-# ======================================
+# =====================================================================
 
 { config, pkgs, lib, ... }:
 

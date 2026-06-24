@@ -1,9 +1,10 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/apps/helium-browser.nix
 # 
-# =============================================================
+# =====================================================================
 # HELIUM BROWSER
-# Open-source Chromium-based web browser.
-# =============================================================
+# 
+# Open-source Chromium-based web browser
+# =====================================================================
 
 { ... }:
 

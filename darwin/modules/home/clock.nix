@@ -1,10 +1,11 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/home/clock.nix
 #
+# =====================================================================
 # MENU BAR CLOCK
-# ============================================================
+# 
 # User-level configuration of the macOS menu bar clock.
 # Implemented via Home Manager's darwin defaults target.
-# ============================================================
+# =====================================================================
 
 { config, lib, ... }:
 

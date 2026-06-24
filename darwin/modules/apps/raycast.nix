@@ -1,7 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/apps/raycast.nix
 # 
-# =============================================================
+# =====================================================================
 # RAYCAST
+# 
 # A collection of powerful productivity tools all within
 # an extendable macOS launcher
 # =============================================================

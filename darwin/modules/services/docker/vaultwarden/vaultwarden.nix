@@ -1,10 +1,11 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/vaultwarden/vaultwarden.nix
 #
+# =====================================================================
 # VAULTWARDEN: CONTAINER DEFINITION
-# =================================
+# 
 # - Defines Vaultwarden image, ports, env vars, and data path.
 # - Service/launchd wiring is in vaultwarden-service.nix.
-# =================================
+# =====================================================================
 
 { config, pkgs, lib, ... }:
 

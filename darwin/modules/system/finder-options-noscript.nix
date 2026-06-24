@@ -1,7 +1,7 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/finder-options-noscript.nix
 #
 # FINDER OPTIONS
-# ============================================================
+# =====================================================================
 # Declarative Finder configuration via nix-darwin.
 #
 # Covers:
@@ -10,19 +10,20 @@
 # - Visibility and UI bars
 #
 # Finder per-folder view state (.DS_Store) is NOT touched here.
-# ============================================================
+# =====================================================================
 
 { config, lib, pkgs, ... }:
 
 {
-  # ============================================================
+	# =======================================================
   # FINDER CORE SETTINGS
-  # ============================================================
+  # =======================================================
   system.defaults.finder = {
 
-    # ----------------------------------------------------------
-    # FILES
-    # ----------------------------------------------------------
+    # -------------------------------------------------
+
+    # ------ FILES ------ #
+    
     AppleShowAllFiles = true;
     FXRemoveOldTrashItems = false;
     
@@ -34,7 +35,6 @@
     FXPreferredViewStyle = "Nlsv";
     _FXSortFoldersFirst = true;
     
-    
     # --- Search --- #
     FXDefaultSearchScope = "SCcf";
     
@@ -45,10 +45,12 @@
     # --- UI / Status bar --- #
     ShowPathbar  = true;
     ShowStatusBar = true;
+    # -------------------------------------------------
 
-    # ----------------------------------------------------------
-    # DESKTOP ICONS
-    # ----------------------------------------------------------
+    # -------------------------------------------------
+    
+    # ------ DESKTOP ICONS ------ #
+
     CreateDesktop = true;
     ShowExternalHardDrivesOnDesktop = false;
     ShowHardDrivesOnDesktop         = false;
@@ -57,9 +59,9 @@
     _FXSortFoldersFirstOnDesktop    = true;
   };
 
-  # ============================================================
+  # =======================================================
   # FINDER: RAW PREFERENCES (NOT EXPOSED BY NIX-DARWIN)
-  # ============================================================
+  # =======================================================
   system.defaults.CustomUserPreferences = {
     "com.apple.finder" = {
       FXUseRelativeDates = false;

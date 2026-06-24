@@ -1,7 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/nginx.nix
 #
-# NGINX (DARWIN)
-# ============================================================
+# =====================================================================
+# NGINX
+# 
 # - Installs nginx from Nixpkgs.
 # - Writes a main nginx.conf to:
 #       ~/.config/conf/nginx.conf
@@ -12,7 +13,7 @@
 # - Provides a run-nginx-custom wrapper.
 # - Creates a launchd daemon:
 #       com.ven.nginx-custom
-# ============================================================
+# =====================================================================
 
 { config, pkgs, lib, ... }:
 

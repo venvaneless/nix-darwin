@@ -2,6 +2,7 @@
 #
 # =====================================================================
 # ASTROVIM
+# 
 # AstroNvim is an aesthetically pleasing and feature-rich
 # Neovim configuration that focuses on extensibility and usability
 # =====================================================================

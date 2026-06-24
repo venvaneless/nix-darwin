@@ -1,10 +1,10 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/apps/assetsnap.nix
 #
-# =============================================================
-# ASSETSNAP
-# Small dev tool living in the taskbar: color picker, sort
-# text, etc.
-# =============================================================
+# =====================================================================
+# SWIFTDIALOG
+# 
+# Admin utility that presents custom dialogs or messages from shell scripts
+# =====================================================================
 
 { ... }:
 

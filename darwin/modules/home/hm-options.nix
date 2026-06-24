@@ -1,7 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/home/hm-options.nix
 #
-# HOME MANAGER — MACOS OPTIONS (GLUE)
-# ============================================================
+# =====================================================================
+# HOME MANAGER: MACOS OPTIONS
+# 
 # Aggregates Home Manager–only macOS defaults:
 # - Locale / language / measurement units
 # - Menu bar clock
@@ -9,7 +10,7 @@
 #
 # These options are user-scoped and not available in
 # nix-darwin system modules.
-# ============================================================
+# =====================================================================
 
 { config, lib, ... }:
 

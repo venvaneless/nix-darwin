@@ -1,10 +1,11 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/apps/keyboardSwitcher.nix
 #
-# =============================================================
+# =====================================================================
 # KEYBOARD SWITCHER
+# 
 # Utility used by Raycast to switch keyboard layouts
 # Homebrew formula from lutzifer/homebrew-tap
-# =============================================================
+# =====================================================================
 
 { ... }:
 

@@ -1,13 +1,14 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/mkcert.nix
 #
-# MKCERT: GLOBAL SETUP (DARWIN)
-# ============================================================
+# =====================================================================
+# MKCERT: GLOBAL SETUP
+# 
 # - Installs mkcert as a system package.
 # - Ensures mkcert CA is installed into:
 #       ~/.config/mkcert
 # - Fixes ownership so files are owned by "ven".
 # - Logs every step during darwin activation.
-# ============================================================
+# =====================================================================
 
 { config, pkgs, lib, ... }:
 

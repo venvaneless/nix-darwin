@@ -1,7 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/finder-options-script.nix
 #
+# =====================================================================
 # FINDER OPTIONS
-# ============================================================
+# 
 # Declarative Finder configuration via nix-darwin.
 #
 # Covers:
@@ -14,14 +15,13 @@
 # Finder stores per-folder view state in .DS_Store files.
 # These override defaults and must be reset imperatively.
 # This reset is intentionally ONE-TIME only.
-# ============================================================
+# =====================================================================
 
 { config, lib, pkgs, ... }:
 
+# ---------------------------------------------------------------------------
 let
-  # ------------------------------------------------------------
-  # FINDER VIEW STATE ENFORCEMENT SCRIPT (ONE-TIME)
-  # ------------------------------------------------------------
+  # ------ FINDER VIEW STATE ENFORCEMENT SCRIPT ------ #
   enforceFinderViews = pkgs.writeShellScriptBin "enforce-finder-views" ''
     #!/usr/bin/env bash
     set -euo pipefail
@@ -62,19 +62,21 @@ let
     touch "$STATE_FILE"
     echo "$LOG_PREFIX Finder enforcement complete (one-time)"
   '';
+  # ---------------------------------------------------------------------------
+
 in
 {
-  # ============================================================
-  # FINDER CORE SETTINGS
-  # ============================================================
+ # ********************************************************
+  # ------ FINDER CORE SETTINGS ------ #
   system.defaults.finder = {
+  # ********************************************************
 
-    # ----------------------------------------------------------
-    # FILES
-    # ----------------------------------------------------------
+ 		# ***************************************************
+    # ---- Files
     AppleShowAllFiles = true;
     FXRemoveOldTrashItems = false;
-    
+   	# ***************************************************
+
     # --- Windows management --- #
     NewWindowTarget = "Other";
     NewWindowTargetPath = "file:///Users/ven/iCloudDocs/Downloads/";
@@ -95,9 +97,8 @@ in
     ShowPathbar  = true;
     ShowStatusBar = true;
 
-    # ----------------------------------------------------------
-    # DESKTOP ICONS
-    # ----------------------------------------------------------
+    # ********************************************************
+    # ------ DESKTOP ICONS ------ #
     CreateDesktop = true;
     ShowExternalHardDrivesOnDesktop = false;
     ShowHardDrivesOnDesktop         = false;
@@ -105,10 +106,12 @@ in
     ShowRemovableMediaOnDesktop     = false;
     _FXSortFoldersFirstOnDesktop    = true;
   };
+  # ********************************************************
 
-  # ============================================================
-  # FINDER: RAW PREFERENCES (NOT EXPOSED BY NIX-DARWIN)
-  # ============================================================
+  # ********************************************************
+  # ------ FINDER: RAW PREFERENCES ------ #
+  # NOT EXPOSED BY NIX-DARWIN
+  # ********************************************************
   system.defaults.CustomUserPreferences = {
     "com.apple.finder" = {
       FXUseRelativeDates = false;

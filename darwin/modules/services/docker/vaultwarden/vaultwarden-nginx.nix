@@ -1,7 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/vaultwarden/vaultwarden-nginx.nix
 #
-# VAULTWARDEN: NGINX VHOST (DARWIN)
-# =================================
+# =====================================================================
+# VAULTWARDEN: NGINX VHOST
+# 
 # - Writes Vaultwarden nginx config to:
 #       ~/.config/nginx/apps-enabled/vaultwarden.conf
 # - Proxies HTTPS traffic for:
@@ -11,7 +12,7 @@
 #       ~/.config/ssl/vaultwarden
 # - Redirects HTTP -> HTTPS
 # - Supports Vaultwarden websocket traffic
-# =================================
+# =====================================================================
 
 { config, pkgs, lib, ... }:
 

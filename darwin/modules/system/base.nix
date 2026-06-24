@@ -1,8 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/base.nix
-## /Users/ven/.config/nix/nix-config/darwin/modules/system/base.nix
 #
+# =====================================================================
 # SYSTEM: BASE CONFIGURATION
-# ============================================================
+# 
 # Defines the core nix-darwin system foundation:
 # - Nix daemon and flake settings
 # - Hostname and system state version
@@ -10,32 +10,32 @@
 # - Homebrew system PATH entries
 # - nixpkgs package policy
 # - Core system packages available machine-wide
-# ============================================================
+# =====================================================================
 
 { config, pkgs, lib, inputs, ... }:
 
 {
   # ------------------------------------------------------------
   # SYSTEM IMPORTS
-  # ------------------------------------------------------------
   imports = [
     ./system-options.nix
   ];
-
-  # ------------------------------------------------------------
-  # SYSTEM AND NIX
   # ------------------------------------------------------------
 
-  # ---- Manage the Nix daemon ----
-  # ---------------------------------------------------------
+  # ------------------------------------------------------------
+  # ------ SYSTEM AND NIX ------ #
+
+  # ---- Manage the Nix daemon
+  # ********************************************************
   # Ensures the nix-daemon launchd service exists
   # Starts it at boot
   # Keeps it in sync with your config
   # Without it, nix-darwin can’t reliably control
   # builds, users, or settings
-  # ---------------------------------------------------------
+  # ********************************************************
   nix.enable = true;
 
+  
   # ---- Hostname ----
   networking.hostName = "Vens-MacBook-Pro";
 
@@ -245,5 +245,8 @@
     
     # YouTube music client
     ytmdesktop
+
+    # Zstandard compression tool for .zst and .tar.zst archives
+    zstd
   ];
 }

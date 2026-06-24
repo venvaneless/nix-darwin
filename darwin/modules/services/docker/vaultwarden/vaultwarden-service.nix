@@ -1,12 +1,13 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/vaultwarden/vaultwarden-service.nix
 #
-# VAULTWARDEN SERVICE (DARWIN ONLY)
-# =================================
+# =====================================================================
+# VAULTWARDEN SERVICE
+# 
 # - Ensures data dir exists
 # - Starts Vaultwarden through Docker Desktop
 # - Uses Docker restart policy for container persistence
 # - Creates a user LaunchAgent, not a system daemon
-# =================================
+# =====================================================================
 
 { config, pkgs, lib, ... }:
 

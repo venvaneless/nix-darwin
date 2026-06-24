@@ -1,7 +1,7 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/keyboard.nix
 #
+# =====================================================================
 # KEYBOARD OPTIONS
-# ============================================================
 # System-level keyboard and typing behavior.
 #
 # Covers:
@@ -12,14 +12,14 @@
 # NOTE:
 # These are system-wide settings managed by nix-darwin,
 # not per-user Home Manager options.
-# ============================================================
+# =====================================================================
 
 { config, lib, pkgs, ... }:
 
 {
-  # ------------------------------------------------------------
-  # HARDWARE KEYBOARD MAPPING
-  # ------------------------------------------------------------
+	# ---------------------------------------------------------------
+  # ------ HARDWARE KEYBOARD MAPPING ------ #
+  # ---------------------------------------------------------------
   system.keyboard = {
     # Custom key mapping
     enableKeyMapping = true;
@@ -28,23 +28,24 @@
     remapCapsLockToEscape  = false;
     remapCapsLockToControl = false;
   };
+  # ---------------------------------------------------------------
 
-  # ------------------------------------------------------------
-  # GLOBAL KEYBOARD / TEXT INPUT BEHAVIOR
-  # ------------------------------------------------------------
+  # ---------------------------------------------------------------
+  # ------ GLOBAL KEYBOARD / TEXT INPUT BEHAVIOR ------ #
+  # ---------------------------------------------------------------
   system.defaults.NSGlobalDomain = {
+  # ---------------------------------------------------------------
 
-    # ----------------------------------------------------------
-    # FUNCTION KEYS
-    # ----------------------------------------------------------
+ 		# **************************************************
+    # ---- FUNCTION KEYS
 
     # Use F1, F2, etc. as standard function keys
     # (media keys require holding Fn)
     "com.apple.keyboard.fnState" = true;
+    # **************************************************
 
-    # ----------------------------------------------------------
-    # TEXT INPUT BEHAVIOR
-    # ----------------------------------------------------------
+    # **************************************************
+    # ---- TEXT INPUT BEHAVIOR
 
     # Automatic capitalization
     NSAutomaticCapitalizationEnabled = true;
@@ -60,5 +61,7 @@
 
     # Automatic spell correction
     NSAutomaticSpellingCorrectionEnabled = false;
+    # **************************************************
+
   };
 }

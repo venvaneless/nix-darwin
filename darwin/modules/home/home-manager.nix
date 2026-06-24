@@ -1,7 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/home/home-manager.nix
 #
+# =====================================================================
 # DARWIN: HOME MANAGER (INTEGRATED)
-# ================================================
+# 
 # This module enables Home Manager as part of nix-darwin.
 # It applies your user config whenever you run:
 #   drs / drb / drn  → darwin-rebuild
@@ -13,7 +14,7 @@
 # Does NOT contain:
 #   - systemPath (belongs to nix-darwin system-level)
 #   - systemPackages (belongs to system-level)
-# ================================================
+# =====================================================================
 
 { pkgs, lib, inputs, ... }:
 

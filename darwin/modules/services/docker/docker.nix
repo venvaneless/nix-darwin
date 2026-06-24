@@ -1,11 +1,12 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/docker.nix
-#
-# DOCKER (DARWIN ONLY)
-# ============================
+# 
+# =====================================================================
+# DOCKER
+# 
 # - Installs Docker Desktop via Homebrew cask
 # - Ensures /Applications/Programming exists
 # - Starts Docker Desktop as a user LaunchAgent
-# ============================
+# =====================================================================
 
 { pkgs, lib, ... }:
 

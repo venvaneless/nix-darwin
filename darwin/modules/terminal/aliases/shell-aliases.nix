@@ -1,5 +1,8 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/terminal/aliases/shell-aliases.nix
-
+# 
+# =====================================================================
+# SHELL: ALIASES
+# =====================================================================
 { ... }:
 
 {

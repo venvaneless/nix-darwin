@@ -1,28 +1,29 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/fonts.nix
 #
+# =====================================================================
 # SYSTEM FONTS
-# ============================================================
+# 
 # Font configuration for macOS via nix-darwin.
 # - Installs selected Nerd Fonts (patched variants).
 # - Uses fonts.packages (2025 API) to manage system fonts.
 # - Provides placeholders for extra font packages and custom fonts.
-# ============================================================
+# =====================================================================
 #
 { config, lib, pkgs, ... }:
 
 {
-  # ------------------------------------------------------------
-  # INSTALLED FONTS
+	# ---------------------------------------------------------------
+  # ------ INSTALLED FONTS ------ #
   # Nerd Fonts + additional monospaced and UI fonts
-  # ------------------------------------------------------------
-  #
+ 	# ---------------------------------------------------------------
+
   fonts = {
 
-    # --------------------------------------------------------
-    # PACKAGES
-    # A list of font derivations to install system-wide.
-    # Installed into /Library/Fonts/Nix Fonts (new macOS behavior).
-    # --------------------------------------------------------
+  	# **************************************************
+    # ---- PACKAGES
+    # A list of font derivations to install system-wide
+    # Installed into /Library/Fonts/Nix Fonts
+   	# **************************************************
     packages = [
 
       # --- Selected Nerd Fonts (patched) ---
@@ -41,12 +42,15 @@
       # pkgs.noto-fonts-emoji
     ];
   };
+  # ---------------------------------------------------------------
 
 
-  # ------------------------------------------------------------
-  # CUSTOM FONT DERIVATIONS (PLACEHOLDER)
-  # For commercial / local fonts (Berkeley Mono, Operator Mono, etc.)
-  # ------------------------------------------------------------
+ 	# **************************************************
+  # Font derivations (Placeholder)
+  # For commercial / local fonts
+  # - Berkeley Mono
+  # - Operator Mono, etc.
+ 	# **************************************************
   #
   # let
   #   berkeley-mono = pkgs.callPackage ../../pkgs/fonts/berkeley-mono.nix { };

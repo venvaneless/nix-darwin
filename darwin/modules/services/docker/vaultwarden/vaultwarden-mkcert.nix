@@ -1,21 +1,24 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/docker/vaultwarden/vaultwarden-mkcert.nix
 #
-# VAULTWARDEN: CERTIFICATES (MKCERT)
-# ============================================================
+# =====================================================================
+# VAULTWARDEN: MKCERT CERTIFICATES
+# 
 # - Uses mkcert CA from:
 #       ~/.config/mkcert
+# 
 # - Generates server cert + key for:
 #       vaultwarden.local  AND  192.168.2.125
+# 
 # - Stores them in:
 #       ~/.config/ssl/vaultwarden
 #       - vaultwarden.local.pem
 #       - vaultwarden.local-key.pem
+# 
 # - Exports mkcert CA root as:
 #       ~/.config/ssl/vaultwarden/rootCA.crt
-#   for iOS/Android import.
-# - Fixes ownership + permissions.
+# 
 # - Logs all actions during activation.
-# ============================================================
+# =====================================================================
 
 { config, pkgs, lib, ... }:
 
