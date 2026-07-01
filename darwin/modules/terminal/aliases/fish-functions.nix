@@ -257,6 +257,92 @@
     # ---------------------------------------------------------
 
 
+    # ------------------------------------------------------------
+    # Backup file/folder to zip
+    # ------------------------------------------------------------
+    backup = ''
+      set -l src (string replace -r '/+$' "" -- "$argv[1]")
+  
+      if test -z "$src"; or not test -e "$src"
+        echo "Usage: backup <path/to/file/or/folder>"
+        return 1
+      end
+  
+      set -l name (basename "$src")
+      set -l out "$PWD/$name.zip"
+  
+      if test -e "$out"
+        echo "Backup already exists: $out"
+        return 1
+      end
+  
+      /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$src" "$out"
+  
+      echo "Created: $out"
+    '';
+    
+  
+    # ------------------------------------------------------------
+    # Backup file/folder to timestamped zip
+    # ------------------------------------------------------------
+    backuptime = ''
+      set -l src (string replace -r '/+$' "" -- "$argv[1]")
+  
+      if test -z "$src"; or not test -e "$src"
+        echo "Usage: backuptime <path/to/file/or/folder>"
+        return 1
+      end
+  
+      set -l name (basename "$src")
+      set -l stamp (date "+%Y%m%d-%H%M")
+      set -l out "$PWD/$stamp-$name.zip"
+  
+      if test -e "$out"
+        echo "Backup already exists: $out"
+        return 1
+      end
+  
+      /usr/bin/ditto -c -k --sequesterRsrc --keepParent "$src" "$out"
+  
+      echo "Created: $out"
+    '';
+    # ---------------------------------------------------------
+
+    
+    # ------------------------------------------------------------
+    # Copy file/folder to explicit destination path
+    # ------------------------------------------------------------
+    bkpfolder = ''
+      set -l src (string replace -r '/+$' "" -- "$argv[1]")
+      set -l dest (string replace -r '/+$' "" -- "$argv[2]")
+  
+      if test -z "$src"; or test -z "$dest"; or not test -e "$src"
+        echo "Usage: bkpfolder <path/to/file/or/folder> <destination/path>"
+        return 1
+      end
+  
+      if test -e "$dest"
+        echo "Destination already exists: $dest"
+        return 1
+      end
+  
+      mkdir -p (dirname "$dest")
+      /usr/bin/ditto "$src" "$dest"
+  
+      echo "Copied: $src -> $dest"
+    '';
+    # ---------------------------------------------------------
+
+  
+    # ------------------------------------------------------------
+    # Alias for bkpfolder
+    # ------------------------------------------------------------
+    copyfolder = ''
+      bkpfolder $argv
+    '';
+    # ---------------------------------------------------------
+
+
     # ---------------------------------------------------------
     # ---- ftrash -> Trash manager with fzf ---- #
     # View or clean System Trash and iCloud container Trash
@@ -491,6 +577,31 @@
 
       echo "Not found: $target"
       return 1
+    '';
+    # ---------------------------------------------------------
+
+
+    # ---------------------------------------------------------
+    # ---- icloudfix -> Restart iCloud/FileProvider services ---- #
+    # Restarts Finder and iCloud-related daemons when iCloud
+    # folders or app containers stop appearing correctly
+    #
+    # Example:
+    # icloudfix
+    # ---------------------------------------------------------
+    icloudfix = ''
+      echo "Restarting iCloud/FileProvider services..."
+
+      killall Finder 2>/dev/null; or true
+      killall fileproviderd 2>/dev/null; or true
+      killall bird 2>/dev/null; or true
+      killall cloudd 2>/dev/null; or true
+
+      sleep 3
+
+      open ~/Library/Mobile\ Documents
+
+      echo "Done. If iCloud folders are still missing, reboot once."
     '';
     # ---------------------------------------------------------
     
