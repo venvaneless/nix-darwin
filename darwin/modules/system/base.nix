@@ -213,6 +213,9 @@
     # Nix language server
     nixd
 
+    # Open-source, cross-platform JavaScript runtime environment
+    nodejs
+
     # Tools for NSS certificates
     nssTools
     
