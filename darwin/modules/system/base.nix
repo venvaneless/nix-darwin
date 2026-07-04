@@ -234,9 +234,6 @@
     # Command-line unarchiving tools supporting multiple formats
     unar
 
-    # Terminal file manager
-    ranger
-
     # Smarter directory jumping
     zoxide
 

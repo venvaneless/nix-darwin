@@ -182,7 +182,30 @@
     '';
     # ---------------------------------------------------------
 
-
+    
+    # ---------------------------------------------------------
+    # fbranch
+    # ---------------------------------------------------------
+    # Interactive Git branch switcher and branch creator
+    #
+    # Features:
+    #   - Browse local branches with fzf
+    #   - Switch to an existing branch
+    #   - Create a new branch without switching to it
+    #   - Optionally create a branch containing:
+    #       - the entire repository, or
+    #       - only a single selected folder
+    #
+    # When creating a folder-only branch:
+    #   - Creates a temporary Git worktree
+    #   - Removes all tracked files
+    #   - Restores only the selected folder
+    #   - Commits the resulting branch
+    #   - Cleans up the temporary worktree
+    #
+    # Example:
+    # fbranch
+    # ---------------------------------------------------------
     fbranch = ''
       if not command -q fzf
         echo "fzf is required for fbranch."
@@ -284,5 +307,79 @@
     
       git switch "$selected_branch"
     '';
+    # ---------------------------------------------------------
+
+
+    # ---------------------------------------------------------
+    # repo-date
+    # ---------------------------------------------------------
+    # Show the date of the very first commit in a Git repository
+    #
+    # Accepts either:
+    #   - a local Git repository path
+    #   - a remote Git repository or GitHub gist URL
+    #
+    # If a remote URL is provided, the repository is cloned into a
+    # temporary directory, the first commit is displayed, and the
+    # temporary clone is removed automatically.
+    #
+    # Displays:
+    #   - first commit date
+    #   - commit author
+    #   - commit hash
+    #
+    # Note:
+    #   For forked repositories or gists, this shows the first commit
+    #   in the complete Git history, not the date the fork was created.
+    #
+    # Example:
+    # repo-date ~/Downloads/my-repo
+    # repo-date https://github.com/user/repo.git
+    # repo-date https://gist.github.com/jshmllr/dce62a4c67bb10592c82370a985dd3e4
+    # ---------------------------------------------------------
+    repo-date = ''
+      if test (count $argv) -lt 1
+        echo "Usage: repo-date <repo-path-or-url>"
+        return 1
+      end
+
+      set target "$argv[1]"
+      set cleanup 0
+      set repo "$target"
+
+      if string match -qr '^https?://|^git@' "$target"
+        set temp_dir (mktemp -d)
+        set cleanup 1
+
+        git clone --quiet "$target" "$temp_dir"
+        or begin
+          echo "Could not clone: $target"
+          rm -rf "$temp_dir"
+          return 1
+        end
+
+        set repo "$temp_dir"
+      end
+
+      if not git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1
+        echo "Not a Git repository: $target"
+
+        if test "$cleanup" -eq 1
+          rm -rf "$repo"
+        end
+
+        return 1
+      end
+
+      git -C "$repo" log --reverse --max-parents=0 \
+        --format="First commit: %ad%nAuthor: %an <%ae>%nCommit: %H" \
+        --date=iso \
+        | head -n 3
+
+      if test "$cleanup" -eq 1
+        rm -rf "$repo"
+      end
+    '';
+    # ---------------------------------------------------------
   };
 }
