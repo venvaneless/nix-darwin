@@ -242,6 +242,9 @@
 
     # Internet file retriever
     wget
+
+    # Terminal file manager
+    yazi
     
     # YouTube music client
     ytmdesktop
