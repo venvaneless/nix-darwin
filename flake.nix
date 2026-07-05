@@ -12,8 +12,8 @@
   # Allow committing even with build artefacts like ./result
   nixConfig.allow-dirty = true;
   
-
   inputs = {
+  
     # Core package set
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
   
