@@ -18,7 +18,7 @@
     status is-interactive; or return
 
     set -l fastfetch_config "${config.home.homeDirectory}/.config/fastfetch/fastfetch-macos.jsonc"
-    set -l fastfetch_marker "$TMPDIR/fastfetch-shown-$USER-$fish_pid"
+    set -l fastfetch_marker "$TMPDIR/fastfetch-shown-$USER"
 
     if type -q fastfetch
       if test -f "$fastfetch_config"
