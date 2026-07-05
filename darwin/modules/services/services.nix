@@ -14,6 +14,10 @@
 
 {
   imports = [
+
+  	# Background services
+   	./startpage-launchd.nix
+   	
     # Cleanup
     ./generations-cleanup.nix
     ./rsync.nix
