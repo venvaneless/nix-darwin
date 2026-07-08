@@ -29,17 +29,6 @@
           hash = "sha256-qt3t1iKRRNuiLWiVoiAYOu+9E7jsyECyIqZJ/oRIT1A=";
         };
       }
-
-      # Theme
-      {
-        name = "rose-pine";
-        src = pkgs.fetchFromGitHub {
-          owner = "rose-pine";
-          repo = "fish";
-          rev = "main";
-          hash = "sha256-3heI6nhItw5WfKGQT1FRQKfv+lONyn+DzwYjYqJjzLE=";
-        };
-      }
     ];
 
     # -------------------------------------------- #
@@ -64,6 +53,11 @@
         set -gx ICLOUD_MOBILE "$HOME/Library/Mobile Documents"
     '';
   };
+
+  # -------------------------------------------- #
+  # THEME
+  # -------------------------------------------- #
+  terminal.fish.theme = "gruvbox";
 
   # -------------------------------------------- #
   # ENVIRONMENT
@@ -99,6 +93,9 @@
 		./aliases/gc-aliases.nix
 		./aliases/git-aliases.nix
     ./aliases/nix-aliases.nix
+
+    # ---- Fish themes ---- #
+    ./fish-themes.nix
 
     # ---- Fish modules ---- #
     ./plugins/atuin.nix
