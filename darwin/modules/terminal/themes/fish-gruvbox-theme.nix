@@ -1,6 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/themes/gruvbox-theme.nix
-
-{ pkgs, ... }:
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/themes/fish-gruvbox-theme.nix
 
 { config, lib, pkgs, ... }:
 

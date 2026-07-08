@@ -1,7 +1,5 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/terminal/themes/fish-rose-pine-theme.nix
 
-{ pkgs, ... }:
-
 { config, lib, pkgs, ... }:
 
 {
