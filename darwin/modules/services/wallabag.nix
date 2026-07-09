@@ -36,9 +36,10 @@ let
     done
 
     echo ">>> [${appName}] Docker is ready"
-    echo ">>> [${appName}] Pulling images"
+    echo ">>> [${appName}] Pulling image"
 
     ${pkgs.docker-compose}/bin/docker-compose \
+      -p ${appName} \
       -f "${composeFile}" \
       pull
 
@@ -46,6 +47,7 @@ let
     echo ">>> [${appName}] URL: ${cfg.domainName}"
 
     exec ${pkgs.docker-compose}/bin/docker-compose \
+      -p ${appName} \
       -f "${composeFile}" \
       up \
       --force-recreate \
@@ -76,9 +78,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [
-      runner
-    ];
+    system.activationScripts.ensureWallabagDataDir.text = lib.mkAfter ''
+      echo ">>> [wallabag] Ensuring data directories"
+      mkdir -p "${cfg.dataDir}/data"
+      mkdir -p "${cfg.dataDir}/images"
+      chown -R ven:staff "${cfg.dataDir}" || true
+    '';
 
     launchd.agents.wallabag = {
       serviceConfig = {
@@ -86,7 +91,10 @@ in
         ProgramArguments = [ "${runner}/bin/run-${appName}" ];
 
         RunAtLoad = true;
-        KeepAlive = true;
+
+        KeepAlive = {
+          SuccessfulExit = false;
+        };
 
         StandardOutPath = "/tmp/com.ven.wallabag.out.log";
         StandardErrorPath = "/tmp/com.ven.wallabag.err.log";
