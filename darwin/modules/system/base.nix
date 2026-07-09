@@ -2,90 +2,76 @@
 #
 # =====================================================================
 # SYSTEM: BASE CONFIGURATION
-# 
+#
 # Defines the core nix-darwin system foundation:
 # - Nix daemon and flake settings
 # - Hostname and system state version
 # - Global XDG environment paths
 # - Homebrew system PATH entries
 # - nixpkgs package policy
-# - Core system packages available machine-wide
+# - System module imports
 # =====================================================================
 
 { config, pkgs, lib, inputs, ... }:
 
 {
   # ------------------------------------------------------------
-  # SYSTEM IMPORTS
-  imports = [
-    ./system-options.nix
-  ];
-  # ------------------------------------------------------------
-
-  # ------------------------------------------------------------
   # ------ SYSTEM AND NIX ------ #
+  #
+  # Core nix-darwin and Nix settings required for system builds,
+  # flake support, store hygiene, and machine identity.
+  # ------------------------------------------------------------
 
   # ---- Manage the Nix daemon
-  # ********************************************************
-  # Ensures the nix-daemon launchd service exists
-  # Starts it at boot
-  # Keeps it in sync with your config
-  # Without it, nix-darwin can’t reliably control
-  # builds, users, or settings
-  # ********************************************************
+  # Ensures nix-darwin manages the nix-daemon service
   nix.enable = true;
 
-  
-  # ---- Hostname ----
+  # ---- Hostname
+  # Sets the machine name used by macOS and local networking
   networking.hostName = "Vens-MacBook-Pro";
 
-  # ---- System State Version ----
+  # ---- System state version
+  # Tracks nix-darwin system compatibility defaults
   system.stateVersion = 6;
 
   # ---- Deduplicate store paths
+  # Automatically optimizes the Nix store by hard-linking duplicates
   nix.optimise.automatic = true;
 
+  # ---- Nix settings
+  # Configures flakes, trusted users, build behavior, logs, and caches
   nix.settings = {
-
-    # ------ Flakes + modern CLI ------
     experimental-features = [ "nix-command" "flakes" ];
 
-    # ------ System build group ------
+    # System build group
     build-users-group = "nixbld";
 
-    # Move ~/.nix-* into XDG directories
+    # Use XDG base directories for configuration, state, data, and cache
+    # Moves compatible application files into your preferred ~/.config layout
     use-xdg-base-directories = true;
 
-    # ------ LOGS ------
-
-    # --- Ignore dirty git tree warnings
+    # Ignore dirty git tree warnings
     warn-dirty = false;
 
-    # --- Failure log length
+    # Failure log length
     log-lines = 50;
 
-
-    # ------ BUILD PERFORMANCE ------
-
-    # ---- Use all CPU cores
+    # Build job concurrency
     max-jobs = 4;
 
-    # ---- Limit cores per build
+    # Limit cores per build
     cores = 2;
 
-    # ---- Build locally if cache fails
+    # Build locally if cache fails
     fallback = true;
 
-    # ---- Allow trusted users
+    # Allow trusted users
     trusted-users = [ "root" "ven" ];
 
-
-    # ------ STORE HYGIENE ------
-
-    # ---- Keep build recipes
+    # Keep build recipes
     keep-derivations = true;
 
-    # ---- Keep build results
+    # Keep build results
     keep-outputs = true;
 
     # ---- Official binary cache ----
@@ -98,158 +84,66 @@
     ];
   };
 
+  # ------------------------------------------------------------
+  # ------ GLOBAL ENVIRONMENT VARIABLES ------ #
+  #
+  # Defines XDG base directories globally so tools store config,
+  # state, data, and cache files in predictable locations.
+  # ------------------------------------------------------------
 
-  # ------------------------------------------------------------
-  # GLOBAL ENVIRONMENT VARIABLES
-  # ------------------------------------------------------------
+  # ---- XDG directories
+  # Moves compatible application files into your preferred ~/.config layout
   environment.variables = {
-  	XDG_CONFIG_HOME = "/Users/ven/.config";
-   	XDG_STATE_HOME  = "/Users/ven/.config/.state";
-    XDG_DATA_HOME   = "/Users/ven/.config/.local/share";
-    XDG_CACHE_HOME  = "/Users/ven/.config/.cache";
+    XDG_CONFIG_HOME = "/Users/ven/.config";
+    XDG_STATE_HOME = "/Users/ven/.config/.state";
+    XDG_DATA_HOME = "/Users/ven/.config/.local/share";
+    XDG_CACHE_HOME = "/Users/ven/.config/.cache";
   };
 
   # ------------------------------------------------------------
-  # GLOBAL SYSTEM PATH
+  # ------ GLOBAL SYSTEM PATH ------ #
+  #
+  # Adds Homebrew paths globally so brew-installed binaries remain
+  # available alongside Nix-managed tools.
   # ------------------------------------------------------------
+
+  # ---- Homebrew binary paths
+  # Makes Apple Silicon Homebrew commands available system-wide.
   environment.systemPath = [
-  "/opt/homebrew/bin"
-  "/opt/homebrew/sbin"
+    "/opt/homebrew/bin"
+    "/opt/homebrew/sbin"
   ];
 
   # ------------------------------------------------------------
-  # NIXPKGS PACKAGE POLICY
+  # ------ NIXPKGS PACKAGE POLICY ------ #
+  #
+  # Defines package availability rules, including unfree packages
+  # and temporary exceptions for insecure packages.
   # ------------------------------------------------------------
+
+  # ---- Package policy
+  # Allow packages with non-free licenses
   nixpkgs.config = {
-    # Allow packages with non-free licenses.
     allowUnfree = true;
 
-    # Temporarily allow Colima's current Lima dependency.
     permittedInsecurePackages = [
     ];
   };
 
   # ------------------------------------------------------------
-  # SYSTEM PACKAGES
-  # Core utilities with concise descriptions
+  # ------ SYSTEM IMPORTS ------ #
+  #
+  # Loads additional system modules, including macOS options and
+  # split package groups.
   # ------------------------------------------------------------
-  environment.systemPackages = with pkgs; [
 
-    # darwin-rebuild binary
-    inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
+  # ---- Module imports
+  # Keeps base.nix clean by loading related configuration from separate files
+  imports = [
+    ./system-options.nix
 
-    # Shell history sync and search
-    atuin
-
-    # Cat clone with syntax highlighting and Git integration
-    bat
-    
-    # New Bash
-    bashInteractive
-
-    # Bitwarden CLI
-    bitwarden-cli
-
-    # Cross-platform graphical process/system monitor
-    bottom
-
-    # Docker CLI
-    docker_29
-    
-    # Modern, maintained replacement for ls
-    eza
-    
-    # Git diff viewer with syntax highlighting
-    delta
-
-    # System information fetch tool
-    fastfetch
-    
-    # Fast alternative to find
-    fd
-
-    # Friendly interactive shell
-    fish
-    
-    # Create thumbnails for your video files
-    ffmpegthumbnailer
-
-    # GNU Awk text processing tool
-    gawk
-    
-    # Git encryption tool
-    git-crypt
-
-    # Git Filtering
-    git-filter-repo
-
-    # Git Large File Storage
-    git-lfs
-
-    # Terminal UI helpers
-    gum
-
-    # Home Manager CLI
-    home-manager
-    
-    # Tools and libraries to manipulate images in select formats
-    imagemagick
-
-    # Terminal UI for Git
-    lazygit
-    
-    # Supplies technical and tag information about a video or audio file
-    mediainfo
-
-    # Terminal text editor
-    micro
-
-    # Nix formatter
-    nil
-    
-    # Nix search database
-    nix-index
-
-    # Nix language server
-    nixd
-
-    # Open-source, cross-platform JavaScript runtime environment
-    nodejs
-
-    # Tools for NSS certificates
-    nssTools
-    
-    # 7-Zip (high compression file archiver) implementation
-    p7zip
-    
-    # PDF rendering library
-    poppler
-    
-    # Fast recursive search tool
-    ripgrep
-
-    # Directory tree viewer
-    tree
-    
-    # Command-line unarchiving tools supporting multiple formats
-    unar
-
-    # Smarter directory jumping
-    zoxide
-
-    # Terminal multiplexer
-    tmux
-
-    # Internet file retriever
-    wget
-
-    # Terminal file manager
-    yazi
-    
-    # YouTube music client
-    ytmdesktop
-
-    # Zstandard compression tool for .zst and .tar.zst archives
-    zstd
+    ./packages/cli-tools.nix
+    ./packages/development-pkgs.nix
+    ./packages/media-pkgs.nix
   ];
 }

@@ -76,7 +76,6 @@
 
     # Services
     ./modules/services/services.nix
-    ./modules/services/pdf-tools.nix
 
     # Apps
     ./modules/apps/apps.nix
