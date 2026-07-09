@@ -13,55 +13,22 @@ let
         image: wallabag/wallabag:latest
         container_name: wallabag
         restart: unless-stopped
-        depends_on:
-          - db
-          - redis
         ports:
           - "127.0.0.1:${toString cfg.port}:80"
-        env_file:
-          - ${cfg.dataDir}/wallabag.env
         environment:
-          POSTGRES_DB: wallabag
-          POSTGRES_USER: wallabag
-          POSTGRES_PASSWORD: "$${POSTGRES_PASSWORD}"
-
-          SYMFONY__ENV__DATABASE_DRIVER: pdo_pgsql
-          SYMFONY__ENV__DATABASE_HOST: db
-          SYMFONY__ENV__DATABASE_PORT: 5432
-          SYMFONY__ENV__DATABASE_NAME: wallabag
-          SYMFONY__ENV__DATABASE_USER: wallabag
-          SYMFONY__ENV__DATABASE_PASSWORD: "$${SYMFONY__ENV__DATABASE_PASSWORD}"
-          SYMFONY__ENV__REDIS_HOST: redis
           SYMFONY__ENV__DOMAIN_NAME: ${cfg.domainName}
         volumes:
-          - ${cfg.dataDir}/images:/var/www/wallabag/web/assets/images
-
-      db:
-        image: postgres:16-alpine
-        container_name: wallabag-db
-        restart: unless-stopped
-        env_file:
-          - ${cfg.dataDir}/wallabag.env
-        environment:
-          POSTGRES_DB: wallabag
-          POSTGRES_USER: wallabag
-        volumes:
-          - wallabag-postgres:/var/lib/postgresql/data
-
-      redis:
-        image: redis:7-alpine
-        container_name: wallabag-redis
-        restart: unless-stopped
+          - wallabag-data:/var/www/wallabag/data
+          - wallabag-images:/var/www/wallabag/web/assets/images
 
     volumes:
-      wallabag-postgres:
+      wallabag-data:
+      wallabag-images:
   '';
 
   runner = pkgs.writeShellScriptBin "run-${appName}" ''
     #!/usr/bin/env bash
     set -euo pipefail
-
-    mkdir -p "${cfg.dataDir}/images"
 
     ENV_FILE="${cfg.dataDir}/wallabag.env"
 
