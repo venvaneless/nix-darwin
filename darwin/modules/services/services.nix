@@ -13,11 +13,15 @@
 { ... }:
 
 {
+  services.wallabag.enable = true;
+
+
   imports = [
 
   	# Background services
    	./startpage-launchd.nix
-   	
+    ./wallabag.nix
+    
     # Cleanup
     ./generations-cleanup.nix
     ./rsync.nix
