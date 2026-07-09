@@ -82,7 +82,7 @@ EOF
   '';
 in
 {
-  options.services.wallabagDocker = {
+  options.services.wallabag = {
     enable = lib.mkEnableOption "Wallabag Docker service";
 
     port = lib.mkOption {
