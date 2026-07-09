@@ -18,34 +18,16 @@ let
         environment:
           SYMFONY__ENV__DOMAIN_NAME: ${cfg.domainName}
         volumes:
-          - wallabag-data:/var/www/wallabag/data
-          - wallabag-images:/var/www/wallabag/web/assets/images
-
-    volumes:
-      wallabag-data:
-      wallabag-images:
+          - ${cfg.dataDir}/data:/var/www/wallabag/data
+          - ${cfg.dataDir}/images:/var/www/wallabag/web/assets/images
   '';
 
   runner = pkgs.writeShellScriptBin "run-${appName}" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
-    ENV_FILE="${cfg.dataDir}/wallabag.env"
-
-    if [ ! -f "$ENV_FILE" ]; then
-      echo ">>> [${appName}] Creating env file: $ENV_FILE"
-
-      DB_PASSWORD="$(${pkgs.openssl}/bin/openssl rand -hex 24)"
-      SECRET="$(${pkgs.openssl}/bin/openssl rand -hex 32)"
-
-      cat > "$ENV_FILE" <<EOF
-POSTGRES_PASSWORD=$DB_PASSWORD
-SYMFONY__ENV__DATABASE_PASSWORD=$DB_PASSWORD
-SYMFONY__ENV__SECRET=$SECRET
-EOF
-
-      chmod 600 "$ENV_FILE"
-    fi
+    mkdir -p "${cfg.dataDir}/data"
+    mkdir -p "${cfg.dataDir}/images"
 
     echo ">>> [${appName}] Waiting for Docker daemon"
 
@@ -82,7 +64,7 @@ in
 
     dataDir = lib.mkOption {
       type = lib.types.str;
-      default = "/Users/ven/.local/share/wallabag";
+      default = "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/my-system/user-data/01-databases-containers/wallabag";
       description = "Persistent Wallabag data directory.";
     };
 
