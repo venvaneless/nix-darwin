@@ -29,6 +29,8 @@ let
     mkdir -p "${cfg.dataDir}/data"
     mkdir -p "${cfg.dataDir}/images"
 
+    chmod -R u+rwX,go+rwX "${cfg.dataDir}"
+
     echo ">>> [${appName}] Waiting for Docker daemon"
 
     until ${pkgs.docker_29}/bin/docker info >/dev/null 2>&1; do
