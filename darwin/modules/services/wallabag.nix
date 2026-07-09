@@ -77,7 +77,7 @@ EOF
 
     echo ">>> [${appName}] Waiting for Docker daemon"
 
-    until ${pkgs.docker}/bin/docker info >/dev/null 2>&1; do
+    until ${pkgs.docker_29}/bin/docker info >/dev/null 2>&1; do
       sleep 5
     done
 
@@ -122,6 +122,10 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    environment.systemPackages = [
+      runner
+    ];
+
     launchd.agents.wallabag = {
       serviceConfig = {
         Label = "com.ven.wallabag";
