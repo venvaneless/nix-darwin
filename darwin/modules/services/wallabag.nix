@@ -21,11 +21,16 @@ let
         env_file:
           - ${cfg.dataDir}/wallabag.env
         environment:
+          POSTGRES_DB: wallabag
+          POSTGRES_USER: wallabag
+          POSTGRES_PASSWORD: "$${POSTGRES_PASSWORD}"
+
           SYMFONY__ENV__DATABASE_DRIVER: pdo_pgsql
           SYMFONY__ENV__DATABASE_HOST: db
           SYMFONY__ENV__DATABASE_PORT: 5432
           SYMFONY__ENV__DATABASE_NAME: wallabag
           SYMFONY__ENV__DATABASE_USER: wallabag
+          SYMFONY__ENV__DATABASE_PASSWORD: "$${SYMFONY__ENV__DATABASE_PASSWORD}"
           SYMFONY__ENV__REDIS_HOST: redis
           SYMFONY__ENV__DOMAIN_NAME: ${cfg.domainName}
         volumes:
