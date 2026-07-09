@@ -33,6 +33,7 @@ in {
     bitwarden-cli
     delta
     docker_29
+    docker-compose
     git-crypt
     git-filter-repo
     git-lfs
