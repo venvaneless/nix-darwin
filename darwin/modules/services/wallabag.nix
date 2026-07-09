@@ -41,7 +41,7 @@ let
           POSTGRES_DB: wallabag
           POSTGRES_USER: wallabag
         volumes:
-          - ${cfg.dataDir}/postgres:/var/lib/postgresql/data
+          - wallabag-postgres:/var/lib/postgresql/data
 
       redis:
         image: redis:7-alpine
@@ -54,7 +54,6 @@ let
     set -euo pipefail
 
     mkdir -p "${cfg.dataDir}/images"
-    mkdir -p "${cfg.dataDir}/postgres"
 
     ENV_FILE="${cfg.dataDir}/wallabag.env"
 
