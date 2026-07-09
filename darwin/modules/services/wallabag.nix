@@ -47,6 +47,9 @@ let
         image: redis:7-alpine
         container_name: wallabag-redis
         restart: unless-stopped
+
+    volumes:
+      wallabag-postgres:
   '';
 
   runner = pkgs.writeShellScriptBin "run-${appName}" ''
@@ -72,12 +75,27 @@ EOF
       chmod 600 "$ENV_FILE"
     fi
 
+    echo ">>> [${appName}] Waiting for Docker daemon"
+
+    until ${pkgs.docker}/bin/docker info >/dev/null 2>&1; do
+      sleep 5
+    done
+
+    echo ">>> [${appName}] Docker is ready"
+    echo ">>> [${appName}] Pulling images"
+
+    ${pkgs.docker-compose}/bin/docker-compose \
+      -f "${composeFile}" \
+      pull
+
     echo ">>> [${appName}] Starting Wallabag"
     echo ">>> [${appName}] URL: ${cfg.domainName}"
 
     exec ${pkgs.docker-compose}/bin/docker-compose \
       -f "${composeFile}" \
-      up
+      up \
+      --force-recreate \
+      --remove-orphans
   '';
 in
 {
@@ -104,11 +122,6 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [
-      runner
-      pkgs.docker-compose
-    ];
-
     launchd.agents.wallabag = {
       serviceConfig = {
         Label = "com.ven.wallabag";
