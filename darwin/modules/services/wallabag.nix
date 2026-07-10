@@ -26,6 +26,10 @@ let
     #!/usr/bin/env bash
     set -euo pipefail
 
+    # Docker Desktop credential helpers are not included in launchd's
+    # default PATH, so add Docker Desktop's executable directory.
+    export PATH="/Applications/Programming/Docker.app/Contents/Resources/bin:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
     mkdir -p "${cfg.dataDir}/data"
     mkdir -p "${cfg.dataDir}/images"
 
@@ -41,7 +45,7 @@ let
     echo ">>> [${appName}] Pulling image"
 
     ${pkgs.docker-compose}/bin/docker-compose \
-      -p ${appName} \
+      -p "${appName}" \
       -f "${composeFile}" \
       pull
 
@@ -49,7 +53,7 @@ let
     echo ">>> [${appName}] URL: ${cfg.domainName}"
 
     exec ${pkgs.docker-compose}/bin/docker-compose \
-      -p ${appName} \
+      -p "${appName}" \
       -f "${composeFile}" \
       up \
       --force-recreate \
