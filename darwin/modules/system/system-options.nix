@@ -12,7 +12,7 @@
 # Holds ONLY nix-darwin system-level options.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ ... }:
 
 {
 	# ---------------------------------------------------------------
@@ -70,7 +70,7 @@
   # *********************************
   imports = [
     ./dock-options.nix
-    ./finder-options-noscript.nix
+    ./finder-options.nix
     ./fonts.nix
     ./keyboard.nix
     ./locale.nix

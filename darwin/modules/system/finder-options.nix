@@ -12,7 +12,7 @@
 # Finder per-folder view state (.DS_Store) is NOT touched here.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ ... }:
 
 {
 	# =======================================================
@@ -29,7 +29,7 @@
     
     # --- Windows management --- #
     NewWindowTarget = "Other";
-    NewWindowTargetPath = "file://Users/ven/Downloads/";
+    NewWindowTargetPath = "file:///Users/ven/Downloads/";
   
     # --- Views --- #
     FXPreferredViewStyle = "Nlsv";

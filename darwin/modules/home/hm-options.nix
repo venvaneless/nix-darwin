@@ -12,7 +12,7 @@
 # nix-darwin system modules.
 # =====================================================================
 
-{ config, lib, ... }:
+{ ... }:
 
 {
   # ------------------------------------------------------------
@@ -51,6 +51,6 @@
     ./clock.nix
     
     # --- Home Manager services ---
-    # ../services/espanso-launchd.nix
+    # ./espanso-launchd.nix
   ];
 }

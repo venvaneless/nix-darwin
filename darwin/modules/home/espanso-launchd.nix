@@ -12,7 +12,7 @@
 # Managed declaratively by Home Manager.
 # ============================================================
 
-{ lib, ... }:
+{ ... }:
 
 {
 	home.file."hm-test-espanso-launchd.txt".text = ''

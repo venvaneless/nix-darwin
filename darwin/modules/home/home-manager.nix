@@ -16,7 +16,7 @@
 #   - systemPackages (belongs to system-level)
 # =====================================================================
 
-{ pkgs, lib, inputs, ... }:
+{ inputs, ... }:
 
 {
   home-manager = {
