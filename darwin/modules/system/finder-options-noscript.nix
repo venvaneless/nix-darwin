@@ -29,7 +29,7 @@
     
     # --- Windows management --- #
     NewWindowTarget = "Other";
-    NewWindowTargetPath = "file:///Users/ven/iCloudDocs/Downloads/";
+    NewWindowTargetPath = "file://Users/ven/Downloads/";
   
     # --- Views --- #
     FXPreferredViewStyle = "Nlsv";
