@@ -14,7 +14,7 @@ let
         container_name: wallabag
         restart: unless-stopped
         ports:
-          - "127.0.0.1:${toString cfg.port}:80"
+          - "${toString cfg.port}:80"
         environment:
           SYMFONY__ENV__DOMAIN_NAME: ${cfg.domainName}
         volumes:

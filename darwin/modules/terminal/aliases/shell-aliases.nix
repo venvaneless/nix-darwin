@@ -334,6 +334,10 @@ unzipd = ''
     ## Open system files with micro user config
     msd = "SUDO_EDITOR=micro sudoedit";
 
+    # --- unhide -> chflags nohidden
+    ## Remove the macOS hidden flag from files/folders
+    unhide = "chflags nohidden";
+
     # ---------- Additional replacements ---------- #
 
     # --- - -> cd -
