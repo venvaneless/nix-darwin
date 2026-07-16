@@ -1,5 +1,5 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/terminal/aliases/nix-aliases.nix
-# 
+#
 # =====================================================================
 # NIX-DARWIN: ALIASES
 # =====================================================================
@@ -48,5 +48,103 @@ in
 
     # ---- Recreate / update flake's lock file
     "nix-update" = "nix flake update --flake ${flakePath}";
+
+
+    # ---------------------------------------------------------
+    # ---- pinflake -> Archive and protect flake inputs ---- #
+    # Fetches all inputs for a flake and creates indirect GC roots
+    # so nix-collect-garbage does not remove them.
+    #
+    # Defaults to the current directory.
+    #
+    # Examples:
+    # pinflake
+    # pinflake /Users/ven/.config/nix/nix-config
+    # ---------------------------------------------------------
+    pinflake = ''
+      function _pinflake
+        set -l flake_path "$PWD"
+
+        if test (count $argv) -gt 0
+          set flake_path "$argv[1]"
+        end
+
+        if not test -e "$flake_path/flake.nix"
+          echo "Not a flake directory: $flake_path"
+          return 1
+        end
+
+        set -l root_dir "$HOME/.local/state/nix/gcroots/flake-inputs"
+        mkdir -p "$root_dir"
+
+        echo "Archiving flake inputs from:"
+        echo "$flake_path"
+
+        set -l archive_json (
+          nix flake archive --json "$flake_path"
+        )
+
+        or begin
+          echo "Failed to archive flake inputs."
+          return 1
+        end
+
+        set -l store_paths (
+          printf "%s" "$archive_json" |
+          jq -r '
+            [
+              .path?,
+              .storePath?,
+              (
+                .inputs? // {}
+                | ..
+                | objects
+                | .path?, .storePath?
+              )
+            ]
+            | flatten
+            | map(
+                select(
+                  type == "string"
+                  and startswith("/nix/store/")
+                )
+              )
+            | unique
+            | .[]
+          '
+        )
+
+        if test (count $store_paths) -eq 0
+          echo "No flake input store paths were returned."
+          return 1
+        end
+
+        for store_path in $store_paths
+          set -l store_name (basename "$store_path")
+          set -l root_path "$root_dir/$store_name"
+
+          rm -f "$root_path"
+
+          nix-store \
+            --realise "$store_path" \
+            --add-root "$root_path" \
+            --indirect >/dev/null
+
+          or begin
+            echo "Failed to pin: $store_path"
+            return 1
+          end
+
+          echo "Pinned: $store_path"
+        end
+
+        echo
+        echo "Flake inputs protected from garbage collection."
+        echo "GC roots: $root_dir"
+      end
+
+      _pinflake $argv
+    '';
+    # ---------------------------------------------------------
   };
 }
