@@ -14,7 +14,6 @@
     ./abetterfinderattributes.nix
     ./abetterfinderrename.nix
     ./assetsnap.nix
-    ./calibre.nix
     ./devdocs.nix
     ./devtoys.nix
     ./espanso.nix
@@ -23,17 +22,13 @@
     ./iterm.nix
     ./jdownloader.nix
     ./keyboardSwitcher.nix
-    ./kiwix.nix
-    ./librewolf.nix
     ./obsidian.nix
     ./paste.nix
     ./pearcleaner.nix
     ./raycast.nix
     ./simplenote.nix
-    ./thaw.nix
     ./vlc.nix
     ./vscode.nix
-    ./vesktop.nix
     ./wezterm.nix
     ./zed.nix
     ./yate.nix
