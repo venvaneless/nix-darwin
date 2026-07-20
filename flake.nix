@@ -9,6 +9,8 @@
 {
   description = "Ven’s setup";
 
+  
+
   # Allow committing even with build artefacts like ./result
   nixConfig.allow-dirty = true;
   
