@@ -39,7 +39,31 @@ let
   # installOn.linux:
   #   Controls whether the package is installed on Linux.
   # ------------------------------------------------------------
-
+  # ---- Kiwix
+  # Offline reader for ZIM archives and web content.
+  kiwix = {
+    enable = true;
+  
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  
+    package =
+      if isDarwin then
+        pkgs.kiwix-apple
+      else if isLinux then
+        pkgs.kiwix
+      else
+        throw "Kiwix is not configured for this platform";
+  
+    darwinLink = {
+      enable = true;
+      appName = "Kiwix.app";
+      targetDirectory = "/Applications/Tools";
+    };
+  };
+  
   mediaPackages = {
     # ---- MediaInfo
     # Inspects technical and tag information in media files.
