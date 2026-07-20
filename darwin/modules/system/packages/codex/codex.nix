@@ -30,13 +30,21 @@ in
   # CODEX: HOME MANAGER CONFIGURATION
   # =================================================================
 
-  home-manager.users.${userName} = {
-    home.file = {
-      ".config/codex/gpt/config.toml".source =
-        ./codex/gpt-config.toml;
-
-      ".config/codex/api/config.toml".source =
-        ./codex/api-config.toml;
-    };
-  };
+  # CODEX: HOME MANAGER CONFIGURATION
+  # =================================================================
+  #
+  # Uncomment these entries after creating:
+  #
+  #   ./codex/gpt-config.toml
+  #   ./codex/api-config.toml
+  #
+  # home-manager.users.${userName} = {
+  #   home.file = {
+  #     ".config/codex/gpt/config.toml".source =
+  #       ./codex/gpt-config.toml;
+  #
+  #     ".config/codex/api/config.toml".source =
+  #       ./codex/api-config.toml;
+  #   };
+  # };
 }
