@@ -23,7 +23,8 @@ in
     CODEX_PROFILE_HOME_ROOT = codexRoot;
     CODEX_PROFILE_CONFIG_HOME = "${homeDir}/.config/codex-profile";
 
-    CHATGPT_APP = "/Applications/ChatGPT Classic.app";
+    CHATGPT_APP = "/Applications/ChatGPT.app";
+    CODEX_CLI = "/run/current-system/sw/bin/codex";
   };
 
   # CODEX: HOME MANAGER CONFIGURATION
