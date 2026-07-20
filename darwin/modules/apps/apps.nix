@@ -11,8 +11,6 @@
 
 {
   imports = [
-    ../system/packages/codex-profile/codex.nix
-    
     ./abetterfinderattributes.nix
     ./abetterfinderrename.nix
     ./assetsnap.nix
