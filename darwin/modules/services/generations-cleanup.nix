@@ -1,10 +1,11 @@
+```nix
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/generations-cleanup.nix
 #
 # ============================================================
 # SYSTEM: GENERATIONS CLEANUP
 #
 # Provides cleanup-generations as a manually run system command.
-# Cleanup no longer runs automatically during every darwin activation.
+# Cleanup does not run automatically during darwin activation.
 # ============================================================
 
 { pkgs, ... }:
@@ -68,21 +69,29 @@ let
       echo "Removing generations:"
       printf '%s\n' "$generationsToRemove"
 
-      for generation in $generationsToRemove; do
-        ${pkgs.nix}/bin/nix-env \
-          --delete-generations "$generation" \
-          --profile "$profile" \
-          || true
-      done
+      while IFS= read -r generation; do
+        if [ -n "$generation" ]; then
+          ${pkgs.nix}/bin/nix-env \
+            --delete-generations "$generation" \
+            --profile "$profile"
+        fi
+      done <<EOF
+$generationsToRemove
+EOF
     else
       echo "No generations to remove."
     fi
 
     echo "Collecting unreachable Nix store paths older than $days..."
 
-    ${pkgs.nix}/bin/nix-collect-garbage \
-      --delete-older-than "$days" \
-      || true
+    if ${pkgs.nix}/bin/nix-collect-garbage \
+      --delete-older-than "$days"
+    then
+      echo "Garbage collection completed successfully."
+    else
+      echo "Garbage collection failed." >&2
+      exit 1
+    fi
 
     echo "=== Cleanup complete ==="
   '';
@@ -97,3 +106,4 @@ in
     cleanupScript
   ];
 }
+```
