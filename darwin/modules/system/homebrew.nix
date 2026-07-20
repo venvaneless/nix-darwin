@@ -60,7 +60,11 @@
         cleanup = "none";
 
         upgrade = false;
-      };
+        
+            extraEnv = {
+              HOMEBREW_NO_ENV_HINTS = "1";
+            };
+          };
 
       # MAC APP STORE APPLICATIONS
       # -----------------------------------------------------
