@@ -163,7 +163,7 @@
     "/Applications/LibreWolf.app"
     "/Applications/Productivity/Zed.app"
     "/Applications/Programming/SnippetsLab.app"
-    "/Applications/ChatGPT Classic.app"
+    "/Applications/ChatGPT.app"
     ];
   # ********************************************************
   };
