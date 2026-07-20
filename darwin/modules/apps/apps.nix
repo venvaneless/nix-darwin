@@ -13,13 +13,12 @@
   imports = [
     ./abetterfinderattributes.nix
     ./abetterfinderrename.nix
-    ./assetsnap.nix
     ./devdocs.nix
     ./devtoys.nix
     ./espanso.nix
-    ./hammerspoon.nix
+    # ./hammerspoon.nix
     ./helium-browser.nix
-    ./iterm.nix
+    # ./iterm.nix
     ./jdownloader.nix
     ./keyboardSwitcher.nix
     ./obsidian.nix

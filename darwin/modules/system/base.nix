@@ -142,11 +142,14 @@
   imports = [
     ./system-options.nix
 
+    # macOS-only packages
+    ./packages/agents-pkgs.nix
+    ./packages/tools-pkgs.nix
+
     # Shared system packages
     ../../../shared/packages/media-pkgs.nix
 
-    # macOS-only packages
-    ./packages/agents-pkgs.nix
+    # Not ready yet
     ./packages/cli-tools.nix
     ./packages/development-pkgs.nix
     ./packages/media-pkgs.nix
