@@ -16,9 +16,7 @@
     ./devdocs.nix
     ./devtoys.nix
     ./espanso.nix
-    # ./hammerspoon.nix
     ./helium-browser.nix
-    # ./iterm.nix
     ./jdownloader.nix
     ./keyboardSwitcher.nix
     ./obsidian.nix

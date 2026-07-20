@@ -1,37 +1,32 @@
-# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/media-pkgs.nix
-#
-# =====================================================================
-# PACKAGES: DARWIN MEDIA APPLICATIONS
-#
-# Installs media applications available specifically through Darwin
-# package definitions:
-# - Per-application installation toggles
-# - Declarative application category links
-# - Link collision protection
-# - Link creation and removal verification
-# =====================================================================
-
 { lib, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
+  # ------ CUSTOM PACKAGES ------ #
+  # ------------------------------------------------------------
+
+  calibrePackage =
+    pkgs.callPackage ./calibre.nix { };
+
+  # ------------------------------------------------------------
   # ------ DARWIN MEDIA APPLICATION DEFINITIONS ------ #
-  #
-  # enable:
-  #   Controls whether the package is installed.
-  #
-  # link.enable:
-  #   Controls whether the application is linked into its
-  #   categorized directory under /Applications.
-  #
-  # Keeping the link block while disabling either toggle allows
-  # the activation script to remove links previously created by
-  # this module.
   # ------------------------------------------------------------
 
   darwinMediaApplications = {
+    # ---- Calibre
+    calibre = {
+      displayName = "Calibre";
+      enable = true;
+      package = calibrePackage;
+
+      link = {
+        enable = true;
+        appName = "calibre.app";
+        targetDirectory = "/Applications/Multimedia";
+      };
+    };
+
     # ---- VLC
-    # Uses the official precompiled ARM64 VLC application package.
     vlc = {
       displayName = "VLC";
       enable = true;
@@ -45,11 +40,7 @@ let
     };
   };
 
-  # ------------------------------------------------------------
-  # ------ PACKAGE FILTERING ------ #
-  #
-  # Selects enabled Darwin media applications for installation.
-  # ------------------------------------------------------------
+  # Everything below this point was accidentally deleted.
 
   enabledDarwinMediaPackages =
     map
@@ -59,16 +50,6 @@ let
           (application: application.enable)
           (lib.attrValues darwinMediaApplications)
       );
-
-  # ------------------------------------------------------------
-  # ------ MANAGED APPLICATION LINKS ------ #
-  #
-  # Keeps every application containing a link definition in the
-  # management list, including disabled applications.
-  #
-  # This allows enable = false or link.enable = false to remove
-  # a link previously created by this module.
-  # ------------------------------------------------------------
 
   managedDarwinApplicationLinks =
     lib.filter
@@ -109,15 +90,6 @@ let
       renderManagedApplicationLink
       managedDarwinApplicationLinks;
 
-  # ------------------------------------------------------------
-  # ------ APPLICATION LINK MANAGER ------ #
-  #
-  # Creates and removes only symbolic links owned by this module.
-  #
-  # Existing application bundles, unrelated symbolic links, files,
-  # scripts, and extensions are never overwritten or deleted.
-  # ------------------------------------------------------------
-
   manageDarwinMediaApplicationLinks =
     pkgs.writeShellScriptBin "manage-darwin-media-application-links" ''
       set -euo pipefail
@@ -139,8 +111,6 @@ let
         echo "[$display_name] Target: $target_path"
         echo "[$display_name] Requested link state: $should_exist"
 
-        # Only manage macOS application bundles
-        # ------------------------------------------------------------
         case "$source_path" in
           "/Applications/Nix Apps/"*.app)
             ;;
@@ -159,8 +129,6 @@ let
             ;;
         esac
 
-        # Link enabled
-        # ------------------------------------------------------------
         if [ "$should_exist" = "true" ]; then
           if [ ! -d "$source_path" ]; then
             echo "[$display_name] ERROR: Nix-managed application was not found." >&2
@@ -169,21 +137,10 @@ let
           fi
 
           if [ ! -d "$target_directory" ]; then
-            echo "[$display_name] Creating application category directory: $target_directory"
-
             ${pkgs.coreutils}/bin/mkdir \
               -p \
               -- \
               "$target_directory"
-
-            if [ ! -d "$target_directory" ]; then
-              echo "[$display_name] ERROR: Failed to create category directory." >&2
-              return 1
-            fi
-
-            echo "[$display_name] SUCCESS: Category directory created."
-          else
-            echo "[$display_name] Category directory already exists."
           fi
 
           if [ -L "$target_path" ]; then
@@ -206,11 +163,8 @@ let
           if [ -e "$target_path" ]; then
             echo "[$display_name] ERROR: Refusing to replace an existing application or file." >&2
             echo "[$display_name] Existing item: $target_path" >&2
-            echo "[$display_name] Check whether the old Homebrew application is still installed." >&2
             return 1
           fi
-
-          echo "[$display_name] Creating categorized application link."
 
           ${pkgs.coreutils}/bin/ln \
             -s \
@@ -218,29 +172,10 @@ let
             "$source_path" \
             "$target_path"
 
-          if [ ! -L "$target_path" ]; then
-            echo "[$display_name] ERROR: Application link was not created." >&2
-            return 1
-          fi
-
-          current_target="$(
-            ${pkgs.coreutils}/bin/readlink \
-              -- \
-              "$target_path"
-          )"
-
-          if [ "$current_target" != "$source_path" ]; then
-            echo "[$display_name] ERROR: Application link points to the wrong target." >&2
-            echo "[$display_name] Actual target: $current_target" >&2
-            return 1
-          fi
-
-          echo "[$display_name] SUCCESS: Application link created and verified."
+          echo "[$display_name] SUCCESS: Application link created."
           return 0
         fi
 
-        # Link disabled
-        # ------------------------------------------------------------
         if [ -L "$target_path" ]; then
           current_target="$(
             ${pkgs.coreutils}/bin/readlink \
@@ -249,34 +184,17 @@ let
           )"
 
           if [ "$current_target" = "$source_path" ]; then
-            echo "[$display_name] Removing application link owned by this module."
-
             ${pkgs.coreutils}/bin/rm \
               -f \
               -- \
               "$target_path"
 
-            if [ -e "$target_path" ] || [ -L "$target_path" ]; then
-              echo "[$display_name] ERROR: Managed application link was not removed." >&2
-              return 1
-            fi
-
             echo "[$display_name] SUCCESS: Managed application link removed."
             return 0
           fi
-
-          echo "[$display_name] Existing symbolic link is not owned by this module."
-          echo "[$display_name] Preserving unrelated link: $target_path"
-          return 0
         fi
 
-        if [ -e "$target_path" ]; then
-          echo "[$display_name] Existing item is not owned by this module."
-          echo "[$display_name] Preserving existing item: $target_path"
-          return 0
-        fi
-
-        echo "[$display_name] Application link is already absent."
+        echo "[$display_name] No managed application link to remove."
       }
 
       echo "[Darwin media applications] Starting application link management."
@@ -288,21 +206,8 @@ let
 in
 
 {
-  # ------------------------------------------------------------
-  # ------ DARWIN MEDIA PACKAGES ------ #
-  #
-  # Installs enabled macOS-specific media packages.
-  # ------------------------------------------------------------
-
   environment.systemPackages =
     enabledDarwinMediaPackages;
-
-  # ------------------------------------------------------------
-  # ------ DARWIN MEDIA APPLICATION LINKS ------ #
-  #
-  # Runs after nix-darwin application installation and Homebrew
-  # cleanup so category links point to the final Nix-managed apps.
-  # ------------------------------------------------------------
 
   system.activationScripts.postActivation.text =
     lib.mkAfter ''
