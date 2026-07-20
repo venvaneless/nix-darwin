@@ -66,8 +66,8 @@
   home = {
 	    sessionPath = [
 	    	# homebrew PATHS
-	      "/opt/homebrew/bin"
-	      "/opt/homebrew/sbin"
+	      # "/opt/homebrew/bin"
+	      # "/opt/homebrew/sbin"
 	      "${config.home.homeDirectory}/.local/bin"
 
 	      # Docker PATH

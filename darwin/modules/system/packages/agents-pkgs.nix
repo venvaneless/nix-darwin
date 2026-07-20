@@ -6,7 +6,6 @@
   ];
 
   environment.systemPackages = with pkgs; [
-  	chatgpt
   	codex
     codex-profile
   ];
