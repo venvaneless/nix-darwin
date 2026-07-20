@@ -9,6 +9,10 @@
   programs.fish.shellAliases = {
     # ---------- Core ---------- #
 
+    # --- freload -> reload Fish config
+    ## Reload the generated Fish config in the current shell
+    freload = "exec fish -l";
+    
     # --- cat -> bat
     ## Use bat instead of cat for syntax highlighting and nicer output
     cat = "bat";
