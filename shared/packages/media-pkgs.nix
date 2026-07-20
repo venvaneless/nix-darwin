@@ -372,29 +372,31 @@ let
     '';
 in
 
-lib.mkMerge [
-  {
+{
+  config = lib.mkMerge [
+    {
+      # ------------------------------------------------------------
+      # ------ SHARED MEDIA PACKAGES ------ #
+      #
+      # Installs the filtered media package set for the current
+      # Darwin or Linux system.
+      # ------------------------------------------------------------
+
+      environment.systemPackages = enabledMediaPackages;
+    }
+
     # ------------------------------------------------------------
-    # ------ SHARED MEDIA PACKAGES ------ #
+    # ------ DARWIN APPLICATION LINK ACTIVATION ------ #
     #
-    # Installs the filtered media package set for the current
-    # Darwin or Linux system.
+    # Runs only on Darwin and after nix-darwin has populated
+    # /Applications/Nix Apps.
     # ------------------------------------------------------------
 
-    environment.systemPackages = enabledMediaPackages;
-  }
-
-  # ------------------------------------------------------------
-  # ------ DARWIN APPLICATION LINK ACTIVATION ------ #
-  #
-  # Runs only on Darwin and after nix-darwin has populated
-  # /Applications/Nix Apps.
-  # ------------------------------------------------------------
-
-  (lib.optionalAttrs isDarwin {
-    system.activationScripts.postActivation.text =
-      lib.mkAfter ''
-        ${manageDarwinMediaApplicationLinks}/bin/manage-shared-media-application-links
-      '';
-  })
-]
+    (lib.mkIf isDarwin {
+      system.activationScripts.postActivation.text =
+        lib.mkAfter ''
+          ${manageDarwinMediaApplicationLinks}/bin/manage-shared-media-application-links
+        '';
+    })
+  ];
+}
