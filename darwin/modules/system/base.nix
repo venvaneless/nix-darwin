@@ -146,6 +146,5 @@
     ./packages/cli-tools.nix
     ./packages/development-pkgs.nix
     ./packages/media-pkgs.nix
-    ./packages/codex.nix
   ];
 }
