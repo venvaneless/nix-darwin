@@ -134,11 +134,15 @@
     };
 
     # -----------------------------------------------------
-    # ------ HOMEBREW: CLEANUP ----- #
-    # Remove brews and casks that are no longer declared
+    # ------ HOMEBREW: CLEANUP AND APP LOCATION ----- #
+    # Remove undeclared packages and move SnippetsLab
     # -----------------------------------------------------
 
     system.activationScripts.homebrew.text = lib.mkAfter ''
+      # ---------------------------------------------------
+      # Homebrew cleanup
+      # ---------------------------------------------------
+
       echo "Homebrew cleanup..."
 
       if [ -x /opt/homebrew/bin/brew ]; then
@@ -152,15 +156,12 @@
       else
         echo "Homebrew is not installed, skipping cleanup." >&2
       fi
-    '';
 
 
-    # -----------------------------------------------------
-    # ------ SNIPPETSLAB: APPLICATION LOCATION ----- #
-    # Move the Mac App Store application into Programming
-    # -----------------------------------------------------
+      # ---------------------------------------------------
+      # SnippetsLab application location
+      # ---------------------------------------------------
 
-    system.activationScripts.homebrew.text = lib.mkAfter ''
       snippetsLabSource="/Applications/SnippetsLab.app"
       snippetsLabTargetDirectory="/Applications/Programming"
       snippetsLabTarget="$snippetsLabTargetDirectory/SnippetsLab.app"
@@ -181,16 +182,14 @@
         fi
 
         /bin/mv \
-          -- "$snippetsLabSource" "$snippetsLabTarget"
+          "$snippetsLabSource" \
+          "$snippetsLabTarget"
 
         echo "[SnippetsLab] Moved: $snippetsLabSource -> $snippetsLabTarget"
       elif [ -d "$snippetsLabTarget" ]; then
-        # SnippetsLab is already in the requested location.
-        :
+        echo "[SnippetsLab] Already in Programming."
       else
         echo "[SnippetsLab] Application not found." >&2
-
-        echo "[SnippetsLab] Matching applications under /Applications:" >&2
 
         /usr/bin/find /Applications \
           -maxdepth 2 \
