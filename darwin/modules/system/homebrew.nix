@@ -70,7 +70,7 @@
       # -----------------------------------------------------
       
       masApps = {
-        SnippetsLab = 1006087419;
+        # SnippetsLab = 1006087419;
       };
       
       # CASK INSTALL LOCATION
@@ -154,9 +154,12 @@
           --preserve-env=PATH \
           --user=ven \
           --set-home \
-          /opt/homebrew/bin/brew bundle cleanup \
-            --file=${generatedBrewfile} \
-            --force
+          env \
+            HOMEBREW_NO_AUTO_UPDATE=1 \
+            HOMEBREW_NO_ENV_HINTS=1 \
+            /opt/homebrew/bin/brew bundle cleanup \
+              --file=${generatedBrewfile} \
+              --force
       else
         echo "Homebrew is not installed, skipping cleanup." >&2
       fi
