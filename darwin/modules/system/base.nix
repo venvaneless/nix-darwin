@@ -141,7 +141,6 @@
   # Keeps base.nix clean by loading related configuration from separate files
   imports = [
     ./system-options.nix
-    ./packages/app-store.nix
 
     # macOS-only packages
     ./packages/agents-pkgs.nix

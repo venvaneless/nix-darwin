@@ -61,7 +61,14 @@
 
         upgrade = true;
       };
-  
+
+      # MAC APP STORE APPLICATIONS
+      # -----------------------------------------------------
+      
+      masApps = {
+        SnippetsLab = 1006087419;
+      };
+      
       # CASK INSTALL LOCATION
       # -----------------------------------------------------
   
