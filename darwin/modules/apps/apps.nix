@@ -27,7 +27,7 @@
     ./pearcleaner.nix
     ./raycast.nix
     ./simplenote.nix
-    ./vlc.nix
+    # ./vlc.nix
     ./vscode.nix
     ./wezterm.nix
     ./zed.nix
