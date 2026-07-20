@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/codex-profile/codex.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/codex/codex.nix
 #
 # CODEX
 # =====================================================================
@@ -25,10 +25,6 @@ in
 
     CHATGPT_APP = "/Applications/ChatGPT Classic.app";
   };
-
-
-  # CODEX: HOME MANAGER CONFIGURATION
-  # =================================================================
 
   # CODEX: HOME MANAGER CONFIGURATION
   # =================================================================

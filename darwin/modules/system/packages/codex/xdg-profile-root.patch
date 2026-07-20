@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/codex-profile/xdg-profile-root.patch
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/codex/xdg-profile-root.patch
 
 diff --git a/bin/codex-profile b/bin/codex-profile
 --- a/bin/codex-profile
@@ -10,15 +10,15 @@ diff --git a/bin/codex-profile b/bin/codex-profile
 +CODEX_PROFILE_HOME_ROOT="${CODEX_PROFILE_HOME_ROOT:-${XDG_CONFIG_HOME:-$HOME/.config}/codex}"
  WORKSPACE_REGISTRY="$CODEX_PROFILE_CONFIG_HOME/workspaces.tsv"
  WORKSPACE_GUARD_FILE="$CODEX_PROFILE_CONFIG_HOME/guard-mode"
-
-@@ -78,9 +79,8 @@ Deprecated compatibility:
+ 
+@@ -78,8 +79,7 @@ Deprecated compatibility:
     --rebuild       Accepted by app; app bundles are never cloned or rebuilt.
-
+ 
  Profiles:
 -  default         -> ~/.codex
 -  any other name  -> ~/.codex-<profile>
 +  every profile   -> \$CODEX_PROFILE_HOME_ROOT/<profile>
-
+ 
  Environment:
    CHATGPT_APP     Override the ChatGPT.app bundle path (preferred).
 @@ -88,6 +88,7 @@ Environment:
@@ -31,7 +31,7 @@ diff --git a/bin/codex-profile b/bin/codex-profile
    CODEX_PROFILE_UPGRADE_REPO    Override upgrade repository.
 @@ -139,12 +140,7 @@ codex_home_for_profile() {
    local profile="$1"
-
+ 
    validate_profile "$profile"
 -
 -  if [[ "$profile" == "default" ]]; then
@@ -41,17 +41,17 @@ diff --git a/bin/codex-profile b/bin/codex-profile
 -  fi
 +  printf '%s/%s\n' "$CODEX_PROFILE_HOME_ROOT" "$profile"
  }
-
+ 
  discovered_profile_is_managed() {
-@@ -160,15 +156,15 @@ discover_profiles() {
+@@ -160,13 +156,14 @@ discover_profiles() {
    local include_default="${1:-yes}"
    local dir profile
-
+ 
 -  if [[ "$include_default" == "yes" && -d "$HOME/.codex" ]]; then
 +  if [[ "$include_default" == "yes" && -d "$CODEX_PROFILE_HOME_ROOT/default" ]]; then
      printf 'default\n'
    fi
-
+ 
 -  for dir in "$HOME"/.codex-*; do
 +  for dir in "$CODEX_PROFILE_HOME_ROOT"/*; do
      [[ -d "$dir" ]] || continue

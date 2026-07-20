@@ -87,9 +87,9 @@
   
       casks = [
         # AI
-        "chatgpt"
-        "codex"
-        "claude-code"
+        # "chatgpt"
+        # "codex"
+        # "claude-code"
   
         # Browsers
         "librewolf"

@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/codex-profile/default.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/codex/default.nix
 #
 # CODEX PROFILE: PACKAGE
 # =====================================================================
@@ -40,6 +40,8 @@ stdenvNoCC.mkDerivation {
   nativeBuildInputs = [
     makeWrapper
   ];
+
+  dontBuild = true;
 
   installPhase = ''
     runHook preInstall
