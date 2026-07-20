@@ -1,4 +1,3 @@
-```nix
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/generations-cleanup.nix
 #
 # ============================================================
@@ -106,4 +105,3 @@ in
     cleanupScript
   ];
 }
-```
