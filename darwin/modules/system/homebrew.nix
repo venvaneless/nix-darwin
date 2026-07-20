@@ -59,7 +59,7 @@
         # Cleanup is separately handled below.
         cleanup = "none";
 
-        upgrade = true;
+        upgrade = false;
       };
 
       # MAC APP STORE APPLICATIONS
@@ -154,4 +154,46 @@
       fi
     '';
     # -----------------------------------------------------
+
+    
+    # -----------------------------------------------------
+    # ------ SNIPPETSLAB APPLICATION LINK ----- #
+    # Link the Mac App Store application into Programming
+    # -----------------------------------------------------
+
+    system.activationScripts.postActivation.text = lib.mkAfter ''
+      source="/Applications/SnippetsLab.app"
+      targetDirectory="/Applications/Programming"
+      target="$targetDirectory/SnippetsLab.app"
+
+      if [ -d "$source" ]; then
+        ${pkgs.coreutils}/bin/mkdir -p -- "$targetDirectory"
+
+        if [ -L "$target" ]; then
+          currentTarget="$(${pkgs.coreutils}/bin/readlink -- "$target")"
+
+          if [ "$currentTarget" != "$source" ]; then
+            echo "[SnippetsLab] Refusing to replace unrelated symbolic link: $target" >&2
+            exit 1
+          fi
+
+          echo "[SnippetsLab] Link is already correct."
+        elif [ -e "$target" ]; then
+          echo "[SnippetsLab] Refusing to replace existing item: $target" >&2
+          exit 1
+        else
+          ${pkgs.coreutils}/bin/ln -s -- "$source" "$target"
+          echo "[SnippetsLab] Created: $target -> $source"
+        fi
+      elif [ -L "$target" ]; then
+        currentTarget="$(${pkgs.coreutils}/bin/readlink -- "$target")"
+
+        if [ "$currentTarget" = "$source" ]; then
+          ${pkgs.coreutils}/bin/rm -f -- "$target"
+          echo "[SnippetsLab] Removed stale managed link."
+        fi
+      else
+        echo "[SnippetsLab] App not installed yet; link skipped."
+      fi
+    '';
 }
