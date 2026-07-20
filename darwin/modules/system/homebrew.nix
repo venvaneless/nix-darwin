@@ -7,10 +7,14 @@
   # brews, casks, taps, and activation cleanup for nix-darwin.
   # ==========================================================
   
-  { nix-homebrew, ... }:
+  { config, lib, pkgs, nix-homebrew, ... }:
   
+  let
+    generatedBrewfile = pkgs.writeText "nix-darwin-Brewfile" config.homebrew.brewfile;
+  in
+
   {
-  # -----------------------------------------------------
+    # -----------------------------------------------------
     # ------ HOMEBREW: MODULE IMPORTS ----- #
     # Load the nix-homebrew module used by nix-darwin
     # -----------------------------------------------------
@@ -47,12 +51,16 @@
       enable = true;
   
       global.autoUpdate = true;
-  
-      onActivation = {
-        cleanup = "uninstall";
+
+      onActivation = { 
+        autoUpdate = false;
+
+        # Disable nix-darwin's currently broken integrated cleanup flag.inherit
+        # Cleanup is separately handled below.
+        cleanup = "none";
+
         upgrade = true;
       };
-  
   
       # CASK INSTALL LOCATION
       # -----------------------------------------------------
@@ -111,4 +119,26 @@
         "thaw"
       ];
     };
+
+    # -----------------------------------------------------
+    # ------ HOMEBREW: CLEANUP ----- #
+    # Remove unused Homebrew packages and casks
+    # -----------------------------------------------------
+
+    system.activationScripts.homebrew.text = lib.mkAfter ''
+      echo "Homebrew cleanup..."
+    
+      if [ -x /opt/homebrew/bin/brew ]; then
+        sudo \
+          --preserve-env=PATH \
+          --user=ven \
+          --set-home \
+          /opt/homebrew/bin/brew bundle cleanup \
+            --file=${generatedBrewfile} \
+            --force
+      else
+        echo "Homebrew is not installed, skipping cleanup." >&2
+      fi
+    '';
+    # -----------------------------------------------------
 }
