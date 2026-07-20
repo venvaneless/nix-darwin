@@ -60,7 +60,7 @@ let
     darwinLink = {
       enable = true;
       appName = "Kiwix.app";
-      targetDirectory = "/Applications/Tools";
+      targetDirectory = "/Applications";
     };
   };
   
