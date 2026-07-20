@@ -74,9 +74,7 @@
       # -----------------------------------------------------
   
       taps = [
-        "binary-beam/tap"
         "lutzifer/homebrew-tap"
-        # "Ducksss/tap"
       ];
   
   
@@ -85,8 +83,6 @@
   
       brews = [
         "lutzifer/homebrew-tap/keyboardSwitcher"
-
-        # "Ducksss/tap/codex-profile"
       ];
   
   
@@ -99,8 +95,6 @@
         "librewolf"
         "ungoogled-chromium"
   
-        # Books and offline libraries
-        "calibre"
   
         # Communication
         "vesktop"
