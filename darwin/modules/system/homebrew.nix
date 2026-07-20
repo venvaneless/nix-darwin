@@ -135,12 +135,12 @@
 
     # -----------------------------------------------------
     # ------ HOMEBREW: CLEANUP ----- #
-    # Remove unused Homebrew packages and casks
+    # Remove brews and casks that are no longer declared
     # -----------------------------------------------------
 
     system.activationScripts.homebrew.text = lib.mkAfter ''
       echo "Homebrew cleanup..."
-    
+
       if [ -x /opt/homebrew/bin/brew ]; then
         sudo \
           --preserve-env=PATH \
@@ -153,47 +153,50 @@
         echo "Homebrew is not installed, skipping cleanup." >&2
       fi
     '';
+
+
+    # -----------------------------------------------------
+    # ------ SNIPPETSLAB: APPLICATION LOCATION ----- #
+    # Move the Mac App Store application into Programming
     # -----------------------------------------------------
 
-    
-    # -----------------------------------------------------
-    # ------ SNIPPETSLAB APPLICATION LINK ----- #
-    # Link the Mac App Store application into Programming
-    # -----------------------------------------------------
+    system.activationScripts.homebrew.text = lib.mkAfter ''
+      snippetsLabSource="/Applications/SnippetsLab.app"
+      snippetsLabTargetDirectory="/Applications/Programming"
+      snippetsLabTarget="$snippetsLabTargetDirectory/SnippetsLab.app"
 
-    system.activationScripts.postActivation.text = lib.mkAfter ''
-      source="/Applications/SnippetsLab.app"
-      targetDirectory="/Applications/Programming"
-      target="$targetDirectory/SnippetsLab.app"
+      if [ -d "$snippetsLabSource" ]; then
+        ${pkgs.coreutils}/bin/mkdir -p \
+          -- "$snippetsLabTargetDirectory"
 
-      if [ -d "$source" ]; then
-        ${pkgs.coreutils}/bin/mkdir -p -- "$targetDirectory"
+        if [ -L "$snippetsLabTarget" ]; then
+          echo "[SnippetsLab] Removing old symbolic link: $snippetsLabTarget"
 
-        if [ -L "$target" ]; then
-          currentTarget="$(${pkgs.coreutils}/bin/readlink -- "$target")"
-
-          if [ "$currentTarget" != "$source" ]; then
-            echo "[SnippetsLab] Refusing to replace unrelated symbolic link: $target" >&2
-            exit 1
-          fi
-
-          echo "[SnippetsLab] Link is already correct."
-        elif [ -e "$target" ]; then
-          echo "[SnippetsLab] Refusing to replace existing item: $target" >&2
+          ${pkgs.coreutils}/bin/rm -f \
+            -- "$snippetsLabTarget"
+        elif [ -e "$snippetsLabTarget" ]; then
+          echo "[SnippetsLab] Target already exists: $snippetsLabTarget" >&2
+          echo "[SnippetsLab] Source was not moved." >&2
           exit 1
-        else
-          ${pkgs.coreutils}/bin/ln -s -- "$source" "$target"
-          echo "[SnippetsLab] Created: $target -> $source"
         fi
-      elif [ -L "$target" ]; then
-        currentTarget="$(${pkgs.coreutils}/bin/readlink -- "$target")"
 
-        if [ "$currentTarget" = "$source" ]; then
-          ${pkgs.coreutils}/bin/rm -f -- "$target"
-          echo "[SnippetsLab] Removed stale managed link."
-        fi
+        /bin/mv \
+          -- "$snippetsLabSource" "$snippetsLabTarget"
+
+        echo "[SnippetsLab] Moved: $snippetsLabSource -> $snippetsLabTarget"
+      elif [ -d "$snippetsLabTarget" ]; then
+        # SnippetsLab is already in the requested location.
+        :
       else
-        echo "[SnippetsLab] App not installed yet; link skipped."
+        echo "[SnippetsLab] Application not found." >&2
+
+        echo "[SnippetsLab] Matching applications under /Applications:" >&2
+
+        /usr/bin/find /Applications \
+          -maxdepth 2 \
+          -type d \
+          -iname '*snippet*.app' \
+          -print >&2
       fi
     '';
 }

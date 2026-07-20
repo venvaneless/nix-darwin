@@ -1,55 +1,99 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/services/generations-cleanup.nix
 #
-# SYSTEM: GENERATIONS CLEANUP
 # ============================================================
-# Runs cleanup-generations during every darwin activation.
-# Embedded with writeShellScriptBin so it always works under root.
+# SYSTEM: GENERATIONS CLEANUP
+#
+# Provides cleanup-generations as a manually run system command.
+# Cleanup no longer runs automatically during every darwin activation.
 # ============================================================
 
-{ lib, pkgs, ... }:
+{ pkgs, ... }:
 
 let
+  # -----------------------------------------------------
+  # ------ GENERATIONS CLEANUP: SETTINGS ----- #
+  # Configure how many generations and how many days to retain
+  # -----------------------------------------------------
+
+  generationsToKeep = 5;
+  garbageCollectionAge = "30d";
+  systemProfile = "/nix/var/nix/profiles/system";
+
+
+  # -----------------------------------------------------
+  # ------ GENERATIONS CLEANUP: COMMAND ----- #
+  # Create the cleanup-generations executable
+  # -----------------------------------------------------
+
   cleanupScript = pkgs.writeShellScriptBin "cleanup-generations" ''
-    #!/bin/bash
+    #!/usr/bin/env bash
     set -euo pipefail
 
-    keep=5
-    days=30d
-    profile="/nix/var/nix/profiles/system"
+    keep=${toString generationsToKeep}
+    days="${garbageCollectionAge}"
+    profile="${systemProfile}"
 
     echo "=== Cleaning old nix-darwin generations ==="
 
-    gens=$(nix-env --list-generations --profile "$profile" 2>/dev/null \
-      | awk '{print $1}' | sort -n)
+    generations="$(
+      ${pkgs.nix}/bin/nix-env \
+        --list-generations \
+        --profile "$profile" \
+        2>/dev/null \
+        | ${pkgs.gawk}/bin/awk '{ print $1 }' \
+        | ${pkgs.coreutils}/bin/sort -n
+    )"
 
-    total=$(echo "$gens" | wc -l | tr -d ' ')
+    if [ -n "$generations" ]; then
+      total="$(
+        printf '%s\n' "$generations" \
+          | ${pkgs.coreutils}/bin/wc -l \
+          | ${pkgs.coreutils}/bin/tr -d ' '
+      )"
+    else
+      total=0
+    fi
+
     echo "Total generations: $total"
+    echo "Generations to keep: $keep"
 
     if [ "$total" -gt "$keep" ]; then
-      remove=$(echo "$gens" | head -n -"$keep")
+      removeCount=$((total - keep))
 
-      echo "Removing:"
-      echo "$remove"
+      generationsToRemove="$(
+        printf '%s\n' "$generations" \
+          | ${pkgs.coreutils}/bin/head -n "$removeCount"
+      )"
 
-      for g in $remove; do
-        nix-env --delete-generations "$g" --profile "$profile" || true
+      echo "Removing generations:"
+      printf '%s\n' "$generationsToRemove"
+
+      for generation in $generationsToRemove; do
+        ${pkgs.nix}/bin/nix-env \
+          --delete-generations "$generation" \
+          --profile "$profile" \
+          || true
       done
     else
       echo "No generations to remove."
     fi
 
-    echo "Running nix-collect-garbage --delete-older-than $days"
-    nix-collect-garbage --delete-older-than "$days" || true
+    echo "Collecting unreachable Nix store paths older than $days..."
+
+    ${pkgs.nix}/bin/nix-collect-garbage \
+      --delete-older-than "$days" \
+      || true
 
     echo "=== Cleanup complete ==="
   '';
 in
 {
-  # IMPORTANT:
-  # - No "config." prefix
-  # - Hook into a *real* activation slot: extraActivation
-  system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> Running cleanup-generations (system)"
-    ${cleanupScript}/bin/cleanup-generations || echo "cleanup-generations failed (ignored)"
-  '';
+  # -----------------------------------------------------
+  # ------ GENERATIONS CLEANUP: SYSTEM COMMAND ----- #
+  # Install cleanup-generations into the system PATH
+  # -----------------------------------------------------
+
+  environment.systemPackages = [
+    cleanupScript
+  ];
 }
