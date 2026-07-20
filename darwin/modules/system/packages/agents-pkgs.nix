@@ -1,12 +1,23 @@
-{ pkgs, ... }:
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/agents-pkgs.nix
 
+{ pkgs, inputs, ... }:
+
+let
+  unstablePkgs = import inputs.nixpkgs-unstable {
+    system = pkgs.stdenv.hostPlatform.system;
+
+    config = {
+      allowUnfree = true;
+    };
+  };
+in
 {
   imports = [
     ./codex/codex.nix
   ];
 
-  environment.systemPackages = with pkgs; [
-  	codex
-    codex-profile
+  environment.systemPackages = [
+    unstablePkgs.codex
+    pkgs.codex-profile
   ];
 }
