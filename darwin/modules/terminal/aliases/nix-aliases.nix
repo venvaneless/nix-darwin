@@ -15,12 +15,6 @@ in
 {
   programs.fish.shellAliases = {
 
-  	# --- Run Codex with Account
-   	codexc = "exec /run/current-system/sw/bin/codex-profile app chatgpt";
-
-    # --- Run Codex using API
-    codexa = "exec /run/current-system/sw/bin/codex-profile app api";
-
     # ---- Enter the nix configuration directory
     ncfg = "cd ${flakePath}";
 

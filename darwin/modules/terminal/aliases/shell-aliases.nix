@@ -247,6 +247,14 @@ unzipd = ''
     ## Pipe text to termbin for quick sharing
     tb = "nc termbin.com 9999";
 
+    # --- Run Codex with Account
+    codexc = "exec /run/current-system/sw/bin/codex-profile app chatgpt";
+    codexc-cli = "codex-profile cli chatgpt";
+    
+    # --- Run Codex using API
+    codexa = "exec /run/current-system/sw/bin/codex-profile app api";
+    codexa-cli = "codex-profile cli api";
+
     # ---------- Eza Navigation ---------- #
 
     # --- ls -> eza listing

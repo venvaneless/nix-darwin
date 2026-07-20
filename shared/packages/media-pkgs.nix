@@ -13,6 +13,7 @@
 # - A Darwin installation toggle
 # - A Linux installation toggle
 # - Optional Darwin application category links
+# - Testing if completions are g
 # =====================================================================
 
 { lib, pkgs, ... }:
@@ -383,8 +384,9 @@ in
       # ------------------------------------------------------------
 
       environment.systemPackages = enabledMediaPackages;
+      
     }
-
+    
     # ------------------------------------------------------------
     # ------ DARWIN APPLICATION LINK ACTIVATION ------ #
     #
