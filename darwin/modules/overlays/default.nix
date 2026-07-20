@@ -2,11 +2,10 @@
 #
 # OVERLAYS: GLUE FILE
 # =====================================================================
-# Loads all overlays from ./overlays/
+# Loads all local overlays from ./overlays/
 # This makes overlays modular, maintainable and scalable.
 # =====================================================================
 
 [
-  # Add more overlays here:
-  # (import ./overlay-xyz.nix)
+  (import ./codex-profile.nix)
 ]

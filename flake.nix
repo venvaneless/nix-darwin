@@ -3,7 +3,7 @@
 # ==========================================================
 # FLAKE: MAIN ENTRYPOINT
 # - Provides nix-darwin configuration "macbook"
-# - Integrates Home Manager via darwin/index.nix 
+# - Integrates Home Manager via darwin/nix-darwin.nix
 # ==========================================================
 
 {
@@ -37,7 +37,7 @@
     
     # AstroNvim (managed as config)
     astronvim = {
-    url = "github:AstroNvim/template";
+      url = "github:AstroNvim/template";
       flake = false;
     };
   };
@@ -45,12 +45,17 @@
   outputs = inputs@{ self, nixpkgs, darwin, home-manager, nix-homebrew, ... }:
     let
       system = "aarch64-darwin";
-    in {
+
+      # Load the list of overlays from:
+      macbookOverlays = import ./darwin/modules/overlays;
+    in
+    {
     
-  	 # =====================================================================
-       # NIXPKGS OVERLAYS (modular, imported from overlays/)
-       # =====================================================================
-       overlays.macbook = final: prev: {};
+      # =====================================================================
+      # NIXPKGS OVERLAYS (modular, imported from overlays/)
+      # =====================================================================
+      overlays.macbook =
+        nixpkgs.lib.composeManyExtensions macbookOverlays;
        
       # DARWIN: MAIN SYSTEM
       # =========================
@@ -62,6 +67,12 @@
         };
 
         modules = [
+          {
+            nixpkgs.overlays = [
+              self.overlays.macbook
+            ];
+          }
+
           ./darwin/nix-darwin.nix
         ];
       };

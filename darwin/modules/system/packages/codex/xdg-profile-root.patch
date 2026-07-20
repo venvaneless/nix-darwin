@@ -1,0 +1,63 @@
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/codex-profile/xdg-profile-root.patch
+
+diff --git a/bin/codex-profile b/bin/codex-profile
+--- a/bin/codex-profile
++++ b/bin/codex-profile
+@@ -14,6 +14,7 @@ CODEX_PROFILE_APP_INSTANCE_ROOT="${CODEX_PROFILE_APP_INSTANCE_ROOT:-$HOME/Librar
+ CODEX_PROFILE_UPGRADE_REPO="${CODEX_PROFILE_UPGRADE_REPO:-https://github.com/Ducksss/codex-profiles.git}"
+ CODEX_PROFILE_UPGRADE_REF="${CODEX_PROFILE_UPGRADE_REF:-main}"
+ CODEX_PROFILE_CONFIG_HOME="${CODEX_PROFILE_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/codex-profile}"
++CODEX_PROFILE_HOME_ROOT="${CODEX_PROFILE_HOME_ROOT:-${XDG_CONFIG_HOME:-$HOME/.config}/codex}"
+ WORKSPACE_REGISTRY="$CODEX_PROFILE_CONFIG_HOME/workspaces.tsv"
+ WORKSPACE_GUARD_FILE="$CODEX_PROFILE_CONFIG_HOME/guard-mode"
+
+@@ -78,9 +79,8 @@ Deprecated compatibility:
+    --rebuild       Accepted by app; app bundles are never cloned or rebuilt.
+
+ Profiles:
+-  default         -> ~/.codex
+-  any other name  -> ~/.codex-<profile>
++  every profile   -> \$CODEX_PROFILE_HOME_ROOT/<profile>
+
+ Environment:
+   CHATGPT_APP     Override the ChatGPT.app bundle path (preferred).
+@@ -88,6 +88,7 @@ Environment:
+   CODEX_APP_BIN   Locate a desktop .app from its executable (deprecated).
+   CODEX_CLI       Override Codex CLI binary path.
+   CODEX_BUNDLED_CLI  Override the bundled Codex CLI fallback path.
++  CODEX_PROFILE_HOME_ROOT  Override the directory containing Codex profiles.
+   CODEX_PROFILE_CONFIG_HOME  Override private workspace binding storage.
+   CODEX_PROFILE_APP_INSTANCE_ROOT  Legacy clone root (doctor only; never written).
+   CODEX_PROFILE_UPGRADE_REPO    Override upgrade repository.
+@@ -139,12 +140,7 @@ codex_home_for_profile() {
+   local profile="$1"
+
+   validate_profile "$profile"
+-
+-  if [[ "$profile" == "default" ]]; then
+-    printf '%s/.codex\n' "$HOME"
+-  else
+-    printf '%s/.codex-%s\n' "$HOME" "$profile"
+-  fi
++  printf '%s/%s\n' "$CODEX_PROFILE_HOME_ROOT" "$profile"
+ }
+
+ discovered_profile_is_managed() {
+@@ -160,15 +156,15 @@ discover_profiles() {
+   local include_default="${1:-yes}"
+   local dir profile
+
+-  if [[ "$include_default" == "yes" && -d "$HOME/.codex" ]]; then
++  if [[ "$include_default" == "yes" && -d "$CODEX_PROFILE_HOME_ROOT/default" ]]; then
+     printf 'default\n'
+   fi
+
+-  for dir in "$HOME"/.codex-*; do
++  for dir in "$CODEX_PROFILE_HOME_ROOT"/*; do
+     [[ -d "$dir" ]] || continue
+-    profile="${dir##*/.codex-}"
++    profile="${dir##*/}"
++    [[ "$profile" != "default" ]] || continue
+     discovered_profile_is_managed "$profile" "$dir" || continue
+     printf '%s\n' "$profile"
+   done

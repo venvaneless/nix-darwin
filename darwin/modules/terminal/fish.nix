@@ -80,6 +80,7 @@
 						MICRO_TRUECOLOR = "1";
 
 						ICLOUD = "$HOME/iCloudDocs";
+						CHATGPT_APP = "/Applications/ChatGPT Classic.app";
 					};
 	  };
 

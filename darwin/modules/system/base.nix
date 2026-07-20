@@ -142,8 +142,10 @@
   imports = [
     ./system-options.nix
 
+    ./packages/agents-pkgs.nix
     ./packages/cli-tools.nix
     ./packages/development-pkgs.nix
     ./packages/media-pkgs.nix
+    ./packages/codex.nix
   ];
 }
