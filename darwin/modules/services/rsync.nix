@@ -117,7 +117,7 @@ let
 in
 {
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> rsync-all2: starting DIRECT backups (system activation)"
-    ${runner}/bin/rsync-all2-direct || echo ">>> rsync-all2: runner failed (ignored)"
+    echo ">>> rsync-all: starting DIRECT backups (system activation)"
+    ${runner}/bin/rsync-all || echo ">>> rsync-all: runner failed (ignored)"
   '';
 }
