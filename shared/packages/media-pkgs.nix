@@ -64,7 +64,7 @@ let
         linux = true;
       };
 
-      package = pkgs.poppler;
+      package = pkgs.poppler-utils;
     };
 
     # ---- YouTube Music Desktop
