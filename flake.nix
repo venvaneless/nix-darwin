@@ -18,7 +18,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
   
     # nix-darwin
-    darwin.url = "github:LnL7/nix-darwin/nix-darwin-26.05";
+    darwin.url = "github:stepbrobd/nix-darwin/bundle";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
     
     # Unstable branch

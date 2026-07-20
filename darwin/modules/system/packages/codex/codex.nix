@@ -32,16 +32,12 @@ in
   #
   # Uncomment these entries after creating:
   #
-  #   ./codex/gpt-config.toml
-  #   ./codex/api-config.toml
+  #   ./chatgpt-config.toml
+  #   ./api-config.toml
   #
   # home-manager.users.${userName} = {
   #   home.file = {
-  #     ".config/codex/gpt/config.toml".source =
-  #       ./codex/gpt-config.toml;
-  #
-  #     ".config/codex/api/config.toml".source =
-  #       ./codex/api-config.toml;
+  #     ...
   #   };
   # };
 }
