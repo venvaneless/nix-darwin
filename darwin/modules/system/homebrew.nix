@@ -105,7 +105,6 @@
   
         # Books and offline libraries
         "calibre"
-        "kiwix"
   
         # Communication
         "vesktop"
