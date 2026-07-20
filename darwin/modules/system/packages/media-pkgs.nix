@@ -1,31 +1,13 @@
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/media-pkgs.nix
+
 { lib, pkgs, ... }:
 
 let
-  # ------------------------------------------------------------
-  # ------ CUSTOM PACKAGES ------ #
-  # ------------------------------------------------------------
-
-  calibrePackage =
-    pkgs.callPackage ./calibre.nix { };
-
   # ------------------------------------------------------------
   # ------ DARWIN MEDIA APPLICATION DEFINITIONS ------ #
   # ------------------------------------------------------------
 
   darwinMediaApplications = {
-    # ---- Calibre
-    calibre = {
-      displayName = "Calibre";
-      enable = true;
-      package = calibrePackage;
-
-      link = {
-        enable = true;
-        appName = "calibre.app";
-        targetDirectory = "/Applications/Multimedia";
-      };
-    };
-
     # ---- VLC
     vlc = {
       displayName = "VLC";
@@ -39,8 +21,6 @@ let
       };
     };
   };
-
-  # Everything below this point was accidentally deleted.
 
   enabledDarwinMediaPackages =
     map

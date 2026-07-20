@@ -55,7 +55,7 @@
       onActivation = { 
         autoUpdate = false;
 
-        # Disable nix-darwin's currently broken integrated cleanup flag.inherit
+        # Disable nix-darwin's integrated cleanup.
         # Cleanup is separately handled below.
         cleanup = "none";
 
@@ -88,23 +88,40 @@
   
       # HOMEBREW CASKS
       # -----------------------------------------------------
-  
+      
       casks = [
-  
         # Browsers
         "librewolf"
         "ungoogled-chromium"
-  
-  
+      
+        # Multimedia
+        {
+          name = "calibre";
+          args = {
+            appdir = "/Applications/Multimedia";
+          };
+        }
+      
+        {
+          name = "freetube";
+          args = {
+            appdir = "/Applications/Multimedia";
+          };
+        }
+      
         # Communication
         "vesktop"
-  
-        # Media
-        "freetube"
-  
+      
         # System utilities
         "swiftdialog"
-        "syncthing-app"
+      
+        {
+          name = "syncthing-app";
+          args = {
+            appdir = "/Applications/Tools";
+          };
+        }
+      
         "thaw"
       ];
     };
