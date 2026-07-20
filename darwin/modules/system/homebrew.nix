@@ -68,7 +68,7 @@
       taps = [
         "binary-beam/tap"
         "lutzifer/homebrew-tap"
-        "Ducksss/tap"
+        # "Ducksss/tap"
       ];
   
   
@@ -78,7 +78,7 @@
       brews = [
         "lutzifer/homebrew-tap/keyboardSwitcher"
 
-        "Ducksss/tap/codex-profile"
+        # "Ducksss/tap/codex-profile"
       ];
   
   
