@@ -11,8 +11,8 @@
 
 {
   imports = [
-    ./abetterfinderattributes.nix
-    ./abetterfinderrename.nix
+    #./abetterfinderattributes.nix
+    #./abetterfinderrename.nix
     ./devdocs.nix
     ./devtoys.nix
     ./espanso.nix
