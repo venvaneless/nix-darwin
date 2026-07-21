@@ -90,6 +90,8 @@
           packages = with nixpkgs.legacyPackages.${system}; [
             nil
             nixfmt
+            direnv
+            nix-direnv
           ];
         };
     };
