@@ -55,6 +55,8 @@ let
     git-filter-repo
     git-lfs
     home-manager
+    direnv
+    nix-direnv
     lazygit
     myTex
     nil
