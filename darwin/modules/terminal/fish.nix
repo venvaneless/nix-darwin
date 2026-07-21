@@ -40,10 +40,10 @@
 
       # Use a named Fish history file
       set -g fish_history ven
-    '';
 
     # Direnv integration
     	direnv hook fish | source
+    '';
 
     interactiveShellInit = ''
       # Completions
