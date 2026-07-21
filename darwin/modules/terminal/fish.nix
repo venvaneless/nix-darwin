@@ -42,6 +42,9 @@
       set -g fish_history ven
     '';
 
+    # Direnv integration
+    	direnv hook fish | source
+
     interactiveShellInit = ''
       # Completions
       fish_default_key_bindings
@@ -64,25 +67,25 @@
   # -------------------------------------------- #
   # Paths
   home = {
-	    sessionPath = [
-	    	# homebrew PATHS
-	      # "/opt/homebrew/bin"
-	      # "/opt/homebrew/sbin"
-	      "${config.home.homeDirectory}/.local/bin"
+    sessionPath = [
+      # homebrew PATHS
+      # "/opt/homebrew/bin"
+      # "/opt/homebrew/sbin"
+      "${config.home.homeDirectory}/.local/bin"
 
-	      # Docker PATH
-	      "/Applications/Programming/Docker.app/Contents/Resources/bin"
-	    ];
+      # Docker PATH
+      "/Applications/Programming/Docker.app/Contents/Resources/bin"
+    ];
 
-			  # Environment
-					sessionVariables = {
-						# COLORTERM = "truecolor";
-						MICRO_TRUECOLOR = "1";
+    # Environment
+    sessionVariables = {
+      # COLORTERM = "truecolor";
+      MICRO_TRUECOLOR = "1";
 
-						ICLOUD = "$HOME/iCloudDocs";
-						CHATGPT_APP = "/Applications/ChatGPT.app";
-					};
-	  };
+      ICLOUD = "$HOME/iCloudDocs";
+      CHATGPT_APP = "/Applications/ChatGPT.app";
+    };
+  };
 
   # -------------------------------------------- #
   # MODULES
@@ -91,8 +94,8 @@
     # ---- Aliases ---- #
     ./aliases/shell-aliases.nix
     ./aliases/fish-functions.nix
-		./aliases/gc-aliases.nix
-		./aliases/git-aliases.nix
+    ./aliases/gc-aliases.nix
+    ./aliases/git-aliases.nix
     ./aliases/nix-aliases.nix
 
     # ---- Fish themes ---- #
