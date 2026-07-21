@@ -84,6 +84,5 @@
 
       # No flake apps yet
       apps.${system} = {};
-
-   
+    };
 }
