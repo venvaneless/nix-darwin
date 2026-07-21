@@ -54,15 +54,9 @@ let
     git-crypt
     git-filter-repo
     git-lfs
-    home-manager
     direnv
-    nix-direnv
     lazygit
     myTex
-    nil
-    nix-index
-    nixd
-    nixfmt
     nodejs
     nssTools
     pandoc
@@ -72,6 +66,39 @@ let
     python3Packages.reportlab
     stylelint
     stylua
+
+    # nix-related tools
+    # Nixpkgs Rust linter
+    alejandra
+
+    # Nix Home Manager
+    home-manager
+
+    # Check unused Nix code
+    deadnix
+
+    # Better rebuild output
+    nh
+
+    # Nix flake linter
+		nixpkgs-fmt
+		
+    nil
+
+    # Nix shell environment manager
+    nix-direnv
+
+    # Nix package indexer
+    nix-index
+    nixd
+
+    # Format
+    nixfmt
+
+    # Check Nix style problems
+    statix
+    nix-output-monitor
+    nix-tree
   ];
 
   # ------------------------------------------------------------

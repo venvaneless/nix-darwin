@@ -85,14 +85,5 @@
       # No flake apps yet
       apps.${system} = {};
 
-      devShells.${system}.default =
-        nixpkgs.legacyPackages.${system}.mkShell {
-          packages = with nixpkgs.legacyPackages.${system}; [
-            nil
-            nixfmt
-            direnv
-            nix-direnv
-          ];
-        };
-    };
+   
 }

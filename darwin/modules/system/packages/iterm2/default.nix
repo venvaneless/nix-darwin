@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/iterm2.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/iterm2/default.nix
 
 {
   lib,
