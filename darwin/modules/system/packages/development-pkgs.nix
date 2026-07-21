@@ -56,6 +56,7 @@ let
     git-lfs
     home-manager
     lazygit
+    myTex
     nil
     nix-index
     nixd
@@ -63,10 +64,11 @@ let
     nodejs
     nssTools
     pandoc
-    myTex
+    prettier
     python3
     python3Packages.pandas
     python3Packages.reportlab
+    stylelint
     stylua
   ];
 
