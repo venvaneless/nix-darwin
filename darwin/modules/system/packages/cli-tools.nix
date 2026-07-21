@@ -40,7 +40,6 @@
     micro
     p7zip
     ripgrep
-    stylua
     tmux
     tree
     unar

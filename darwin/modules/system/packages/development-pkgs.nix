@@ -59,6 +59,7 @@ let
     nil
     nix-index
     nixd
+    nixfmt
     nodejs
     nssTools
     pandoc
@@ -66,6 +67,7 @@ let
     python3
     python3Packages.pandas
     python3Packages.reportlab
+    stylua
   ];
 
   # ------------------------------------------------------------
