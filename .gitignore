@@ -8,3 +8,14 @@ result-*
 
 
 .flake.lock.override
+
+# -------- app settings --------
+.zed
+.vscode
+.specstory
+
+# -------- local repository state --------
+/.last-branch
+/.nvimlog
+/flake.lock
+/nix.conf
