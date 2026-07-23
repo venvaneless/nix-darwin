@@ -18,6 +18,7 @@ in
 
   environment.systemPackages = [
     unstablePkgs.codex
+    pkgs.claude-code
     pkgs.codex-profile
   ];
 }
