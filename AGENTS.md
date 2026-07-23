@@ -41,14 +41,14 @@ macbook
 Primary entry points:
 ```text
 flake.nix
-darwin/nix-darwin.nix
+darwin/default.nix
 darwin/modules/system/base.nix
 darwin/modules/home/home-manager.nix
 ```
 
 Primary Darwin configuration:
 ```text
-/Users/ven/.config/nix/nix-config/darwin/nix-darwin.nix
+/Users/ven/.config/nix/nix-config/darwin/default.nix
 ```
 
 Main workflow: - modular nix-darwin; - Home Manager integration; -
@@ -61,7 +61,7 @@ The main module graph is:
 
 ```text
 flake.nix
-└── darwin/nix-darwin.nix
+└── darwin/default.nix
     ├── modules/home/home-manager.nix
     ├── modules/system/base.nix
     ├── modules/system/homebrew.nix
@@ -181,7 +181,7 @@ Do not put system packages into Home Manager merely because the module is nearby
 Follow the repository's existing organization:
 ```text
 darwin/
-├── nix-darwin.nix
+├── default.nix
 └── modules/
     ├── apps/
     ├── home/

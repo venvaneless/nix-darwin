@@ -3,7 +3,7 @@
 # ==========================================================
 # FLAKE: MAIN ENTRYPOINT
 # - Provides nix-darwin configuration "macbook"
-# - Integrates Home Manager via darwin/nix-darwin.nix
+# - Integrates Home Manager via darwin/default.nix
 # ==========================================================
 
 {
@@ -84,7 +84,7 @@
             ];
           }
 
-          ./darwin/nix-darwin.nix
+          ./darwin/default.nix
         ];
       };
 

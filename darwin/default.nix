@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/nix-darwin.nix
+# /Users/ven/.config/nix/nix-config/darwin/default.nix
 #
 # DARWIN: MAIN SYSTEM MODULE
 # ================================================

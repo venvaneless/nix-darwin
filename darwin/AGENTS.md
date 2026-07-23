@@ -7,7 +7,7 @@ This file extends the repository root `AGENTS.md`.
 The root rules always apply. These rules add nix-darwin-specific
 behavior for:
 
--   `darwin/nix-darwin.nix`
+-   `darwin/default.nix`
 -   `darwin/modules/**`
 -   Home Manager modules integrated through nix-darwin
 -   macOS system configuration
