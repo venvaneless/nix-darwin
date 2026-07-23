@@ -17,5 +17,4 @@ result-*
 # -------- local repository state --------
 /.last-branch
 /.nvimlog
-/flake.lock
 /nix.conf
