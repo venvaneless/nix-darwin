@@ -25,27 +25,17 @@
   environment.systemPackages = with pkgs; [
     inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
 
-    atuin
-    bat
     bashInteractive
-    bottom
-    eza
-    fastfetch
     fd
     ffmpegthumbnailer
     fish
     gawk
     gum
     imagemagick
-    micro
     p7zip
-    ripgrep
-    tmux
     tree
     unar
     wget
-    yazi
-    zoxide
     zstd
   ];
 }

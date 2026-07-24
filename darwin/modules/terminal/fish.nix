@@ -80,8 +80,6 @@
     # Environment
     sessionVariables = {
       # COLORTERM = "truecolor";
-      MICRO_TRUECOLOR = "1";
-
       ICLOUD = "$HOME/iCloudDocs";
       CHATGPT_APP = "/Applications/ChatGPT.app";
     };
@@ -114,6 +112,8 @@
     ./plugins/mise.nix
     ./plugins/ripgrep.nix
     ./plugins/starship.nix
+    ./plugins/tmux.nix
+    ./plugins/yazi.nix
     ./plugins/zoxide.nix
   ];
 }

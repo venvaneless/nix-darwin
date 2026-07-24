@@ -9,10 +9,13 @@
 { pkgs, ... }:
 
 {
-  # Micro config already lives at:
-  # ~/.config/micro/
-  #
-  # No xdg.configFile.source is needed here.
+  # programs.micro would replace the existing mutable settings.json.
+  # Install only the package and keep ~/.config/micro user-owned.
+  home.packages = [
+    pkgs.micro
+  ];
+
+  home.sessionVariables.MICRO_TRUECOLOR = "1";
 
   programs.fish.shellAliases = {
     # --- nano -> micro
@@ -21,6 +24,6 @@
 
     # --- smicro -> sudo micro with user config
     # Open files with sudo while keeping your micro config.
-    smicro = "sudo micro -config-dir ~/.config/micro";
+    smicro = "sudo micro -config-dir $XDG_CONFIG_HOME/micro";
   };
 }

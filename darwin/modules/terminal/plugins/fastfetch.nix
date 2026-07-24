@@ -7,17 +7,14 @@
 # neofetch like system information tool
 # =====================================================================
 
-{ pkgs, config, ... }:
+{ config, ... }:
 
 {
-  home.packages = [
-    pkgs.fastfetch
-  ];
+  # Installs Fastfetch without replacing the existing JSONC configuration.
+  programs.fastfetch.enable = true;
 
-  programs.fish.shellInit = ''
-    status is-interactive; or return
-
-    set -l fastfetch_config "${config.home.homeDirectory}/.config/fastfetch/fastfetch-macos.jsonc"
+  programs.fish.interactiveShellInit = ''
+    set -l fastfetch_config "${config.xdg.configHome}/fastfetch/fastfetch-macos.jsonc"
     set -l fastfetch_marker "$TMPDIR/fastfetch-shown-$USER"
 
     if type -q fastfetch

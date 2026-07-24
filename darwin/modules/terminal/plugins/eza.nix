@@ -6,7 +6,7 @@
 # Modern, maintained replacement for ls
 # =====================================================================
 
-{ ... }:
+{ config, ... }:
 
 {
   programs.eza = {
@@ -17,8 +17,6 @@
     git = true;
   };
 
-  programs.fish.shellInit = ''
-    # ---------- Eza config ---------- #
-    set -gx EZA_CONFIG_DIR "$HOME/.config/eza"
-  '';
+  # Keeps the existing user-owned theme and supporting files in place.
+  home.sessionVariables.EZA_CONFIG_DIR = "${config.xdg.configHome}/eza";
 }

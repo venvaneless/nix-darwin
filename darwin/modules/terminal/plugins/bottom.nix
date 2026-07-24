@@ -6,11 +6,9 @@
 # Cross-platform graphical process/system monitor
 # =====================================================================
 
-{ pkgs, ... }:
+{ ... }:
 
 {
-  # Bottom config already lives at:
-  # ~/.config/bottom/
-  #
-  # No xdg.configFile.source is needed here.
+  # Installs Bottom without generating a configuration file.
+  programs.bottom.enable = true;
 }

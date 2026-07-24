@@ -10,11 +10,23 @@ let
       allowUnfree = true;
     };
   };
+
+  claudeEnvironment = {
+    CLAUDE_CONFIG_DIR = "/Users/ven/.config/.claude";
+    CLAUDE_MEM_DATA_DIR = "/Users/ven/.config/.claude-mem";
+    CLAUDE_CODE_PATH = "/run/current-system/sw/bin/claude";
+
+    # Claude Code is updated through nix-darwin.
+    DISABLE_AUTOUPDATER = "1";
+  };
 in
 {
   imports = [
     ./codex/codex.nix
   ];
+
+  environment.variables = claudeEnvironment;
+  launchd.user.envVariables = claudeEnvironment;
 
   environment.systemPackages = [
     unstablePkgs.codex
