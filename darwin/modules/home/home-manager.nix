@@ -34,6 +34,7 @@
         pkgs.bat
         pkgs.bottom
         pkgs.micro
+        pkgs.python312Packages.internetarchive
       ];
 
       # --- User modules ---

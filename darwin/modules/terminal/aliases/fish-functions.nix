@@ -598,7 +598,7 @@
     
     
     # ---------------------------------------------------------
-    # ---- ia -> Internet Archive helper through mise Python ---- #
+    # ---- ia -> Internet Archive helper through Python ---- #
     # Download Internet Archive files by type
     #
     # Examples:
@@ -643,10 +643,10 @@
           echo "Downloading .$filetype files from:"
           echo "$identifier"
 
-          mise x python@3.12 -- ia download "$identifier" "--glob=*.$filetype"
+          command ia download "$identifier" "--glob=*.$filetype"
 
         case '*'
-          mise x python@3.12 -- ia $argv
+        command ia $argv
       end
     '';
     # ---------------------------------------------------------
