@@ -16,7 +16,7 @@
 #   - systemPackages (belongs to system-level)
 # =====================================================================
 
-{ inputs, ... }:
+{ inputs, pkgs, ... }:
 
 {
   home-manager = {
@@ -31,6 +31,9 @@
 
       # --- Reserved for future user packages ---
       home.packages = [
+        pkgs.bat
+        pkgs.bottom
+        pkgs.micro
       ];
 
       # --- User modules ---

@@ -80,6 +80,8 @@
     # Environment
     sessionVariables = {
       # COLORTERM = "truecolor";
+      MICRO_TRUECOLOR = "1";
+
       ICLOUD = "$HOME/iCloudDocs";
       CHATGPT_APP = "/Applications/ChatGPT.app";
     };
@@ -101,15 +103,10 @@
 
     # ---- Fish modules ---- #
     ./plugins/atuin.nix
-    ./plugins/bat.nix
-    ./plugins/bottom.nix
     ./plugins/delta.nix
     ./plugins/eza.nix
     ./plugins/fastfetch.nix
     ./plugins/fzf.nix
-    ./plugins/lazygit.nix
-    ./plugins/micro.nix
-    ./plugins/mise.nix
     ./plugins/ripgrep.nix
     ./plugins/starship.nix
     ./plugins/tmux.nix

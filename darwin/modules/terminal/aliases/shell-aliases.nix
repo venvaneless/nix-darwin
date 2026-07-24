@@ -55,7 +55,7 @@
 
     # --- smicro -> sudo micro with user config
     ## Open files with sudo while keeping your micro config
-    smicro = "sudo micro -config-dir ~/.config/micro";
+    smicro = "sudo micro -config-dir $XDG_CONFIG_HOME/micro";
 
 
     # ---------- Files and Folders ---------- #
