@@ -19,6 +19,7 @@ let
   # Host port (nginx will talk to this)
   hostPort = 8080;
 
+  # Variables
   envVars = [
   	"DOMAIN=https://vaultwarden.local"
     "WEBSOCKET_ENABLED=true"
@@ -37,7 +38,7 @@ in
       default = dataDir;
       description = "Data directory for Vaultwarden";
     };
-
+    # Check if the host port is available before use
     hostPort = lib.mkOption {
       type = lib.types.int;
       default = hostPort;
@@ -49,13 +50,14 @@ in
       default = internalPort;
       description = "Internal container port for Vaultwarden";
     };
-
+    # Check if 
     envVars = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = envVars;
       description = "Environment variable list for Vaultwarden container";
     };
   };
+
 
   config = { };
 }

@@ -15,18 +15,27 @@ let
   appName = "vaultwarden";
 
   dataDir      = config.ven.vaultwarden.dataDir or "/Users/ven/.config/containers/vaultwarden";
+  # Host port for Vaultwarden container (nginx will talk to this)
   hostPort     = config.ven.vaultwarden.hostPort or 8080;
+  
+  # Internal container port for Vaultwarden (default HTTP)
   internalPort = config.ven.vaultwarden.internalPort or 80;
+
+  # Environment variables for Vaultwarden container
   envVars      = config.ven.vaultwarden.envVars or [];
 
+  # User-specific directory for container data
   containersRoot = "/Users/ven/.config/containers";
 
+  # Docker binary path for Docker Desktop on macOS
   dockerBin = "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
 
+  # Concatenate environment variables into Docker run arguments
   envArgs =
     lib.concatStringsSep " "
       (map (v: "-e ${lib.escapeShellArg v}") envVars);
 
+  # Ensure the data directory exists and has the correct permissions
   ensureDirScript = pkgs.writeShellScriptBin "ensure-${appName}-data" ''
     #!/usr/bin/env bash
     set -euo pipefail
@@ -51,19 +60,34 @@ let
     fi
 
     echo ">>> [vaultwarden] Waiting for Docker engine..."
+    # Check if Docker is ready, retrying up to 60 times with a 2-second interval
+    docker_attempt=1
+
+    # Limit the number of attempts to avoid infinite loops
+    docker_attempt_limit=60
+
+    # Wait for Docker to become ready
     until "${dockerBin}" info >/dev/null 2>&1; do
+      if [ "$docker_attempt" -ge "$docker_attempt_limit" ]; then
+        echo "!!! [vaultwarden] Docker engine did not become ready"
+        exit 1
+      fi
       sleep 2
+      docker_attempt=$((docker_attempt + 1))
     done
 
     echo ">>> [vaultwarden] Docker engine ready"
 
+    # Check if the Vaultwarden image is present; if not, pull it
     if ! "${dockerBin}" image inspect vaultwarden/server:latest >/dev/null 2>&1; then
       echo ">>> [vaultwarden] Pulling image"
       "${dockerBin}" pull vaultwarden/server:latest
     fi
 
+    # Check if the container exists; if not, create it. If it exists, update the restart policy.
     if ! "${dockerBin}" ps -a --format '{{.Names}}' | grep -qx "${appName}"; then
       echo ">>> [vaultwarden] Creating container"
+      # If the container is absent, recreate it with the specified ports, volumes, and environment variables
       "${dockerBin}" run -d \
         --name ${appName} \
         --restart unless-stopped \
@@ -88,11 +112,11 @@ in
     ensureDirScript
   ];
 
-  system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> [vaultwarden] Removing old system daemon if present"
-    launchctl bootout system/com.ven.vaultwarden 2>/dev/null || true
-    rm -f /Library/LaunchDaemons/com.ven.vaultwarden.plist
+  # Stable runner path for launchd.
+  environment.etc."ven/services/run-vaultwarden".source =
+    "${runner}/bin/run-${appName}";
 
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
     echo ">>> [vaultwarden] Ensuring data dir via activation"
     ${ensureDirScript}/bin/ensure-${appName}-data || echo "!!! [vaultwarden] ensure data dir failed"
   '';
@@ -100,7 +124,7 @@ in
   launchd.agents.vaultwarden = {
     serviceConfig = {
       Label = "com.ven.vaultwarden";
-      ProgramArguments = [ "${runner}/bin/run-${appName}" ];
+      ProgramArguments = [ "/etc/ven/services/run-vaultwarden" ];
       RunAtLoad = true;
       KeepAlive = false;
     };

@@ -28,7 +28,6 @@
     
     # Docker + containers + tooling
     ./docker/docker.nix
-    ./docker/containers.nix
     ./docker/mkcert.nix
     ./docker/nginx.nix
 

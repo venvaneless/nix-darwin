@@ -92,8 +92,17 @@
   # -------------------------------------------- #
   imports = [
     # ---- Aliases ---- #
+
+    # Fish aliases
     ./aliases/shell-aliases.nix
+
+    # Fish functions
     ./aliases/fish-functions.nix
+
+    # Quick custom actions
+    ./aliases/quick-actions.nix
+
+    # Nix aliases and functions
     ./aliases/gc-aliases.nix
     ./aliases/git-aliases.nix
     ./aliases/nix-aliases.nix

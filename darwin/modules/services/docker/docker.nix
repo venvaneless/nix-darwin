@@ -14,10 +14,6 @@
   system.activationScripts.ensureDockerAppDir.text = lib.mkAfter ''
     echo ">>> [docker] Ensuring /Applications/Programming exists"
     mkdir -p "/Applications/Programming"
-
-    echo ">>> [docker] Removing old Docker Desktop system daemon if present"
-    launchctl bootout system/com.ven.docker-desktop 2>/dev/null || true
-    rm -f /Library/LaunchDaemons/com.ven.docker-desktop.plist
   '';
 
   homebrew.casks = [

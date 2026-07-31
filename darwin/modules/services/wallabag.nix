@@ -37,28 +37,33 @@ let
 
     echo ">>> [${appName}] Waiting for Docker daemon"
 
+    docker_attempt=1
+    docker_attempt_limit=60
+
     until ${pkgs.docker_29}/bin/docker info >/dev/null 2>&1; do
-      sleep 5
+      if [ "$docker_attempt" -ge "$docker_attempt_limit" ]; then
+        echo "!!! [${appName}] Docker daemon did not become ready"
+        exit 1
+      fi
+
+      sleep 2
+      docker_attempt=$((docker_attempt + 1))
     done
 
     echo ">>> [${appName}] Docker is ready"
-    echo ">>> [${appName}] Pulling image"
+    echo ">>> [${appName}] Starting Wallabag"
+    echo ">>> [${appName}] URL: ${cfg.domainName}"
 
     ${pkgs.docker-compose}/bin/docker-compose \
       -p "${appName}" \
       -f "${composeFile}" \
-      pull
-
-    echo ">>> [${appName}] Starting Wallabag"
-    echo ">>> [${appName}] URL: ${cfg.domainName}"
-
-    exec ${pkgs.docker-compose}/bin/docker-compose \
-      -p "${appName}" \
-      -f "${composeFile}" \
       up \
-      --force-recreate \
+      -d \
       --remove-orphans
+
+    echo ">>> [${appName}] Wallabag is running"
   '';
+  
 in
 {
   options.services.wallabag = {
@@ -84,6 +89,12 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    environment.systemPackages = [ runner ];
+
+    # Stable runner path for launchd.
+    environment.etc."ven/services/run-wallabag".source =
+      "${runner}/bin/run-${appName}";
+
     system.activationScripts.ensureWallabagDataDir.text = lib.mkAfter ''
       echo ">>> [wallabag] Ensuring data directories"
       mkdir -p "${cfg.dataDir}/data"
@@ -94,7 +105,7 @@ in
     launchd.agents.wallabag = {
       serviceConfig = {
         Label = "com.ven.wallabag";
-        ProgramArguments = [ "${runner}/bin/run-${appName}" ];
+        ProgramArguments = [ "/etc/ven/services/run-wallabag" ];
 
         RunAtLoad = true;
 

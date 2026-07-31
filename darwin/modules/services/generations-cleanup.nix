@@ -21,6 +21,7 @@ let
   # Configure the retained system-generation count
   # -----------------------------------------------------
 
+  
   generationsToKeep = 5;
   systemProfile = "/nix/var/nix/profiles/system";
 
@@ -30,9 +31,10 @@ let
   # Create the cleanup-generations executable
   # -----------------------------------------------------
 
+  # Script 
   cleanupScript = pkgs.writeShellScriptBin "cleanup-generations" ''
     set -euo pipefail
-
+ # Check 
     keep=${toString generationsToKeep}
     profile="${systemProfile}"
 
