@@ -1,26 +1,23 @@
 # /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/agents-pkgs.nix
 
-{ pkgs, inputs, ... }:
+{ pkgs, unstablePkgs, ... }:
 
-let
-  unstablePkgs = import inputs.nixpkgs-unstable {
-    system = pkgs.stdenv.hostPlatform.system;
-
-    config = {
-      allowUnfree = true;
-    };
-  };
-
-  codexProfilePackage =
-    pkgs.callPackage ./codex { };
-in
 {
   imports = [
     ./claude
+
+    # Codex configuration and environment variables
+    ./codex/codex.nix
+
+    # Codex backup command and LaunchAgent
+    ./codex/codex-backup.nix
   ];
 
   environment.systemPackages = [
+    # Official Codex CLI from unstable nixpkgs
     unstablePkgs.codex
-    codexProfilePackage
+
+    # Patched codex-profile package provided by the local overlay
+    pkgs.codex-profile
   ];
 }

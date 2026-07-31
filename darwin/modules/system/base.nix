@@ -115,22 +115,6 @@
   ];
 
   # ------------------------------------------------------------
-  # ------ NIXPKGS PACKAGE POLICY ------ #
-  #
-  # Defines package availability rules, including unfree packages
-  # and temporary exceptions for insecure packages.
-  # ------------------------------------------------------------
-
-  # ---- Package policy
-  # Allow packages with non-free licenses
-  nixpkgs.config = {
-    allowUnfree = true;
-
-    permittedInsecurePackages = [
-    ];
-  };
-
-  # ------------------------------------------------------------
   # ------ SYSTEM IMPORTS ------ #
   #
   # Loads additional system modules, including macOS options and
@@ -142,11 +126,14 @@
   imports = [
     ./system-options.nix
 
+    # Shared host configuration
+
     # macOS-only packages
     ./packages/agents-pkgs.nix
     ./packages/tools-pkgs.nix
 
-    # Shared system packages
+    # Shared
+    ../../../shared/hosts.nix
     ../../../shared/packages/media-pkgs.nix
 
     # Not ready yet
