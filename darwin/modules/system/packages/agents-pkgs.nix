@@ -14,7 +14,7 @@ in
 {
   imports = [
     # ./claude
-    ./codex/codex.nix
+    ./codex
   ];
 
   environment.systemPackages = [

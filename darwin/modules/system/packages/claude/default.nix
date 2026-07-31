@@ -146,6 +146,7 @@ let
       )
       [
         claudeDesktopPackage
+        claudeDesktopPackage.updateScriptPackage
       ];
 
   # ------------------------------------------------------------

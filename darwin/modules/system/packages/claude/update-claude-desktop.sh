@@ -8,15 +8,28 @@ set -euo pipefail
 
 release_manifest_url="https://downloads.claude.ai/releases/darwin/universal/RELEASES.json"
 
-package_directory="/Users/ven/.config/nix/nix-config/darwin/modules/system/packages/claude"
+package_relative_directory="darwin/modules/system/packages/claude"
+release_file_name="claude-desktop-release.nix"
 
-release_file="$package_directory/claude-desktop-release.nix"
+archive_prefix="Claude-"
+archive_suffix=".zip"
 
 # ------------------------------------------------------------
 # ------ REQUIRED COMMANDS ------ #
 # ------------------------------------------------------------
 
-for required_command in curl jq nix mktemp cmp mv rm
+required_commands=(
+  cmp
+  curl
+  git
+  jq
+  mktemp
+  mv
+  nix
+  rm
+)
+
+for required_command in "${required_commands[@]}"
 do
   if ! command -v "$required_command" >/dev/null 2>&1
   then
@@ -24,6 +37,28 @@ do
     exit 1
   fi
 done
+
+# ------------------------------------------------------------
+# ------ REPOSITORY PATHS ------ #
+# ------------------------------------------------------------
+
+repository_root="$(
+  git rev-parse --show-toplevel 2>/dev/null
+)" || {
+  echo "Could not find the Nix configuration repository." >&2
+  echo "Run this updater from inside the repository." >&2
+  exit 1
+}
+
+package_directory="$repository_root/$package_relative_directory"
+release_file="$package_directory/$release_file_name"
+
+if [[ ! -d "$package_directory" ]]
+then
+  echo "Claude package directory was not found:" >&2
+  echo "$package_directory" >&2
+  exit 1
+fi
 
 # ------------------------------------------------------------
 # ------ TEMPORARY WORKSPACE ------ #
@@ -43,7 +78,7 @@ cleanup() {
 trap cleanup EXIT
 
 manifest_file="$temporary_directory/RELEASES.json"
-new_release_file="$temporary_directory/claude-desktop-release.nix"
+new_release_file="$temporary_directory/$release_file_name"
 
 # ------------------------------------------------------------
 # ------ FETCH LATEST RELEASE INFORMATION ------ #
@@ -67,24 +102,26 @@ version="$(
     "$manifest_file"
 )"
 
+if [[ -z "$version" || "$version" == "null" ]]
+then
+  echo "Claude Desktop version was not found." >&2
+  exit 1
+fi
+
 download_url="$(
   jq \
     --exit-status \
     --raw-output \
     --arg version "$version" \
     '
-      .releases[]
-      | select(.version == $version)
-      | .updateTo.url
+      first(
+        .releases[]
+        | select(.version == $version)
+        | .updateTo.url
+      )
     ' \
     "$manifest_file"
 )"
-
-if [[ -z "$version" || "$version" == "null" ]]
-then
-  echo "Claude Desktop version was not found." >&2
-  exit 1
-fi
 
 if [[ -z "$download_url" || "$download_url" == "null" ]]
 then
@@ -93,17 +130,34 @@ then
 fi
 
 # ------------------------------------------------------------
+# ------ VALIDATE DOWNLOAD URL ------ #
+# ------------------------------------------------------------
+
+expected_url_prefix="https://downloads.claude.ai/releases/darwin/universal/$version/$archive_prefix"
+
+case "$download_url" in
+  "$expected_url_prefix"*"$archive_suffix")
+    ;;
+  *)
+    echo "Claude Desktop returned an unexpected download URL:" >&2
+    echo "$download_url" >&2
+    exit 1
+    ;;
+esac
+
+# ------------------------------------------------------------
 # ------ EXTRACT RELEASE IDENTIFIER ------ #
 # ------------------------------------------------------------
 
 archive_name="${download_url##*/}"
-release_id="${archive_name#Claude-}"
-release_id="${release_id%.zip}"
+
+release_id="${archive_name#"$archive_prefix"}"
+release_id="${release_id%"$archive_suffix"}"
 
 if [[ -z "$release_id" || "$release_id" == "$archive_name" ]]
 then
-  echo "Could not extract the release ID from:" >&2
-  echo "$download_url" >&2
+  echo "Could not extract the Claude Desktop release ID." >&2
+  echo "Archive: $archive_name" >&2
   exit 1
 fi
 
@@ -114,7 +168,9 @@ fi
 echo "Prefetching Claude Desktop $version."
 
 prefetch_result="$(
-  nix store prefetch-file \
+  nix \
+    --extra-experimental-features "nix-command flakes" \
+    store prefetch-file \
     --json \
     --hash-type sha256 \
     "$download_url"
@@ -147,11 +203,7 @@ cat >"$new_release_file" <<EOF
   version = "$version";
   releaseId = "$release_id";
   sourceHash = "$source_hash";
-
-  downloadUrl =
-    "https://downloads.claude.ai/releases/darwin/universal/"
-    + "$version/"
-    + "Claude-$release_id.zip";
+  downloadUrl = "$download_url";
 }
 EOF
 

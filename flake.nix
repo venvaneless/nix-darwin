@@ -68,6 +68,10 @@
       # =====================================================================
       overlays.macbook = nixpkgs.lib.composeManyExtensions macbookOverlays;
 
+      # =====================================================================
+      # FLAKE PACKAGES
+      # =====================================================================
+
       # DARWIN: MAIN SYSTEM
       # =========================
       darwinConfigurations.macbook = darwin.lib.darwinSystem {

@@ -3,8 +3,22 @@
 { pkgs, ... }:
 
 let
-  codexBackup = pkgs.writeShellScript "codex-backup" ''
+  codexBackup = pkgs.writeShellScriptBin "codex-backup" ''
     set -euo pipefail
+
+    mode="manual"
+
+    case "''${1:-}" in
+      "")
+        ;;
+      --scheduled)
+        mode="scheduled"
+        ;;
+      *)
+        printf 'Usage: codex-backup [--scheduled]\n' >&2
+        exit 2
+        ;;
+    esac
 
     source_parent="/Users/ven/.config"
     source_name="codex"
@@ -58,6 +72,32 @@ let
     printf '%s\n' "$$" > "$lock_dir/pid"
 
     trap cleanup EXIT INT TERM
+
+    # Automatic launchd runs only create a backup when at least eight hours
+    # have passed since the previous successful backup.
+    #
+    # Manual runs through `codex-backup` bypass this time restriction.
+    if [ "$mode" = "scheduled" ] && [ -e "$marker_file" ]; then
+      current_time="$(
+        ${pkgs.coreutils}/bin/date '+%s'
+      )"
+
+      previous_backup_time="$(
+        /usr/bin/stat -f '%m' "$marker_file"
+      )"
+
+      elapsed_seconds="$((current_time - previous_backup_time))"
+
+      if [ "$elapsed_seconds" -lt 28800 ]; then
+        remaining_seconds="$((28800 - elapsed_seconds))"
+
+        printf \
+          'Codex backup skipped: the next scheduled backup is due in %s seconds.\n' \
+          "$remaining_seconds"
+
+        exit 0
+      fi
+    fi
 
     # Do not create another archive when nothing has changed.
     if [ -e "$marker_file" ]; then
@@ -152,18 +192,24 @@ let
   '';
 in
 {
+  environment.systemPackages = [
+    codexBackup
+  ];
+
+
   launchd.user.agents.codex-backup = {
     serviceConfig = {
       ProgramArguments = [
-        "${codexBackup}"
+        "${codexBackup}/bin/codex-backup"
+        "--scheduled"
       ];
 
       # Run whenever the user agent is loaded after login.
       RunAtLoad = true;
 
-      # Run every eight hours. Missed runs during sleep are coalesced into
-      # one run after the Mac wakes.
-      StartInterval = 28800;
+      # Check hourly. The script creates an automatic backup only when
+      # eight hours have passed and the Codex directory has changed.
+      StartInterval = 3600;
 
       LowPriorityIO = true;
       LowPriorityBackgroundIO = true;
