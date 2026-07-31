@@ -13,6 +13,7 @@ let
 in
 {
   imports = [
+    # ./claude
     ./codex/codex.nix
   ];
 
