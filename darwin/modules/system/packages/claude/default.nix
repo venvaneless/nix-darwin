@@ -72,6 +72,16 @@ let
   # ------ CLAUDE DESKTOP RELEASE ------ #
   #
   # Generated and updated by update-claude-desktop.sh.
+  #
+  # From the Nix configuration repository, run:
+  #
+  # cd /Users/ven/.config/nix/nix-config
+  # update-claude-desktop
+  #
+  # Then validate and apply the updated release:
+  #
+  # drc
+  # drs
   # ------------------------------------------------------------
 
   claudeDesktopRelease =

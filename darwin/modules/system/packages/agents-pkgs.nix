@@ -10,15 +10,17 @@ let
       allowUnfree = true;
     };
   };
+
+  codexProfilePackage =
+    pkgs.callPackage ./codex { };
 in
 {
   imports = [
-    # ./claude
-    ./codex
+    ./claude
   ];
 
   environment.systemPackages = [
     unstablePkgs.codex
-    pkgs.codex-profile
+    codexProfilePackage
   ];
 }
