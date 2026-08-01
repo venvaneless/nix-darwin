@@ -163,7 +163,7 @@ USAGE
 
           resolved_source_words=()
 
-          if not resolve_source_words_from 0; then
+          if ! resolve_source_words_from 0; then
             printf "Could not reconstruct the source paths from:\n" >&2
 
             for word in "''${source_words[@]}"; do
@@ -237,13 +237,13 @@ USAGE
         request_icloud_downloads() {
           local source="$1"
 
-          if not test -x /usr/bin/brctl; then
+          if ! test -x /usr/bin/brctl; then
             return 0
           fi
 
           /usr/bin/brctl download "$source" >/dev/null 2>&1 || true
 
-          if test -d "$source" && not test -L "$source"; then
+          if test -d "$source" && ! test -L "$source"; then
             while IFS= read -r -d "" item; do
               /usr/bin/brctl download "$item" >/dev/null 2>&1 || true
             done < <(
@@ -303,7 +303,7 @@ USAGE
         force_remove_path() {
           local target="$1"
 
-          if not path_exists "$target"; then
+          if ! path_exists "$target"; then
             return 0
           fi
 
@@ -312,7 +312,7 @@ USAGE
 
           timeout 180 /bin/rm -rf -- "$target" 2>/dev/null || true
 
-          if not path_exists "$target"; then
+          if ! path_exists "$target"; then
             return 0
           fi
 
@@ -326,7 +326,7 @@ USAGE
             timeout 180 /bin/rm -rf -- "$target" 2>/dev/null || true
           fi
 
-          if not path_exists "$target"; then
+          if ! path_exists "$target"; then
             return 0
           fi
 
@@ -370,12 +370,12 @@ USAGE
           fi
 
           if path_exists "$quarantine_path"; then
-            if not force_remove_path "$quarantine_path"; then
+            if ! force_remove_path "$quarantine_path"; then
               deletion_failures+=("$quarantine_path")
             fi
           fi
 
-          if not force_remove_path "$source"; then
+          if ! force_remove_path "$source"; then
             deletion_failures+=("$source")
             return 1
           fi
@@ -516,7 +516,7 @@ USAGE
           ) || fail "Could not resolve destination: $destination"
 
           for source in "''${sources[@]}"; do
-            if test -d "$source" && not test -L "$source"; then
+            if test -d "$source" && ! test -L "$source"; then
               case "$normalized_destination" in
                 "$source"/*)
                   fail "A destination cannot be inside a source folder: $normalized_destination"
@@ -588,7 +588,7 @@ USAGE
         for source in "''${sources[@]}"; do
           printf "\nStaging:\n%s\n" "$source"
 
-          if not stage_source "$source"; then
+          if ! stage_source "$source"; then
             fail "Could not copy the source outside iCloud: $source"
           fi
         done
@@ -696,7 +696,7 @@ USAGE
 
 
         if path_exists "$delete_root"; then
-          if not force_remove_path "$delete_root"; then
+          if ! force_remove_path "$delete_root"; then
             deletion_failures+=("$delete_root")
           fi
         fi
