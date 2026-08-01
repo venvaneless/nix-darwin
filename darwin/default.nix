@@ -184,6 +184,7 @@
 
     # System options
     ./system/system-options.nix
+    ./system-commands
 
     # macOS-only packages
     ./packages/agents-pkgs.nix

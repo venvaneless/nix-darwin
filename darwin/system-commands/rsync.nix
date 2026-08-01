@@ -1,4 +1,4 @@
-# darwin/services/rsync.nix
+# darwin/system-commands/rsync.nix
 #
 # SYSTEM: BACKUP SCRIPT RUNNER
 # ============================================================

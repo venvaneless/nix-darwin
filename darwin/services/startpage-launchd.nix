@@ -13,7 +13,7 @@
 { config, pkgs, lib, ... }:
 
 let
- # Define the application name for the Tartarus startpage service
+  # Define the application name for the Tartarus startpage service
   appName = "tartarus-startpage";
   # Tartarus is a personal startpage that provides quick access to frequently used links, tools, and information. It is designed to be lightweight and customizable, allowing users to create a personalized dashboard for their daily tasks and activities.
 
@@ -61,23 +61,31 @@ let
 in
 {
   environment.systemPackages = [
-  	# Add the runner script to the system packages so it can be executed
-  	# ** 'runner' is a shell script that starts the local Tartarus startpage server using Python's built-in HTTP server. It checks for the existence of the specified directory and index.html file before starting the server, ensuring that the necessary files are in place.
+    # Add the runner script to the system packages so it can be executed
+    # ** 'runner' is a shell script that starts the local Tartarus startpage server using Python's built-in HTTP server. It checks for the existence of the specified directory and index.html file before starting the server, ensuring that the necessary files are in place.
     runner
   ];
+
+  # Create a stable path for the runner script so the LaunchAgent does not point directly to a changing Nix store path
+  environment.etc."ven/services/run-tartarus-startpage".source =
+    "${runner}/bin/run-${appName}";
+
   # Define the LaunchAgent for the Tartarus startpage service
   launchd.agents.tartarus-startpage = {
     serviceConfig = {
       # Unique label for the LaunchAgent
       Label = "com.ven.tartarus-startpage";
 
-      # Command to execute the runner script
-      ProgramArguments = [ "${runner}/bin/run-${appName}" ];
+      # Command to execute the runner script through its stable path
+      ProgramArguments = [ "/etc/ven/services/run-tartarus-startpage" ];
 
       # Run the service at load and keep it alive
       RunAtLoad = true;
       KeepAlive = true;
-      
+
+      # Wait before restarting the service if the iCloud startpage directory is temporarily unavailable
+      ThrottleInterval = 10;
+
       # Paths to log files for standard output and error
       StandardOutPath = "/tmp/com.ven.tartarus-startpage.out.log";
       StandardErrorPath = "/tmp/com.ven.tartarus-startpage.err.log";

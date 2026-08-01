@@ -22,10 +22,6 @@
   	# Background services
    	./startpage-launchd.nix
     
-    # Cleanup
-    ./generations-cleanup.nix
-    ./rsync.nix
-    
     # Docker + containers + tooling
     ./docker/docker.nix
     ./docker/wallabag.nix

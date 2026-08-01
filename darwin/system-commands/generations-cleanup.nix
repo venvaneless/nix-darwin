@@ -1,4 +1,4 @@
-# darwin/services/generations-cleanup.nix
+# darwin/system-commands/generations-cleanup.nix
 #
 # ============================================================
 # SYSTEM: GENERATIONS CLEANUP
@@ -33,6 +33,11 @@ let
 
   # Script 
   cleanupScript = pkgs.writeShellScriptBin "cleanup-generations" ''
+
+  if [[ $(id -u) -ne 0 ]]; then
+    exec /usr/bin/sudo -- "$0" "$@"
+  fi
+  
     set -euo pipefail
  # Check if the system profile exists
     keep=${toString generationsToKeep}
