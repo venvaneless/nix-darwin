@@ -180,31 +180,31 @@
   imports = [
     # Home Manager
     home-manager.darwinModules.home-manager
-    ./modules/home/home-manager.nix
+    ./home/home-manager.nix
 
     # System options
-    ./modules/system/system-options.nix
+    ./system/system-options.nix
 
     # macOS-only packages
-    ./modules/packages/agents-pkgs.nix
-    ./modules/packages/tools-pkgs.nix
+    ./packages/agents-pkgs.nix
+    ./packages/tools-pkgs.nix
 
     # Shared host configuration and packages
     ../shared/hosts.nix
     ../shared/packages/media-pkgs.nix
 
     # Not ready yet
-    ./modules/packages/cli-tools.nix
-    ./modules/packages/development-pkgs.nix
-    ./modules/packages/media-pkgs.nix
+    ./packages/cli-tools.nix
+    ./packages/development-pkgs.nix
+    ./packages/media-pkgs.nix
 
     # Homebrew
-    ./modules/system/homebrew.nix
+    ./system/homebrew.nix
 
     # Services
-    ./modules/services/services.nix
+    ./services/services.nix
 
     # Apps
-    ./modules/apps/apps.nix
+    ./apps/apps.nix
   ];
 }
