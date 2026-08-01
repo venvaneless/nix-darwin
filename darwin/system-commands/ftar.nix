@@ -189,7 +189,7 @@ USAGE
                 -- \
                 "$source" \
                 "$staging_dir/"
-
+            then
               return 0
             fi
 
