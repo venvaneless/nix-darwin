@@ -27,6 +27,9 @@ More specific `AGENTS.md` files extend these rules for their directory tree. In 
 - `darwin/AGENTS.md` contains mandatory nix-darwin, Home Manager, launchd, Docker, and macOS rules.
 - When instructions conflict, the file closest to the edited file wins.
 - Safety rules in this root file always remain in force.
+- Please never delete comments I already added
+- Only change comments if they wrongly describe what they're supposed to describe and correct them instead
+- Use formatting the same way I do
 
 Canonical repository:
 ```text
@@ -42,7 +45,6 @@ Primary entry points:
 ```text
 flake.nix
 darwin/default.nix
-darwin/modules/system/base.nix
 darwin/modules/home/home-manager.nix
 ```
 
@@ -63,10 +65,14 @@ The main module graph is:
 flake.nix
 └── darwin/default.nix
     ├── modules/home/home-manager.nix
-    ├── modules/system/base.nix
     ├── modules/system/homebrew.nix
     ├── modules/services/services.nix
     └── modules/apps/apps.nix
+```
+
+- All installed apps are in:
+```
+nix/nix-config/darwin/packages/agents-pkgs.nix
 ```
 
 Keep aggregators simple:
@@ -1509,11 +1515,11 @@ environment.systemPackages
 Keep package groups split by purpose. Existing groups include:
 
 ```text
-darwin/modules/system/packages/agents-pkgs.nix
-darwin/modules/system/packages/tools-pkgs.nix
-darwin/modules/system/packages/cli-tools.nix
-darwin/modules/system/packages/development-pkgs.nix
-darwin/modules/system/packages/media-pkgs.nix
+darwin/packages/agents-pkgs.nix
+darwin/packages/tools-pkgs.nix
+darwin/packages/cli-tools.nix
+darwin/packages/development-pkgs.nix
+darwin/packages/media-pkgs.nix
 shared/packages/media-pkgs.nix
 ```
 
