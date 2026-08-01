@@ -19,6 +19,13 @@ let
 
   appName = "wallabag";
 
+  # Unique launchd service label for Wallabag
+  serviceLabel = "com.${userName}.${appName}";
+
+  # Relative /etc path used for the stable Wallabag runner
+  runnerEtcPath = "${userName}/services/run-${appName}";
+
+
   # Docker Compose file for Wallabag service
   composeFile = pkgs.writeText "wallabag-compose.yml" ''
     services:
@@ -47,15 +54,17 @@ let
     # Ensure that the Wallabag data directory and its subdirectories exist
     mkdir -p "${cfg.dataDir}/data"
     mkdir -p "${cfg.dataDir}/images"
+    mkdir -p "${cfg.dataDir}/logs"
 
     # Set the correct permissions
-    # ** `chmod u+rwx,go+rwx`: Grants read, write, and execute permissions to the owner (user) and group, while also granting read and execute permissions to others for the specified directories.
-    chmod u+rwx,go+rwx \
+    # ** `chmod u+rwx,g+rwx,o+rx`: Grants read, write, and execute permissions to the owner (user) and group, while granting read and execute permissions to others for the specified directories.
+    chmod u+rwx,g+rwx,o+rx \
       "${cfg.dataDir}" \
       "${cfg.dataDir}/data" \
-      "${cfg.dataDir}/images"
+      "${cfg.dataDir}/images" \
+      "${cfg.dataDir}/logs"
 
-	# This command ensures that the Wallabag data directory and its contents are accessible to Docker, allowing the Wallabag container to read and write data as needed.
+    # This command ensures that the Wallabag data directory and its contents are accessible to Docker, allowing the Wallabag container to read and write data as needed.
     echo ">>> [${appName}] Waiting for Docker daemon"
 
     # ---- WAIT FOR DOCKER DAEMON
@@ -88,22 +97,22 @@ let
     echo ">>> [${appName}] URL: ${cfg.domainName}"
 
     # Run Docker Compose to start Wallabag
+
+    # Set the project name for Docker Compose to avoid conflicts with other projects
+
+    # Specify the Docker Compose file to use for the Wallabag service
+
+    # Run Docker Compose in detached mode, allowing the service to run in the background
+
+    # Run in "detached mode," to allow the Docker Compose command to run in the background
+    # ** This is useful for services that need to run continuously without blocking the terminal session and allows for freeing up the terminal for other tasks
+
+    # Remove any orphaned containers that are not defined in the current Docker Compose file, ensuring a clean environment
     ${pkgs.docker-compose}/bin/docker-compose \
-
-      # Set the project name for Docker Compose to avoid conflicts with other projects
       -p "${appName}" \
-
-      # Specify the Docker Compose file to use for the Wallabag service
       -f "${composeFile}" \
-
-      # Run Docker Compose in detached mode, allowing the service to run in the background
       up \
-
-      # Run in "detached mode," to allow the Docker Compose command to run in the background
-      # ** This is useful for services that need to run continuously without blocking the terminal session and allows for freeing up the terminal for other tasks
       -d \
-
-      # Remove any orphaned containers that are not defined in the current Docker Compose file, ensuring a clean environment
       --remove-orphans
 
     # Print a message indicating that Wallabag is running
@@ -163,7 +172,7 @@ in
     environment.systemPackages = [ runner ];
 
     # Stable runner path for launchd.
-    environment.etc."ven/services/run-wallabag".source =
+    environment.etc."${runnerEtcPath}".source =
       "${runner}/bin/run-${appName}";
 
     # Activation script for setting up Wallabag data directories and correct permissions
@@ -218,10 +227,10 @@ in
 
      	# Unique label for the LaunchAgent
      	# ** This label is used to identify the service in the system and can be used for managing the service (e.g., starting, stopping, or checking its status)
-        Label = "com.ven.wallabag";
+        Label = serviceLabel;
 
         # Command to execute the Wallabag runner script
-        ProgramArguments = [ "/etc/ven/services/run-wallabag" ];
+        ProgramArguments = [ "/etc/${runnerEtcPath}" ];
 
         # Run service at load, start automatically on system boot or user login
         RunAtLoad = true;

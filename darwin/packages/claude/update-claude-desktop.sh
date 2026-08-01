@@ -10,7 +10,7 @@ set -euo pipefail
 
 release_manifest_url="https://downloads.claude.ai/releases/darwin/universal/RELEASES.json"
 
-package_relative_directory="darwin/modules/system/packages/claude"
+package_relative_directory="darwin/packages/claude"
 release_file_name="claude-desktop-release.nix"
 
 archive_prefix="Claude-"

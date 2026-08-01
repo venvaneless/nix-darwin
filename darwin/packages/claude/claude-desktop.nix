@@ -186,20 +186,12 @@ stdenvNoCC.mkDerivation {
 
     mkdir -p "$out/Applications"
 
-    # Copy the application bundle to the output directory
+    # Copy the application bundle recursively while preserving symbolic links
+    # ** If the source contains a symbolic link, the link itself is copied rather than the file it points to.
+    # ** '--' marks the end of command options so paths beginning with a hyphen are treated as paths.
     cp \
-      # ... do so recursively, preserving file attributes and symbolic links
       -R \
-
-      # ... preserve file attributes (e.g., timestamps, permissions) and symbolic links
-
-      # Preserve symbolic links instead of copying the files they point to
-      # ** If the source contains a symbolic link, the link itself will be copied rather than the file it points to. It's important for maintaining the structure of the application bundle, as it may contain symbolic links that are necessary for its proper functioning.
-      # ** NOTE:
-      # '--' means "end of options" and is used to indicate that any following arguments should be treated as positional parameters rather than options. This is important when dealing with file paths that may start with a hyphen (-), which could be interpreted as an option by the cp command.
       -- \
-      
-      # Copy the application bundle from the source path to the destination path
       "$application_source" \
       "$application_destination"
 
