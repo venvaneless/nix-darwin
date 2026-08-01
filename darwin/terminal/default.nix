@@ -99,7 +99,7 @@
     ./aliases/fish-functions.nix
 
     # Quick custom actions
-    ./aliases/quick-actions.nix
+    ./commands/quick-actions.nix
 
     # Nix aliases and functions
     ./aliases/gc-aliases.nix

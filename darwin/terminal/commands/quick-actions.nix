@@ -646,16 +646,18 @@
     # ---------------------------------------------------------
 
     # Define the appqu function with a description for removing quarantine attributes from one or more apps/files
-    function appqu --description "Remove quarantine attributes from one or more apps/files"
+    appqu = {
+      description = "Remove quarantine attributes from one or more apps/files";
 
-    	# Check if any arguments were provided; if not, display usage instructions and return an error
+      body = ''
+      	# Check if any arguments were provided; if not, display usage instructions and return an error
         if test (count $argv) -eq 0
 
         	# Display usage instructions for the appqu function
-            echo "Usage: appqu <path> [path ...]"
+          echo "Usage: appqu <path> [path ...]"
 
-            # Return an error code indicating that the function was called incorrectly
-            return 1
+          # Return an error code indicating that the function was called incorrectly
+          return 1
         end
 
 
@@ -663,12 +665,13 @@
         for path in $argv
 
         	# Print a message indicating the path being processed
-            echo "Removing quarantine: $path"
+          echo "Removing quarantine: $path"
 
-            # Use the xattr command to recursively remove quarantine attributes from the specified path
-            xattr -cr "$path"
+          # Use the xattr command to recursively remove quarantine attributes from the specified path
+          xattr -cr "$path"
         end
-    end
+      '';
+    };
     # ---------------------------------------------------------
 
     
