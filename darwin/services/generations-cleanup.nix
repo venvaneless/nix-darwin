@@ -53,32 +53,22 @@ let
     # Read the list of system generations
     generationOutput="$(
       ${pkgs.nix}/bin/nix-env \
-
-      	# List all generations of the system profile
         --list-generations \
-
-        # Specify the system profile to query
         --profile "$profile"
     )"
 
     # Check if the generation output is empty
     generations="$(
+      # Extract the generation numbers and sort them in ascending order
       printf '%s\n' "$generationOutput" \
-
-      	# Extract the generation numbers from the output
         | ${pkgs.gawk}/bin/awk '{ print $1 }' \
-
-        # Sort the generation numbers in ascending order
         | ${pkgs.coreutils}/bin/sort -n
     )"
 
     # Determine the current system generation
     currentGeneration="$(
-    
-      # Extract the current generation from the output
+      # Find the line containing "current" and print its generation number
       printf '%s\n' "$generationOutput" \
-
-      	# Use awk to find the line containing "current" and print the first field (generation number)
         | ${pkgs.gawk}/bin/awk '/current/ { print $1; exit }'
     )"
 
@@ -102,13 +92,9 @@ let
 
     # Count the total number of generations
     total="$(
-      # Count the number of lines in the generations list to determine the total number of generations
+      # Count the generation lines and remove whitespace from the result
       printf '%s\n' "$generations" \
-      
-        # Use wc to count the number of lines, which corresponds to the total number of generations
         | ${pkgs.coreutils}/bin/wc -l \
-        
-        # Remove any leading or trailing whitespace from the count
         | ${pkgs.coreutils}/bin/tr -d ' '
     )"
 
@@ -146,19 +132,16 @@ $generation"
       fi
     done <<EOF
 $(
-
-  # Read the list of generations in reverse order to prioritize the most recent ones
-  printf '%s\n' "$generations" \
-  	# Sort the generations in reverse numerical order to process the most recent generations first
-    | ${pkgs.coreutils}/bin/sort -rn
+      # Sort generations in reverse numerical order so the newest are processed first
+      printf '%s\n' "$generations" \
+        | ${pkgs.coreutils}/bin/sort -rn
 )
 EOF
 	# Print the list of generations that will be kept
     echo "Keeping generations:"
 
-    # Print the keepList in sorted order for clarity
+    # Print the keepList in ascending numerical order for clarity
     printf '%s\n' "$keepList" \
-      # Sort the keepList in ascending numerical order for display
       | ${pkgs.coreutils}/bin/sort -n
 
       # ---------------------------------------------------------------------
@@ -179,10 +162,8 @@ EOF
       # Skip empty lines in the generations list
       [ -n "$generation" ] || continue
 
-      # Check if the generation is in the keepList; if so, skip it
+      # Check whether the generation is already in the keepList
       if printf '%s\n' "$keepList" \
-
-        # Use grep to check if the generation is in the keepList, using -q for quiet mode and -x for exact match
         | ${pkgs.gnugrep}/bin/grep -qx -- "$generation"
       then
         continue
@@ -214,10 +195,7 @@ EOF
 
         # Delete the specified generation from the system profile using nix-env
         ${pkgs.nix}/bin/nix-env \
-          # Specify the generation to delete
           --delete-generations "$generation" \
-          
-          # Specify the system profile from which to delete the generation
           --profile "$profile"
       done <<EOF
 $generationsToRemove
