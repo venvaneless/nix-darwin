@@ -6,9 +6,9 @@
   # Bootstraps Homebrew through nix-homebrew and manages declarative
   # brews, casks, taps, and activation cleanup for nix-darwin.
   # ==========================================================
-  
+
   { config, lib, pkgs, nix-homebrew, ... }:
-  
+
   let
     casksFor = appdir: names:
       map (name: {
@@ -20,7 +20,7 @@
   in
 
   {
-  
+
  	# ---------------------------------------------------------
     # -------- HOMEBREW: MODULE IMPORTS ------- #
     # Load the nix-homebrew module used by nix-darwin
@@ -30,8 +30,8 @@
       # ./quarantine-fixes.nix
     ];
    	# ---------------------------------------------------------
-  
-  
+
+
    	# ---------------------------------------------------------
     # ------ HOMEBREW: BACKEND ----- #
     # Configure the Homebrew installation and migration behavior
@@ -50,8 +50,8 @@
       autoMigrate = true;
     };
    	# ---------------------------------------------------------
-  
-  
+
+
    	# ---------------------------------------------------------
     # ------ HOMEBREW: PACKAGES ----- #
     # Declaratively manage Homebrew taps, brews, and casks
@@ -70,7 +70,7 @@
         brewfile = true;
       };
 
-      onActivation = { 
+      onActivation = {
       	# Disable automatic updates during activation
         autoUpdate = false;
 
@@ -78,7 +78,7 @@
         # Cleanup is separately handled below.
         cleanup = "none";
 
-		# Disable automatic upgrades during activation        
+		# Disable automatic upgrades during activation
         upgrade = false;
 
         # Disable environment hints during activation
@@ -110,11 +110,11 @@
       };
     # ---------------------------------------------------------
 
-  
+
    	# ---------------------------------------------------------
     # ---- HOMEBREW TAPS
    	# ---------------------------------------------------------
-  
+
       taps = [
         {
           name = "lutzifer/homebrew-tap";
@@ -123,11 +123,11 @@
       ];
     # ---------------------------------------------------------
 
-      
+
    	# ---------------------------------------------------------
     # ---- HOMEBREW FORMULAS
    	# ---------------------------------------------------------
-  
+
       brews = [
         # Utility used by Raycast to switch keyboard layouts
         "lutzifer/homebrew-tap/keyboardSwitcher"
@@ -148,7 +148,7 @@
           "vesktop"
 
           # System utilities
-          
+
           ## macOS Dialog library for SwiftUI and AppKit
           "swiftdialog"
 
@@ -218,7 +218,7 @@
     };
    	# ---------------------------------------------------------
 
-    
+
     # ****************************************************************
     # ------ HOMEBREW: CLEANUP AND APP LOCATION ------ #
     # Remove undeclared packages and move SnippetsLab
