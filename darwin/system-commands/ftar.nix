@@ -38,15 +38,20 @@ let
         delete_originals=${if deleteOriginals then "1" else "0"}
 
         archive_name=""
-        argument_mode="sources"
+
+        source_words=()
+        destination_words=()
 
         sources=()
         destinations=()
+        resolved_source_words=()
         normalized_sources=()
         normalized_destinations=()
         source_names=()
         in_progress_archives=()
         deletion_failures=()
+
+        parsing_destinations=0
 
         work_dir=""
         delete_root=""
@@ -91,6 +96,98 @@ USAGE
 
         path_exists() {
           test -e "$1" || test -L "$1"
+        }
+
+
+        join_words() {
+          local joined=""
+          local word
+
+          for word in "$@"; do
+            if test -z "$joined"; then
+              joined="$word"
+            else
+              joined="$joined $word"
+            fi
+          done
+
+          printf "%s\n" "$joined"
+        }
+
+
+        resolve_source_words_from() {
+          local start_index="$1"
+          local word_count="''${#source_words[@]}"
+          local end_index
+          local part_index
+          local previous_count
+          local candidate
+
+          if test "$start_index" -ge "$word_count"; then
+            return 0
+          fi
+
+          for ((end_index = word_count - 1; end_index >= start_index; end_index--)); do
+            candidate=""
+
+            for ((part_index = start_index; part_index <= end_index; part_index++)); do
+              if test -z "$candidate"; then
+                candidate="''${source_words[part_index]}"
+              else
+                candidate="$candidate ''${source_words[part_index]}"
+              fi
+            done
+
+            if path_exists "$candidate"; then
+              previous_count="''${#resolved_source_words[@]}"
+              resolved_source_words+=("$candidate")
+
+              if resolve_source_words_from "$((end_index + 1))"; then
+                return 0
+              fi
+
+              resolved_source_words=(
+                "''${resolved_source_words[@]:0:previous_count}"
+              )
+            fi
+          done
+
+          return 1
+        }
+
+
+        finalize_source_words() {
+          if test "''${#source_words[@]}" -eq 0; then
+            fail "No source files or folders were provided."
+          fi
+
+          resolved_source_words=()
+
+          if not resolve_source_words_from 0; then
+            printf "Could not reconstruct the source paths from:\n" >&2
+
+            for word in "''${source_words[@]}"; do
+              printf "  %s\n" "$word" >&2
+            done
+
+            fail "One or more source paths do not exist."
+          fi
+
+          sources=("''${resolved_source_words[@]}")
+          source_words=()
+        }
+
+
+        finalize_destination_words() {
+          if test "''${#destination_words[@]}" -eq 0; then
+            fail "--to requires a destination path."
+          fi
+
+          destinations+=(
+            "$(join_words "''${destination_words[@]}")"
+          )
+
+          destination_words=()
         }
 
 
@@ -293,15 +390,27 @@ USAGE
         while test $# -gt 0; do
           case "$1" in
             --name)
-              test $# -ge 2 || fail "--name requires an archive name."
-              test -n "$2" || fail "--name cannot be empty."
+              test "$parsing_destinations" -eq 0 || \
+                fail "--name must appear before --to."
+
+              test $# -ge 2 || \
+                fail "--name requires an archive name."
+
+              test -n "$2" || \
+                fail "--name cannot be empty."
 
               archive_name="$2"
               shift 2
               ;;
 
             --to)
-              argument_mode="destinations"
+              if test "$parsing_destinations" -eq 0; then
+                finalize_source_words
+                parsing_destinations=1
+              else
+                finalize_destination_words
+              fi
+
               shift
               ;;
 
@@ -315,10 +424,10 @@ USAGE
               ;;
 
             *)
-              if test "$argument_mode" = "sources"; then
-                sources+=("$1")
+              if test "$parsing_destinations" -eq 0; then
+                source_words+=("$1")
               else
-                destinations+=("$1")
+                destination_words+=("$1")
               fi
 
               shift
@@ -327,16 +436,13 @@ USAGE
         done
 
 
-        if test "''${#sources[@]}" -eq 0; then
+        if test "$parsing_destinations" -eq 0; then
           usage
-          fail "No source files or folders were provided."
+          fail "No destination was provided. Put --to before the destination."
         fi
 
 
-        if test "''${#destinations[@]}" -eq 0; then
-          usage
-          fail "No destination folders were provided."
-        fi
+        finalize_destination_words
 
 
         for source in "''${sources[@]}"; do
