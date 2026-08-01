@@ -58,7 +58,7 @@
       system = "aarch64-darwin";
 
       # Load the list of overlays from:
-      macbookOverlays = import ./darwin/modules/overlays;
+      macbookOverlays = import ./darwin/overlays;
 
     in
     {
