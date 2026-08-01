@@ -37,9 +37,16 @@
     # Configure the Homebrew installation and migration behavior
    	# ---------------------------------------------------------
     nix-homebrew = {
+      # Enable the nix-homebrew module to bootstrap Homebrew on macOS
       enable = true;
+
+      # Set the user for Homebrew installation and migration
       user = "ven";
+
+      # Disable Rosetta migration for Homebrew on Apple Silicon
       enableRosetta = false;
+
+      # Enable automatic migration of Homebrew packages from Intel to Apple Silicon architecture
       autoMigrate = true;
     };
    	# ---------------------------------------------------------
@@ -52,6 +59,7 @@
 
     # ---- HOMEBREW SETTINGS
     homebrew = {
+      # Enable the Homebrew module to manage packages and casks
       enable = true;
 
       global = {
@@ -136,11 +144,15 @@
           "librewolf"
           "ungoogled-chromium"
 
-          # Communication
+          # Discord client
           "vesktop"
 
           # System utilities
+          
+          ## macOS Dialog library for SwiftUI and AppKit
           "swiftdialog"
+
+          ## macOS statusbar tool for hiding and showing menu bar icons
           "thaw"
         ]
         ++ casksFor "/Applications/Multimedia" [
@@ -227,53 +239,90 @@
     # ---------------------------------------------------------
 
 
+    # ****************************************************************
+    # ------ HOMEBREW: CLEANUP AND APP LOCATION ------ #
+    # Remove undeclared packages and move SnippetsLab
+    # ****************************************************************
+
+    system.activationScripts.homebrew.text = lib.mkAfter ''
    	# ---------------------------------------------------------
     # Homebrew cleanup
     # ---------------------------------------------------------
 
+      # Print a message indicating that Homebrew cleanup is starting
       echo "Homebrew cleanup..."
 
+      # Check if Homebrew is installed by verifying the existence of the brew executable
       if [ -x /opt/homebrew/bin/brew ]; then
         generatedBrewfile=${lib.escapeShellArg config.environment.variables.HOMEBREW_BUNDLE_FILE}
 
+        # Check if the generated Brewfile exists before proceeding with cleanup
         if [ ! -f "$generatedBrewfile" ]; then
           echo "Generated Brewfile was not found: $generatedBrewfile" >&2
           exit 1
         fi
-
+        
+        # Set the PATH environment variable to include Homebrew's bin directory and the mas binary directory
         PATH="/opt/homebrew/bin:${pkgs.mas}/bin:$PATH" \
           sudo \
+
+          	# Run the Homebrew cleanup command with the specified options
+            # Preserve the PATH environment variable
             --preserve-env=PATH \
+
+            # Set the user to "ven"
             --user=ven \
+
+            # Set the home directory
             --set-home \
+
+
+            # Set environment variables
             env \
+              # Disable auto-updates
               HOMEBREW_NO_AUTO_UPDATE=1 \
+
+              # Disable environment hints
               HOMEBREW_NO_ENV_HINTS=1 \
+
+              # Run the Homebrew bundle cleanup command
               /opt/homebrew/bin/brew bundle cleanup \
+
+              	# Use the generated Brewfile for cleanup
                 --file="$generatedBrewfile" \
+
+                # Set force option
                 --force
       else
+      	# Print a message indicating that Homebrew is not installed and skipping cleanup
         echo "Homebrew is not installed, skipping cleanup." >&2
       fi
-    # ---------------------------------------------------------
+    '';
+   	# ---------------------------------------------------------
+  }
 
 
    	# ---------------------------------------------------------
     # SnippetsLab application location
     # ---------------------------------------------------------
-
+      # Set variables for the source and target locations for the application
       snippetsLabSource="/Applications/SnippetsLab.app"
       snippetsLabTargetDirectory="/Applications/Programming"
       snippetsLabTarget="$snippetsLabTargetDirectory/SnippetsLab.app"
 
+      # Check if the source directory exists
       if [ -d "$snippetsLabSource" ]; then
         ${pkgs.coreutils}/bin/mkdir -p \
           -- "$snippetsLabTargetDirectory"
 
+        # Check if the target is a symbolic link, and if so, remove it
         if [ -L "$snippetsLabTarget" ]; then
           echo "[SnippetsLab] Removing old symbolic link: $snippetsLabTarget"
 
+          # Remove the symbolic link using coreutils' rm command
           ${pkgs.coreutils}/bin/rm -f \
+
+             # Remove the symbolic link at the target location
             -- "$snippetsLabTarget"
         elif [ -e "$snippetsLabTarget" ]; then
           echo "[SnippetsLab] Target already exists: $snippetsLabTarget" >&2
@@ -281,20 +330,30 @@
           exit 1
         fi
 
+        # Move the SnippetsLab application from the source to the target location
         /bin/mv \
           "$snippetsLabSource" \
           "$snippetsLabTarget"
-
+          
         echo "[SnippetsLab] Moved: $snippetsLabSource -> $snippetsLabTarget"
       elif [ -d "$snippetsLabTarget" ]; then
         echo "[SnippetsLab] Already in Programming."
       else
         echo "[SnippetsLab] Application not found." >&2
 
+        # Search for any SnippetsLab application in the /Applications directory and print the results to standard error
         /usr/bin/find /Applications \
+
+          # Search for directories with a maximum depth of 2
           -maxdepth 2 \
+
+          # Search for directories only
           -type d \
+
+          # Search for directories with names matching the pattern '*snippet*.app'
           -iname '*snippet*.app' \
+
+          # Print the results to standard error
           -print >&2
       fi
     '';
