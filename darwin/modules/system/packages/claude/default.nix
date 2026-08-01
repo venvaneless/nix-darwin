@@ -41,15 +41,19 @@ let
   # ------------------------------------------------------------
 
   claudeSettings = {
+  	# Eenable the entire Claude module and all its features
     enable = true;
 
+    # Enable the Claude Code CLI package and its environment variables
     code = {
       enable = true;
     };
 
+    # Enable the Claude Desktop package and its optional application link
     desktop = {
       enable = true;
 
+      # Enable the optional application link for Claude Desktop
       link = {
         enable = true;
       };

@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/fish.nix
+# /Users/ven/.config/nix/nix-config/darwin/modules/terminal/default.nix
 #
 # FISH CONFIGURATION
 # =====================================================================
@@ -21,6 +21,7 @@
     # -------------------------------------------- #
     plugins = [
       {
+      	# Plugin that allows for automatic pairing of brackets, quotes, etc.
         name = "autopair.fish";
         src = pkgs.fetchFromGitHub {
           owner = "jorgebucaran";
@@ -57,9 +58,7 @@
     '';
   };
 
-  # -------------------------------------------- #
-  # THEME
-  # -------------------------------------------- #
+  # Set the default Fish theme
   terminal.fish.theme = "gruvbox";
 
   # -------------------------------------------- #

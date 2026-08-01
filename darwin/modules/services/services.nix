@@ -13,6 +13,7 @@
 { ... }:
 
 {
+  # Enable the 'Wallabag' service
   services.wallabag.enable = true;
 
 

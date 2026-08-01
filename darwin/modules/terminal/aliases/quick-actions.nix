@@ -26,41 +26,56 @@
     # cdf
     # ---------------------------------------------------------
     cdf = ''
+      # Set up paths for HOME, iCloud Drive, Application Support, and Preferences
       set home_path "$HOME"
       set mobile_docs "$HOME/Library/Mobile Documents"
       set icloud_drive "$mobile_docs/com~apple~CloudDocs"
       set app_support "$HOME/Library/Application Support"
       set preferences "$HOME/Library/Preferences"
-    
+
+      # Set for hidden files to be shown or not
       set show_hidden "no"
-    
+
+      # Initialize current kind and path
       set current_kind "root"
       set current_path "$home_path"
-    
+
+      # Initialize stacks for navigation history
       set stack_kind
       set stack_path
-    
+
+      
+      # ------ HELPER FUNCTIONS ------ #
       function __cdf_pretty_container_name
+
+      	# Convert iCloud container folder names to a more readable format
         set raw (basename "$argv[1]")
         set clean "$raw"
-    
+
+        # Remove common prefixes from iCloud container names
         set clean (string replace -r '^iCloud~' "" "$clean")
         set clean (string replace -r '^[A-Z0-9]+~' "" "$clean")
         set clean (string replace -r '^com~apple~' "" "$clean")
-    
+
+        # Split the cleaned name by '~' and take the last part for display
         set parts (string split "~" "$clean")
         set label "$parts[-1]"
     
         echo "$label"
       end
-    
+
+      # ------ ADD ROW FUNCTION ------ #
       function __cdf_add_row
+
+      	# Add a row to the fzf menu with name, path, and kind
         printf "%s\t%s\t%s\n" "$argv[1]" "$argv[2]" "$argv[3]"
       end
-    
+
+      # ----- SKIP HIDDEN FILES FUNCTION ------ #
       function __cdf_should_skip_hidden
         set base (basename "$argv[1]")
-    
+
+        # If hidden files are not to be shown, skip them
         if test "$show_hidden" = "no"
           if string match -q ".*" "$base"
             return 0
@@ -69,116 +84,170 @@
     
         return 1
       end
-    
+
+      # ------ MAIN LOOP ------ #
       while true
+      	# Set up an empty list of rows
         set rows
-    
+
+        # Populate the menu rows based on the current kind of folder
         switch "$current_kind"
           case root
+          	# Populate the root menu with Home, iCloud, Application Support, Preferences, and a toggle for hidden files
             set -a rows (__cdf_add_row "Home" "$home_path" "folder")
             set -a rows (__cdf_add_row "iCloud" "$mobile_docs" "icloud-menu")
             set -a rows (__cdf_add_row "Application Support" "$app_support" "folder")
             set -a rows (__cdf_add_row "Preferences" "$preferences" "folder")
             set -a rows (__cdf_add_row "Show Hidden Files: $show_hidden" "$current_path" "toggle-hidden")
-    
+
+          # ------ MENU ROW FOR ALL ICLOUD APP CONTAINER FOLDERS ------ #
           case icloud-menu
+          	# Add options for All Folders and App Containers in iCloud
             set -a rows (__cdf_add_row "All Folders" "$mobile_docs" "icloud-all")
+            # Add option for App Containers in iCloud
             set -a rows (__cdf_add_row "App Containers" "$mobile_docs" "icloud-containers")
-    
+
+            # Add a toggle for showing hidden files in iCloud
+			set -a rows (__cdf_add_row "Show Hidden Files: $show_hidden" "$current_path" "toggle-hidden")
+
+          # ------ MENU ROW FOR ICLOUD ALL FOLDERS ------ #
           case icloud-all
+          	# Add all folders in iCloud Drive to the menu
             if test -d "$icloud_drive"
               for dir in (find "$icloud_drive" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
                 if __cdf_should_skip_hidden "$dir"
                   continue
                 end
-    
+
+                # Set the display name for the folder and add it to the rows
                 set name (basename "$dir")
                 set -a rows (__cdf_add_row "$name" "$dir" "folder")
               end
             end
-    
+
+            # ------ ADD ICLOUD CONTAINER FOLDERS TO THE MENU ------ #
             if test -d "$mobile_docs"
+              # Add all iCloud container folders to the menu, skipping the main CloudDocs folder
               for dir in (find "$mobile_docs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+              	# Skip hidden folders and the main CloudDocs folder
                 if __cdf_should_skip_hidden "$dir"
                   continue
                 end
-    
+
+                # Set the display name for the iCloud container folder and add it to the rows
                 set base (basename "$dir")
-    
+
+                # Skip the main CloudDocs folder
                 if test "$base" = "com~apple~CloudDocs"
                   continue
                 end
-    
+
+                # Set the display name for the iCloud container folder and add it to the rows
                 set name (__cdf_pretty_container_name "$dir")
                 set -a rows (__cdf_add_row "$name" "$dir" "folder")
               end
             end
-    
+
+          # ------ ADD ICLOUD CONTAINER FOLDERS TO THE MENU ------ #
           case icloud-containers
+          	# For 'mobile_docs' directory, find all subdirectories (iCloud containers) and add them to the menu
             if test -d "$mobile_docs"
+            
+              # Loop through each subdirectory in 'mobile_docs', skipping hidden folders and the main CloudDocs folder
               for dir in (find "$mobile_docs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
                 if __cdf_should_skip_hidden "$dir"
                   continue
                 end
-    
+
+                # Set the display name for the folder and add it to the rows
                 set base (basename "$dir")
-    
+
+                # Skip the main CloudDocs folder
                 if test "$base" = "com~apple~CloudDocs"
                   continue
                 end
-    
+
+                # Set the display name for the iCloud container folder and add it to the rows
                 set name (__cdf_pretty_container_name "$dir")
                 set -a rows (__cdf_add_row "$name" "$dir" "folder")
               end
             end
-    
+
+
+          # ------ FOR CURRENT_PATH FOLDER, ADD SUBFOLDERS TO THE MENU ------ #
           case folder
+          
+          	# For the current folder, find all subdirectories and add them to the menu, skipping hidden folders
             if test -d "$current_path"
               for dir in (find "$current_path" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
                 if __cdf_should_skip_hidden "$dir"
                   continue
                 end
-    
+
+                # Set the display name for the folder and add it to the rows
                 set name (basename "$dir")
                 set -a rows (__cdf_add_row "$name" "$dir" "folder")
               end
             end
         end
-    
+
+        # Set the prompt name for fzf based on the current path
         set prompt_name (basename "$current_path")
-    
+
+        # Create the fzf menu with the rows and handle user selection
         set result (
           printf "%s\n" $rows |
           fzf \
+          	# Set the header to show the current path
             --header="cdf: $current_path" \
+
+            # Set the height of the fzf menu
             --height=80% \
+
+            # Set the layout to reverse list for better visibility
             --layout=reverse-list \
+
+            # Set the prompt to show the current folder name
             --prompt="$prompt_name > " \
+
+            # Set the delimiter to tab for splitting the selected row into fields
             --delimiter=(printf "\t") \
+
+            # Set the number of fields to expect in the selected row
             --with-nth=1 \
+
+            # Set the expected keys for navigation and selection
             --expect=enter,right,left,ctrl-l,ctrl-h \
+
+            # Set the preview command to show the contents of the selected folder using eza, if it exists
             --preview='test -d {2:q} && eza -la --icons=always {2:q} 2>/dev/null || true'
         )
-    
+
+        # If no selection was made, exit the function
         if test (count $result) -eq 0
           return 0
         end
-    
+
+        # Set the selected key, row, and fields based on the user's selection
         set key $result[1]
         set row $result[2]
-    
+
+        # If the selected row is empty, continue to the next iteration of the loop
         if test -z "$row"
           continue
         end
-    
+
+        # Split the selected row into fields using tab as the delimiter
         set fields (string split (printf "\t") "$row")
         set selected_name "$fields[1]"
         set selected_path "$fields[2]"
         set selected_kind "$fields[3]"
-    
+
+        # Handle the case where the user selected the "toggle-hidden" option to show or hide hidden files
         if test "$selected_kind" = "toggle-hidden"
           read -l -P "Show hidden files? [y/N]: " answer
-    
+
+          # If the user answered "y" or "yes", set show_hidden to "yes", otherwise set it to "no"
           if string match -qi "y" "$answer"; or string match -qi "yes" "$answer"
             set show_hidden "yes"
           else
@@ -187,35 +256,50 @@
     
           continue
         end
-    
+
+        # Handle the user's selection based on the key pressed (enter, right, left, ctrl-l, ctrl-h)
         switch "$key"
           case enter
             if test "$selected_kind" = "folder"
               builtin cd "$selected_path"
               return 0
             else
+              # Set the stack to the current kind
               set -a stack_kind "$current_kind"
+
+              # Set the stack to the current path
               set -a stack_path "$current_path"
-    
+
+              # Set the current kind to the selected kind
               set current_kind "$selected_kind"
+
+              # Set the current path to the selected path
               set current_path "$selected_path"
             end
-    
-          case right ctrl-l
+
+          # For set stack kind, push the current kind onto the stack and set the current kind and path to the selected kind and path
             set -a stack_kind "$current_kind"
             set -a stack_path "$current_path"
-    
+
+            # Set the current kind and path to the selected kind and path
             set current_kind "$selected_kind"
             set current_path "$selected_path"
-    
+
+          # For left ctrl-h, pop the last kind and path from the stack and set them as the current kind and path
           case left ctrl-h
-            if test (count $stack_kind) -gt 0
+            if test (count $stack_kind) -gt 0		# checks if the stack is not empty
               set current_kind "$stack_kind[-1]"
               set current_path "$stack_path[-1]"
-    
+
+              # Remove the last element from the stack_kind array
+              # ** '-e' stands for 'erase', which removes the last element from the stack
+              # ** 'set -e' is used to remove the last element from the stack after it has been popped
               set -e stack_kind[-1]
               set -e stack_path[-1]
+              
             else
+            	
+              # Set the current kind and path to root if the stack is empty
               set current_kind "root"
               set current_path "$home_path"
             end
@@ -480,25 +564,47 @@
     # Makes one script executable, or all scripts in a folder
     # ---------------------------------------------------------
     sscript = ''
+
+      # Check if any arguments were provided; if not, display usage instructions and return an error
       if test (count $argv) -eq 0
+
+      	# Display usage instructions for the sscript function
         echo "Usage:"
+        
+        # Display usage for making a single script file executable
         echo "  sscript <script-file>"
+
+        # Display usage for making all scripts in a folder executable
         echo "  sscript <folder>"
+
+        # Return an error code indicating that the function was called incorrectly
         return 1
       end
 
+      # Combine all provided arguments into a single string to form the target path
       set target (string join " " $argv)
 
+      # ---- HELPER FUNCTION FOR CHMOD ---- #
+
+      # Helper function to make a file executable if it is a recognized script
       function __sscript_chmod_file
+
+      	# Get the file path from the first argument and determine its extension
         set file "$argv[1]"
+
+        # Determine the file extension in lowercase for comparison
         set ext (string lower (path extension "$file"))
 
+
+        # Check if the file extension matches common script extensions; if so, make it executable and print a message
         if contains "$ext" .py .sh .bash .zsh .fish .command
           chmod +x "$file"
           echo "Executable: $file"
           return 0
         end
 
+
+        # Check if the first line of the file starts with a shebang (#!); if so, make it executable and print a message
         if head -n 1 "$file" 2>/dev/null | string match -q '#!*'
           chmod +x "$file"
           echo "Executable: $file"
@@ -508,11 +614,15 @@
         return 1
       end
 
+      # ---- MAIN LOGIC ---- #
+
+      # Check if the target is a file; if so, attempt to make it executable using the helper function and print a message
       if test -f "$target"
         __sscript_chmod_file "$target"; or echo "Skipped, not detected as script: $target"
         return 0
       end
 
+      # Check if the target is a directory; if so, find all files in the directory and attempt to make them executable using the helper function
       if test -d "$target"
         find "$target" -maxdepth 1 -type f -print0 |
         while read -lz file
@@ -522,12 +632,46 @@
         return 0
       end
 
+      # If the target is neither a file nor a directory, print an error message and return an error code
       echo "Not found: $target"
       return 1
     '';
     # ---------------------------------------------------------
 
+    
+    # ---------------------------------------------------------
+    # ---- appqu -> Remove quarantine attributes from app(s) ---- #
+    # Command for removing quarantine attributes from
+    # one or more apps or files
+    # ---------------------------------------------------------
 
+    # Define the appqu function with a description for removing quarantine attributes from one or more apps/files
+    function appqu --description "Remove quarantine attributes from one or more apps/files"
+
+    	# Check if any arguments were provided; if not, display usage instructions and return an error
+        if test (count $argv) -eq 0
+
+        	# Display usage instructions for the appqu function
+            echo "Usage: appqu <path> [path ...]"
+
+            # Return an error code indicating that the function was called incorrectly
+            return 1
+        end
+
+
+        # Loop through each provided path and remove quarantine attributes using the xattr command
+        for path in $argv
+
+        	# Print a message indicating the path being processed
+            echo "Removing quarantine: $path"
+
+            # Use the xattr command to recursively remove quarantine attributes from the specified path
+            xattr -cr "$path"
+        end
+    end
+    # ---------------------------------------------------------
+
+    
     # ---------------------------------------------------------
     # ---- icloudfix -> Restart iCloud/FileProvider services ---- #
     # Restarts Finder and iCloud-related daemons when iCloud
@@ -539,15 +683,19 @@
     icloudfix = ''
       echo "Restarting iCloud/FileProvider services..."
 
+      # Kill Finder and iCloud-related daemons to force a restart of the services
       killall Finder 2>/dev/null; or true
       killall fileproviderd 2>/dev/null; or true
       killall bird 2>/dev/null; or true
       killall cloudd 2>/dev/null; or true
 
+      # Set the sleep duration to allow the services to restart properly
       sleep 3
 
+      # Open the iCloud Mobile Documents folder in Finder to verify that the folders are now visible
       open ~/Library/Mobile\ Documents
 
+      # Print a message indicating that the process is complete and suggest rebooting if iCloud folders are still missing
       echo "Done. If iCloud folders are still missing, reboot once."
     '';
     # ---------------------------------------------------------
@@ -563,7 +711,10 @@
     # ia dll epub https://archive.org/details/NARA-26300439
     # ---------------------------------------------------------
     ia = ''
+      # Check if any arguments were provided; if not, display usage instructions and return an error
       if test (count $argv) -eq 0
+
+      	# Display usage instructions for the ia function
         echo "Usage:"
         echo "  ia dll <archive-url-or-id>"
         echo "  ia dll pdf <archive-url-or-id>"
@@ -571,34 +722,53 @@
         return 1
       end
 
+      # Process the provided arguments and determine the action to take
       switch $argv[1]
         case dll
           set filetype pdf
           set target ""
 
+          # If count $argv is 2, set target based on the provided argument
           if test (count $argv) -eq 2
             set target $argv[2]
+
+          # Count $argv is 3 or more, set filetype and target based on the provided arguments
           else if test (count $argv) -ge 3
             set filetype $argv[2]
             set target $argv[3]
           else
+          	# If the arguments are insufficient, display usage instructions and return an error
             echo "Usage: ia dll [pdf|epub] <archive-url-or-id>"
             return 1
           end
 
+          # ** NOTE: '$argv' means the second argument provided to the function, which is expected to be the archive URL or ID. This value is assigned to the variable 'target' for further processing.
+
+
+          # Remove leading dot from filetype if present
           set filetype (string replace -r '^\\.' "" "$filetype")
 
+          # Extract the identifier from the provided target URL or ID for Internet Archive downloads
           if string match -q '*archive.org/details/*' "$target"
+
+          
+            # Extract the identifier from the URL using a regular expression to capture the part after 'details/' and before any query parameters or fragments
             set identifier (string replace -r '^.*archive\\.org/details/([^/?#]+).*$' '$1' "$target")
           else if string match -q '*archive.org/download/*' "$target"
+
+            # Extract the identifier from the URL using a regular expression to capture the part after 'download/' and before any query parameters or fragments
             set identifier (string replace -r '^.*archive\\.org/download/([^/?#]+).*$' '$1' "$target")
           else
+
+          	# If the target is not a recognized Internet Archive URL, assume it is an identifier and use it directly
             set identifier "$target"
           end
 
+          # Display the download information
           echo "Downloading .$filetype files from:"
           echo "$identifier"
 
+          # Use the Internet Archive command-line tool to download files of the specified type from the identified archive
           command ia download "$identifier" "--glob=*.$filetype"
 
         case '*'

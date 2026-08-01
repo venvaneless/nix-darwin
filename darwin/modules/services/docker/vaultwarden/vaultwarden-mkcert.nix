@@ -23,10 +23,12 @@
 { config, pkgs, lib, ... }:
 
 let
+  # User home directory
   userName = "ven";
   userHome = config.users.users.${userName}.home;
   caroot   = "${userHome}/.config/mkcert";
-
+  
+  # Vaultwarden certs directory
   certDir = "${userHome}/.config/ssl/vaultwarden";
 
   # Server cert + key used by nginx
@@ -36,30 +38,32 @@ let
   # CA cert for phones (copy of mkcert rootCA.pem)
   caCrt   = "${caroot}/rootCA.crt";
 
+  # Export script (runs at activation, also available in PATH)
   vwCertScript = pkgs.writeShellScriptBin "vaultwarden-cert-setup" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
+    # Print a message to indicate what this script is doing
     echo ">>> [vw-cert] START: Vaultwarden SSL setup"
     echo ">>> [vw-cert]   CAROOT:    ${caroot}"
     echo ">>> [vw-cert]   CERT DIR:  ${certDir}"
 
-    # ---------------------------------------- #
-    # Directory prep
-    # ---------------------------------------- #
+    # Ensure certDir exists
     mkdir -p "${certDir}"
     chmod 755 "${certDir}"
 
-    # ---------------------------------------- #
-    # 1) Server cert + key (vaultwarden.local + IP)
-    # ---------------------------------------- #
+	# Generate server cert + key if they don't exist
     if [ ! -f "${certPem}" ] || [ ! -f "${keyPem}" ]; then
       echo ">>> [vw-cert] Generating mkcert cert+key for:"
       echo ">>>            - vaultwarden.local"
       echo ">>>            - 192.168.2.125"
+      
+      # Use mkcert to generate the cert and key
       CAROOT="${caroot}" "${pkgs.mkcert}/bin/mkcert" \
         -cert-file "${certPem}" \
         -key-file  "${keyPem}" \
+
+        # Add SANs for both hostname and IP
         vaultwarden.local 192.168.2.125 || {
           echo "!!! [vw-cert] mkcert FAILED while issuing server cert"
           exit 1
@@ -69,22 +73,19 @@ let
       echo ">>> [vw-cert] Existing cert + key found, reusing"
     fi
 
-    # ---------------------------------------- #
-    # 2) Export mkcert CA → rootCA.crt for phones
-    # ---------------------------------------- #
+    # Export mkcert CA → rootCA.crt for phones
     if [ -f "${caroot}/rootCA.pem" ]; then
       echo ">>> [vw-cert] Exporting mkcert root CA → ${caCrt}"
       cp "${caroot}/rootCA.pem" "${caCrt}"
       echo ">>> [vw-cert] You can import rootCA.crt on iOS/Android"
     else
+      # If mkcert rootCA.pem is missing, warn the user
       echo "!!! [vw-cert] mkcert rootCA.pem NOT found in ${caroot}"
       echo "!!! [vw-cert] If CA is broken, run once:"
       echo "!!!           CAROOT=\"${caroot}\" mkcert -install"
     fi
 
-    # ---------------------------------------- #
-    # 3) Fix ownership + permissions
-    # ---------------------------------------- #
+    # Fix ownership + permissions
     echo ">>> [vw-cert] Fixing ownership + permissions"
     chown -R "${userName}:staff" "${certDir}" || {
       echo "!!! [vw-cert] chown failed (continuing)"

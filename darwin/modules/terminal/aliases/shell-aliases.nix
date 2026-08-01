@@ -163,6 +163,7 @@
 
     # ---------- Archiving ---------- #
 
+    # ------------------------------------------------------------
     # --- rardir -> rar archive helper
     ## Create a .rar archive named after the target folder
     rardir = ''
@@ -180,11 +181,15 @@
 
   _rardir
 '';
+# ------------------------------------------------------------
+
 
 # --- unrar -> extract rar
 ## Extract a .rar archive into the current directory and keep the original archive
 unrar = "unrar x";
 
+
+# ------------------------------------------------------------
 # --- unrard -> extract rar and delete archive
 ## Extract a .rar archive into the current directory and delete the original archive
 unrard = ''
@@ -196,7 +201,10 @@ unrard = ''
 
   _unrard
 '';
+# ------------------------------------------------------------
 
+
+# ------------------------------------------------------------
 # --- zipdir -> zip archive helper
 ## Create a .zip archive named after the target folder
 zipdir = ''
@@ -214,11 +222,15 @@ zipdir = ''
 
   _zipdir
 '';
+# ------------------------------------------------------------
+
 
 # --- unzipf -> extract zip
 ## Extract a .zip archive into the current directory and keep the original archive
 unzipf = "unzip";
 
+
+# ------------------------------------------------------------
 # --- unzipd -> extract zip and delete archive
 ## Extract a .zip archive into the current directory and delete the original archive
 unzipd = ''
@@ -230,6 +242,7 @@ unzipd = ''
 
   _unzipd
 '';
+# ------------------------------------------------------------
 
     # --- wget -> wget -c
     ## Continue partial downloads automatically

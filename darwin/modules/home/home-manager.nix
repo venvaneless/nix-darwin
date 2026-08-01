@@ -39,7 +39,7 @@
 
       # --- User modules ---
       imports = [
-      	../terminal/fish.nix
+      	../terminal
         ../terminal/nvim.nix
         ./hm-options.nix
       ];

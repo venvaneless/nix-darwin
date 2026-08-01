@@ -9,16 +9,20 @@
 { config, ... }:
 
 {
-  # Installs Ripgrep without generating a replacement configuration file.
+  # Install and enable ripgrep w/o config file generated
   programs.ripgrep.enable = true;
 
-  # Ripgrep loads a config file only when this variable is set.
+  # Loading a config file only when this variable is set.
   home.sessionVariables.RIPGREP_CONFIG_PATH =
+
+  	# Load a custom config file if it exists
     "${config.xdg.configHome}/ripgrep/config";
 
   programs.fish.shellAliases = {
+  	# ---- KEYBINDINGS ---- #
+
     # --- grep -> rg
-    # Use ripgrep instead of grep.
+    # Use ripgrep instead of grep
     grep = "rg --color=auto";
 
     # --- erg -> rg

@@ -13,8 +13,8 @@
   imports = [
     #./abetterfinderattributes.nix
     #./abetterfinderrename.nix
-    ./devdocs.nix
-    ./devtoys.nix
+    #./devdocs.nix
+    #./devtoys.nix
     ./espanso.nix
     ./helium-browser.nix
     ./jdownloader.nix

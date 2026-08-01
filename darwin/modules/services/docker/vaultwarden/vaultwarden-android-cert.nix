@@ -15,6 +15,7 @@
 { config, pkgs, lib, ... }:
 
 let
+  # User home directory
   userName = "ven";
   userHome = config.users.users.${userName}.home;
 
@@ -25,10 +26,12 @@ let
   androidPemCrt = "${caroot}/rootCA-android.crt";
   androidDerCrt = "${caroot}/rootCA-android.der";
 
+  # Export script (runs at activation, also available in PATH)
   androidExportScript = pkgs.writeShellScriptBin "vaultwarden-android-cert-export" ''
     #!/usr/bin/env bash
     set -euo pipefail
 
+    # Print a message to indicate what this script is doing
     echo ">>> [vw-android] START: Exporting mkcert CA for Android"
     echo ">>> [vw-android]   CAROOT: ${caroot}"
 
@@ -48,6 +51,8 @@ let
 
     # 2) DER-encoded variant (some Android setups prefer DER)
     echo ">>> [vw-android] Writing DER copy -> ${androidDerCrt}"
+    
+    # Use openssl to convert PEM to DER. If it fails, we continue with PEM only.
     "${pkgs.openssl}/bin/openssl" x509 \
       -in "${caroot}/rootCA.pem" \
       -out "${androidDerCrt}" \
@@ -55,8 +60,10 @@ let
         echo "!!! [vw-android] openssl DER export failed (continuing with PEM only)"
         exit 0
       }
+    # Set permissions to be readable by user (and others) so Android can read it
     chmod 644 "${androidDerCrt}" || true
 
+    # Print a message to indicate what files were created and how to use them
     echo ">>> [vw-android] DONE:"
     echo ">>>   Import ONE of these on Android as a CA certificate:"
     echo ">>>     - ${androidPemCrt}"
@@ -66,7 +73,10 @@ in
 {
   # Helper in PATH (so you can run it manually if you ever want)
   environment.systemPackages = [
+  	# Small script that exports the mkcert CA for Android use
     androidExportScript
+
+    # opensssl is a dependency of the export script, it's needed to convert PEM to DER format
     pkgs.openssl
   ];
 

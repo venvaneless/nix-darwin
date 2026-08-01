@@ -10,10 +10,13 @@
 
 {
   programs.zoxide = {
+
+  	# Install and enable Zoxide and integrate it with fish shell
     enable = true;
     enableFishIntegration = true;
   };
 
   home.sessionVariables._ZO_DATA_DIR =
+  	# Keep existing user-owned data files in place
     "${config.xdg.dataHome}/zoxide";
 }

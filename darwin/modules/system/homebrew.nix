@@ -9,97 +9,116 @@
   
   { config, lib, pkgs, nix-homebrew, ... }:
   
-  let
-    generatedBrewfile = pkgs.writeText "nix-darwin-Brewfile" config.homebrew.brewfile;
-  in
-
   {
-    # -----------------------------------------------------
-    # ------ HOMEBREW: MODULE IMPORTS ----- #
-    # Load the nix-homebrew module used by nix-darwin
-    # -----------------------------------------------------
   
+ 	# ---------------------------------------------------------
+    # -------- HOMEBREW: MODULE IMPORTS ------- #
+    # Load the nix-homebrew module used by nix-darwin
+   	# ---------------------------------------------------------
     imports = [
       nix-homebrew.darwinModules.nix-homebrew
       # ./quarantine-fixes.nix
     ];
+   	# ---------------------------------------------------------
   
-    # -----------------------------------------------------
   
-  
-    # -----------------------------------------------------
+   	# ---------------------------------------------------------
     # ------ HOMEBREW: BACKEND ----- #
     # Configure the Homebrew installation and migration behavior
-    # -----------------------------------------------------
-  
+   	# ---------------------------------------------------------
     nix-homebrew = {
       enable = true;
       user = "ven";
       enableRosetta = false;
       autoMigrate = true;
     };
+   	# ---------------------------------------------------------
   
-    # -----------------------------------------------------
   
-  
-    # -----------------------------------------------------
+   	# ---------------------------------------------------------
     # ------ HOMEBREW: PACKAGES ----- #
     # Declaratively manage Homebrew taps, brews, and casks
-    # -----------------------------------------------------
-  
+   	# ---------------------------------------------------------
+
+    # ---- HOMEBREW SETTINGS
     homebrew = {
       enable = true;
-  
-      global.autoUpdate = true;
+
+      global = {
+        # Enable automatic updates for manually run Homebrew commands
+        autoUpdate = true;
+
+        # Expose nix-darwin's generated Brewfile
+        brewfile = true;
+      };
 
       onActivation = { 
+      	# Disable automatic updates during activation
         autoUpdate = false;
 
         # Disable nix-darwin's integrated cleanup.
         # Cleanup is separately handled below.
         cleanup = "none";
 
+		# Disable automatic upgrades during activation        
         upgrade = false;
-        
+
+        	# Disable environment hints during activation
             extraEnv = {
               HOMEBREW_NO_ENV_HINTS = "1";
             };
           };
+    # ---------------------------------------------------------
 
-      # MAC APP STORE APPLICATIONS
-      # -----------------------------------------------------
-      
+
+    # ****************************************************************
+    # ------ MACOS PACKAGE MANAGEMENT ----- #
+    # ****************************************************************
+
+   	# ---------------------------------------------------------
+    # ---- MAC APP STORE APPLICATIONS
+    # ---------------------------------------------------------
       masApps = {
         # SnippetsLab = 1006087419;
       };
-      
-      # CASK INSTALL LOCATION
-      # -----------------------------------------------------
-  
+    # ---------------------------------------------------------
+
+
+    # ---------------------------------------------------------
+    # ---- CASK INSTALL LOCATION
+    # ---------------------------------------------------------
       caskArgs = {
         appdir = "/Applications";
       };
+    # ---------------------------------------------------------
+
   
-  
-      # HOMEBREW TAPS
-      # -----------------------------------------------------
+   	# ---------------------------------------------------------
+    # ---- HOMEBREW TAPS
+   	# ---------------------------------------------------------
   
       taps = [
-        "lutzifer/homebrew-tap"
+        {
+          name = "lutzifer/homebrew-tap";
+          trusted = true;
+        }
       ];
-  
-  
-      # HOMEBREW FORMULAS
-      # -----------------------------------------------------
+    # ---------------------------------------------------------
+
+      
+   	# ---------------------------------------------------------
+    # ---- HOMEBREW FORMULAS
+   	# ---------------------------------------------------------
   
       brews = [
         "lutzifer/homebrew-tap/keyboardSwitcher"
       ];
-  
-  
-      # HOMEBREW CASKS
-      # -----------------------------------------------------
-      
+    # ---------------------------------------------------------
+
+
+   	# ---------------------------------------------------------
+    # HOMEBREW CASKS
+   	# ---------------------------------------------------------
       casks = [
         # Browsers
         "librewolf"
@@ -136,20 +155,24 @@
         "thaw"
       ];
     };
+   	# ---------------------------------------------------------
 
-    # -----------------------------------------------------
-    # ------ HOMEBREW: CLEANUP AND APP LOCATION ----- #
+    
+    # ****************************************************************
+    # ------ HOMEBREW: CLEANUP AND APP LOCATION ------ #
     # Remove undeclared packages and move SnippetsLab
-    # -----------------------------------------------------
+    # ****************************************************************    
+    echo "Homebrew cleanup..."
 
-    system.activationScripts.homebrew.text = lib.mkAfter ''
-      # ---------------------------------------------------
-      # Homebrew cleanup
-      # ---------------------------------------------------
+    if [ -x /opt/homebrew/bin/brew ]; then
+      generatedBrewfile=${lib.escapeShellArg config.environment.variables.HOMEBREW_BUNDLE_FILE}
 
-      echo "Homebrew cleanup..."
+      if [ ! -f "$generatedBrewfile" ]; then
+        echo "Generated Brewfile was not found: $generatedBrewfile" >&2
+        exit 1
+      fi
 
-      if [ -x /opt/homebrew/bin/brew ]; then
+      PATH="/opt/homebrew/bin:${pkgs.mas}/bin:$PATH" \
         sudo \
           --preserve-env=PATH \
           --user=ven \
@@ -158,51 +181,9 @@
             HOMEBREW_NO_AUTO_UPDATE=1 \
             HOMEBREW_NO_ENV_HINTS=1 \
             /opt/homebrew/bin/brew bundle cleanup \
-              --file=${generatedBrewfile} \
+              --file="$generatedBrewfile" \
               --force
-      else
-        echo "Homebrew is not installed, skipping cleanup." >&2
-      fi
-
-
-      # ---------------------------------------------------
-      # SnippetsLab application location
-      # ---------------------------------------------------
-
-      snippetsLabSource="/Applications/SnippetsLab.app"
-      snippetsLabTargetDirectory="/Applications/Programming"
-      snippetsLabTarget="$snippetsLabTargetDirectory/SnippetsLab.app"
-
-      if [ -d "$snippetsLabSource" ]; then
-        ${pkgs.coreutils}/bin/mkdir -p \
-          -- "$snippetsLabTargetDirectory"
-
-        if [ -L "$snippetsLabTarget" ]; then
-          echo "[SnippetsLab] Removing old symbolic link: $snippetsLabTarget"
-
-          ${pkgs.coreutils}/bin/rm -f \
-            -- "$snippetsLabTarget"
-        elif [ -e "$snippetsLabTarget" ]; then
-          echo "[SnippetsLab] Target already exists: $snippetsLabTarget" >&2
-          echo "[SnippetsLab] Source was not moved." >&2
-          exit 1
-        fi
-
-        /bin/mv \
-          "$snippetsLabSource" \
-          "$snippetsLabTarget"
-
-        echo "[SnippetsLab] Moved: $snippetsLabSource -> $snippetsLabTarget"
-      elif [ -d "$snippetsLabTarget" ]; then
-        echo "[SnippetsLab] Already in Programming."
-      else
-        echo "[SnippetsLab] Application not found." >&2
-
-        /usr/bin/find /Applications \
-          -maxdepth 2 \
-          -type d \
-          -iname '*snippet*.app' \
-          -print >&2
-      fi
-    '';
-}
+    else
+      echo "Homebrew is not installed, skipping cleanup." >&2
+    fi
+    # ****************************************************************

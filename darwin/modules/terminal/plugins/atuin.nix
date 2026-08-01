@@ -25,6 +25,7 @@
 
 {
   programs.atuin = {
+  	# Install and enable atuin and integrate it with fish shell
     enable = true;
     enableFishIntegration = true;
   };
