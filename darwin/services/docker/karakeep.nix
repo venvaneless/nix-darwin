@@ -33,6 +33,7 @@ let
         environment:
           BROWSER_WEB_URL: "http://chrome:9222"
           DATA_DIR: "/data"
+          CRAWLER_FULL_PAGE_ARCHIVE: "true"
           MEILI_ADDR: "http://meilisearch:7700"
           MEILI_MASTER_KEY: "''${MEILI_MASTER_KEY:?Set MEILI_MASTER_KEY in the Karakeep env file}"
           NEXTAUTH_SECRET: "''${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET in the Karakeep env file}"

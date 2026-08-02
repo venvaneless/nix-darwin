@@ -239,22 +239,17 @@
       # ---- FZF MENU FOR TRASH MANAGEMENT ---- #
       set choice (
       	# Use printf to create a list of options for the user to choose from
-        printf "%s\n" \
       	# Each option corresponds to a specific action related to managing the system Trash or iCloud Trash
-
-          # Option to view the contents of the system Trash
-          "System Trash / View Trash" \
-
-          # Option to clean (delete all contents of) the system Trash
-          "System Trash / Clean Trash" \
-
-          # Option to view the contents of the iCloud Trash
-          "iCloud Trash / View Trash" \
-
-          # Option to clean (delete all contents of) the iCloud Trash
-          "iCloud Trash / Clean Trash" |
-
+        # Option to view the contents of the system Trash
+        # Option to clean (delete all contents of) the system Trash
+        # Option to view the contents of the iCloud Trash
+        # Option to clean (delete all contents of) the iCloud Trash
         # Pipe the list of options to fzf for interactive selection
+        printf "%s\n" \
+          "System Trash / View Trash" \
+          "System Trash / Clean Trash" \
+          "iCloud Trash / View Trash" \
+          "iCloud Trash / Clean Trash" |
         fzf --height=40% --reverse --prompt="trash> "
       )
 
@@ -295,7 +290,7 @@
         # Handle the user's choice for cleaning the iCloud Trash          
         case "iCloud Trash / Clean Trash"
 
-          Find all .Trash directories within the iCloud root and clean their contents
+          # Find all .Trash directories within the iCloud root and clean their contents
           find "$icloud_root" -type d -name ".Trash" -print0 2>/dev/null |
 
           # While loop to read each found .Trash directory and clean its contents

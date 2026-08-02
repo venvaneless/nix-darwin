@@ -3,21 +3,23 @@
 # =====================================================================
 # FMOVE
 #
-# Move one or more files and folders into one destination.
+# Copy one or more files and folders into one destination.
 #
 # Modes:
 # - fmove
 #     Opens an interactive FZF picker.
 #
-# - fmove source1 source2 --to destination
+# - fmove [--trash-source] source1 source2 --to destination
 #     Uses paths directly from the command line.
 #
 # Features:
 # - Supports files, folders and symbolic links
 # - Supports paths containing spaces without quoting
 # - Supports multiple source paths
-# - Uses fast filesystem moves whenever possible
-# - Falls back to an iCloud-aware copy and deletion process
+# - Copies through a destination-local staging path
+# - Verifies every copy before publishing it
+# - Keeps sources by default
+# - Sends sources to macOS Trash only with --trash-source
 # - Refuses to overwrite existing destination items
 # =====================================================================
 
@@ -43,13 +45,21 @@ let
       destination=""
       search_root="$PWD"
       in_progress_paths=()
+      trash_source=0
 
 
       usage() {
         cat <<'USAGE'
 Usage:
   fmove
-  fmove SOURCE [SOURCE ...] --to DESTINATION
+  fmove [--trash-source] SOURCE [SOURCE ...] --to DESTINATION
+
+Behavior:
+  fmove copies and verifies every selected source, then keeps the original.
+
+  --trash-source sends a verified source to macOS Trash only when the
+  destination is outside iCloud. If the destination is in iCloud, fmove
+  keeps the source so you can wait for Finder to show that the upload is done.
 
 Interactive controls:
 
@@ -73,6 +83,8 @@ Examples:
   fmove
 
   fmove file1 folder2 folder3 --to destination
+
+  fmove --trash-source file1 folder2 --to destination
 
 Paths containing spaces can be entered without quotes:
 
@@ -192,6 +204,16 @@ USAGE
 
         while test $# -gt 0; do
           case "$1" in
+            --trash-source)
+              trash_source=1
+              shift
+              ;;
+
+            --keep-source)
+              trash_source=0
+              shift
+              ;;
+
             --to)
               if test "$argument_mode" = "destinations"; then
                 fail "--to may only be used once."
@@ -563,11 +585,11 @@ USAGE
           return 0
         fi
 
-        /usr/bin/brctl download "$source" >/dev/null 2>&1 || true
+        timeout 120 /usr/bin/brctl download "$source" >/dev/null 2>&1 || true
 
         if test -d "$source" && ! test -L "$source"; then
           while IFS= read -r -d "" item; do
-            /usr/bin/brctl download "$item" >/dev/null 2>&1 || true
+            timeout 120 /usr/bin/brctl download "$item" >/dev/null 2>&1 || true
           done < <(
             find -P "$source" \
               -type f \
@@ -577,79 +599,20 @@ USAGE
       }
 
 
-      force_remove_path() {
-        local target="$1"
-
-        if ! path_exists "$target"; then
-          return 0
-        fi
-
-        /bin/chflags -R nouchg,noschg "$target" 2>/dev/null || true
-        /bin/chmod -RN "$target" 2>/dev/null || true
-
-        timeout 300 /bin/rm -rf -- "$target" 2>/dev/null || true
-
-        if ! path_exists "$target"; then
-          return 0
-        fi
-
-        case "$target" in
-          *"/Library/Mobile Documents/"*)
-            /usr/bin/killall fileproviderd 2>/dev/null || true
-            /usr/bin/killall bird 2>/dev/null || true
-            /usr/bin/killall cloudd 2>/dev/null || true
-
-            sleep 2
-
-            timeout 300 /bin/rm -rf -- "$target" 2>/dev/null || true
+      is_icloud_path() {
+        case "$1" in
+          "$HOME/Library/Mobile Documents"|"$HOME/Library/Mobile Documents"/*)
+            return 0
             ;;
         esac
 
-        if ! path_exists "$target"; then
-          return 0
-        fi
-
-        /usr/bin/sudo /bin/chflags -R nouchg,noschg "$target" 2>/dev/null || true
-        /usr/bin/sudo /bin/chmod -RN "$target" 2>/dev/null || true
-
-        timeout 300 \
-          /usr/bin/sudo \
-          /bin/rm \
-          -rf \
-          -- \
-          "$target" 2>/dev/null || true
-
-        if path_exists "$target"; then
-          return 1
-        fi
-
-        return 0
+        return 1
       }
 
 
-      move_source() {
+      copy_source_to_staging() {
         local source="$1"
-        local source_name
-        local final_path
-        local temporary_path
-
-        source_name=$(basename -- "$source")
-        final_path="$destination/$source_name"
-        temporary_path="$destination/.fmove-in-progress-$$-$source_name"
-
-        printf "\nMoving:\n%s\n" "$source"
-        printf "To:\n%s\n" "$destination"
-
-        if /bin/mv "$source" "$destination/"; then
-          printf "Moved successfully:\n%s\n" "$final_path"
-          return 0
-        fi
-
-        echo "Direct move failed. Retrying with iCloud download support..."
-
-        request_icloud_downloads "$source"
-
-        in_progress_paths+=("$temporary_path")
+        local temporary_path="$2"
 
         if test -d "$source" && ! test -L "$source"; then
           mkdir -p -- "$temporary_path"
@@ -658,31 +621,150 @@ USAGE
             -a \
             -- \
             "$source/" \
-            "$temporary_path/" || begin_error=1
+            "$temporary_path/"
         else
           COPYFILE_DISABLE=1 rsync \
             -a \
             -- \
             "$source" \
-            "$temporary_path" || begin_error=1
+            "$temporary_path"
+        fi
+      }
+
+
+      verify_staged_copy() {
+        local source="$1"
+        local temporary_path="$2"
+        local differences
+        local source_link
+        local temporary_link
+
+        if test -L "$source"; then
+          source_link=$(readlink "$source")
+          temporary_link=$(readlink "$temporary_path")
+
+          if test "$source_link" = "$temporary_link"; then
+            return 0
+          fi
+
+          printf "Symlink verification failed:\n%s\n" "$source" >&2
+          return 1
         fi
 
-        if test "''${begin_error:-0}" -eq 1; then
-          unset begin_error
-          rm -rf -- "$temporary_path" 2>/dev/null || true
+        if test -d "$source"; then
+          differences=$(COPYFILE_DISABLE=1 rsync \
+            -a \
+            --checksum \
+            --dry-run \
+            --itemize-changes \
+            -- \
+            "$source/" \
+            "$temporary_path/") || return 1
+
+          if test -z "$differences"; then
+            return 0
+          fi
+
+          printf "Directory verification found differences:\n%s\n" "$differences" >&2
+          return 1
+        fi
+
+        if cmp -s -- "$source" "$temporary_path"; then
+          return 0
+        fi
+
+        printf "File verification failed:\n%s\n" "$source" >&2
+        return 1
+      }
+
+
+      send_source_to_trash() {
+        local source="$1"
+
+        if /usr/bin/trash "$source"; then
+          printf "Original moved to Trash:\n%s\n" "$source"
+          return 0
+        fi
+
+        printf "Could not move the original to Trash; it was kept:\n%s\n" "$source" >&2
+        return 1
+      }
+
+
+      transfer_source() {
+        local source="$1"
+        local source_name
+        local final_path
+        local temporary_path
+        local confirmation
+
+        source_name=$(basename -- "$source")
+        final_path="$destination/$source_name"
+        temporary_path="$destination/.fmove-in-progress-$$-$source_name"
+
+        printf "\nCopying:\n%s\n" "$source"
+        printf "To:\n%s\n" "$destination"
+
+        if is_icloud_path "$source"; then
+          echo "Requesting an iCloud download before copying..."
+          request_icloud_downloads "$source"
+        fi
+
+        if path_exists "$temporary_path"; then
+          fail "Staging path already exists; refusing to reuse it: $temporary_path"
+        fi
+
+        in_progress_paths+=("$temporary_path")
+
+        if ! copy_source_to_staging "$source" "$temporary_path"; then
           fail "Could not copy the source into the destination: $source"
+        fi
+
+        echo "Verifying copied data..."
+        if ! verify_staged_copy "$source" "$temporary_path"; then
+          fail "The staged copy does not match the source: $source"
+        fi
+
+        if path_exists "$final_path"; then
+          fail "Destination item appeared while copying: $final_path"
         fi
 
         /bin/mv "$temporary_path" "$final_path" || \
           fail "Could not finalize the destination item: $final_path"
 
-        if ! force_remove_path "$source"; then
-          printf "\nThe destination copy exists, but the original could not be deleted:\n" >&2
-          printf "%s\n" "$source" >&2
-          exit 1
+        if path_exists "$temporary_path"; then
+          fail "Could not finalize the staged copy: $temporary_path"
         fi
 
-        printf "Moved successfully:\n%s\n" "$final_path"
+        printf "Copy verified:\n%s\n" "$final_path"
+
+        if test "$trash_source" -eq 0; then
+          printf "Original kept:\n%s\n" "$source"
+          return 0
+        fi
+
+        if is_icloud_path "$final_path"; then
+          printf "\nDestination is in iCloud, so the original was kept:\n%s\n" "$source"
+          echo "Wait until Finder shows the destination is no longer Waiting to Upload,"
+          echo "then verify it from another device before moving the original to Trash."
+          return 0
+        fi
+
+        printf "Send the verified original to Trash? [y/N] "
+        if ! IFS= read -r confirmation; then
+          echo "No confirmation received; original kept."
+          return 0
+        fi
+
+        case "$confirmation" in
+          y|Y|yes|YES)
+            send_source_to_trash "$source"
+            ;;
+
+          *)
+            printf "Original kept:\n%s\n" "$source"
+            ;;
+        esac
       }
 
 
@@ -690,6 +772,10 @@ USAGE
 
 
       if test $# -eq 0; then
+        choose_sources_with_fzf
+        choose_destination_with_fzf
+      elif test $# -eq 1 && test "$1" = "--trash-source"; then
+        trash_source=1
         choose_sources_with_fzf
         choose_destination_with_fzf
       else
@@ -701,13 +787,13 @@ USAGE
 
 
       for source in "''${selected_sources[@]}"; do
-        move_source "$source"
+        transfer_source "$source"
       done
 
 
       echo
       echo "Finished successfully."
-      echo "Moved ''${#selected_sources[@]} item(s) to:"
+      echo "Copied and verified ''${#selected_sources[@]} item(s) to:"
       echo "$destination"
     '';
   };

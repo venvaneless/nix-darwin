@@ -314,36 +314,53 @@
     # ---------------------------------------------------------
     # ---- trash -> Move files or folders to macOS Trash ---- #
     #
-    # By default, asks Finder to move items to Trash.
+    # By default, asks macOS to move items to Trash after
+    # clearing the item's user-immutable flag when present.
+    # Finder is retained as an iCloud-aware fallback.
     #
-    # If Finder refuses:
-    #   trash --force <path>
+    # --permanent bypasses Trash and permanently removes the
+    # requested item only after an explicit confirmation.
     #
-    # permanently removes the item with rm -rf.
+    # --force remains a compatible alias for --permanent.
     #
     # Examples:
     # trash ./old-folder
     # trash "./file with spaces.zip"
     # trash ./folder-one ./folder-two
+    # trash --permanent ./problem-folder
     # trash --force ./problem-folder
     # trash -- --filename-starting-with-dash
     # ---------------------------------------------------------
     
     trash = {
-      description = "Move files to macOS Trash, or permanently remove them with --force";
+      description = "Move items to macOS Trash, or permanently remove them with --permanent";
     
       body = ''
-        argparse 'f/force' -- $argv
+        argparse 'h/help' 'p/permanent' 'f/force' -- $argv
         or begin
-          echo "Usage: trash [-f|--force] <path> [path ...]"
+          echo "Usage: trash [-p|--permanent] <path> [path ...]"
           return 2
         end
     
+        if set -q _flag_help
+          echo "Usage: trash [-p|--permanent] <path> [path ...]"
+          echo ""
+          echo "Without --permanent, items are moved to macOS Trash through macOS and Finder."
+          echo "--permanent skips Trash and requires confirmation before deletion."
+          echo "--force is a compatible alias for --permanent."
+          return 0
+        end
+
         if test (count $argv) -eq 0
-          echo "Usage: trash [-f|--force] <path> [path ...]"
+          echo "Usage: trash [-p|--permanent] <path> [path ...]"
           return 1
         end
     
+        set -l permanent 0
+        if set -q _flag_permanent; or set -q _flag_force
+          set permanent 1
+        end
+
         set -l failed 0
     
         for item in $argv
@@ -361,6 +378,48 @@
             set target (path normalize -- "$PWD/$item")
           end
     
+          # Basic protection against catastrophic typos.
+          switch "$target"
+            case / "$HOME" "$HOME/Library" "$HOME/Library/Mobile Documents" "$HOME/Library/Mobile Documents/com~apple~CloudDocs" "$HOME/Library/Containers" "$HOME/Library/Group Containers" /Users /System /Library /Applications
+              echo "Refusing to remove protected path: $target"
+              set failed 1
+              continue
+          end
+
+          if test $permanent -eq 1
+            # --permanent must always bypass Trash and require confirmation.
+            read -l -P "Permanently remove '$target'? [y/N] " confirmation
+            if not string match -rqi '^(y|yes)$' -- "$confirmation"
+              echo "Skipped: $target"
+              continue
+            end
+
+            # Remove a direct user-immutable flag before deleting the item.
+            chflags nouchg "$target" 2>/dev/null; or true
+
+            command rm -rf -- "$target"
+            if test $status -eq 0
+              echo "Permanently removed: $target"
+            else
+              echo "Could not permanently remove: $target"
+              set failed 1
+            end
+
+            continue
+          end
+
+          # Remove a direct user-immutable flag before asking macOS to trash the item.
+          chflags nouchg "$target" 2>/dev/null; or true
+
+          # Use macOS's Trash utility before falling back to Finder for iCloud-managed items.
+          /usr/bin/trash "$target"
+          set -l trash_status $status
+
+          if test $trash_status -eq 0
+            echo "Moved to Trash: $target"
+            continue
+          end
+
           # Convert the POSIX path before asking Finder to delete it.
           osascript \
             -e 'on run argv' \
@@ -376,33 +435,11 @@
             continue
           end
     
-          # Do not permanently remove anything unless --force was supplied.
-          if not set -q _flag_force
-            echo "Could not move to Trash: $target"
-            echo "Use --force to remove it permanently:"
-            echo "  trash --force \"$target\""
-            set failed 1
-            continue
-          end
-    
-          # Basic protection against catastrophic typos.
-          switch "$target"
-            case / "$HOME" /Users /System /Library /Applications
-              echo "Refusing to permanently remove protected path: $target"
-              set failed 1
-              continue
-          end
-    
-          echo "Finder failed; permanently removing: $target"
-    
-          command rm -rf -- "$target"
-    
-          if test $status -eq 0
-            echo "Permanently removed: $target"
-          else
-            echo "Could not permanently remove: $target"
-            set failed 1
-          end
+          # Do not permanently remove anything after a failed Trash attempt.
+          echo "Could not move to Trash: $target"
+          echo "It was not permanently removed. To bypass Trash, run:"
+          echo "  trash --permanent \"$target\""
+          set failed 1
         end
     
         return $failed
