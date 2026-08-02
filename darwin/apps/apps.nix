@@ -11,22 +11,18 @@
 
 {
   imports = [
-    #./abetterfinderattributes.nix
-    #./abetterfinderrename.nix
-    #./devdocs.nix
-    #./devtoys.nix
-    ./espanso.nix
+    # ./espanso.nix
     ./helium-browser.nix
-    ./jdownloader.nix
+    # ./jdownloader.nix
     ./keyboardSwitcher.nix
     ./obsidian.nix
-    ./paste.nix
-    ./pearcleaner.nix
+    # ./paste.nix
+    # ./pearcleaner.nix
     ./raycast.nix
-    ./simplenote.nix
-    ./vscode.nix
+    # ./simplenote.nix
+    # ./vscode.nix
     ./wezterm.nix
     ./zed.nix
-    ./yate.nix
+    # ./yate.nix
   ];
 }
