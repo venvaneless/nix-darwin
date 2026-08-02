@@ -212,11 +212,6 @@ let
           ${pkgs.coreutils}/bin/dirname -- "$target_path"
         )"
 
-        echo "[$app_name] Application link management started."
-        echo "[$app_name] Source: $source_path"
-        echo "[$app_name] Target: $target_path"
-        echo "[$app_name] Requested state: $should_exist"
-
         # Validate the source path
         # ------------------------------------------------------------
 
@@ -254,8 +249,6 @@ let
           fi
 
           if [ ! -d "$target_directory" ]; then
-            echo "[$app_name] Creating target directory: $target_directory"
-
             ${pkgs.coreutils}/bin/mkdir \
               -p \
               -- \
@@ -267,8 +260,6 @@ let
             fi
 
             echo "[$app_name] SUCCESS: Target directory created."
-          else
-            echo "[$app_name] Target directory already exists."
           fi
 
           if [ -L "$target_path" ]; then
@@ -279,7 +270,6 @@ let
             )"
 
             if [ "$existing_target" = "$source_path" ]; then
-              echo "[$app_name] SUCCESS: Application link is already correct."
               return 0
             fi
 
@@ -351,25 +341,17 @@ let
             return 0
           fi
 
-          echo "[$app_name] Existing link is not owned by this module."
-          echo "[$app_name] Preserving link: $target_path"
+          echo "[$app_name] WARNING: Existing link is not owned by this module; preserving: $target_path" >&2
           return 0
         fi
 
         if [ -e "$target_path" ]; then
-          echo "[$app_name] Existing item is not owned by this module."
-          echo "[$app_name] Preserving item: $target_path"
+          echo "[$app_name] WARNING: Existing item is not owned by this module; preserving: $target_path" >&2
           return 0
         fi
-
-        echo "[$app_name] Managed application link is already absent."
       }
 
-      echo "[Shared media applications] Starting application link management."
-
       ${managedDarwinApplicationLinkCommands}
-
-      echo "[Shared media applications] All application links processed successfully."
     '';
 in
 

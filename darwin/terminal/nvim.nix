@@ -19,16 +19,14 @@ let
     #!/bin/bash
     set -euo pipefail
 
-    echo ">>> [nvim] Installing AstroNvim config"
-
-    mkdir -p "${nvimConfigRoot}"
-
     if [ ! -f "${nvimConfigRoot}/init.lua" ]; then
+      echo ">>> [nvim] Installing AstroNvim config"
+
+      mkdir -p "${nvimConfigRoot}"
+
       ${pkgs.rsync}/bin/rsync -a --delete \
         "${inputs.astronvim}/" \
         "${nvimConfigRoot}/"
-    else
-      echo ">>> [nvim] AstroNvim already present, skipping"
     fi
   '';
 

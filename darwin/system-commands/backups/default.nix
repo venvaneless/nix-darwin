@@ -18,12 +18,14 @@
   };
 
   config.services.containerBackups = {
+    archivebox.enable = true;
     browsertrix.enable = true;
     vaultwarden.enable = true;
     wallabag.enable = true;
   };
 
   imports = [
+    ./archivebox.nix
     ./browsertrix.nix
     ./vaultwarden.nix
     ./wallabag.nix

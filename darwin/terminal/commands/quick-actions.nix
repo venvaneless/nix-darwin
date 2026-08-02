@@ -313,54 +313,99 @@
     
     # ---------------------------------------------------------
     # ---- trash -> Move files or folders to macOS Trash ---- #
-    # Uses Finder to move one or more items to Trash instead
-    # of deleting them permanently
+    #
+    # By default, asks Finder to move items to Trash.
+    #
+    # If Finder refuses:
+    #   trash --force <path>
+    #
+    # permanently removes the item with rm -rf.
     #
     # Examples:
     # trash ./old-folder
     # trash "./file with spaces.zip"
     # trash ./folder-one ./folder-two
+    # trash --force ./problem-folder
+    # trash -- --filename-starting-with-dash
     # ---------------------------------------------------------
-
+    
     trash = {
-      description = "Move one or more files or folders to macOS Trash";
-
+      description = "Move files to macOS Trash, or permanently remove them with --force";
+    
       body = ''
-        # Check if any paths were provided
+        argparse 'f/force' -- $argv
+        or begin
+          echo "Usage: trash [-f|--force] <path> [path ...]"
+          return 2
+        end
+    
         if test (count $argv) -eq 0
-          echo "Usage: trash <path> [path ...]"
+          echo "Usage: trash [-f|--force] <path> [path ...]"
           return 1
         end
-
-
-        # Process every provided file or folder separately
+    
+        set -l failed 0
+    
         for item in $argv
-
-          # Check that the item exists, including symbolic links
+          # Include symbolic links, including broken ones.
           if not test -e "$item"; and not test -L "$item"
             echo "Not found: $item"
+            set failed 1
             continue
           end
-
-
-          # Convert the provided item to an absolute path
-          set target (path resolve "$item")
-
-          # Ask Finder to move the item to macOS Trash
+    
+          # Produce an absolute path without resolving symbolic links.
+          if string match -q '/*' -- "$item"
+            set target (path normalize -- "$item")
+          else
+            set target (path normalize -- "$PWD/$item")
+          end
+    
+          # Convert the POSIX path before asking Finder to delete it.
           osascript \
             -e 'on run argv' \
-            -e 'tell application "Finder" to delete POSIX file (item 1 of argv)' \
+            -e 'set targetItem to POSIX file (item 1 of argv) as alias' \
+            -e 'tell application "Finder" to delete targetItem' \
             -e 'end run' \
             "$target"
-
-          # Report whether Finder successfully handled the item
-          if test $status -eq 0
+    
+          set -l finder_status $status
+    
+          if test $finder_status -eq 0
             echo "Moved to Trash: $target"
-          else
+            continue
+          end
+    
+          # Do not permanently remove anything unless --force was supplied.
+          if not set -q _flag_force
             echo "Could not move to Trash: $target"
-            return 1
+            echo "Use --force to remove it permanently:"
+            echo "  trash --force \"$target\""
+            set failed 1
+            continue
+          end
+    
+          # Basic protection against catastrophic typos.
+          switch "$target"
+            case / "$HOME" /Users /System /Library /Applications
+              echo "Refusing to permanently remove protected path: $target"
+              set failed 1
+              continue
+          end
+    
+          echo "Finder failed; permanently removing: $target"
+    
+          command rm -rf -- "$target"
+    
+          if test $status -eq 0
+            echo "Permanently removed: $target"
+          else
+            echo "Could not permanently remove: $target"
+            set failed 1
           end
         end
+    
+        return $failed
       '';
     };
     # ---------------------------------------------------------

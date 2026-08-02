@@ -293,7 +293,7 @@
 
         echo "[SnippetsLab] Moved: $snippetsLabSource -> $snippetsLabTarget"
       elif [ -d "$snippetsLabTarget" ]; then
-        echo "[SnippetsLab] Already in Programming."
+        :
       else
         echo "[SnippetsLab] Application not found." >&2
 
