@@ -32,7 +32,7 @@ in
   # =====================================================================
   flake.darwinConfigurations.macbook =
     withSystem system (
-      { config, ... }:
+      { ... }:
       inputs.darwin.lib.darwinSystem {
         inherit system;
 
@@ -40,7 +40,6 @@ in
           inherit inputs;
           home-manager = inputs.home-manager;
           nix-homebrew = inputs.nix-homebrew;
-          venPackages = config.packages;
         };
 
         modules = [

@@ -9,7 +9,7 @@
 # - Developer-adjacent utilities
 # =====================================================================
 
-{ lib, pkgs, venPackages, ... }:
+{ lib, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
@@ -27,19 +27,19 @@ let
   # ------ CUSTOM PACKAGES ------ #
   # ------------------------------------------------------------
 
-  assetsnapPackage = venPackages.assetsnap;
+  assetsnapPackage = pkgs.callPackage ./assetsnap.nix { };
 
-  betterFinderAttributesPackage = venPackages.better-finder-attributes;
+  betterFinderAttributesPackage = pkgs.callPackage ./better-finder-attributes.nix { };
 
-  betterFinderRenamePackage = venPackages.better-finder-rename;
+  betterFinderRenamePackage = pkgs.callPackage ./better-finder-rename.nix { };
 
-  hammerspoonPackage = venPackages.hammerspoon;
+  hammerspoonPackage = pkgs.callPackage ./hammerspoon.nix { };
 
-  hammerspoonUpdater = venPackages.update-hammerspoon;
+  hammerspoonUpdater = pkgs.callPackage ./hammerspoon-update.nix { };
 
-  theUnarchiverPackage = venPackages.the-unarchiver;
+  theUnarchiverPackage = pkgs.callPackage ./unarchiver { };
 
-  theUnarchiverUpdater = venPackages.update-unarchiver;
+  theUnarchiverUpdater = pkgs.callPackage ./unarchiver/unarchiver-update.nix { };
 
   # ------------------------------------------------------------
   # ------ TOOL DEFINITIONS ------ #

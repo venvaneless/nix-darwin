@@ -12,7 +12,7 @@
 # - macOS development applications
 # =====================================================================
 
-{ lib, pkgs, venPackages, ... }:
+{ lib, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
@@ -31,13 +31,13 @@ let
   # ------------------------------------------------------------
 
   # ---- iTerm2
-  iterm2Package = venPackages.iterm2;
+  iterm2Package = pkgs.callPackage ./iterm2 { };
 
   # ---- iTerm AI Plugin
-  itermAiPluginPackage = venPackages.iterm-ai-plugin;
+  itermAiPluginPackage = pkgs.callPackage ./iterm2/iterm-ai-plugin.nix { };
 
   # ---- iTerm Browser Plugin
-  itermBrowserPluginPackage = venPackages.iterm-browser-plugin;
+  itermBrowserPluginPackage = pkgs.callPackage ./iterm2/iterm-browser-plugin.nix { };
 
   # ------------------------------------------------------------
   # ------ DEVELOPMENT CLI PACKAGES ------ #
