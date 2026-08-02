@@ -4,7 +4,8 @@
 # ============================================================
 # Loads ALL service modules:
 #   - cleanup services
-#   - docker + containers
+#   - Docker Desktop, containers, and Docker services
+#   - Browsertrix, ArchiveBox, and Karakeep
 #   - nginx
 #   - mkcert
 #   - vaultwarden stack
@@ -13,8 +14,11 @@
 { ... }:
 
 {
-  # Enable the 'Wallabag' service
+  # Enable the Wallabag, ArchiveBox, and Karakeep services
   services.wallabag.enable = true;
+  services.archivebox.enable = true;
+  services.karakeep.enable = true;
+  services.browsertrix.enable = true;
 
 
   imports = [
@@ -24,6 +28,9 @@
     
     # Docker + containers + tooling
     ./docker/docker.nix
+    ./docker/browsertrix.nix
+    ./docker/archivebox.nix
+    ./docker/karakeep.nix
     ./docker/wallabag.nix
     ./docker/mkcert.nix
     ./docker/nginx.nix

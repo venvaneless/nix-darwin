@@ -74,6 +74,8 @@
       	# Disable automatic updates during activation
         autoUpdate = false;
 
+        extraFlags = [ "--quiet" ];
+
         # Disable nix-darwin's integrated cleanup.
         # Cleanup is separately handled below.
         cleanup = "none";
@@ -166,12 +168,10 @@
           "yate"
         ]
         ++ casksFor "/Applications/Productivity" [
-          # Knowledge base that works on top of a local folder
-          # of plain text Markdown files
+          # Knowledge base and note-taking app with Markdown support
           "obsidian"
 
-          # A collection of powerful productivity tools all within
-          # an extendable macOS launcher
+          # Productivity tool and quick launcher for macOS
           "raycast"
 
           # Simple note-taking app written in React
@@ -197,8 +197,7 @@
           # Open-source Chromium-based web browser
           "helium-browser"
 
-          # Utility to uninstall apps and remove leftover files from
-          # old/uninstalled apps
+          # Utility for uninstalling apps and removing leftover files
           "pearcleaner"
         ]
         ++ casksFor "/Applications/Tools" [
@@ -208,11 +207,10 @@
           # Download manager
           "jdownloader"
 
-          # Your clipboard, supercharged and secure Paste keeps everything
-          # you copy organized and searchable. Lightweight, intuitive,
-          # packed with smart features, and private by design
+          # Supercharged clipboard manager for macOS
           "paste"
 
+          # Open-source continuous file synchronization program
           "syncthing-app"
         ];
     };

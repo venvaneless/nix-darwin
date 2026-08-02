@@ -244,17 +244,13 @@ let
           "$target_path"
       )"
 
-      # Print the start of application-link management.
-      echo "[$display_name] Application link management started."
+      # Keep application-link management quiet until it needs attention.
 
-      # Print the expected source application path.
-      echo "[$display_name] Source: $source_path"
+      # Do not print the expected source path during normal validation.
 
-      # Print the requested target application path.
-      echo "[$display_name] Target: $target_path"
+      # Do not print the requested target path during normal validation.
 
-      # Print whether the link is expected to exist.
-      echo "[$display_name] Requested state: $should_exist"
+      # Do not print the requested link state during normal validation.
 
       # Validate the source path.
       # ----------------------------------------------------------
@@ -345,8 +341,7 @@ let
 
           # Accept the link when it already points to the expected source.
           if [ "$existing_target" = "$source_path" ]; then
-            # Report that no change is needed.
-            echo "[$display_name] SUCCESS: Application link is already correct."
+            # Keep the already-correct link quiet.
 
             # Finish successfully without recreating the link.
             exit 0
@@ -461,11 +456,10 @@ let
           exit 0
         fi
 
-        # Explain that an unrelated symbolic link was found.
-        echo "[$display_name] Existing link is not owned by this module."
+        # Report that an unrelated symbolic link prevents the requested state.
 
         # Confirm that the unrelated link will be preserved.
-        echo "[$display_name] Preserving link: $target_path"
+        echo "[$display_name] WARNING: Existing link is not owned by this module; preserving: $target_path" >&2
 
         # Finish successfully without changing it.
         exit 0
@@ -473,18 +467,16 @@ let
 
       # Preserve an existing non-symlink item at the destination.
       if [ -e "$target_path" ]; then
-        # Explain that the existing item belongs to something else.
-        echo "[$display_name] Existing item is not owned by this module."
+        # Report that an existing item prevents the requested state.
 
-        # Confirm that the item will not be removed.
-        echo "[$display_name] Preserving item: $target_path"
+        # Confirm that the existing item will be preserved.
+        echo "[$display_name] WARNING: Existing item is not owned by this module; preserving: $target_path" >&2
 
         # Finish successfully without changing it.
         exit 0
       fi
 
-      # Report that the requested absent state already exists.
-      echo "[$display_name] Managed application link is already absent."
+      # Keep the already-absent requested state quiet.
     '';
 in
 

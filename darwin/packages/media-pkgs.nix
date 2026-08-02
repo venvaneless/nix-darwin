@@ -86,11 +86,6 @@ let
           ${pkgs.coreutils}/bin/dirname -- "$target_path"
         )"
 
-        echo "[$display_name] Application link management started."
-        echo "[$display_name] Source: $source_path"
-        echo "[$display_name] Target: $target_path"
-        echo "[$display_name] Requested link state: $should_exist"
-
         case "$source_path" in
           "/Applications/Nix Apps/"*.app)
             ;;
@@ -131,7 +126,6 @@ let
             )"
 
             if [ "$current_target" = "$source_path" ]; then
-              echo "[$display_name] SUCCESS: Application link is already correct."
               return 0
             fi
 
@@ -174,14 +168,9 @@ let
           fi
         fi
 
-        echo "[$display_name] No managed application link to remove."
       }
 
-      echo "[Darwin media applications] Starting application link management."
-
       ${managedApplicationLinkCommands}
-
-      echo "[Darwin media applications] All application links processed successfully."
     '';
 in
 

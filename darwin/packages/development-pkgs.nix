@@ -229,10 +229,6 @@ let
         ${pkgs.coreutils}/bin/dirname -- "$target_path"
       )"
 
-      echo "[$display_name] Source: $source_path"
-      echo "[$display_name] Target: $target_path"
-      echo "[$display_name] Requested state: $should_exist"
-
       if [ "$should_exist" = "true" ]; then
         if [ ! -d "$source_path" ]; then
           echo "[$display_name] ERROR: Nix-managed application was not found." >&2
@@ -253,7 +249,6 @@ let
           )"
 
           if [ "$current_target" = "$source_path" ]; then
-            echo "[$display_name] Application link is already correct."
             return 0
           fi
 
@@ -296,14 +291,9 @@ let
         fi
       fi
 
-      echo "[$display_name] No managed application link to remove."
     }
 
-    echo "[Darwin development] Starting application link management."
-
     ${managedDevelopmentApplicationLinkCommands}
-
-    echo "[Darwin development] Application link management complete."
   '';
 in
 

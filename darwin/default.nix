@@ -14,7 +14,7 @@
 #   - User-level modules live under darwin/modules/home
 # ================================================
 
-{ lib, home-manager, pkgs, ... }:
+{ config, lib, home-manager, pkgs, ... }:
 
 {
   # ------------------------------------------------------------
@@ -75,6 +75,12 @@
   # ---- Manage the Nix daemon
   # Ensures nix-darwin manages the nix-daemon service
   nix.enable = true;
+
+  # ---- Remote build machines
+  # Keeps nix-darwin from reloading the daemon when no remote builders are configured.
+  environment.etc."nix/machines" = lib.mkIf (config.nix.buildMachines == []) {
+    text = "";
+  };
 
   # ---- Hostname
   # Sets the machine name used by macOS and local networking
@@ -203,8 +209,5 @@
 
     # Services
     ./services/services.nix
-
-    # Apps
-    ./apps/apps.nix
   ];
 }

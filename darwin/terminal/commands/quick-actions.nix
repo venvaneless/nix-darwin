@@ -307,6 +307,63 @@
       end
     '';
     # ---------------------------------------------------------
+
+
+    
+    
+    # ---------------------------------------------------------
+    # ---- trash -> Move files or folders to macOS Trash ---- #
+    # Uses Finder to move one or more items to Trash instead
+    # of deleting them permanently
+    #
+    # Examples:
+    # trash ./old-folder
+    # trash "./file with spaces.zip"
+    # trash ./folder-one ./folder-two
+    # ---------------------------------------------------------
+
+    trash = {
+      description = "Move one or more files or folders to macOS Trash";
+
+      body = ''
+        # Check if any paths were provided
+        if test (count $argv) -eq 0
+          echo "Usage: trash <path> [path ...]"
+          return 1
+        end
+
+
+        # Process every provided file or folder separately
+        for item in $argv
+
+          # Check that the item exists, including symbolic links
+          if not test -e "$item"; and not test -L "$item"
+            echo "Not found: $item"
+            continue
+          end
+
+
+          # Convert the provided item to an absolute path
+          set target (path resolve "$item")
+
+          # Ask Finder to move the item to macOS Trash
+          osascript \
+            -e 'on run argv' \
+            -e 'tell application "Finder" to delete POSIX file (item 1 of argv)' \
+            -e 'end run' \
+            "$target"
+
+          # Report whether Finder successfully handled the item
+          if test $status -eq 0
+            echo "Moved to Trash: $target"
+          else
+            echo "Could not move to Trash: $target"
+            return 1
+          end
+        end
+      '';
+    };
+    # ---------------------------------------------------------
  
     
     # ---------------------------------------------------------
