@@ -84,6 +84,11 @@ let
   '';
   # ------------------------------------------------------- # 
 
+  # Change the LaunchDaemon plist whenever the generated main config changes.
+  # nix-darwin reloads a daemon when its plist changes, not when a runtime
+  # config file written during activation changes.
+  mainConfigHash = builtins.hashString "sha256" mainConfig;
+
   nginxSetupScript = pkgs.writeShellScriptBin "nginx-setup" ''
     #!/usr/bin/env bash
     set -euo pipefail
@@ -168,6 +173,10 @@ in
       # Keep launchd runner diagnostics alongside the Nginx logs.
       StandardOutPath  = "${logsDir}/launchd.out.log";
       StandardErrorPath = "${logsDir}/launchd.err.log";
+
+      # Track generated configuration in the plist so a relevant rebuild
+      # reloads this daemon after activation has written nginx.conf.
+      EnvironmentVariables.NGINX_MAIN_CONFIG_HASH = mainConfigHash;
     };
   };
 }

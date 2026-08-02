@@ -170,6 +170,10 @@ let
     }
   '';
 
+  # Change the Nginx LaunchDaemon plist when this generated vhost changes.
+  # This makes nix-darwin reload Nginx after activation has written the vhost.
+  generatedConfHash = builtins.hashString "sha256" generatedConf;
+
   writeVhostScript = pkgs.writeShellScriptBin "vaultwarden-nginx-setup" ''
     set -euo pipefail
 
@@ -226,4 +230,9 @@ in
     # Run the vaultwarden-nginx-setup script to create the nginx vhost configuration
     ${writeVhostScript}/bin/vaultwarden-nginx-setup || echo "!!! vaultwarden-nginx-setup failed (continuing)"
   '';
+
+  # Make the Nginx daemon's declaration depend on this vhost's generated text.
+  # nix-darwin writes activation-generated configs before it reloads changed
+  # LaunchDaemon plists, so the new process sees the matching vhost.
+  launchd.daemons.nginx-custom.serviceConfig.EnvironmentVariables.NGINX_VAULTWARDEN_VHOST_HASH = generatedConfHash;
 }
