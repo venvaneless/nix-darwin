@@ -56,20 +56,9 @@ let
       ""      close;
     }
 
-    # ---- HTTP -> HTTPS REDIRECT
-    server {
-      # Listen on port 80 for both IPv4 and IPv6
-      listen 80;
-
-      # Listen on port 80 for both IPv4 and IPv6
-      listen [::]:80;
-
-      # Set the server name to match the Vaultwarden domain and IP address
-      server_name ${serverNames};
-
-      # Redirect all HTTP requests to HTTPS
-      return 301 https://$host$request_uri;
-    }
+    # ---- HTTPS ONLY
+    # Port 80 is already used by another local service. Keep this proxy
+    # on its dedicated HTTPS endpoint instead of competing for that port.
 
     # ------------------------------------------------------------
     # HTTPS REVERSE PROXY
