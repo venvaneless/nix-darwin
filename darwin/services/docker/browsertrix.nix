@@ -46,9 +46,12 @@ let
     ${dockerWait}
 
     exec "${dockerBin}" run --rm -it \
+      --cpus ${lib.escapeShellArg cfg.cpuLimit} \
+      --memory ${lib.escapeShellArg cfg.memoryLimit} \
       -v ${lib.escapeShellArg "${cfg.dataDir}:/crawls"} \
       ${lib.escapeShellArg cfg.image} \
       crawl \
+      --workers ${toString cfg.workers} \
       --generateWACZ \
       --text \
       "$@"
@@ -68,6 +71,24 @@ in
       type = lib.types.str;
       default = "webrecorder/browsertrix-crawler:1.12.4";
       description = "Pinned Browsertrix Crawler image used for manual crawls.";
+    };
+
+    cpuLimit = lib.mkOption {
+      type = lib.types.str;
+      default = "2";
+      description = "Maximum CPU cores Browsertrix may use while crawling.";
+    };
+
+    memoryLimit = lib.mkOption {
+      type = lib.types.str;
+      default = "1536m";
+      description = "Maximum memory Browsertrix may use while crawling.";
+    };
+
+    workers = lib.mkOption {
+      type = lib.types.int;
+      default = 1;
+      description = "Number of Browsertrix browser workers to run in parallel.";
     };
   };
 
