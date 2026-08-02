@@ -35,6 +35,8 @@ let
 
   hammerspoonPackage = venPackages.hammerspoon;
 
+  hammerspoonUpdater = venPackages.update-hammerspoon;
+
   theUnarchiverPackage = venPackages.the-unarchiver;
 
   theUnarchiverUpdater = venPackages.update-unarchiver;
@@ -152,6 +154,7 @@ in
   environment.systemPackages =
   enabledToolPackages
   ++ [
+    hammerspoonUpdater
     theUnarchiverUpdater
   ];
 

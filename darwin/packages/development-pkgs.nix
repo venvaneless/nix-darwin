@@ -74,6 +74,9 @@ let
     # ------------------------------------------------
     ## Git tools
 
+    # GitHub CLI for repositories, releases, pull requests, issues, and Actions
+    gh
+
     # Git encrypted files
     git-crypt
 

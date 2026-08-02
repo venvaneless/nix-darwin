@@ -36,6 +36,8 @@
 
         hammerspoon = pkgs.callPackage ../darwin/packages/hammerspoon.nix { };
 
+        update-hammerspoon = pkgs.callPackage ../darwin/packages/hammerspoon-update.nix { };
+
         iterm2 = pkgs.callPackage ../darwin/packages/iterm2 { };
 
         iterm-ai-plugin = pkgs.callPackage ../darwin/packages/iterm2/iterm-ai-plugin.nix { };
