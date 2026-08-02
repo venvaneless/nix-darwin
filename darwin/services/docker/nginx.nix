@@ -119,18 +119,11 @@ EOF
       exit 78
     }
 
-    # Launch nginx with the custom config in the foreground (daemon off)
+    # Launch nginx with the custom config in the foreground (daemon off).
+    # Keep arguments together: comments inside a continued shell command
+    # would make Bash ignore the remaining Nginx arguments.
     echo ">>> [nginx] nginx -t OK, launching (daemon off)"
-    exec "${nginxBin}" \
-
-      # error log path
-      -e "${logsDir}/error.log" \
-
-      # Global directives applying to the entire Nginx server, the location of the PID file, and the error log path 
-      -g "daemon off;" \
-
-      # Specify the path to the main configuration file (nginx.conf)
-      -c "${nginxConf}"
+    exec "${nginxBin}" -e "${logsDir}/error.log" -g "daemon off;" -c "${nginxConf}"
   '';
 in
 {
