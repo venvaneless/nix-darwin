@@ -16,42 +16,103 @@ in
 {
   programs.fish.shellAliases = {
 
-    # ---- Enter the nix configuration directory
+    # ---- Open the Nix configuration repository
+    ## Changes the current terminal to the flake's root directory
     ncfg = "cd ${flakePath}";
 
-    # ---- Enter the nix scripts directory
-    # Jump to the directory containing your Nix helper scripts
+    # ---- Open the Nix scripts directory
+    ## Changes the current terminal to the directory containing helper scripts
     nscripts = "cd ${scriptsPath}";
 
-    # ---- Switch to the current nix-darwin configuration
+    # ---- Build and activate the Darwin configuration
+    ## Creates a new system generation, switches to it, and runs activation
     drs = "sudo -H darwin-rebuild switch --flake ${flakePath}#${flakeHost}";
 
-    # ---- Evaluate and build the flake (No switch)
+    # ---- Build the Darwin configuration without activating it
+    ## Builds the system and creates a result link, but does not switch generations
     drb = "sudo -H darwin-rebuild build --flake ${flakePath}#${flakeHost}";
 
-    # ---- Analyse the configuration for bugs and syntax errors
-    ## Checks the configuration for any bugs and syntax errors
+    # ---- Build + check-mode activation
+    ## Builds the system, then runs its activation script in check mode without switching generations
     rcheck = "sudo -H darwin-rebuild check --flake ${flakePath}#${flakeHost}";
 
     # ---- Validate the flake configuration
+    ## Evaluates standard flake outputs and builds anything declared under checks
     ncheck = "nix flake check ${flakePath}";
 
     # ---- Validate the flake configuration with build logs
-    ## Same as "ncheck" but with logs
+    ## Same as ncheck, but prints detailed output for each check build
     "nl-check" = "nix flake check ${flakePath} --print-build-logs";
 
-    # ---- Safely validate if the system can evaluate/build
+    # ---- Evaluate the Darwin configuration without building it
+    ## Prints the system derivation path without building, switching, or activating
+    neval = "nix eval ${flakePath}#darwinConfigurations.${flakeHost}.config.system.build.toplevel.drvPath";
+
+    # ---- Build the Darwin configuration without activation
+    ## Builds the full system without creating a result link, switching, or activating
     rsafe = "sudo -H nix build ${flakePath}#darwinConfigurations.${flakeHost}.system --no-link";
 
-    # ---- Show the flake configuration
-    # Shows all outputs exposed by the flake
+    # ---- Show the flake outputs
+    ## Lists the packages, applications, and other outputs exposed by the flake
     nshow = "nix flake show ${flakePath}";
 
-    # ---- Recreate / update flake's lock file
+    # ---- Update the flake inputs
+    ## Fetches the latest locked inputs and writes the updated flake.lock file
     "nix-update" = "nix flake update --flake ${flakePath}";
   };
   
   programs.fish.functions = {
+    # ---------------------------------------------------------
+    # ---- nvalidate -> Evaluate, build, and save the output ---- #
+    # Evaluates and then builds the Darwin system without switching
+    # generations or running activation. Both command outputs are shown
+    # in the terminal and saved in the main Downloads folder.
+    # ---------------------------------------------------------
+    nvalidate = ''
+      function nvalidate --description "Evaluate and build the Darwin configuration with a Downloads log"
+        set -l flake_path "${flakePath}"
+        set -l flake_host "${flakeHost}"
+        set -l downloads_dir "/Users/ven/Downloads"
+        set -l timestamp (command date "+%Y-%m-%d-%H%M%S")
+        set -l log_file "$downloads_dir/$timestamp-nix-eval.log"
+
+        if not test -d "$downloads_dir"
+          echo "Downloads folder does not exist: $downloads_dir" >&2
+          return 1
+        end
+
+        echo "Writing validation output to:"
+        echo "$log_file"
+
+        begin
+          echo "Nix Darwin validation"
+          echo "Started: "(command date "+%Y-%m-%d %H:%M:%S %Z")
+          echo "Flake: $flake_path#$flake_host"
+          echo
+          echo "=== Evaluating the Darwin configuration ==="
+
+          if not nix eval "$flake_path#darwinConfigurations.$flake_host.config.system.build.toplevel.drvPath"
+            echo "Evaluation failed. The system build was not started."
+            false
+          else
+            echo
+            echo "=== Building the Darwin configuration without activation ==="
+            sudo -H nix build "$flake_path#darwinConfigurations.$flake_host.system" --no-link
+          end
+        end 2>&1 | command tee "$log_file"
+
+        set -l pipeline_status $pipestatus
+
+        if test $pipeline_status[2] -ne 0
+          echo "Could not save the validation output to: $log_file" >&2
+          return 1
+        end
+
+        return $pipeline_status[1]
+      end
+    '';
+    # ---------------------------------------------------------
+
     # ---------------------------------------------------------
     # ---- pinflake -> Archive and protect flake inputs ---- #
     # Fetches all inputs for a flake and creates indirect GC roots

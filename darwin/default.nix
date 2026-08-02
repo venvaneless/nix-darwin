@@ -189,15 +189,14 @@
     # macOS-only packages
     ./packages/agents-pkgs.nix
     ./packages/tools-pkgs.nix
-
-    # Shared host configuration and packages
-    ../shared/hosts.nix
-    ../shared/packages/media-pkgs.nix
-
-    # Not ready yet
     ./packages/cli-tools.nix
     ./packages/development-pkgs.nix
     ./packages/media-pkgs.nix
+    
+    # Shared host configuration and packages
+    ../shared/hosts.nix
+    ../shared/packages/media-pkgs.nix
+    ../shared/packages/development-pkgs.nix
 
     # Homebrew
     ./system/homebrew.nix

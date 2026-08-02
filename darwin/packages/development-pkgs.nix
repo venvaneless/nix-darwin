@@ -105,43 +105,6 @@ let
     nodejs
 
     # ------------------------------------------------
-    ## nix tools
-
-    # Nixpkgs Rust linter
-    alejandra
-
-    # Nix Home Manager
-    home-manager
-
-    # Check unused Nix code
-    deadnix
-
-    # Better rebuild output
-    nh
-
-    # Nix language server
-    nil
-
-    # Nix shell environment manager
-    nix-direnv
-
-    # Nix package indexer
-    nix-index
-    nixd
-
-    # Format
-    nixfmt
-
-    # Check Nix style problems
-    statix
-
-    # Nix output monitor
-    nix-output-monitor
-
-    # Nix dependency tree viewer
-    nix-tree
-
-    # ------------------------------------------------
     ## Python tools
 
     # Python interpreter

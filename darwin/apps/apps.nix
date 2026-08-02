@@ -11,18 +11,13 @@
 
 {
   imports = [
-    # ./espanso.nix
     ./helium-browser.nix
-    # ./jdownloader.nix
     ./keyboardSwitcher.nix
     ./obsidian.nix
     # ./paste.nix
-    # ./pearcleaner.nix
     ./raycast.nix
-    # ./simplenote.nix
     # ./vscode.nix
     ./wezterm.nix
     ./zed.nix
-    # ./yate.nix
   ];
 }
