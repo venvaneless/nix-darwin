@@ -927,7 +927,7 @@
       description = "Find and save GitHub repository URLs for Obsidian plugins and themes";
 
       body = ''
-        set --local resolver_script "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/my-system/terminal/scripts/resolve-obsidian-repositories.py"
+        set --local resolver_script "/Users/ven/Downloads/resolve-obsidian-repositories.py"
 
         set --local downloads_root "/Users/ven/Downloads"
 
