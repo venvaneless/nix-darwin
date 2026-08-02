@@ -181,7 +181,13 @@ let
       cd "$source_parent"
 
       # Exclude macOS junk files and directories
+      # Exclude Unix domain sockets because bsdtar cannot archive them.
       ${pkgs.findutils}/bin/find "$source_name" \
+        \( \
+          -type s \
+        \) \
+        -prune \
+        -o \
         \( \
           -type d \
           \( \
