@@ -1,185 +1,108 @@
 # darwin/packages/media-pkgs.nix
+#
+# =====================================================================
+# PACKAGES: DARWIN MEDIA
+#
+# Installs macOS media applications and creates categorized links in:
+# /Applications/Multimedia
+# =====================================================================
 
 { lib, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
-  # ------ DARWIN MEDIA APPLICATION DEFINITIONS ------ #
+  # ------ MEDIA PACKAGE SETTINGS ------ #
+  # Important package-group paths and behavior
+  # ------------------------------------------------------------
+
+  mediaApplicationSourceDirectory = "/Applications/Nix Apps";
+
+  mediaApplicationTargetDirectory = "/Applications/Multimedia";
+
+  mediaLinkManagerName = "manage-darwin-media-application-links";
+
+
+  # ------------------------------------------------------------
+  # ------ MEDIA APPLICATION DEFINITIONS ------ #
+  #
+  # enable:
+  #   Installs or removes the package.
+  #
+  # link:
+  #   Creates or removes its categorized application link.
+  #
+  # appName:
+  #   Application bundle name inside /Applications/Nix Apps.
+  #
+  # All GUI applications in this file are linked into:
+  # /Applications/Multimedia
   # ------------------------------------------------------------
 
   darwinMediaApplications = {
     # ---- VLC
+    # Plays video, audio, streams, discs, and many media formats.
     vlc = {
       displayName = "VLC";
       enable = true;
       package = pkgs.vlc-bin;
 
-      link = {
-        enable = true;
-        appName = "VLC.app";
-        targetDirectory = "/Applications/Multimedia";
-      };
+      link = true;
+      appName = "VLC.app";
     };
   };
 
-  enabledDarwinMediaPackages =
-    map
-      (application: application.package)
-      (
-        lib.filter
-          (application: application.enable)
-          (lib.attrValues darwinMediaApplications)
-      );
 
-  managedDarwinApplicationLinks =
+  # ------------------------------------------------------------
+  # ------ ENABLED PACKAGES ------ #
+  # ------------------------------------------------------------
+
+  enabledDarwinMediaPackages = map (application: application.package) (
     lib.filter
-      (application: application ? link)
-      (lib.attrValues darwinMediaApplications);
+      (application: application.enable or false)
+      (lib.attrValues darwinMediaApplications)
+  );
 
-  renderManagedApplicationLink =
-    application:
 
-    let
-      sourcePath =
-        "/Applications/Nix Apps/${application.link.appName}";
+  # ------------------------------------------------------------
+  # ------ APPLICATION LINK HELPER ------ #
+  # Load the shared Darwin application-link helper
+  # ------------------------------------------------------------
 
-      targetPath =
-        "${application.link.targetDirectory}/${application.link.appName}";
+  applicationLinkHelper = import ./helper.nix {
+    inherit lib pkgs;
+  };
 
-      shouldExist =
-        application.enable
-        && application.link.enable;
-    in
 
-    ''
-      manage_application_link \
-        ${lib.escapeShellArg application.displayName} \
-        ${lib.escapeShellArg sourcePath} \
-        ${lib.escapeShellArg targetPath} \
-        ${lib.escapeShellArg (
-          if shouldExist then
-            "true"
-          else
-            "false"
-        )}
-    '';
+  # ------------------------------------------------------------
+  # ------ MEDIA APPLICATION LINKS ------ #
+  # Configure link management for this package group
+  # ------------------------------------------------------------
 
-  managedApplicationLinkCommands =
-    lib.concatMapStringsSep
-      "\n"
-      renderManagedApplicationLink
-      managedDarwinApplicationLinks;
+  darwinMediaApplicationLinks = applicationLinkHelper {
+    applications = darwinMediaApplications;
 
-  manageDarwinMediaApplicationLinks =
-    pkgs.writeShellScriptBin "manage-darwin-media-application-links" ''
-      set -euo pipefail
+    sourceDirectory = mediaApplicationSourceDirectory;
 
-      manage_application_link() {
-        local display_name="$1"
-        local source_path="$2"
-        local target_path="$3"
-        local should_exist="$4"
-        local target_directory
-        local current_target
+    targetDirectory = mediaApplicationTargetDirectory;
 
-        target_directory="$(
-          ${pkgs.coreutils}/bin/dirname -- "$target_path"
-        )"
-
-        case "$source_path" in
-          "/Applications/Nix Apps/"*.app)
-            ;;
-          *)
-            echo "[$display_name] ERROR: Refusing unsupported source path: $source_path" >&2
-            return 1
-            ;;
-        esac
-
-        case "$target_path" in
-          /Applications/*.app)
-            ;;
-          *)
-            echo "[$display_name] ERROR: Refusing unsupported target path: $target_path" >&2
-            return 1
-            ;;
-        esac
-
-        if [ "$should_exist" = "true" ]; then
-          if [ ! -d "$source_path" ]; then
-            echo "[$display_name] ERROR: Nix-managed application was not found." >&2
-            echo "[$display_name] Expected application: $source_path" >&2
-            return 1
-          fi
-
-          if [ ! -d "$target_directory" ]; then
-            ${pkgs.coreutils}/bin/mkdir \
-              -p \
-              -- \
-              "$target_directory"
-          fi
-
-          if [ -L "$target_path" ]; then
-            current_target="$(
-              ${pkgs.coreutils}/bin/readlink \
-                -- \
-                "$target_path"
-            )"
-
-            if [ "$current_target" = "$source_path" ]; then
-              return 0
-            fi
-
-            echo "[$display_name] ERROR: Refusing to replace an unrelated symbolic link." >&2
-            echo "[$display_name] Existing link target: $current_target" >&2
-            return 1
-          fi
-
-          if [ -e "$target_path" ]; then
-            echo "[$display_name] ERROR: Refusing to replace an existing application or file." >&2
-            echo "[$display_name] Existing item: $target_path" >&2
-            return 1
-          fi
-
-          ${pkgs.coreutils}/bin/ln \
-            -s \
-            -- \
-            "$source_path" \
-            "$target_path"
-
-          echo "[$display_name] SUCCESS: Application link created."
-          return 0
-        fi
-
-        if [ -L "$target_path" ]; then
-          current_target="$(
-            ${pkgs.coreutils}/bin/readlink \
-              -- \
-              "$target_path"
-          )"
-
-          if [ "$current_target" = "$source_path" ]; then
-            ${pkgs.coreutils}/bin/rm \
-              -f \
-              -- \
-              "$target_path"
-
-            echo "[$display_name] SUCCESS: Managed application link removed."
-            return 0
-          fi
-        fi
-
-      }
-
-      ${managedApplicationLinkCommands}
-    '';
+    managerName = mediaLinkManagerName;
+  };
 in
-
 {
-  environment.systemPackages =
-    enabledDarwinMediaPackages;
+  # ------------------------------------------------------------
+  # ------ DARWIN MEDIA PACKAGES ------ #
+  # Install all enabled packages
+  # ------------------------------------------------------------
 
-  system.activationScripts.postActivation.text =
-    lib.mkAfter ''
-      ${manageDarwinMediaApplicationLinks}/bin/manage-darwin-media-application-links
-    '';
+  environment.systemPackages = enabledDarwinMediaPackages;
+
+
+  # ------------------------------------------------------------
+  # ------ DARWIN MEDIA LINKS ------ #
+  # Run categorized application-link management after activation
+  # ------------------------------------------------------------
+
+  system.activationScripts.postActivation.text = lib.mkAfter ''
+    ${darwinMediaApplicationLinks.linkManager}/bin/${mediaLinkManagerName}
+  '';
 }

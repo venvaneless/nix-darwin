@@ -9,7 +9,7 @@
 # - Developer-adjacent utilities
 # =====================================================================
 
-{ lib, pkgs, ... }:
+{ lib, pkgs, venPackages, ... }:
 
 let
   # ------------------------------------------------------------
@@ -27,13 +27,17 @@ let
   # ------ CUSTOM PACKAGES ------ #
   # ------------------------------------------------------------
 
-  assetsnapPackage = pkgs.callPackage ./assetsnap.nix { };
+  assetsnapPackage = venPackages.assetsnap;
 
-  betterFinderAttributesPackage = pkgs.callPackage ./better-finder-attributes.nix { };
+  betterFinderAttributesPackage = venPackages.better-finder-attributes;
 
-  betterFinderRenamePackage = pkgs.callPackage ./better-finder-rename.nix { };
+  betterFinderRenamePackage = venPackages.better-finder-rename;
 
-  hammerspoonPackage = pkgs.callPackage ./hammerspoon.nix { };
+  hammerspoonPackage = venPackages.hammerspoon;
+
+  theUnarchiverPackage = venPackages.the-unarchiver;
+
+  theUnarchiverUpdater = venPackages.update-unarchiver;
 
   # ------------------------------------------------------------
   # ------ TOOL DEFINITIONS ------ #
@@ -94,6 +98,17 @@ let
       link = true;
       appName = "Hammerspoon.app";
     };
+
+    # ---- The Unarchiver
+    # Extracts ZIP, RAR, 7z, TAR, and other archive formats.
+    theUnarchiver = {
+      displayName = "The Unarchiver";
+      enable = true;
+      package = theUnarchiverPackage;
+
+      link = true;
+      appName = "The Unarchiver.app";
+    };
   };
 
   # ------------------------------------------------------------
@@ -134,7 +149,11 @@ in
   # Install all enabled packages
   # ------------------------------------------------------------
 
-  environment.systemPackages = enabledToolPackages;
+  environment.systemPackages =
+  enabledToolPackages
+  ++ [
+    theUnarchiverUpdater
+  ];
 
   # ------------------------------------------------------------
   # ------ DARWIN TOOL LINKS ------ #

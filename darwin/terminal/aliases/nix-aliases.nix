@@ -58,7 +58,7 @@ in
 
     # ---- Update the flake inputs
     ## Fetches the latest locked inputs and writes the updated flake.lock file
-    "nix-update" = "nix flake update --flake ${flakePath}";
+    "flake-update" = "nix flake update --flake ${flakePath}";
   };
   
   programs.fish.functions = {

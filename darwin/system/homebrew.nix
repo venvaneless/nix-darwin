@@ -210,6 +210,9 @@
           # Supercharged clipboard manager for macOS
           "paste"
 
+          # Web archive viewer for WARC and WACZ files
+          "replaywebpage"
+
           # Open-source continuous file synchronization program
           "syncthing-app"
         ];

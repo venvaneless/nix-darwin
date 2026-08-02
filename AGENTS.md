@@ -13,6 +13,10 @@ both: - macOS through nix-darwin - Linux through NixOS
 - Nix-managed CLI tools and application bundles;
 - launchd services;
 - Docker Desktop services with persistent host data.
+- Ignore any files that aren't imported in my nix-config - these are only saved templates or things I'm still working on but don't want to wire in
+- test.nix is only for testing if nil, etc. is working on different machines - ignore it
+- Make sure you always utilise flakeParts when creating and editing my nix-config.
+- Make sure you always add short descriptions to each code block (grouping them in sections) and short comments, the way I'm doing it till now.
 
 Primary repository: `/Users/ven/.config/nix/nix-config`
 
@@ -20,6 +24,7 @@ The configuration should stay portable and should avoid macOS-only
 assumptions unless a module is explicitly platform-specific.
 
 ## Scope and precedence
+
 This file applies to the entire repository.
 
 More specific `AGENTS.md` files extend these rules for their directory tree. In particular:
@@ -32,16 +37,19 @@ More specific `AGENTS.md` files extend these rules for their directory tree. In 
 - Use formatting the same way I do
 
 Canonical repository:
+
 ```text
 /Users/ven/.config/nix/nix-config
 ```
 
 Current nix-darwin host:
+
 ```text
 macbook
 ```
 
 Primary entry points:
+
 ```text
 flake.nix
 darwin/default.nix
@@ -49,6 +57,7 @@ darwin/home/home-manager.nix
 ```
 
 Primary Darwin configuration:
+
 ```text
 /Users/ven/.config/nix/nix-config/darwin/default.nix
 ```
@@ -59,6 +68,7 @@ Docker-based services; - fish shell; - CLI-focused environment.
 ---
 
 ## Entry points and aggregators
+
 The main module graph is:
 
 ```text
@@ -72,11 +82,13 @@ flake.nix
 ```
 
 - All installed apps are in:
+
 ```
 nix/nix-config/darwin/packages/agents-pkgs.nix
 ```
 
 Keep aggregators simple:
+
 - imports grouped by purpose;
 - explicit enable flags near the top when needed;
 - no generated scripts in an aggregator;
@@ -90,12 +102,14 @@ When adding a module, update the nearest aggregator. Do not add the same module 
 ## Platform support
 
 This configuration will eventually support both:
+
 - nix-darwin
 - NixOS/Linux
 
 Do not assume macOS-only paths or tools unless such is only available for darwin.
 
 When adding software consider:
+
 - Is this available on both platforms?
 - Should this be behind `lib.mkIf pkgs.stdenv.isDarwin`?
 - Should there be a Linux equivalent?
@@ -106,12 +120,13 @@ When adding software consider:
 # General agent behavior
 
 ## Before changing files
+
 - Inspect the existing structure first.
 - Follow the existing module organization and naming.
 - Prefer extending existing modules over creating duplicate ones.
 - Keep the configuration modular.
 - Suggest improvements that reduce duplication and make future
-    maintenance easier.
+  maintenance easier.
 
 When adding features, prefer: - modules; - reusable options; -
 variables; - `mkOption`; - `mkEnableOption`; - platform conditionals; -
@@ -128,6 +143,7 @@ maintenance.
 ## Standard module shape
 
 Use this shape when the feature is configurable:
+
 ```nix
 { config, lib, pkgs, ... }:
 
@@ -168,16 +184,16 @@ Use a simpler module when no option surface is needed. Do not create options sol
 
 Before adding a feature, decide which layer owns it:
 
-| Concern | Preferred owner |
-|---|---|
-| Nix daemon, host, system defaults, system packages | nix-darwin system module |
-| Fish, CLI program settings, XDG config, user files | Home Manager module |
-| macOS GUI application installed as a cask | Homebrew module or app module |
-| Nix-built macOS `.app` bundle | Nix package module plus guarded application link helper |
-| User login service | launchd agent |
-| Root or machine-level service | launchd daemon only when genuinely required |
-| Cross-platform package | `shared/` or a shared module |
-| Darwin-only package or behavior | `darwin/` |
+| Concern                                            | Preferred owner                                         |
+| -------------------------------------------------- | ------------------------------------------------------- |
+| Nix daemon, host, system defaults, system packages | nix-darwin system module                                |
+| Fish, CLI program settings, XDG config, user files | Home Manager module                                     |
+| macOS GUI application installed as a cask          | Homebrew module or app module                           |
+| Nix-built macOS `.app` bundle                      | Nix package module plus guarded application link helper |
+| User login service                                 | launchd agent                                           |
+| Root or machine-level service                      | launchd daemon only when genuinely required             |
+| Cross-platform package                             | `shared/` or a shared module                            |
+| Darwin-only package or behavior                    | `darwin/`                                               |
 
 Do not put system packages into Home Manager merely because the module is nearby. Do not put user configuration into a system package list.
 
@@ -186,6 +202,7 @@ Do not put system packages into Home Manager merely because the module is nearby
 ## Existing structure
 
 Follow the repository's existing organization:
+
 ```text
 darwin/
 ├── default.nix
@@ -252,6 +269,7 @@ Do not put macOS paths, `launchctl`, `/Applications`, `defaults`, or Homebrew as
 ## Modularization
 
 Always consider:
+
 - Can this become its own module?
 - WIll it profit from being a toggle instead of a hardcoded feature?
 - What kind of configurable paths does the feature use that we could add as a variable?
@@ -261,6 +279,7 @@ Always consider:
 - Is it a GUI-based program or tool for darwin, which means it needs a symlink to /Applications or other folders?
 
 ### nix-darwin system layer
+
 Use nix-darwin for:
 
 - `system.*`;
@@ -278,9 +297,11 @@ Use nix-darwin for:
 - machine-level application bundle handling.
 
 ### Home Manager
+
 Home Manager is integrated through nix-darwin. There is no standalone Home Manager switch for this repository.
 
 Use Home Manager for:
+
 - `home.packages` when the package is intentionally user-scoped;
 - `home.file`;
 - `xdg.configFile`;
@@ -294,6 +315,7 @@ Use Home Manager for:
 Do not use the nix-darwin launchd schema inside a Home Manager module or vice versa.
 
 Nix-darwin user agent:
+
 ```nix
 launchd.agents.example = {
   serviceConfig = {
@@ -305,6 +327,7 @@ launchd.agents.example = {
 ```
 
 Home Manager user agent:
+
 ```nix
 launchd.agents.example = {
   config = {
@@ -392,7 +415,6 @@ When a configured path intentionally lives in iCloud:
 
 A convenient `~/iCloudDocs` symlink must be treated as user-owned once it exists. Never replace it automatically. If it is wrong, report the state and provide a manual repair plan.
 
-
 ---
 
 # Nix module rules
@@ -463,6 +485,7 @@ Prefer argument lists where the module option supports them. String-rendered com
 ## Generated scripts
 
 Follow the pattern used by service runners such as `rsync.nix`:
+
 1. define stable paths and settings in a `let` block;
 2. keep executable inputs explicit;
 3. render a script with `pkgs.writeShellScriptBin`;
@@ -1015,7 +1038,6 @@ Before finishing a Darwin change, confirm:
 - [ ] Validation stops before activation unless activation was explicitly requested.
 - [ ] Any state-changing command is clearly labeled.
 
-
 ---
 
 ## Activation scripts
@@ -1127,10 +1149,13 @@ Rules:
 # Comments and formatting
 
 ## File formatting rules
+
 Keep formatting consistent with existing files.
 
 ## Nix files
+
 Prefer:
+
 - clear section headers;
 - descriptive comments;
 - logical grouping;
@@ -1158,6 +1183,7 @@ Avoid vague names.
 Match surrounding files.
 
 Preferred traits:
+
 - file path comment at the top;
 - clear title and purpose;
 - section headers for meaningful groups;
@@ -1184,6 +1210,7 @@ Inside Nix indented strings:
 # Code modification rules
 
 When suggesting changes:
+
 - Give exact blocks to replace.
 - Give exact blocks to remove.
 - Preserve indentation.
@@ -1309,6 +1336,7 @@ Do not place passwords, tokens, private keys, or secret environment values in `p
 Some services, such as the custom nginx setup, write generated content into a mutable user config directory.
 
 For new runtime writers:
+
 1. generate the content as a Nix string;
 2. create the exact parent directory;
 3. write to a temporary file in the same filesystem;
@@ -1371,6 +1399,7 @@ Avoid: - zsh-only glob syntax; - bash arrays; - bash-specific
 substitutions; - commands requiring shell-specific behavior.
 
 Existing command preferences include:
+
 ```text
 ls   -> eza
 cat  -> bat
@@ -1381,6 +1410,7 @@ nano -> micro
 Do not replace established tools or keybindings without being asked.
 
 Current important Fish bindings:
+
 ```text
 Ctrl-F -> command picker
 Ctrl-L -> history picker
@@ -1388,11 +1418,14 @@ Ctrl-R -> Atuin search
 ```
 
 Plugins include:
+
 - autopair.fish
 - rose-pine/fish
 
 ### Existing fish preferences
+
 Important features:
+
 - autosuggestions
 - completions
 - ghost suggestions where provided by the configured integration;
@@ -1427,7 +1460,6 @@ They must also:
 - never execute during Nix evaluation or build merely because the script was generated.
 
 Follow the explicit-list and per-item safety pattern used by the rsync runner. Do not auto-discover executable scripts with a glob and run them during activation.
-
 
 ---
 
@@ -1541,6 +1573,7 @@ When adding a package:
 When improving workflows, suggest tools that integrate well with Nix.
 
 Examples:
+
 - flake-parts
 - flake-utils
 - devenv when a project development environment actually needs it.
@@ -1580,12 +1613,13 @@ A link manager must:
 Keep each service modular and configurable.
 
 Prefer:
-    services/
-    ├── docker/
-    ├── databases/
-    └── applications/
+services/
+├── docker/
+├── databases/
+└── applications/
 
 Use options for values likely to change, including:
+
 - enable state;
 - ports;
 - host names and domains;
@@ -1614,9 +1648,11 @@ More detailed Darwin service rules are in `darwin/AGENTS.md`.
 ---
 
 # Development workflow
+
 Prefer the least invasive validation that answers the question.
 
 Recommended order:
+
 1. format or parse the edited file;
 2. inspect the diff;
 3. evaluate the relevant option or module;
@@ -1625,13 +1661,14 @@ Recommended order:
 6. switch only when the user explicitly requests it.
 
 Prefer validation before switching. Use:
+
 - nix flake check
 - nix eval
 - nix build
 - darwin-rebuild build
 
 before:
-    darwin-rebuild switch
+darwin-rebuild switch
 
 For custom packages:
 Check: - derivation evaluation; - standalone builds; - final output
@@ -1640,9 +1677,6 @@ paths; - system inclusion.
 ---
 
 # Validation workflow
-
-
-
 
 For custom packages and overlays, validate progressively:
 
@@ -1714,11 +1748,13 @@ Do not:
 
 - Create unnecessary duplicate modules
 - Suggest bash/zsh scripts, commands or tools
-Explanation: When giving bash scripts and commands as well as files, make sure they're able to run in fish environment.
-- Forget to use existing aliases and functions, instead of their originals. The list of all the aliases  you find under the folder:
+  Explanation: When giving bash scripts and commands as well as files, make sure they're able to run in fish environment.
+- Forget to use existing aliases and functions, instead of their originals. The list of all the aliases you find under the folder:
+
 ```
 nix-config/darwin/terminal/aliases
 ```
+
 - silently move code between nix-darwin and Home Manager;
 - use zsh-only or Bash-only syntax in user-facing Fish configuration;
 - run activation during routine validation;

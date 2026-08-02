@@ -31,8 +31,7 @@
     # nix-homebrew (FIXED)
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
 
-    # NEW: flake utilities
-    flake-utils.url = "github:numtide/flake-utils";
+    # Flake module framework
     flake-parts.url = "github:hercules-ci/flake-parts";
 
     # AstroNvim (managed as config)
@@ -44,62 +43,18 @@
 
   outputs =
     inputs@{
-      self,
-      nixpkgs,
-      darwin,
-      home-manager,
-      nix-homebrew,
-      flake-utils,
       flake-parts,
       ...
 
     }:
-    let
-      system = "aarch64-darwin";
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      # Build flake package outputs for the current Darwin platform.
+      systems = [ "aarch64-darwin" ];
 
-      # Load the list of overlays from:
-      macbookOverlays = import ./darwin/overlays;
-
-    in
-    {
-
-      # =====================================================================
-      # NIXPKGS OVERLAYS (modular, imported from overlays/)
-      # =====================================================================
-      overlays.macbook = nixpkgs.lib.composeManyExtensions macbookOverlays;
-
-      # =====================================================================
-      # FLAKE PACKAGES
-      # =====================================================================
-
-      # DARWIN: MAIN SYSTEM
-      # =========================
-      darwinConfigurations.macbook = darwin.lib.darwinSystem {
-        inherit system;
-
-        specialArgs = {
-          inherit inputs nix-homebrew home-manager;
-        };
-
-        modules = [
-          {
-            nixpkgs.overlays = [
-              self.overlays.macbook
-            ];
-          }
-
-          ./darwin/default.nix
-        ];
-      };
-
-      # No standalone Home Manager (only via darwin)
-      homeConfigurations = { };
-
-      # No flake apps yet
-      apps.${system} = { };
-
-      # devShells.${system}.default =
-      #  nixpkgs.legacyPackages.${system}.mkShell {};
+      imports = [
+        ./flake-modules/packages.nix
+        ./flake-modules/macbook.nix
+      ];
     };
 
 }

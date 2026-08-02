@@ -12,7 +12,7 @@
 # - macOS development applications
 # =====================================================================
 
-{ lib, pkgs, ... }:
+{ lib, pkgs, venPackages, ... }:
 
 let
   # ------------------------------------------------------------
@@ -31,13 +31,13 @@ let
   # ------------------------------------------------------------
 
   # ---- iTerm2
-  iterm2Package = pkgs.callPackage ./iterm2 { };
+  iterm2Package = venPackages.iterm2;
 
   # ---- iTerm AI Plugin
-  itermAiPluginPackage = pkgs.callPackage ./iterm2/iterm-ai-plugin.nix { };
+  itermAiPluginPackage = venPackages.iterm-ai-plugin;
 
   # ---- iTerm Browser Plugin
-  itermBrowserPluginPackage = pkgs.callPackage ./iterm2/iterm-browser-plugin.nix { };
+  itermBrowserPluginPackage = venPackages.iterm-browser-plugin;
 
   # ------------------------------------------------------------
   # ------ DEVELOPMENT CLI PACKAGES ------ #
@@ -58,6 +58,9 @@ let
 
     # Shell environment loader
     direnv
+
+    # Update locally packaged flake outputs
+    nix-update
 
     # Custom LaTeX environment
     myTex
