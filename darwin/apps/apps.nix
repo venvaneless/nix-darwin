@@ -11,13 +11,5 @@
 
 {
   imports = [
-    ./helium-browser.nix
-    ./keyboardSwitcher.nix
-    ./obsidian.nix
-    # ./paste.nix
-    ./raycast.nix
-    # ./vscode.nix
-    ./wezterm.nix
-    ./zed.nix
   ];
 }
