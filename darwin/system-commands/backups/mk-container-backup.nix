@@ -305,7 +305,7 @@ in
     }
 
     (lib.mkIf cfg.automatic {
-      launchd.agents."backup-${appSlug}" = {
+      launchd.user.agents."backup-${appSlug}" = {
         serviceConfig = {
           Label = launchdLabel;
           ProgramArguments = [
