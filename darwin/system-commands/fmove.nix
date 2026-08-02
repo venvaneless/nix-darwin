@@ -261,7 +261,7 @@ USAGE
 
         destination=$(join_words "''${destination_words[@]}")
 
-        if ! test -d "$destination"
+        if ! test -d "$destination"; then
           fail "Destination folder does not exist: $destination"
         fi
       }
