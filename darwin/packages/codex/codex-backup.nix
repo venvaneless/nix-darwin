@@ -249,14 +249,19 @@ in
         "--scheduled"
       ];
 
-      # Run whenever the user agent is loaded after login.
-      RunAtLoad = true;
+      # Do not begin a large backup while the user is logging in or switching generations.
+      RunAtLoad = false;
 
-      # Check hourly. The script creates an automatic backup only when
+      # Check once each night. The script creates an automatic backup only when
       # eight hours have passed and the Codex directory has changed.
-      StartInterval = 3600;
+      StartCalendarInterval = {
+        Hour = 3;
+        Minute = 30;
+      };
 
       # Run the backup with low priority to avoid interfering with other tasks.
+      ProcessType = "Background";
+      Nice = 20;
       LowPriorityIO = true;
       LowPriorityBackgroundIO = true;
 
