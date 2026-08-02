@@ -129,24 +129,16 @@ let
 
     # Do not create another archive when nothing has changed.
     if [ -e "$marker_file" ]; then
-
       # Check if any files in the source directory have been modified since the last successful backup. The find command is used to search for files that are newer than the marker file, which indicates the last successful backup. If no such files are found, the backup is skipped.
+      # Search for files in the source directory and its subdirectories.
+      # Timestamp of the last successful backup
+      # ** If any file is newer than this timestamp, it means that changes have been made since the last backup.
+      # Print the path of the file found that is newer than the marker file set. The print action is used to output the path of the file to the standard output. If no files are found, the output will be empty, and the backup will be skipped.
+      # Exit after the first match newer than the marker is found
       changed_path="$(
-
-      
-        ${pkgs.findutils}/bin/find \
-
-          # Search for files in the source directory and its subdirectories.
-          "$source_dir" \
-
-          # Timestamp of the last successful backup
-          # ** If any file is newer than this timestamp, it means that changes have been made since the last backup.
+        ${pkgs.findutils}/bin/find "$source_dir" \
           -newer "$marker_file" \
-
-          # Print the path of the file found that is newer than the marker file set. The print action is used to output the path of the file to the standard output. If no files are found, the output will be empty, and the backup will be skipped.
           -print \
-
-          # Exit after the first match newer than the marker is found
           -quit
       )"
 
