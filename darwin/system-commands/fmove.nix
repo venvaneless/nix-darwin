@@ -263,7 +263,7 @@ USAGE
 
         if ! test -d "$destination"
           fail "Destination folder does not exist: $destination"
-        end
+        fi
       }
 
 

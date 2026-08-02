@@ -8,7 +8,7 @@ The root rules always apply. These rules add nix-darwin-specific
 behavior for:
 
 -   `darwin/default.nix`
--   `darwin/modules/**`
+-   `darwin/{apps,home,overlays,packages,services,system,system-commands,terminal}/**`
 -   Home Manager modules integrated through nix-darwin
 -   macOS system configuration
 -   launchd services
@@ -50,12 +50,14 @@ Do not move settings between layers without a reason.
 Follow the existing pattern:
 
 ``` text
-darwin/modules/
+darwin/
 ├── apps/
 ├── home/
 ├── overlays/
+├── packages/
 ├── services/
 ├── system/
+├── system-commands/
 ├── terminal/
 ```
 

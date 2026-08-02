@@ -45,7 +45,7 @@ Primary entry points:
 ```text
 flake.nix
 darwin/default.nix
-darwin/modules/home/home-manager.nix
+darwin/home/home-manager.nix
 ```
 
 Primary Darwin configuration:
@@ -64,10 +64,11 @@ The main module graph is:
 ```text
 flake.nix
 └── darwin/default.nix
-    ├── modules/home/home-manager.nix
-    ├── modules/system/homebrew.nix
-    ├── modules/services/services.nix
-    └── modules/apps/apps.nix
+    ├── home/home-manager.nix
+    ├── system/system-options.nix
+    ├── system-commands/default.nix
+    ├── services/services.nix
+    └── apps/apps.nix
 ```
 
 - All installed apps are in:
@@ -188,17 +189,18 @@ Follow the repository's existing organization:
 ```text
 darwin/
 ├── default.nix
-└── modules/
-    ├── apps/
-    ├── home/
-    ├── overlays/
-    ├── services/
-    ├── system/
-    │   └── packages/
-    └── terminal/
-        ├── aliases/
-        ├── plugins/
-        └── themes/
+├── apps/
+├── home/
+├── overlays/
+├── packages/
+├── services/
+│   └── docker/
+├── system/
+├── system-commands/
+└── terminal/
+    ├── aliases/
+    ├── plugins/
+    └── themes/
 
 shared/
 └── packages/
@@ -1437,7 +1439,7 @@ Fish configuration is split across modules. Home Manager merges `programs.fish.s
 
 Do not use `lib.mkForce` to replace the combined initialization unless explicitly requested.
 
-Do not move all plugin setup back into `fish.nix`. Each integration should remain in its own module.
+Do not consolidate all plugin setup into `darwin/terminal/default.nix`. Each integration should remain in its own module.
 
 ## `shellInit`
 
@@ -1715,7 +1717,7 @@ Do not:
 Explanation: When giving bash scripts and commands as well as files, make sure they're able to run in fish environment.
 - Forget to use existing aliases and functions, instead of their originals. The list of all the aliases  you find under the folder:
 ```
-nix-config/darwin/modules/terminal/aliases
+nix-config/darwin/terminal/aliases
 ```
 - silently move code between nix-darwin and Home Manager;
 - use zsh-only or Bash-only syntax in user-facing Fish configuration;
