@@ -27,6 +27,7 @@
   imports = [
     ./archivebox.nix
     ./browsertrix.nix
+    ./obsidian-library.nix
     ./vaultwarden.nix
     ./wallabag.nix
   ];
