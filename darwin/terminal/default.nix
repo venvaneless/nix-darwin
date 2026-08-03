@@ -95,10 +95,7 @@
     # Fish aliases
     ./aliases/shell-aliases.nix
 
-    # Fish functions
-    ./aliases/fish-functions.nix
-
-    # Quick custom actions
+    # Commands and functions
     ./commands
 
     # Nix aliases and functions
