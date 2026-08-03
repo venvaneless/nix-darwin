@@ -59,6 +59,7 @@ let
       )
       REPOSITORY_FILE = "repository-url.txt"
       MANIFEST_FILE = "manifest.json"
+      README_FILE = "README.md"
       GH_BIN = os.environ["OBSIDIAN_LIBRARY_GH"]
       FZF_BIN = os.environ["OBSIDIAN_LIBRARY_FZF"]
 
@@ -172,6 +173,14 @@ let
           return f"{owner}/{repository}"
 
 
+      def repository_url_file(directory: Path) -> Path:
+          direct_file = directory / REPOSITORY_FILE
+          if direct_file.is_file():
+              return direct_file
+
+          return directory / "repo" / REPOSITORY_FILE
+
+
       def manifest_version(manifest_file: Path) -> str:
           try:
               manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
@@ -205,7 +214,7 @@ let
                   continue
 
               try:
-                  repository = github_repository(child / REPOSITORY_FILE)
+                  repository = github_repository(repository_url_file(child))
                   if library_type.is_theme:
                       payload = child / library_type.payload_file
                       if not payload.is_file():
@@ -293,20 +302,9 @@ let
           destination.write_bytes(completed.stdout)
 
 
-      def preview_file(filenames: list[str]) -> tuple[str, str] | None:
-          image_pattern = re.compile(r"^(?:preview|screenshot|screencap)(?:[.][^.]+)?(?:[.](?:avif|gif|jpe?g|png|svg|webp))?$", re.IGNORECASE)
-          for prefix in ("preview", "screenshot", "screencap"):
-              matches = sorted(
-                  filename
-                  for filename in filenames
-                  if (filename.casefold() == prefix or filename.casefold().startswith(f"{prefix}."))
-                  and image_pattern.fullmatch(filename)
-              )
-              if matches:
-                  source_name = matches[0]
-                  suffix = Path(source_name).suffix
-                  return source_name, f"preview{suffix}"
-          return None
+      def image_names(filenames: list[str]) -> list[str]:
+          image_suffixes = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
+          return sorted(filename for filename in filenames if Path(filename).suffix.casefold() in image_suffixes)
 
 
       def theme_release_source(release: dict[str, Any]) -> ThemeSource | None:
@@ -322,11 +320,11 @@ let
               files.append(ThemeRemoteFile("obsidian.css", destination_name, release_asset=assets["obsidian.css"]))
           if MANIFEST_FILE in assets:
               files.append(ThemeRemoteFile(MANIFEST_FILE, MANIFEST_FILE, release_asset=assets[MANIFEST_FILE]))
+          if README_FILE in assets:
+              files.append(ThemeRemoteFile(README_FILE, README_FILE, release_asset=assets[README_FILE]))
 
-          preview = preview_file(list(assets))
-          if preview is not None:
-              source_name, destination_name = preview
-              files.append(ThemeRemoteFile(source_name, destination_name, release_asset=assets[source_name]))
+          for image_name in image_names(list(assets)):
+              files.append(ThemeRemoteFile(image_name, image_name, release_asset=assets[image_name]))
 
           tag_name = release.get("tag_name")
           return ThemeSource(
@@ -380,11 +378,11 @@ let
               files.append(repository_file("obsidian.css", destination_name))
           if MANIFEST_FILE in files_by_name:
               files.append(repository_file(MANIFEST_FILE, MANIFEST_FILE))
+          if README_FILE in files_by_name:
+              files.append(repository_file(README_FILE, README_FILE))
 
-          preview = preview_file(list(files_by_name))
-          if preview is not None:
-              source_name, destination_name = preview
-              files.append(repository_file(source_name, destination_name))
+          for image_name in image_names(list(files_by_name)):
+              files.append(repository_file(image_name, image_name))
 
           return ThemeSource("repository root", None, tuple(files))
 
@@ -394,13 +392,8 @@ let
           source: ThemeSource,
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> ThemeSource:
-          # Keep release CSS authoritative, but add repository metadata or a
-          # preview when the release did not include the file.
-          if any(remote_file.destination_name == MANIFEST_FILE for remote_file in source.files) and any(
-              remote_file.destination_name.startswith("preview") for remote_file in source.files
-          ):
-              return source
-
+          # Keep release CSS authoritative, but add repository files that the
+          # release did not include so README image links still work locally.
           try:
               files_by_name = repository_root_files(repository, repository_contents_cache)
           except RuntimeError:
@@ -409,12 +402,13 @@ let
           files = list(source.files)
           if MANIFEST_FILE in files_by_name and not any(remote_file.destination_name == MANIFEST_FILE for remote_file in files):
               files.append(ThemeRemoteFile(MANIFEST_FILE, MANIFEST_FILE, repository_path=files_by_name[MANIFEST_FILE]["path"]))
+          if README_FILE in files_by_name and not any(remote_file.destination_name == README_FILE for remote_file in files):
+              files.append(ThemeRemoteFile(README_FILE, README_FILE, repository_path=files_by_name[README_FILE]["path"]))
 
-          if not any(remote_file.destination_name.startswith("preview") for remote_file in files):
-              preview = preview_file(list(files_by_name))
-              if preview is not None:
-                  source_name, destination_name = preview
-                  files.append(ThemeRemoteFile(source_name, destination_name, repository_path=files_by_name[source_name]["path"]))
+          downloaded_names = {remote_file.destination_name for remote_file in files}
+          for image_name in image_names(list(files_by_name)):
+              if image_name not in downloaded_names:
+                  files.append(ThemeRemoteFile(image_name, image_name, repository_path=files_by_name[image_name]["path"]))
 
           return ThemeSource(source.location, source.version_label, tuple(files))
 
@@ -615,7 +609,7 @@ let
               print(f"[SKIP] {entry.label}: latest release is missing {', '.join(missing_files)}")
               return
 
-          allowed_files = required_files + entry.library_type.optional_files
+          allowed_files = required_files + entry.library_type.optional_files + tuple(image_names(list(assets)))
           with tempfile.TemporaryDirectory(prefix="obsidian-library-update-") as temporary_directory:
               temporary_path = Path(temporary_directory)
               downloaded: list[str] = []
