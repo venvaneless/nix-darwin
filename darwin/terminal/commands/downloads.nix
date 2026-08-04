@@ -330,23 +330,19 @@
 
           if test -f "$manifest_file"
             set --local manifest_id (
-              /usr/bin/python3 - "$manifest_file" <<'PY'
+              /usr/bin/python3 -c '
 import json
 import sys
 
-path = sys.argv[1]
-
 try:
-    with open(path, "r", encoding="utf-8") as file:
-        data = json.load(file)
-
-    value = str(data.get("id", "")).strip()
+    with open(sys.argv[1], "r", encoding="utf-8") as file:
+        value = str(json.load(file).get("id", "")).strip()
 
     if value:
         print(value)
 except Exception:
     pass
-PY
+' "$manifest_file"
             )
 
             if test -n "$manifest_id"
