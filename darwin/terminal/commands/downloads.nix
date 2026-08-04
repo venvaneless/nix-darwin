@@ -253,6 +253,9 @@
         set --local missing_count 0
 
         for source_input in $source_inputs
+          echo "Scanning source:"
+          echo "  $source_input"
+
           if test -f "$source_input"
             set --local source_name (
               basename "$source_input"
@@ -331,31 +334,6 @@
           set --local source_name (
             basename "$source_folder"
           )
-
-          set --local manifest_file \
-            "$source_folder/manifest.json"
-
-          if test -f "$manifest_file"
-            set --local manifest_id (
-              /usr/bin/python3 -c '
-import json
-import sys
-
-try:
-    with open(sys.argv[1], "r", encoding="utf-8") as file:
-        value = str(json.load(file).get("id", "")).strip()
-
-    if value:
-        print(value)
-except Exception:
-    pass
-' "$manifest_file"
-            )
-
-            if test -n "$manifest_id"
-              set source_name "$manifest_id"
-            end
-          end
 
           set --local repository_file \
             "$source_folder/repository-url.txt"
