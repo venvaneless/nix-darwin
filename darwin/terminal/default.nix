@@ -108,17 +108,5 @@
 
     # ---- CLI/TUI tools ---- #
     ./cli-tuis
-      
-    ./plugins/atuin.nix
-    ./plugins/bottom.nix
-    ./plugins/delta.nix
-    ./plugins/eza.nix
-    ./plugins/fastfetch.nix
-    ./plugins/fzf.nix
-    ./plugins/ripgrep.nix
-    ./plugins/starship.nix
-    ./plugins/tmux.nix
-    ./plugins/yazi.nix
-    ./plugins/zoxide.nix
   ];
 }

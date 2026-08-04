@@ -17,6 +17,7 @@
     ./fzf.nix
     ./ripgrep.nix
     ./starship.nix
+    ./tessera.nix
     ./tmux.nix
     ./yazi.nix
     ./zoxide.nix
