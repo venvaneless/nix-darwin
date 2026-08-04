@@ -2200,6 +2200,11 @@
         return 1
       end
 
+      if not command -q base64
+        echo "Error: base64 is not installed."
+        return 1
+      end
+
       for library_entry in "$library_root"/*
         if not test -d "$library_entry"
           continue
@@ -2219,6 +2224,11 @@
 
         set --local manifest_file \
           "$library_entry/manifest.json"
+
+        if not test -f "$manifest_file"
+          set manifest_file \
+            "$library_entry/repo/manifest.json"
+        end
 
         if not test -f "$manifest_file"
           echo
@@ -2326,20 +2336,20 @@
             continue
           end
 
-          set --local normalized_candidate_name (
-            string lower "$candidate_parts[1]" |
-            string replace -ra '[^a-z0-9]' '''
+          set --local candidate_manifest_id (
+            command gh api \
+              "repos/$github_owner/$candidate_parts[1]/contents/manifest.json" \
+              --jq .content \
+              2>/dev/null |
+            command tr -d '\n' |
+            command base64 -D \
+              2>/dev/null |
+            command jq -r \
+              'if (.id | type) == "string" then .id else empty end' |
+            string trim
           )
 
-          set --local normalized_candidate_plugin_name (
-            string replace -r \
-              '^obsidian' \
-              ''' \
-              "$normalized_candidate_name"
-          )
-
-          if test "$normalized_candidate_name" = "$normalized_id"; or \
-              test "$normalized_candidate_plugin_name" = "$normalized_id"
+          if test "$candidate_manifest_id" = "$library_id"
             set exact_url "$candidate_parts[2]"
             break
           end
