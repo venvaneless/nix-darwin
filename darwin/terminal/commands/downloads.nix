@@ -157,6 +157,13 @@
         set --local function_file \
           "$temporary_directory/downloader.fish"
 
+        # Keep one easy-to-find report of unavailable library entries.
+        set --local undownloaded_file \
+          "$temporary_directory/undownloaded.txt"
+
+        set --local undownloaded_report \
+          "$HOME/Downloads/gitdll-missing.txt"
+
         command mkdir -p -- "$temporary_downloads"
 
         command touch \
@@ -172,6 +179,66 @@
           echo "Error: Could not export $downloader_function."
           command rm -rf -- "$temporary_directory"
           return 1
+        end
+
+        function __gitdll_write_undownloaded_report \
+            --no-scope-shadowing
+
+          set --local staged_report \
+            "$temporary_directory/undownloaded-report.txt"
+
+          if test "$mode" = "--plugins"
+            begin
+              echo "## Plugins"
+
+              if test -s "$undownloaded_file"
+                command cat "$undownloaded_file"
+              else
+                echo "None"
+              end
+
+              echo
+
+              if test -f "$undownloaded_report"
+                command awk '
+                  $0 == "## Themes" { printing = 1 }
+                  /^## / && $0 != "## Themes" { printing = 0 }
+                  printing { print }
+                ' "$undownloaded_report"
+              else
+                echo "## Themes"
+                echo "None"
+              end
+            end >"$staged_report"
+          else
+            begin
+              if test -f "$undownloaded_report"
+                command awk '
+                  $0 == "## Plugins" { printing = 1 }
+                  /^## / && $0 != "## Plugins" { printing = 0 }
+                  printing { print }
+                ' "$undownloaded_report"
+              else
+                echo "## Plugins"
+                echo "None"
+              end
+
+              echo
+              echo "## Themes"
+
+              if test -s "$undownloaded_file"
+                command cat "$undownloaded_file"
+              else
+                echo "None"
+              end
+            end >"$staged_report"
+          end
+
+          if not command mv -- "$staged_report" "$undownloaded_report"
+            echo "Error: Could not update unavailable library report:"
+            echo "  $undownloaded_report"
+            return 1
+          end
         end
 
         set --local source_count 0
@@ -414,9 +481,20 @@ PY
         end
 
         if test "$repository_count" -eq 0
+          command sort -u "$missing_file" >"$undownloaded_file"
+
+          __gitdll_write_undownloaded_report
+          set --local report_status $status
+
+          functions -e __gitdll_write_undownloaded_report
           echo
           echo "Error: No usable repository URLs were found."
           command rm -rf -- "$temporary_directory"
+
+          if test "$report_status" -ne 0
+            return "$report_status"
+          end
+
           return 1
         end
 
@@ -554,6 +632,13 @@ PY
           string trim
         )
 
+        command cat "$missing_file" "$failed_file" |
+          command sort -u \
+          >"$undownloaded_file"
+
+        __gitdll_write_undownloaded_report
+        set --local report_status $status
+
         echo
         echo "============================================================"
         echo "DOWNLOAD SUMMARY"
@@ -582,6 +667,12 @@ PY
         end
 
         command rm -rf -- "$temporary_directory"
+
+        functions -e __gitdll_write_undownloaded_report
+
+        if test "$report_status" -ne 0
+          return "$report_status"
+        end
 
         if test "$downloader_status" -ne 0
           return "$downloader_status"
