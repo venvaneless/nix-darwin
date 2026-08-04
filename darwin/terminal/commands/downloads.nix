@@ -12,37 +12,500 @@
 
 {
   programs.fish.functions = {
-
-
   # -----------------------------------------------------------------
-  # ---- gitdll -> Download one or more Git repositories ---- #
+  # ---- gitdll -> Download Git repositories or rebuild Obsidian libraries ---- #
   #
-  # Accepts:
-  # - One or more repository links
-  # - One or more text files containing repository links
-  # - A mixture of links and text files
-  #
-  # Blank lines and lines beginning with # in text files are ignored.
-  #
-  # Downloads into:
-  # ~/Downloads/gitdll
-  #
-  # Examples:
+  # Existing repository download modes:
   # gitdll "https://github.com/owner/repository"
   # gitdll "https://github.com/owner/one" "https://github.com/owner/two"
   # gitdll links.txt
-  # gitdll links-one.txt links-two.txt
+  #
+  # Obsidian library rebuild modes:
+  # gitdll --plugins "source path" --to "destination path"
+  # gitdll --themes "source path" --to "destination path"
+  #
+  # In the Obsidian modes, every immediate source subfolder is checked
+  # for repository-url.txt. Existing gitdll-plugins and gitdll-themes
+  # functions perform the downloads without being modified.
   # -----------------------------------------------------------------
   gitdll = {
-    description = "Download one or more Git repositories";
+    description = "Download Git repositories or rebuild Obsidian plugin and theme libraries";
 
     body = ''
+      if test (count $argv) -gt 0; and \
+          contains -- "$argv[1]" --plugins --themes
+
+        set --local mode "$argv[1]"
+        set --local source_root
+        set --local destination
+        set --local argument_index 2
+
+        while test "$argument_index" -le (count $argv)
+          switch "$argv[$argument_index]"
+            case --to
+              set argument_index (
+                math "$argument_index + 1"
+              )
+
+              if test "$argument_index" -gt (count $argv)
+                echo "Error: --to requires a destination path."
+                return 1
+              end
+
+              set destination "$argv[$argument_index]"
+
+            case '--*'
+              echo "Error: Unknown option:"
+              echo "  $argv[$argument_index]"
+              return 1
+
+            case '*'
+              if test -n "$source_root"
+                echo "Error: Only one source folder can be provided."
+                return 1
+              end
+
+              set source_root "$argv[$argument_index]"
+          end
+
+          set argument_index (
+            math "$argument_index + 1"
+          )
+        end
+
+        if test -z "$source_root"
+          echo "Error: A source folder is required."
+          echo
+          echo "Usage:"
+          echo '  gitdll --plugins "source path" --to "destination path"'
+          echo '  gitdll --themes "source path" --to "destination path"'
+          return 1
+        end
+
+        if test -z "$destination"
+          echo "Error: A destination folder is required with --to."
+          return 1
+        end
+
+        if not test -d "$source_root"
+          echo "Error: Source folder does not exist:"
+          echo "  $source_root"
+          return 1
+        end
+
+        if test "$mode" = "--plugins"
+          if not functions -q gitdll-plugins
+            echo "Error: gitdll-plugins is not available."
+            return 1
+          end
+
+          set --local library_type plugins
+          set --local downloader_function gitdll-plugins
+          set --local downloader_output_directory gitdll-plugins
+          set --local missing_report_name \
+            missing-plugin-repository-urls.txt
+          set --local failed_report_name \
+            failed-plugin-downloads.txt
+        else
+          if not functions -q gitdll-themes
+            echo "Error: gitdll-themes is not available."
+            return 1
+          end
+
+          set --local library_type themes
+          set --local downloader_function gitdll-themes
+          set --local downloader_output_directory gitdll-themes
+          set --local missing_report_name \
+            missing-theme-repository-urls.txt
+          set --local failed_report_name \
+            failed-theme-downloads.txt
+        end
+
+        command mkdir -p -- "$destination"
+        or begin
+          echo "Error: Could not create destination folder:"
+          echo "  $destination"
+          return 1
+        end
+
+        set --local temporary_directory (
+          command mktemp -d \
+            "$TMPDIR/gitdll-library.XXXXXXXXXX"
+        )
+
+        if test -z "$temporary_directory"
+          echo "Error: Could not create a temporary directory."
+          return 1
+        end
+
+        set --local temporary_home \
+          "$temporary_directory/home"
+
+        set --local temporary_downloads \
+          "$temporary_home/Downloads"
+
+        set --local repositories_file \
+          "$temporary_directory/repositories.txt"
+
+        set --local source_map_file \
+          "$temporary_directory/source-map.tsv"
+
+        set --local missing_file \
+          "$temporary_directory/missing.txt"
+
+        set --local failed_file \
+          "$temporary_directory/failed.txt"
+
+        set --local function_file \
+          "$temporary_directory/downloader.fish"
+
+        command mkdir -p -- "$temporary_downloads"
+
+        command touch \
+          "$repositories_file" \
+          "$source_map_file" \
+          "$missing_file" \
+          "$failed_file"
+
+        functions "$downloader_function" \
+          >"$function_file"
+
+        if not test -s "$function_file"
+          echo "Error: Could not export $downloader_function."
+          command rm -rf -- "$temporary_directory"
+          return 1
+        end
+
+        set --local source_count 0
+        set --local repository_count 0
+        set --local missing_count 0
+
+        for source_folder in "$source_root"/*
+          if not test -d "$source_folder"
+            continue
+          end
+
+          set source_count (
+            math "$source_count + 1"
+          )
+
+          set --local source_name (
+            basename "$source_folder"
+          )
+
+          set --local repository_file \
+            "$source_folder/repository-url.txt"
+
+          if not test -f "$repository_file"
+            printf '%s\n' \
+              "$source_name" \
+              >>"$missing_file"
+
+            set missing_count (
+              math "$missing_count + 1"
+            )
+
+            continue
+          end
+
+          set --local repository_url (
+            command head -n 1 "$repository_file" |
+            string trim
+          )
+
+          if test -z "$repository_url"
+            printf '%s\n' \
+              "$source_name" \
+              >>"$missing_file"
+
+            set missing_count (
+              math "$missing_count + 1"
+            )
+
+            continue
+          end
+
+          set repository_url (
+            string replace -r \
+              '\.git/?$' \
+              ''' \
+              "$repository_url"
+          )
+
+          set repository_url (
+            string replace -r \
+              '/$' \
+              ''' \
+              "$repository_url"
+          )
+
+          if not string match -rq \
+              '^https?://github\.com/[^/]+/[^/]+$' \
+              "$repository_url"
+
+            printf '%s\t%s\n' \
+              "$source_name" \
+              "$repository_url" \
+              >>"$missing_file"
+
+            set missing_count (
+              math "$missing_count + 1"
+            )
+
+            continue
+          end
+
+          printf '%s\n' \
+            "$repository_url" \
+            >>"$repositories_file"
+
+          printf '%s\t%s\n' \
+            "$source_name" \
+            "$repository_url" \
+            >>"$source_map_file"
+
+          set repository_count (
+            math "$repository_count + 1"
+          )
+        end
+
+        set --local missing_report \
+          "$destination/$missing_report_name"
+
+        if test -s "$missing_file"
+          command cp -f \
+            "$missing_file" \
+            "$missing_report"
+        else
+          command rm -f -- "$missing_report"
+        end
+
+        echo
+        echo "============================================================"
+        echo "OBSIDIAN "(string upper "$library_type")
+        echo "============================================================"
+        echo "Source:"
+        echo "  $source_root"
+        echo
+        echo "Destination:"
+        echo "  $destination"
+        echo
+        echo "Source folders:          $source_count"
+        echo "Usable repository URLs: $repository_count"
+        echo "Missing or invalid URLs: $missing_count"
+        echo "============================================================"
+
+        if test "$missing_count" -gt 0
+          echo
+          echo "Folders without a usable repository-url.txt:"
+          echo
+
+          while read --local missing_entry
+            if test -n "$missing_entry"
+              echo "  $missing_entry"
+            end
+          end <"$missing_file"
+
+          echo
+          echo "Missing URL report:"
+          echo "  $missing_report"
+        end
+
+        if test "$repository_count" -eq 0
+          echo
+          echo "Error: No usable repository URLs were found."
+          command rm -rf -- "$temporary_directory"
+          return 1
+        end
+
+        echo
+        echo "Downloading fresh copies..."
+        echo
+
+        env \
+          HOME="$temporary_home" \
+          fish \
+          --no-config \
+          --command '
+            source "$argv[1]"
+            $argv[2] "$argv[3]"
+          ' \
+          "$function_file" \
+          "$downloader_function" \
+          "$repositories_file"
+
+        set --local downloader_status $status
+
+        set --local generated_root \
+          "$temporary_downloads/$downloader_output_directory"
+
+        set --local downloaded_count 0
+        set --local skipped_existing_count 0
+        set --local move_failed_count 0
+
+        if test -d "$generated_root"
+          for generated_folder in "$generated_root"/*
+            if not test -d "$generated_folder"
+              continue
+            end
+
+            set --local generated_name (
+              basename "$generated_folder"
+            )
+
+            set --local final_folder \
+              "$destination/$generated_name"
+
+            if test -e "$final_folder"; or test -L "$final_folder"
+              echo
+              echo "Skipping existing destination:"
+              echo "  $final_folder"
+
+              set skipped_existing_count (
+                math "$skipped_existing_count + 1"
+              )
+
+              continue
+            end
+
+            if command mv \
+                -- \
+                "$generated_folder" \
+                "$final_folder"
+
+              echo
+              echo "Moved:"
+              echo "  $final_folder"
+
+              set downloaded_count (
+                math "$downloaded_count + 1"
+              )
+            else
+              echo
+              echo "Error: Could not move downloaded folder:"
+              echo "  $generated_folder"
+              echo "To:"
+              echo "  $final_folder"
+
+              set move_failed_count (
+                math "$move_failed_count + 1"
+              )
+            end
+          end
+        end
+
+        while read --local source_mapping
+          if test -z "$source_mapping"
+            continue
+          end
+
+          set --local mapping_parts (
+            string split \t "$source_mapping"
+          )
+
+          if test (count $mapping_parts) -lt 2
+            continue
+          end
+
+          set --local original_name \
+            "$mapping_parts[1]"
+
+          set --local original_url \
+            "$mapping_parts[2]"
+
+          set --local matching_repository_file (
+            command find "$destination" \
+              -mindepth 2 \
+              -maxdepth 2 \
+              -type f \
+              -name repository-url.txt \
+              -exec grep \
+                -lFx \
+                "$original_url" \
+                {} \; \
+              2>/dev/null |
+            command head -n 1
+          )
+
+          if test -z "$matching_repository_file"
+            printf '%s\t%s\n' \
+              "$original_name" \
+              "$original_url" \
+              >>"$failed_file"
+          end
+        end <"$source_map_file"
+
+        set --local failed_report \
+          "$destination/$failed_report_name"
+
+        if test -s "$failed_file"
+          command cp -f \
+            "$failed_file" \
+            "$failed_report"
+        else
+          command rm -f -- "$failed_report"
+        end
+
+        set --local failed_count (
+          command wc -l \
+            <"$failed_file" |
+          string trim
+        )
+
+        echo
+        echo "============================================================"
+        echo "DOWNLOAD SUMMARY"
+        echo "============================================================"
+        echo "Downloaded:              $downloaded_count"
+        echo "Destination already had: $skipped_existing_count"
+        echo "Move failures:           $move_failed_count"
+        echo "Missing repository URL:  $missing_count"
+        echo "Failed downloads:        $failed_count"
+        echo "============================================================"
+
+        if test "$failed_count" -gt 0
+          echo
+          echo "Repositories that were not downloaded:"
+          echo
+
+          while read --local failed_entry
+            if test -n "$failed_entry"
+              echo "  $failed_entry"
+            end
+          end <"$failed_file"
+
+          echo
+          echo "Failed download report:"
+          echo "  $failed_report"
+        end
+
+        command rm -rf -- "$temporary_directory"
+
+        if test "$downloader_status" -ne 0
+          return "$downloader_status"
+        end
+
+        if test "$move_failed_count" -gt 0
+          return 1
+        end
+
+        if test "$failed_count" -gt 0
+          return 1
+        end
+
+        return 0
+      end
+
       set --local destination "$HOME/Downloads/gitdll"
 
       if test (count $argv) -eq 0
         echo "Usage:"
         echo '  gitdll "https://github.com/owner/repository" [...]'
         echo "  gitdll <links.txt> [more-links-or-files ...]"
+        echo
+        echo "Obsidian library modes:"
+        echo '  gitdll --plugins "source path" --to "destination path"'
+        echo '  gitdll --themes "source path" --to "destination path"'
         return 1
       end
 
@@ -67,7 +530,7 @@
             end
 
             set --append repositories "$line"
-          end < "$source"
+          end <"$source"
         else
           set --append repositories "$source"
         end
@@ -162,6 +625,7 @@
     '';
   };
   # -----------------------------------------------------------------
+  
 
   # -----------------------------------------------------------------
   # ---- gitdll-plugins -> Download Obsidian plugins ---- #

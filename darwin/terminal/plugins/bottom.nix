@@ -45,7 +45,7 @@
           "write"
         ];
 
-        default_sort = "cpu";
+        default_sort = "cpu%";
         show_command = true;
         group_processes = false;
         disable_advanced_kill = false;
