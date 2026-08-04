@@ -378,7 +378,7 @@ in
 {
   config = lib.mkIf enableTessera {
     home.packages = [
-      pkgs.wtf
+      pkgs.wtfutil
     ];
 
     xdg.configFile."wtf/config.yml".text = tesseraConfig;
