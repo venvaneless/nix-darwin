@@ -36,15 +36,15 @@
       };
 
       processes = {
-        # Process table columns.
         columns = [
-          "PID"
-          "Name"
-          "CPU%"
-          "Mem%"
-          "Read/s"
-          "Write/s"
+          "pid"
+          "name"
+          "cpu%"
+          "mem%"
+          "read"
+          "write"
         ];
+      };
 
         # Start sorted by CPU usage.
         default_sort = "cpu";
