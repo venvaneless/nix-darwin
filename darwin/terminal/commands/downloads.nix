@@ -193,6 +193,35 @@
             basename "$source_folder"
           )
 
+          set --local manifest_file \
+            "$source_folder/manifest.json"
+
+          if test -f "$manifest_file"
+            set --local manifest_id (
+              /usr/bin/python3 - "$manifest_file" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+
+try:
+    with open(path, "r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    value = str(data.get("id", "")).strip()
+
+    if value:
+        print(value)
+except Exception:
+    pass
+PY
+            )
+
+            if test -n "$manifest_id"
+              set source_name "$manifest_id"
+            end
+          end
+
           set --local repository_file \
             "$source_folder/repository-url.txt"
 

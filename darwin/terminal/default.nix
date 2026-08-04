@@ -106,7 +106,9 @@
     # ---- Fish themes ---- #
     ./fish-themes.nix
 
-    # ---- Fish modules ---- #
+    # ---- CLI/TUI tools ---- #
+    ./cli-tuis
+      
     ./plugins/atuin.nix
     ./plugins/bottom.nix
     ./plugins/delta.nix
