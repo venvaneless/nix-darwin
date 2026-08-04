@@ -2317,7 +2317,7 @@
             command gh api \
               "users/$github_owner/repos?per_page=100&type=owner" \
               --jq \
-              ".[] | select(.archived | not) | (.name | ascii_downcase) as \$name | (\$name | gsub(\"[^a-z0-9]\"; \"\")) as \$normalized_name | select((\$normalized_name | contains(\"$normalized_id\")) or (\"$normalized_id\" | contains(\$normalized_name)) or (\$name | contains(\"obsidian\"))) | [.name, .html_url, \"$github_owner\"] | @tsv" \
+              ".[] | select(.archived | not) | (.name | ascii_downcase) as \$name | (\$name | gsub(\"[^a-z0-9]\"; \"\")) as \$normalized_name | select((\$normalized_name | contains(\"$normalized_id\")) or (\"$normalized_id\" | contains(\$normalized_name)) or (\$name | contains(\"obsidian\"))) | [\"$github_owner/\" + .name, .html_url] | @tsv" \
               2>/dev/null
           )
         else
@@ -2328,7 +2328,7 @@
               -f "q=$library_id in:name" \
               -f per_page=100 \
               --jq \
-              '.items[]? | select(.archived | not) | [.name, .html_url, .owner.login] | @tsv' \
+              '.items[]? | select(.archived | not) | [.owner.login + "/" + .name, .html_url] | @tsv' \
               2>/dev/null
           )
         end
@@ -2346,13 +2346,13 @@
             string split \t "$candidate"
           )
 
-          if test (count $candidate_parts) -lt 3
+          if test (count $candidate_parts) -lt 2
             continue
           end
 
           set --local candidate_manifest_id (
             command gh api \
-              "repos/$candidate_parts[3]/$candidate_parts[1]/contents/manifest.json" \
+              "repos/$candidate_parts[1]/contents/manifest.json" \
               --jq .content \
               2>/dev/null |
             command tr -d '\n' |
@@ -2375,19 +2375,21 @@
           set --local candidate_urls
           set --local candidate_index 1
 
-          echo "Choose a repository for $entry_name (id: $library_id):"
+          echo "Choose a repository for $entry_name:"
+          echo "  local id: $library_id"
+          echo "  local author: $author"
 
           for candidate in $candidates
             set --local candidate_parts (
               string split \t "$candidate"
             )
 
-            if test (count $candidate_parts) -lt 3
+            if test (count $candidate_parts) -lt 2
               continue
             end
 
             set --append candidate_urls "$candidate_parts[2]"
-            echo "  $candidate_index) $candidate_parts[3]/$candidate_parts[1]"
+            echo "  $candidate_index) $candidate_parts[1]"
             echo "     $candidate_parts[2]"
 
             set candidate_index (
