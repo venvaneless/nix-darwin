@@ -2220,9 +2220,29 @@
         set --local repository_file \
           "$library_entry/repository-url.txt"
 
-        if test -f "$repository_file"; or \
-            test -f "$library_entry/repo/repository-url.txt"
-          continue
+        set --local existing_repository_file
+
+        if test -f "$repository_file"
+          set existing_repository_file "$repository_file"
+        else if test -f "$library_entry/repo/repository-url.txt"
+          set existing_repository_file \
+            "$library_entry/repo/repository-url.txt"
+        end
+
+        if test -n "$existing_repository_file"
+          set --local existing_repository_url (
+            string trim <"$existing_repository_file"
+          )
+
+          if string match -rq \
+              '^https?://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?(\\.git)?$' \
+              "$existing_repository_url"
+            continue
+          end
+
+          # Repair an empty or malformed URL file instead of permanently
+          # treating it as already resolved.
+          set repository_file "$existing_repository_file"
         end
 
         set --local manifest_file \
@@ -2336,27 +2356,37 @@
           end
         end
 
+        # Search repository manifests by the installed ID, rather than
+        # presenting arbitrary repositories whose names happen to be similar.
+        # Keep a failed GitHub response out of the candidate list entirely.
         set --local candidates
+        set --local manifest_search_query \
+          "\"$library_id\" filename:manifest.json"
+        set --local manifest_candidates (
+          command gh api \
+            --method GET \
+            search/code \
+            -f "q=$manifest_search_query" \
+            -f per_page=100 \
+            --jq '.items[]? | .repository.full_name' \
+            2>/dev/null
+        )
 
-        if test "$has_github_owner" -eq 1
-          set candidates (
+        if test $status -eq 0
+          set candidates $manifest_candidates
+        else if test "$has_github_owner" -eq 1
+          # Code search may be unavailable for a GitHub token. In that case,
+          # only inspect repositories owned by the manifest's GitHub author.
+          set --local owner_candidates (
             command gh api \
               "users/$github_owner/repos?per_page=100&type=owner" \
-              --jq \
-              ".[] | select(.archived | not) | (.name | ascii_downcase) as \$name | (\$name | gsub(\"[^a-z0-9]\"; \"\")) as \$normalized_name | select((\$normalized_name | contains(\"$normalized_id\")) or (\"$normalized_id\" | contains(\$normalized_name)) or (\$name | contains(\"obsidian\"))) | .full_name" \
+              --jq '.[] | select(.archived | not) | .full_name' \
               2>/dev/null
           )
-        else
-          set candidates (
-            command gh api \
-              --method GET \
-              search/repositories \
-              -f "q=$library_id in:name" \
-              -f per_page=100 \
-              --jq \
-              '.items[]? | select(.archived | not) | .full_name' \
-              2>/dev/null
-          )
+
+          if test $status -eq 0
+            set candidates $owner_candidates
+          end
         end
 
         if test (count $candidates) -eq 0
@@ -2366,9 +2396,11 @@
         end
 
         set --local exact_url
+        set --local id_candidates
+        set --local candidate_details
 
         for candidate in $candidates
-          set --local candidate_manifest_matches (
+          set --local candidate_manifest_fields (
             command gh api \
               "repos/$candidate/contents/manifest.json" \
               --jq .content \
@@ -2376,23 +2408,39 @@
             command tr -d '\n' |
             command base64 -D \
               2>/dev/null |
-            command jq -e \
-              --arg id "$library_id" \
-              --arg author "$author" \
-              --arg author_url "$author_url" \
-              '
-                (.id? | type) == "string" and .id == $id and
-                (if $author == "" then true else
-                  (.author? | type) == "string" and .author == $author
-                end) and
-                (if $author_url == "" then true else
-                  (.authorUrl? | type) == "string" and .authorUrl == $author_url
-                end)
-              ' \
-              >/dev/null
+            command jq -r \
+              'if (.id | type) == "string" then
+                [.id, (.author // ""), (.authorUrl // "")] | @tsv
+              else
+                empty
+              end'
           )
 
-          if test $status -eq 0
+          if test (count $candidate_manifest_fields) -ne 1
+            continue
+          end
+
+          set --local candidate_fields (
+            string split \t "$candidate_manifest_fields[1]"
+          )
+          set --local candidate_id "$candidate_fields[1]"
+          set --local candidate_author "$candidate_fields[2]"
+          set --local candidate_author_url "$candidate_fields[3]"
+
+          if test "$candidate_id" != "$library_id"
+            continue
+          end
+
+          set --append id_candidates "$candidate"
+          set --append candidate_details (
+            string join \t \
+              "$candidate" \
+              "$candidate_author" \
+              "$candidate_author_url"
+          )
+
+          if test "$candidate_author" = "$author"; and \
+              test "$candidate_author_url" = "$author_url"
             set exact_url "https://github.com/$candidate"
             break
           end
@@ -2401,6 +2449,12 @@
         if test -n "$exact_url"
           set --local selected_url "$exact_url"
         else
+          if test (count $id_candidates) -eq 0
+            set --append missing_entries \
+              "$entry_name — no remote manifest with matching id"
+            continue
+          end
+
           set --local candidate_urls
           set --local candidate_index 1
 
@@ -2408,9 +2462,20 @@
           echo "  local id: $library_id"
           echo "  local author: $author"
 
-          for candidate in $candidates
+          for candidate_detail in $candidate_details
+            set --local candidate_parts (
+              string split \t "$candidate_detail"
+            )
+            set --local candidate "$candidate_parts[1]"
+            set --local candidate_author "$candidate_parts[2]"
+            set --local candidate_author_url "$candidate_parts[3]"
+
             set --append candidate_urls "$candidate"
             echo "  $candidate_index) $candidate"
+            echo "     author: $candidate_author"
+            if test -n "$candidate_author_url"
+              echo "     authorUrl: $candidate_author_url"
+            end
             echo "     https://github.com/$candidate"
 
             set candidate_index (
