@@ -2205,6 +2205,9 @@
         return 1
       end
 
+      set --local missing_entries
+      set --local missing_report "$HOME/Downloads/obsidian-missing.txt"
+
       for library_entry in "$library_root"/*
         if not test -d "$library_entry"
           continue
@@ -2231,8 +2234,8 @@
         end
 
         if not test -f "$manifest_file"
-          echo
-          echo "Skipping $entry_name: manifest.json is missing."
+          set --append missing_entries \
+            "$entry_name — manifest.json missing"
           continue
         end
 
@@ -2276,8 +2279,8 @@
         if not string match -rq \
             '^[A-Za-z0-9-]+$' \
             "$github_owner"
-          echo
-          echo "Skipping $entry_name: manifest author is not a usable GitHub owner."
+          set --append missing_entries \
+            "$entry_name — usable GitHub author not found"
           continue
         end
 
@@ -2287,8 +2290,8 @@
         )
 
         if test (string length "$normalized_id") -lt 3
-          echo
-          echo "Skipping $entry_name: plugin or theme id is too short to match safely."
+          set --append missing_entries \
+            "$entry_name — manifest id is too short"
           continue
         end
 
@@ -2319,9 +2322,8 @@
         )
 
         if test (count $candidates) -eq 0
-          echo
-          echo "No matching GitHub repositories were found for:"
-          echo "  $entry_name (id: $library_id; owner: $github_owner)"
+          set --append missing_entries \
+            "$entry_name — no matching GitHub repository found"
           continue
         end
 
@@ -2355,13 +2357,8 @@
           end
         end
 
-        echo
-        echo "Missing repository-url.txt:"
-        echo "  $entry_name (id: $library_id; owner: $github_owner)"
-
         if test -n "$exact_url"
           set --local selected_url "$exact_url"
-          echo "Matched the manifest id to the author's repository."
         else
           set --local candidate_urls
           set --local candidate_index 1
@@ -2386,19 +2383,20 @@
 
           if test (count $candidate_urls) -eq 1
             set --local selected_url "$candidate_urls[1]"
-            echo "Using the only matching repository."
           else
             read --prompt-str "Choose a repository number, or s to skip: " selection
 
             if test "$selection" = s; or test "$selection" = S
-              echo "Skipped: $entry_name"
+              set --append missing_entries \
+                "$entry_name — skipped by user"
               continue
             end
 
             if not string match -rq '^[0-9]+$' "$selection"; or \
-                test "$selection" -lt 1; or \
-                test "$selection" -gt (count $candidate_urls)
-              echo "Skipped $entry_name: invalid selection."
+              test "$selection" -lt 1; or \
+              test "$selection" -gt (count $candidate_urls)
+              set --append missing_entries \
+                "$entry_name — invalid repository selection"
               continue
             end
 
@@ -2407,8 +2405,16 @@
         end
 
         printf '%s\n' "$selected_url" >"$repository_file"
-        echo "Saved:"
-        echo "  $repository_file"
+        echo "Saved $repository_file"
+      end
+
+      if test (count $missing_entries) -gt 0
+        printf '%s\n' $missing_entries >"$missing_report"
+        echo "Unmatched entries:"
+        echo "  $missing_report"
+      else
+        printf '%s\n' "All scanned entries were matched." >"$missing_report"
+        echo "All scanned entries were matched."
       end
     '';
   };
