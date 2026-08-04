@@ -856,6 +856,33 @@
           set canonical_repository_url \
               "https://github.com/$repository_owner/$repository_name"
 
+          # Skip completed destinations before making any network requests.
+          set existing_repository_file (
+              command find "$destination" \
+                  -mindepth 2 \
+                  -maxdepth 2 \
+                  -type f \
+                  -name repository-url.txt \
+                  -exec grep -lFx "$canonical_repository_url" {} \; \
+                  2>/dev/null |
+              command head -n 1
+          )
+
+          if test -n "$existing_repository_file"
+              set existing_plugin_directory (
+                  dirname "$existing_repository_file"
+              )
+
+              if test -f "$existing_plugin_directory/manifest.json"; and \
+                      test -f "$existing_plugin_directory/main.js"
+
+                  echo
+                  echo "Skipping:"
+                  echo "  $existing_plugin_directory (already complete)"
+                  continue
+              end
+          end
+
           echo
           echo "Repository:"
           echo "  $canonical_repository_url"
@@ -884,7 +911,50 @@
                   2>/dev/null
           )
 
+          # Prefer standard files from the newest release before repository fallback.
+          set release_json (
+              command gh api \
+                  "repos/$repository_owner/$repository_name/releases/latest" \
+                  2>/dev/null
+          )
+
+          if test $status -eq 0; and test -n "$release_json"
+              set release_assets (
+                  printf "%s" "$release_json" |
+                  command jq -r \
+                      '.assets[]? | [.name, .browser_download_url] | @tsv'
+              )
+
+              for release_asset in $release_assets
+                  set release_asset_parts (
+                      string split \t "$release_asset"
+                  )
+
+                  if test (count $release_asset_parts) -lt 2
+                      continue
+                  end
+
+                  set release_asset_name "$release_asset_parts[1]"
+                  set release_asset_url "$release_asset_parts[2]"
+
+                  switch "$release_asset_name"
+                      case manifest.json main.js styles.css
+                          command curl \
+                              --fail \
+                              --location \
+                              --silent \
+                              --show-error \
+                              --output "$repository_extract/$release_asset_name" \
+                              "$release_asset_url"
+                  end
+              end
+          end
+
           for expected_file in manifest.json main.js styles.css
+              if test -f "$repository_extract/$expected_file"
+                  continue
+              end
+
               set repository_file_path (
                   printf '%s\n' $repository_paths |
                   command awk -F/ \
@@ -1005,23 +1075,45 @@
           end
 
           set plugin_directory "$destination/$plugin_id"
+          set plugin_directory_exists 0
 
           if test -d "$plugin_directory"
+              if test -f "$plugin_directory/manifest.json"; and \
+                      test -f "$plugin_directory/main.js"; and \
+                      test -f "$plugin_directory/repository-url.txt"
+
+                  echo
+                  echo "Skipping:"
+                  echo "  $plugin_id (already complete)"
+                  command rm -rf -- "$temporary_directory"
+                  continue
+              end
+
               echo
-              echo "Skipping:"
-              echo "  $plugin_id (already exists)"
-              command rm -rf -- "$temporary_directory"
-              continue
+              echo "Resuming incomplete plugin:"
+              echo "  $plugin_id"
+              set plugin_directory_exists 1
           end
 
           set plugin_stage "$temporary_directory/plugin"
-          command mkdir -p -- "$plugin_stage"
 
-          command cp -f \
-              "$manifest" \
-              "$plugin_stage/manifest.json"
+          if test "$plugin_directory_exists" -eq 1
+              set plugin_stage "$plugin_directory"
+          else
+              command mkdir -p -- "$plugin_stage"
+          end
 
-          set saved_files manifest.json
+          if not test -f "$plugin_stage/manifest.json"
+              command cp -f \
+                  "$manifest" \
+                  "$plugin_stage/manifest.json"
+          end
+
+          set saved_files
+
+          if test -f "$plugin_stage/manifest.json"
+              set saved_files manifest.json
+          end
 
           set release_json (
               command gh api \
@@ -1050,6 +1142,10 @@
 
                   switch "$release_asset_name"
                       case main.js styles.css manifest.json
+                          if test -f "$plugin_stage/$release_asset_name"
+                              continue
+                          end
+
                           if command curl \
                                   --fail \
                                   --location \
@@ -1071,9 +1167,31 @@
                                   "Notice: Could not download release asset: $release_asset_name"
                           end
 
-                      case '*.zip'
-                          echo \
-                              "Notice: Skipping archive release asset: $release_asset_name"
+                      case '*'
+                          # GitHub's source archives are not listed in .assets.
+                          command mkdir -p \
+                              "$plugin_stage/release-assets"
+
+                          if test -f \
+                                  "$plugin_stage/release-assets/$release_asset_name"
+                              continue
+                          end
+
+                          if command curl \
+                                  --fail \
+                                  --location \
+                                  --silent \
+                                  --show-error \
+                                  --output "$plugin_stage/release-assets/$release_asset_name" \
+                                  "$release_asset_url"
+
+                              set saved_files \
+                                  $saved_files \
+                                  "release-assets/$release_asset_name"
+                          else
+                              echo \
+                                  "Notice: Could not download release asset: $release_asset_name"
+                          end
                   end
               end
           else
@@ -1180,7 +1298,10 @@
               $saved_files \
               repository-url.txt
 
-          if not command mv \
+          if test "$plugin_directory_exists" -eq 1
+              echo "Updated:"
+              echo "  $plugin_directory"
+          else if not command mv \
                   -- \
                   "$plugin_stage" \
                   "$plugin_directory"
@@ -1344,6 +1465,31 @@
               set fallback_folder_name theme
           end
 
+          # Skip completed destinations before making any network requests.
+          set existing_repository_file (
+              command find "$destination" \
+                  -mindepth 2 \
+                  -maxdepth 2 \
+                  -type f \
+                  -name repository-url.txt \
+                  -exec grep -lFx "$canonical_repository_url" {} \; \
+                  2>/dev/null |
+              command head -n 1
+          )
+
+          if test -n "$existing_repository_file"
+              set existing_theme_directory (
+                  dirname "$existing_repository_file"
+              )
+
+              if test -f "$existing_theme_directory/theme.css"
+                  echo
+                  echo "Skipping:"
+                  echo "  $existing_theme_directory (already complete)"
+                  continue
+              end
+          end
+
           echo
           echo "Repository:"
           echo "  $canonical_repository_url"
@@ -1371,7 +1517,50 @@
                   2>/dev/null
           )
 
+          # Prefer standard files from the newest release before repository fallback.
+          set release_json (
+              command gh api \
+                  "repos/$repository_owner/$repository_name/releases/latest" \
+                  2>/dev/null
+          )
+
+          if test $status -eq 0; and test -n "$release_json"
+              set release_assets (
+                  printf "%s" "$release_json" |
+                  command jq -r \
+                      '.assets[]? | [.name, .browser_download_url] | @tsv'
+              )
+
+              for release_asset in $release_assets
+                  set release_asset_parts (
+                      string split \t "$release_asset"
+                  )
+
+                  if test (count $release_asset_parts) -lt 2
+                      continue
+                  end
+
+                  set release_asset_name "$release_asset_parts[1]"
+                  set release_asset_url "$release_asset_parts[2]"
+
+                  switch "$release_asset_name"
+                      case manifest.json theme.css obsidian.css
+                          command curl \
+                              --fail \
+                              --location \
+                              --silent \
+                              --show-error \
+                              --output "$extracted/$release_asset_name" \
+                              "$release_asset_url"
+                  end
+              end
+          end
+
           for expected_file in manifest.json theme.css obsidian.css
+              if test -f "$extracted/$expected_file"
+                  continue
+              end
+
               set repository_file_path (
                   printf '%s\n' $repository_paths |
                   command awk -F/ \
@@ -1471,6 +1660,23 @@
                                   --silent \
                                   --show-error \
                                   --output "$extracted/$release_asset_name" \
+                                  "$release_asset_url"
+
+                              echo \
+                                  "Notice: Could not download release asset: $release_asset_name"
+                          end
+
+                      case '*'
+                          # GitHub's source archives are not listed in .assets.
+                          command mkdir -p \
+                              "$extracted/release-assets"
+
+                          if not command curl \
+                                  --fail \
+                                  --location \
+                                  --silent \
+                                  --show-error \
+                                  --output "$extracted/release-assets/$release_asset_name" \
                                   "$release_asset_url"
 
                               echo \
@@ -1604,39 +1810,77 @@
 
           set theme_directory \
               "$destination/$theme_folder_name"
+          set theme_directory_exists 0
 
           if test -d "$theme_directory"
+              if test -f "$theme_directory/theme.css"; and \
+                      test -f "$theme_directory/repository-url.txt"
+
+                  echo
+                  echo "Skipping:"
+                  echo "  $theme_folder_name (already complete)"
+                  command rm -rf -- "$temporary_directory"
+                  continue
+              end
+
               echo
-              echo "Skipping:"
-              echo "  $theme_folder_name (already exists)"
-              command rm -rf -- "$temporary_directory"
-              continue
+              echo "Resuming incomplete theme:"
+              echo "  $theme_folder_name"
+              set theme_directory_exists 1
           end
 
           set theme_stage "$temporary_directory/theme"
 
-          command mkdir -p -- "$theme_stage"
+          if test "$theme_directory_exists" -eq 1
+              set theme_stage "$theme_directory"
+          else
+              command mkdir -p -- "$theme_stage"
+          end
 
           set saved_files
 
+          if test -d "$extracted/release-assets"
+              command mkdir -p "$theme_stage/release-assets"
+
+              for release_asset in "$extracted/release-assets"/*
+                  set release_asset_name (basename "$release_asset")
+
+                  if test -e "$theme_stage/release-assets/$release_asset_name"
+                      continue
+                  end
+
+                  command cp -R \
+                      "$release_asset" \
+                      "$theme_stage/release-assets/$release_asset_name"
+
+                  set saved_files release-assets
+              end
+          end
+
           if test -n "$manifest"; and test -f "$manifest"
-              command cp -f \
-                  "$manifest" \
-                  "$theme_stage/manifest.json"
+              if not test -f "$theme_stage/manifest.json"
+                  command cp -f \
+                      "$manifest" \
+                      "$theme_stage/manifest.json"
+              end
 
               set saved_files manifest.json
           end
 
           if test -f "$source_theme_css"
-              command cp -f \
-                  "$source_theme_css" \
-                  "$theme_stage/theme.css"
+              if not test -f "$theme_stage/theme.css"
+                  command cp -f \
+                      "$source_theme_css" \
+                      "$theme_stage/theme.css"
+              end
 
               set saved_files $saved_files theme.css
           else
-              command cp -f \
-                  "$source_obsidian_css" \
-                  "$theme_stage/theme.css"
+              if not test -f "$theme_stage/theme.css"
+                  command cp -f \
+                      "$source_obsidian_css" \
+                      "$theme_stage/theme.css"
+              end
 
               set saved_files $saved_files theme.css
               set source_obsidian_css
@@ -1645,9 +1889,11 @@
           end
 
           if test -f "$source_obsidian_css"
-              command cp -f \
-                  "$source_obsidian_css" \
-                  "$theme_stage/obsidian.css"
+              if not test -f "$theme_stage/obsidian.css"
+                  command cp -f \
+                      "$source_obsidian_css" \
+                      "$theme_stage/obsidian.css"
+              end
 
               set saved_files $saved_files obsidian.css
           end
@@ -1894,7 +2140,10 @@
               $saved_files \
               repository-url.txt
 
-          if not command mv \
+          if test "$theme_directory_exists" -eq 1
+              echo "Updated:"
+              echo "  $theme_directory"
+          else if not command mv \
                   -- \
                   "$theme_stage" \
                   "$theme_directory"
@@ -1918,8 +2167,191 @@
     '';
   };
   # -----------------------------------------------------------------
-  
-  
+
+
+  # -----------------------------------------------------------------
+  # ---- obsidian-missing -> Restore repository URL files ---- #
+  # -----------------------------------------------------------------
+  obsidian-missing = {
+    description = "Interactively restore missing Obsidian repository-url.txt files";
+
+    body = ''
+      if test (count $argv) -ne 1
+        echo "Usage:"
+        echo '  obsidian-missing "library path"'
+        return 1
+      end
+
+      set --local library_root "$argv[1]"
+
+      if not test -d "$library_root"
+        echo "Error: Library directory does not exist:"
+        echo "  $library_root"
+        return 1
+      end
+
+      if not command -q gh
+        echo "Error: gh is not installed."
+        return 1
+      end
+
+      if not command -q jq
+        echo "Error: jq is not installed."
+        return 1
+      end
+
+      for library_entry in "$library_root"/*
+        if not test -d "$library_entry"
+          continue
+        end
+
+        set --local entry_name (
+          basename "$library_entry"
+        )
+
+        set --local repository_file \
+          "$library_entry/repository-url.txt"
+
+        if test -f "$repository_file"; or \
+            test -f "$library_entry/repo/repository-url.txt"
+          continue
+        end
+
+        set --local manifest_file \
+          "$library_entry/manifest.json"
+
+        if not test -f "$manifest_file"
+          echo
+          echo "Skipping $entry_name: manifest.json is missing."
+          continue
+        end
+
+        set --local library_id (
+          command jq -r \
+            'if (.id | type) == "string" then .id else empty end' \
+            "$manifest_file" |
+          string trim
+        )
+
+        set --local author (
+          command jq -r \
+            'if (.author | type) == "string" then .author else empty end' \
+            "$manifest_file" |
+          string trim
+        )
+
+        set --local author_url (
+          command jq -r \
+            'if (.authorUrl | type) == "string" then .authorUrl else empty end' \
+            "$manifest_file" |
+          string trim
+        )
+
+        if test -z "$library_id"
+          set library_id "$entry_name"
+        end
+
+        set --local github_owner (
+          string replace -r \
+            '^https?://github\\.com/([^/]+)/?.*$' \
+            '$1' \
+            -- \
+            "$author_url"
+        )
+
+        if test "$github_owner" = "$author_url"
+          set github_owner "$author"
+        end
+
+        if not string match -rq \
+            '^[A-Za-z0-9-]+$' \
+            "$github_owner"
+          echo
+          echo "Skipping $entry_name: manifest author is not a usable GitHub owner."
+          continue
+        end
+
+        set --local normalized_id (
+          string lower "$library_id" |
+          string replace -ra '[^a-z0-9]' '''
+        )
+
+        if test (string length "$normalized_id") -lt 3
+          echo
+          echo "Skipping $entry_name: plugin or theme id is too short to match safely."
+          continue
+        end
+
+        set --local candidates (
+          command gh api \
+            "users/$github_owner/repos?per_page=100&type=owner" \
+            --jq \
+            ".[] | select(.archived | not) | (.name | ascii_downcase) as \$name | (\$name | gsub(\"[^a-z0-9]\"; \"\")) as \$normalized_name | select((\$normalized_name | contains(\"$normalized_id\")) or (\"$normalized_id\" | contains(\$normalized_name)) or (\$name | contains(\"obsidian\"))) | [.name, .html_url] | @tsv" \
+            2>/dev/null
+        )
+
+        if test (count $candidates) -eq 0
+          echo
+          echo "No matching GitHub repositories were found for:"
+          echo "  $entry_name (id: $library_id; owner: $github_owner)"
+          continue
+        end
+
+        set --local candidate_urls
+        set --local candidate_index 1
+
+        echo
+        echo "Missing repository-url.txt:"
+        echo "  $entry_name (id: $library_id; owner: $github_owner)"
+
+        for candidate in $candidates
+          set --local candidate_parts (
+            string split \t "$candidate"
+          )
+
+          if test (count $candidate_parts) -lt 2
+            continue
+          end
+
+          set --append candidate_urls "$candidate_parts[2]"
+          echo "  $candidate_index) $candidate_parts[1]"
+          echo "     $candidate_parts[2]"
+
+          set candidate_index (
+            math "$candidate_index + 1"
+          )
+        end
+
+        if test (count $candidate_urls) -eq 1
+          set --local selected_url "$candidate_urls[1]"
+          echo "Using the only matching repository."
+        else
+          read --prompt-str "Choose a repository number, or s to skip: " selection
+
+          if test "$selection" = s; or test "$selection" = S
+            echo "Skipped: $entry_name"
+            continue
+          end
+
+          if not string match -rq '^[0-9]+$' "$selection"; or \
+              test "$selection" -lt 1; or \
+              test "$selection" -gt (count $candidate_urls)
+            echo "Skipped $entry_name: invalid selection."
+            continue
+          end
+
+          set --local selected_url "$candidate_urls[$selection]"
+        end
+
+        printf '%s\n' "$selected_url" >"$repository_file"
+        echo "Saved:"
+        echo "  $repository_file"
+      end
+    '';
+  };
+  # -----------------------------------------------------------------
+
+
   # -----------------------------------------------------------------
     # ---- ia -> Internet Archive helper through Python ---- #
     # Download Internet Archive files by type
