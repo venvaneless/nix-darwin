@@ -94,7 +94,6 @@
         # Keep selected downloader settings outside the mode conditional.
         set --local library_type
         set --local downloader_function
-        set --local downloader_output_directory
         set --local missing_report_name
         set --local failed_report_name
 
@@ -106,7 +105,6 @@
 
           set library_type plugins
           set downloader_function gitdll-plugins
-          set downloader_output_directory gitdll-plugins
           set missing_report_name \
             missing-plugin-repository-urls.txt
           set failed_report_name \
@@ -119,7 +117,6 @@
 
           set library_type themes
           set downloader_function gitdll-themes
-          set downloader_output_directory gitdll-themes
           set missing_report_name \
             missing-theme-repository-urls.txt
           set failed_report_name \
@@ -143,12 +140,6 @@
           return 1
         end
 
-        set --local temporary_home \
-          "$temporary_directory/home"
-
-        set --local temporary_downloads \
-          "$temporary_home/Downloads"
-
         set --local repositories_file \
           "$temporary_directory/repositories.txt"
 
@@ -171,7 +162,10 @@
         set --local undownloaded_report \
           "$HOME/Downloads/gitdll-missing.txt"
 
-        command mkdir -p -- "$temporary_downloads"
+        set --local downloader_temporary_directory \
+          "$destination/.gitdll-tmp"
+
+        command mkdir -p -- "$downloader_temporary_directory"
 
         command touch \
           "$repositories_file" \
@@ -484,76 +478,21 @@
         echo
 
         env \
-          HOME="$temporary_home" \
+          TMPDIR="$downloader_temporary_directory" \
           fish \
           --no-config \
           --command '
             source "$argv[1]"
-            $argv[2] "$argv[3]"
+            $argv[2] "$argv[3]" --to "$argv[4]"
           ' \
           "$function_file" \
           "$downloader_function" \
-          "$repositories_file"
+          "$repositories_file" \
+          "$destination"
 
         set --local downloader_status $status
 
-        set --local generated_root \
-          "$temporary_downloads/$downloader_output_directory"
-
         set --local downloaded_count 0
-        set --local skipped_existing_count 0
-        set --local move_failed_count 0
-
-        if test -d "$generated_root"
-          for generated_folder in "$generated_root"/*
-            if not test -d "$generated_folder"
-              continue
-            end
-
-            set --local generated_name (
-              basename "$generated_folder"
-            )
-
-            set --local final_folder \
-              "$destination/$generated_name"
-
-            if test -e "$final_folder"; or test -L "$final_folder"
-              echo
-              echo "Skipping existing destination:"
-              echo "  $final_folder"
-
-              set skipped_existing_count (
-                math "$skipped_existing_count + 1"
-              )
-
-              continue
-            end
-
-            if command mv \
-                -- \
-                "$generated_folder" \
-                "$final_folder"
-
-              echo
-              echo "Moved:"
-              echo "  $final_folder"
-
-              set downloaded_count (
-                math "$downloaded_count + 1"
-              )
-            else
-              echo
-              echo "Error: Could not move downloaded folder:"
-              echo "  $generated_folder"
-              echo "To:"
-              echo "  $final_folder"
-
-              set move_failed_count (
-                math "$move_failed_count + 1"
-              )
-            end
-          end
-        end
 
         while read --local source_mapping
           if test -z "$source_mapping"
@@ -593,6 +532,10 @@
               "$original_name" \
               "$original_url" \
               >>"$failed_file"
+          else
+            set downloaded_count (
+              math "$downloaded_count + 1"
+            )
           end
         end <"$source_map_file"
 
@@ -624,9 +567,7 @@
         echo "============================================================"
         echo "DOWNLOAD SUMMARY"
         echo "============================================================"
-        echo "Downloaded:              $downloaded_count"
-        echo "Destination already had: $skipped_existing_count"
-        echo "Move failures:           $move_failed_count"
+        echo "Available at destination: $downloaded_count"
         echo "Missing repository URL:  $missing_count"
         echo "Failed downloads:        $failed_count"
         echo "============================================================"
@@ -657,10 +598,6 @@
 
         if test "$downloader_status" -ne 0
           return "$downloader_status"
-        end
-
-        if test "$move_failed_count" -gt 0
-          return 1
         end
 
         if test "$failed_count" -gt 0
@@ -862,28 +799,6 @@
       end
 
 
-      if not command -q unzip
-          echo "Error: unzip is not installed."
-          return 1
-      end
-
-      if not command -q tar
-          echo "Error: tar is not installed."
-          return 1
-      end
-
-
-      if not command -q unzip
-          echo "Error: unzip is not installed."
-          return 1
-      end
-
-      if not command -q tar
-          echo "Error: tar is not installed."
-          return 1
-      end
-
-
       set repositories
 
       if test (count $repository_inputs) -eq 1; and \
@@ -955,35 +870,84 @@
               continue
           end
 
-          set repository_archive \
-              "$temporary_directory/repository.zip"
-
           set repository_extract \
               "$temporary_directory/repository"
 
-          if not command curl \
-                  --fail \
-                  --location \
-                  --silent \
-                  --show-error \
-                  --output "$repository_archive" \
-                  "$canonical_repository_url/archive/HEAD.zip"
-
-              echo "Error: Could not download the repository."
-              command rm -rf -- "$temporary_directory"
-              continue
-          end
-
           command mkdir -p -- "$repository_extract"
 
-          if not command unzip \
-                  -q \
-                  "$repository_archive" \
-                  -d "$repository_extract"
+          # Fetch only files needed to rebuild the plugin, never an archive.
+          set repository_paths (
+              command gh api \
+                  "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
+                  --jq \
+                  '.tree[]? | select(.type == "blob" and (.path | test("(^|/)node_modules/") | not)) | .path' \
+                  2>/dev/null
+          )
 
-              echo "Error: Could not extract the repository."
-              command rm -rf -- "$temporary_directory"
-              continue
+          for expected_file in manifest.json main.js styles.css
+              set repository_file_path (
+                  printf '%s\n' $repository_paths |
+                  command awk -F/ \
+                      -v expected_file="$expected_file" \
+                      '$NF == expected_file { print; exit }'
+              )
+
+              if test -z "$repository_file_path"
+                  continue
+              end
+
+              set repository_file_url (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/contents/$repository_file_path" \
+                      --jq .download_url \
+                      2>/dev/null
+              )
+
+              if test -z "$repository_file_url"; or \
+                      not command curl \
+                      --fail \
+                      --location \
+                      --silent \
+                      --show-error \
+                      --output "$repository_extract/$expected_file" \
+                      "$repository_file_url"
+
+                  echo "Notice: Could not fetch repository file: $expected_file"
+              end
+          end
+
+          # Preserve one README when the repository provides one.
+          for readme_name in README README.md README.markdown README.txt
+              set readme_path (
+                  printf '%s\n' $repository_paths |
+                  command awk -F/ \
+                      -v readme_name="$readme_name" \
+                      '$NF == readme_name { print; exit }'
+              )
+
+              if test -z "$readme_path"
+                  continue
+              end
+
+              set readme_url (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/contents/$readme_path" \
+                      --jq .download_url \
+                      2>/dev/null
+              )
+
+              if test -n "$readme_url"
+                  command curl \
+                      --fail \
+                      --location \
+                      --silent \
+                      --show-error \
+                      --output "$repository_extract/$readme_name" \
+                      "$readme_url"
+                  or echo "Notice: Could not fetch repository README."
+              end
+
+              break
           end
 
           set manifest (
@@ -1108,64 +1072,8 @@
                           end
 
                       case '*.zip'
-                          set release_zip \
-                              "$temporary_directory/$release_asset_name"
-
-                          if command curl \
-                                  --fail \
-                                  --location \
-                                  --silent \
-                                  --show-error \
-                                  --output "$release_zip" \
-                                  "$release_asset_url"
-
-                              set release_extract \
-                                  "$temporary_directory/release-zip"
-
-                              command mkdir -p -- "$release_extract"
-
-                              if command unzip \
-                                      -q \
-                                      "$release_zip" \
-                                      -d "$release_extract"
-
-                                  for expected_file in \
-                                          main.js \
-                                          styles.css \
-                                          manifest.json
-
-                                      set extracted_file (
-                                          command find "$release_extract" \
-                                              -type f \
-                                              -name "$expected_file" \
-                                              -not -path "*/node_modules/*" \
-                                              -print \
-                                              -quit
-                                      )
-
-                                      if test -n "$extracted_file"
-                                          command cp -f \
-                                              "$extracted_file" \
-                                              "$plugin_stage/$expected_file"
-
-                                          if not contains \
-                                                  "$expected_file" \
-                                                  $saved_files
-
-                                              set saved_files \
-                                                  $saved_files \
-                                                  "$expected_file"
-                                          end
-                                      end
-                                  end
-                              else
-                                  echo \
-                                      "Notice: Could not extract release asset: $release_asset_name"
-                              end
-                          else
-                              echo \
-                                  "Notice: Could not download release asset: $release_asset_name"
-                          end
+                          echo \
+                              "Notice: Skipping archive release asset: $release_asset_name"
                   end
               end
           else
@@ -1202,6 +1110,12 @@
                           "$expected_file"
                   end
               end
+          end
+
+          if not test -f "$plugin_stage/main.js"
+              echo "Error: main.js was not found in the release or repository."
+              command rm -rf -- "$temporary_directory"
+              continue
           end
 
           set readme (
@@ -1299,12 +1213,46 @@
     description = "Download Obsidian themes and repository metadata";
 
     body = ''
-      set destination "$HOME/Downloads/gitdll-themes"
+      # Parse repository URLs and an optional destination path.
+      set --local destination "$HOME/Downloads/gitdll-themes"
+      set --local repository_inputs
+      set --local expecting_destination 0
 
       if test (count $argv) -eq 0
           echo "Usage:"
           echo '  gitdll-themes <links.txt>'
           echo '  gitdll-themes "https://github.com/owner/repository" [...]'
+          echo '  gitdll-themes <links.txt-or-repository-url> [...] --to "destination path"'
+          return 1
+      end
+
+      for argument in $argv
+          switch "$argument"
+              case --to
+                  if test "$expecting_destination" -eq 1
+                      echo "Error: --to requires a destination path."
+                      return 1
+                  end
+
+                  set expecting_destination 1
+
+              case '--*'
+                  echo "Error: Unknown option:"
+                  echo "  $argument"
+                  return 1
+
+              case '*'
+                  if test "$expecting_destination" -eq 1
+                      set destination "$argument"
+                      set expecting_destination 0
+                  else
+                      set repository_inputs $repository_inputs "$argument"
+                  end
+          end
+      end
+
+      if test "$expecting_destination" -eq 1
+          echo "Error: --to requires a destination path."
           return 1
       end
 
@@ -1318,14 +1266,15 @@
           return 1
       end
 
-      if not command -q unzip
-          echo "Error: unzip is not installed."
+      if not command -q gh
+          echo "Error: gh is not installed."
           return 1
       end
 
       set repositories
 
-      if test (count $argv) -eq 1; and test -f "$argv[1]"
+      if test (count $repository_inputs) -eq 1; and \
+              test -f "$repository_inputs[1]"
           while read -l line
               set line (string trim "$line")
 
@@ -1338,9 +1287,9 @@
               end
 
               set repositories $repositories "$line"
-          end < "$argv[1]"
+          end < "$repository_inputs[1]"
       else
-          set repositories $argv
+          set repositories $repository_inputs
       end
 
       if test (count $repositories) -eq 0
@@ -1352,7 +1301,7 @@
 
       for repository_url in $repositories
           set repository_path (
-              string replace -r '^https?://github\.com/' ''' "$repository_url" |
+              string replace -r '^https?://github\.com/' ''' -- "$repository_url" |
               string replace -r '\.git/?$' ''' |
               string replace -r '/$' '''
           )
@@ -1409,32 +1358,126 @@
               continue
           end
 
-          set archive "$temporary_directory/repository.zip"
           set extracted "$temporary_directory/repository"
-
-          if not command curl \
-                  --fail \
-                  --location \
-                  --silent \
-                  --show-error \
-                  "$canonical_repository_url/archive/HEAD.zip" \
-                  >"$archive"
-
-              echo "Error: Could not download the repository."
-              command rm -rf -- "$temporary_directory"
-              continue
-          end
 
           command mkdir -p "$extracted"
 
-          if not command unzip \
-                  -q \
-                  "$archive" \
-                  -d "$extracted"
+          # Fetch only theme files, never an entire repository archive.
+          set repository_paths (
+              command gh api \
+                  "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
+                  --jq \
+                  '.tree[]? | select(.type == "blob" and (.path | test("(^|/)node_modules/") | not)) | .path' \
+                  2>/dev/null
+          )
 
-              echo "Error: Could not extract the repository."
-              command rm -rf -- "$temporary_directory"
-              continue
+          for expected_file in manifest.json theme.css obsidian.css
+              set repository_file_path (
+                  printf '%s\n' $repository_paths |
+                  command awk -F/ \
+                      -v expected_file="$expected_file" \
+                      '$NF == expected_file { print; exit }'
+              )
+
+              if test -z "$repository_file_path"
+                  continue
+              end
+
+              set repository_file_url (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/contents/$repository_file_path" \
+                      --jq .download_url \
+                      2>/dev/null
+              )
+
+              if test -z "$repository_file_url"; or \
+                      not command curl \
+                      --fail \
+                      --location \
+                      --silent \
+                      --show-error \
+                      --output "$extracted/$expected_file" \
+                      "$repository_file_url"
+
+                  echo "Notice: Could not fetch repository file: $expected_file"
+              end
+          end
+
+          # Preserve one README when the repository provides one.
+          for readme_name in README README.md README.markdown README.txt
+              set readme_path (
+                  printf '%s\n' $repository_paths |
+                  command awk -F/ \
+                      -v readme_name="$readme_name" \
+                      '$NF == readme_name { print; exit }'
+              )
+
+              if test -z "$readme_path"
+                  continue
+              end
+
+              set readme_url (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/contents/$readme_path" \
+                      --jq .download_url \
+                      2>/dev/null
+              )
+
+              if test -n "$readme_url"
+                  command curl \
+                      --fail \
+                      --location \
+                      --silent \
+                      --show-error \
+                      --output "$extracted/$readme_name" \
+                      "$readme_url"
+                  or echo "Notice: Could not fetch repository README."
+              end
+
+              break
+          end
+
+          # Prefer matching assets from the newest GitHub release.
+          set release_json (
+              command gh api \
+                  "repos/$repository_owner/$repository_name/releases/latest" \
+                  2>/dev/null
+          )
+
+          if test $status -eq 0; and test -n "$release_json"
+              set release_assets (
+                  printf "%s" "$release_json" |
+                  command jq -r \
+                      '.assets[]? | [.name, .browser_download_url] | @tsv'
+              )
+
+              for release_asset in $release_assets
+                  set release_asset_parts (
+                      string split \t "$release_asset"
+                  )
+
+                  if test (count $release_asset_parts) -lt 2
+                      continue
+                  end
+
+                  set release_asset_name "$release_asset_parts[1]"
+                  set release_asset_url "$release_asset_parts[2]"
+
+                  switch "$release_asset_name"
+                      case manifest.json theme.css obsidian.css
+                          if not command curl \
+                                  --fail \
+                                  --location \
+                                  --silent \
+                                  --show-error \
+                                  --output "$extracted/$release_asset_name" \
+                                  "$release_asset_url"
+
+                              echo \
+                                  "Notice: Could not download release asset: $release_asset_name"
+                          end
+                  end
+              end
           end
 
           set manifest (
@@ -1446,47 +1489,26 @@
                   -quit
           )
 
-          set manifest_was_generated 0
-
-          if test -z "$manifest"
-              set manifest \
-                  "$temporary_directory/generated-manifest.json"
-
-              if not command jq -n \
-                      --arg name "$fallback_folder_name" \
-                      --arg author "$repository_owner" \
-                      '{
-                          name: $name,
-                          version: "0.0.0",
-                          minAppVersion: "0.0.0",
-                          author: $author,
-                          gitdllThemesGeneratedManifest: true
-                      }' \
-                      >"$manifest"
-
-                  echo "Error: Could not create a fallback manifest.json."
-                  command rm -rf -- "$temporary_directory"
-                  continue
-              end
-
-              set manifest_was_generated 1
-
-              echo \
-                  "Notice: manifest.json was not in the repository; created a marked local fallback."
-          else if not command jq -e . "$manifest" >/dev/null
+          if test -n "$manifest"; and \
+                  not command jq -e . "$manifest" >/dev/null
               echo "Error: manifest.json is invalid."
               command rm -rf -- "$temporary_directory"
               continue
           end
 
-          set manifest_directory (dirname "$manifest")
+          set manifest_directory "$extracted"
+          set theme_id
 
-          set theme_id (
-              command jq -r \
-                  'if (.id | type) == "string" then .id else empty end' \
-                  "$manifest" |
-              string trim
-          )
+          if test -n "$manifest"
+              set manifest_directory (dirname "$manifest")
+
+              set theme_id (
+                  command jq -r \
+                      'if (.id | type) == "string" then .id else empty end' \
+                      "$manifest" |
+                  string trim
+              )
+          end
 
           set theme_folder_name "$theme_id"
 
@@ -1595,11 +1617,15 @@
 
           command mkdir -p -- "$theme_stage"
 
-          command cp -f \
-              "$manifest" \
-              "$theme_stage/manifest.json"
+          set saved_files
 
-          set saved_files manifest.json
+          if test -n "$manifest"; and test -f "$manifest"
+              command cp -f \
+                  "$manifest" \
+                  "$theme_stage/manifest.json"
+
+              set saved_files manifest.json
+          end
 
           if test -f "$source_theme_css"
               command cp -f \
@@ -1624,6 +1650,62 @@
                   "$theme_stage/obsidian.css"
 
               set saved_files $saved_files obsidian.css
+          end
+
+          # Save named theme preview images without downloading an archive.
+          set preview_count 0
+
+          for repository_image_path in $repository_paths
+              set repository_image_name (
+                  basename "$repository_image_path"
+              )
+
+              if not string match -rq \
+                      '(?i)(screenshot|screen|screencap|preview|previews).+\.(png|jpe?g|gif|webp|svg)$' \
+                      "$repository_image_name"
+
+                  continue
+              end
+
+              set repository_image_url (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/contents/$repository_image_path" \
+                      --jq .download_url \
+                      2>/dev/null
+              )
+
+              if test -z "$repository_image_url"
+                  continue
+              end
+
+              set preview_count (
+                  math "$preview_count + 1"
+              )
+
+              set preview_name (
+                  string replace -ra \
+                      '[^A-Za-z0-9._-]' \
+                      '_' \
+                      "$repository_image_name"
+              )
+
+              command mkdir -p "$theme_stage/previews"
+
+              if command curl \
+                      --fail \
+                      --location \
+                      --silent \
+                      --show-error \
+                      --output "$theme_stage/previews/$preview_count-$preview_name" \
+                      "$repository_image_url"
+
+                  set saved_files \
+                      $saved_files \
+                      "previews/$preview_count-$preview_name"
+              else
+                  echo \
+                      "Notice: Could not download theme preview image: $repository_image_name"
+              end
           end
 
           if test -n "$readme"; and test -f "$readme"
@@ -1829,11 +1911,6 @@
 
           for saved_file in $saved_files
               echo "  $saved_file"
-          end
-
-          if test "$manifest_was_generated" -eq 1
-              echo \
-                  "  (manifest.json was generated locally and marked)"
           end
 
           command rm -rf -- "$temporary_directory"
