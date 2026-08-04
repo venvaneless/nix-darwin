@@ -103,35 +103,30 @@ let
           "${dockerBin}" pull vaultwarden/server:latest
         fi
 
-        # Check if the container exists; if not, create it. If it exists, update the restart policy.
+        # Create the container when it does not exist.
         if ! "${dockerBin}" ps -a --format '{{.Names}}' | grep -qx "${appName}"; then
           echo ">>> [vaultwarden] Creating container"
-          # If the container is absent, recreate it with the specified ports, volumes, and environment variables
+
           "${dockerBin}" run -d \
-          	# Set the container name
-            --name ${appName} \
-
-            # Set the restart policy to always restart unless stopped
+            --name "${appName}" \
             --restart unless-stopped \
-
-            # Map the host port to the internal container port
-            -p ${toString hostPort}:${toString internalPort} \
-
-            # Mount the data directory from the host to the container
+            -p "${toString hostPort}:${toString internalPort}" \
             -v "${dataDir}:/data" \
-
-            # Pass environment variables to the container
             ${envArgs} \
             vaultwarden/server:latest
         else
-          # If the container already exists, update its restart policy to ensure it restarts unless stopped
           echo ">>> [vaultwarden] Container exists; updating restart policy"
-          "${dockerBin}" update --restart unless-stopped ${appName} >/dev/null
+
+          "${dockerBin}" update \
+            --restart unless-stopped \
+            "${appName}" \
+            >/dev/null
         fi
 
-        # Start the Vaultwarden container (if not already running)
+        # Start the existing container. Do not hide failures such as
+        # an occupied host port.
         echo ">>> [vaultwarden] Starting container"
-        "${dockerBin}" start ${appName} >/dev/null || true
+        "${dockerBin}" start "${appName}" >/dev/null
 
         echo ">>> [vaultwarden] Done"
   '';
@@ -161,23 +156,33 @@ in
   # LaunchAgent configuration for Vaultwarden service
   launchd.agents.vaultwarden = {
     serviceConfig = {
-
-      # LaunchAgent label for identification
       Label = "com.ven.vaultwarden";
 
-      # Path to the runner script that starts the Vaultwarden container
-      ProgramArguments = [ "/etc/ven/services/run-vaultwarden" ];
+      ProgramArguments = [
+        "/etc/ven/services/run-vaultwarden"
+      ];
 
-      # Run the service when the system loads
+      # Try once when the user logs in.
       RunAtLoad = true;
 
-      # Keep the service alive; if it exits, launchd will restart it
-      KeepAlive = false;
+      # Retry only when the runner fails.
+      #
+      # When Vaultwarden starts successfully, the runner exits with status 0
+      # and launchd leaves it stopped because Docker manages the container.
+      #
+      # When Docker is not ready or the container cannot start, the runner
+      # exits non-zero and launchd tries again.
+      KeepAlive = {
+        SuccessfulExit = false;
+      };
 
-      ThrottleInterval = 10; # Throttle interval in seconds to prevent rapid restarts
+      # Avoid retrying too aggressively while Docker Desktop starts.
+      ThrottleInterval = 30;
 
-      StandardOutPath = "/tmp/com.ven.vaultwarden.out.log"; # Path to log standard output
-      StandardErrorPath = "/tmp/com.ven.vaultwarden.err.log"; # Path to log standard error
+      ProcessType = "Background";
+
+      StandardOutPath = "/tmp/com.ven.vaultwarden.out.log";
+      StandardErrorPath = "/tmp/com.ven.vaultwarden.err.log";
     };
   };
 }

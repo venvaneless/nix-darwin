@@ -108,6 +108,7 @@
 
     # ---- Fish modules ---- #
     ./plugins/atuin.nix
+    ./plugins/bottom.nix
     ./plugins/delta.nix
     ./plugins/eza.nix
     ./plugins/fastfetch.nix
