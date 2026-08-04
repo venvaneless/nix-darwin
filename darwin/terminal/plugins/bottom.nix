@@ -44,18 +44,10 @@
           "read"
           "write"
         ];
-      };
 
-        # Start sorted by CPU usage.
         default_sort = "cpu";
-
-        # Show the full command where available.
         show_command = true;
-
-        # Keep process grouping disabled.
         group_processes = false;
-
-        # Allow killing processes from bottom.
         disable_advanced_kill = false;
       };
 
