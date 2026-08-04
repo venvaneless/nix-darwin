@@ -91,18 +91,25 @@
           end
         end
 
+        # Keep selected downloader settings outside the mode conditional.
+        set --local library_type
+        set --local downloader_function
+        set --local downloader_output_directory
+        set --local missing_report_name
+        set --local failed_report_name
+
         if test "$mode" = "--plugins"
           if not functions -q gitdll-plugins
             echo "Error: gitdll-plugins is not available."
             return 1
           end
 
-          set --local library_type plugins
-          set --local downloader_function gitdll-plugins
-          set --local downloader_output_directory gitdll-plugins
-          set --local missing_report_name \
+          set library_type plugins
+          set downloader_function gitdll-plugins
+          set downloader_output_directory gitdll-plugins
+          set missing_report_name \
             missing-plugin-repository-urls.txt
-          set --local failed_report_name \
+          set failed_report_name \
             failed-plugin-downloads.txt
         else
           if not functions -q gitdll-themes
@@ -110,12 +117,12 @@
             return 1
           end
 
-          set --local library_type themes
-          set --local downloader_function gitdll-themes
-          set --local downloader_output_directory gitdll-themes
-          set --local missing_report_name \
+          set library_type themes
+          set downloader_function gitdll-themes
+          set downloader_output_directory gitdll-themes
+          set missing_report_name \
             missing-theme-repository-urls.txt
-          set --local failed_report_name \
+          set failed_report_name \
             failed-theme-downloads.txt
         end
 
