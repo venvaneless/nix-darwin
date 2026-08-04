@@ -2282,6 +2282,24 @@
           continue
         end
 
+        # First try the deterministic author-and-id repository URL.
+        if string match -rq '^[A-Za-z0-9._-]+$' "$library_id"
+          set --local direct_repository_url (
+            command gh api \
+              "repos/$github_owner/$library_id" \
+              --jq .html_url \
+              2>/dev/null
+          )
+
+          if test $status -eq 0; and test -n "$direct_repository_url"
+            printf '%s\n' "$direct_repository_url" >"$repository_file"
+            echo
+            echo "Matched manifest author and id:"
+            echo "  $repository_file"
+            continue
+          end
+        end
+
         set --local candidates (
           command gh api \
             "users/$github_owner/repos?per_page=100&type=owner" \
@@ -2313,7 +2331,15 @@
             string replace -ra '[^a-z0-9]' '''
           )
 
-          if test "$normalized_candidate_name" = "$normalized_id"
+          set --local normalized_candidate_plugin_name (
+            string replace -r \
+              '^obsidian' \
+              ''' \
+              "$normalized_candidate_name"
+          )
+
+          if test "$normalized_candidate_name" = "$normalized_id"; or \
+              test "$normalized_candidate_plugin_name" = "$normalized_id"
             set exact_url "$candidate_parts[2]"
             break
           end
