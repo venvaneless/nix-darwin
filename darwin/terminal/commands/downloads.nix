@@ -2276,12 +2276,10 @@
           set github_owner "$author"
         end
 
-        if not string match -rq \
-            '^[A-Za-z0-9-]+$' \
-            "$github_owner"
-          set --append missing_entries \
-            "$entry_name — usable GitHub author not found"
-          continue
+        set --local has_github_owner 0
+
+        if string match -rq '^[A-Za-z0-9-]+$' "$github_owner"
+          set has_github_owner 1
         end
 
         set --local normalized_id (
@@ -2296,7 +2294,8 @@
         end
 
         # First try the deterministic author-and-id repository URL.
-        if string match -rq '^[A-Za-z0-9._-]+$' "$library_id"
+        if test "$has_github_owner" -eq 1; and \
+            string match -rq '^[A-Za-z0-9._-]+$' "$library_id"
           set --local direct_repository_url (
             command gh api \
               "repos/$github_owner/$library_id" \
@@ -2306,20 +2305,33 @@
 
           if test $status -eq 0; and test -n "$direct_repository_url"
             printf '%s\n' "$direct_repository_url" >"$repository_file"
-            echo
-            echo "Matched manifest author and id:"
-            echo "  $repository_file"
+            echo "Saved $repository_file"
             continue
           end
         end
 
-        set --local candidates (
-          command gh api \
-            "users/$github_owner/repos?per_page=100&type=owner" \
-            --jq \
-            ".[] | select(.archived | not) | (.name | ascii_downcase) as \$name | (\$name | gsub(\"[^a-z0-9]\"; \"\")) as \$normalized_name | select((\$normalized_name | contains(\"$normalized_id\")) or (\"$normalized_id\" | contains(\$normalized_name)) or (\$name | contains(\"obsidian\"))) | [.name, .html_url] | @tsv" \
-            2>/dev/null
-        )
+        set --local candidates
+
+        if test "$has_github_owner" -eq 1
+          set candidates (
+            command gh api \
+              "users/$github_owner/repos?per_page=100&type=owner" \
+              --jq \
+              ".[] | select(.archived | not) | (.name | ascii_downcase) as \$name | (\$name | gsub(\"[^a-z0-9]\"; \"\")) as \$normalized_name | select((\$normalized_name | contains(\"$normalized_id\")) or (\"$normalized_id\" | contains(\$normalized_name)) or (\$name | contains(\"obsidian\"))) | [.name, .html_url, \"$github_owner\"] | @tsv" \
+              2>/dev/null
+          )
+        else
+          set candidates (
+            command gh api \
+              --method GET \
+              search/repositories \
+              -f "q=$library_id in:name" \
+              -f per_page=100 \
+              --jq \
+              '.items[]? | select(.archived | not) | [.name, .html_url, .owner.login] | @tsv' \
+              2>/dev/null
+          )
+        end
 
         if test (count $candidates) -eq 0
           set --append missing_entries \
@@ -2334,13 +2346,13 @@
             string split \t "$candidate"
           )
 
-          if test (count $candidate_parts) -lt 2
+          if test (count $candidate_parts) -lt 3
             continue
           end
 
           set --local candidate_manifest_id (
             command gh api \
-              "repos/$github_owner/$candidate_parts[1]/contents/manifest.json" \
+              "repos/$candidate_parts[3]/$candidate_parts[1]/contents/manifest.json" \
               --jq .content \
               2>/dev/null |
             command tr -d '\n' |
@@ -2363,17 +2375,19 @@
           set --local candidate_urls
           set --local candidate_index 1
 
+          echo "Choose a repository for $entry_name (id: $library_id):"
+
           for candidate in $candidates
             set --local candidate_parts (
               string split \t "$candidate"
             )
 
-            if test (count $candidate_parts) -lt 2
+            if test (count $candidate_parts) -lt 3
               continue
             end
 
             set --append candidate_urls "$candidate_parts[2]"
-            echo "  $candidate_index) $candidate_parts[1]"
+            echo "  $candidate_index) $candidate_parts[3]/$candidate_parts[1]"
             echo "     $candidate_parts[2]"
 
             set candidate_index (
