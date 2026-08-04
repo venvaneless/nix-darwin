@@ -2293,7 +2293,9 @@
           continue
         end
 
-        # First try the deterministic author-and-id repository URL.
+        # First try the deterministic author-and-id repository URL. A URL
+        # alone is not enough: its manifest must agree with every populated
+        # local identity field before it is accepted automatically.
         if test "$has_github_owner" -eq 1; and \
             string match -rq '^[A-Za-z0-9._-]+$' "$library_id"
           set --local direct_repository_url (
@@ -2301,6 +2303,30 @@
               "repos/$github_owner/$library_id" \
               --jq .html_url \
               2>/dev/null
+          )
+
+          set --local direct_manifest_matches (
+            command gh api \
+              "repos/$github_owner/$library_id/contents/manifest.json" \
+              --jq .content \
+              2>/dev/null |
+            command tr -d '\n' |
+            command base64 -D \
+              2>/dev/null |
+            command jq -e \
+              --arg id "$library_id" \
+              --arg author "$author" \
+              --arg author_url "$author_url" \
+              '
+                (.id? | type) == "string" and .id == $id and
+                (if $author == "" then true else
+                  (.author? | type) == "string" and .author == $author
+                end) and
+                (if $author_url == "" then true else
+                  (.authorUrl? | type) == "string" and .authorUrl == $author_url
+                end)
+              ' \
+              >/dev/null
           )
 
           if test $status -eq 0; and test -n "$direct_repository_url"
@@ -2317,7 +2343,7 @@
             command gh api \
               "users/$github_owner/repos?per_page=100&type=owner" \
               --jq \
-              ".[] | select(.archived | not) | (.name | ascii_downcase) as \$name | (\$name | gsub(\"[^a-z0-9]\"; \"\")) as \$normalized_name | select((\$normalized_name | contains(\"$normalized_id\")) or (\"$normalized_id\" | contains(\$normalized_name)) or (\$name | contains(\"obsidian\"))) | [\"$github_owner/\" + .name, .html_url] | @tsv" \
+              ".[] | select(.archived | not) | (.name | ascii_downcase) as \$name | (\$name | gsub(\"[^a-z0-9]\"; \"\")) as \$normalized_name | select((\$normalized_name | contains(\"$normalized_id\")) or (\"$normalized_id\" | contains(\$normalized_name)) or (\$name | contains(\"obsidian\"))) | .full_name" \
               2>/dev/null
           )
         else
@@ -2328,7 +2354,7 @@
               -f "q=$library_id in:name" \
               -f per_page=100 \
               --jq \
-              '.items[]? | select(.archived | not) | [.owner.login + "/" + .name, .html_url] | @tsv' \
+              '.items[]? | select(.archived | not) | .full_name' \
               2>/dev/null
           )
         end
@@ -2342,29 +2368,32 @@
         set --local exact_url
 
         for candidate in $candidates
-          set --local candidate_parts (
-            string split \t "$candidate"
-          )
-
-          if test (count $candidate_parts) -lt 2
-            continue
-          end
-
-          set --local candidate_manifest_id (
+          set --local candidate_manifest_matches (
             command gh api \
-              "repos/$candidate_parts[1]/contents/manifest.json" \
+              "repos/$candidate/contents/manifest.json" \
               --jq .content \
               2>/dev/null |
             command tr -d '\n' |
             command base64 -D \
               2>/dev/null |
-            command jq -r \
-              'if (.id | type) == "string" then .id else empty end' |
-            string trim
+            command jq -e \
+              --arg id "$library_id" \
+              --arg author "$author" \
+              --arg author_url "$author_url" \
+              '
+                (.id? | type) == "string" and .id == $id and
+                (if $author == "" then true else
+                  (.author? | type) == "string" and .author == $author
+                end) and
+                (if $author_url == "" then true else
+                  (.authorUrl? | type) == "string" and .authorUrl == $author_url
+                end)
+              ' \
+              >/dev/null
           )
 
-          if test "$candidate_manifest_id" = "$library_id"
-            set exact_url "$candidate_parts[2]"
+          if test $status -eq 0
+            set exact_url "https://github.com/$candidate"
             break
           end
         end
@@ -2380,17 +2409,9 @@
           echo "  local author: $author"
 
           for candidate in $candidates
-            set --local candidate_parts (
-              string split \t "$candidate"
-            )
-
-            if test (count $candidate_parts) -lt 2
-              continue
-            end
-
-            set --append candidate_urls "$candidate_parts[2]"
-            echo "  $candidate_index) $candidate_parts[1]"
-            echo "     $candidate_parts[2]"
+            set --append candidate_urls "$candidate"
+            echo "  $candidate_index) $candidate"
+            echo "     https://github.com/$candidate"
 
             set candidate_index (
               math "$candidate_index + 1"
@@ -2398,7 +2419,8 @@
           end
 
           if test (count $candidate_urls) -eq 1
-            set --local selected_url "$candidate_urls[1]"
+            set --local selected_url \
+              "https://github.com/$candidate_urls[1]"
           else
             read --prompt-str "Choose a repository number, or s to skip: " selection
 
@@ -2416,7 +2438,8 @@
               continue
             end
 
-            set --local selected_url "$candidate_urls[$selection]"
+            set --local selected_url \
+              "https://github.com/$candidate_urls[$selection]"
           end
         end
 
