@@ -2297,12 +2297,7 @@
           continue
         end
 
-        set --local candidate_urls
-        set --local candidate_index 1
-
-        echo
-        echo "Missing repository-url.txt:"
-        echo "  $entry_name (id: $library_id; owner: $github_owner)"
+        set --local exact_url
 
         for candidate in $candidates
           set --local candidate_parts (
@@ -2313,34 +2308,66 @@
             continue
           end
 
-          set --append candidate_urls "$candidate_parts[2]"
-          echo "  $candidate_index) $candidate_parts[1]"
-          echo "     $candidate_parts[2]"
-
-          set candidate_index (
-            math "$candidate_index + 1"
+          set --local normalized_candidate_name (
+            string lower "$candidate_parts[1]" |
+            string replace -ra '[^a-z0-9]' '''
           )
+
+          if test "$normalized_candidate_name" = "$normalized_id"
+            set exact_url "$candidate_parts[2]"
+            break
+          end
         end
 
-        if test (count $candidate_urls) -eq 1
-          set --local selected_url "$candidate_urls[1]"
-          echo "Using the only matching repository."
+        echo
+        echo "Missing repository-url.txt:"
+        echo "  $entry_name (id: $library_id; owner: $github_owner)"
+
+        if test -n "$exact_url"
+          set --local selected_url "$exact_url"
+          echo "Matched the manifest id to the author's repository."
         else
-          read --prompt-str "Choose a repository number, or s to skip: " selection
+          set --local candidate_urls
+          set --local candidate_index 1
 
-          if test "$selection" = s; or test "$selection" = S
-            echo "Skipped: $entry_name"
-            continue
+          for candidate in $candidates
+            set --local candidate_parts (
+              string split \t "$candidate"
+            )
+
+            if test (count $candidate_parts) -lt 2
+              continue
+            end
+
+            set --append candidate_urls "$candidate_parts[2]"
+            echo "  $candidate_index) $candidate_parts[1]"
+            echo "     $candidate_parts[2]"
+
+            set candidate_index (
+              math "$candidate_index + 1"
+            )
           end
 
-          if not string match -rq '^[0-9]+$' "$selection"; or \
-              test "$selection" -lt 1; or \
-              test "$selection" -gt (count $candidate_urls)
-            echo "Skipped $entry_name: invalid selection."
-            continue
-          end
+          if test (count $candidate_urls) -eq 1
+            set --local selected_url "$candidate_urls[1]"
+            echo "Using the only matching repository."
+          else
+            read --prompt-str "Choose a repository number, or s to skip: " selection
 
-          set --local selected_url "$candidate_urls[$selection]"
+            if test "$selection" = s; or test "$selection" = S
+              echo "Skipped: $entry_name"
+              continue
+            end
+
+            if not string match -rq '^[0-9]+$' "$selection"; or \
+                test "$selection" -lt 1; or \
+                test "$selection" -gt (count $candidate_urls)
+              echo "Skipped $entry_name: invalid selection."
+              continue
+            end
+
+            set --local selected_url "$candidate_urls[$selection]"
+          end
         end
 
         printf '%s\n' "$selected_url" >"$repository_file"
