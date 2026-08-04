@@ -158,21 +158,48 @@ in
       # ** 'label' is a unique identifier for the launchd job, used to manage and control the service.
       Label            = "com.ven.nginx-custom";
 
-      # Specify the command and its arguments to run the service
-      ProgramArguments = [ "/etc/ven/services/run-nginx-custom" ];
+      # Start through macOS' built-in Bash. The system LaunchDaemon may run
+      # before /nix, /etc/ven, the user's home directory, nginx config, or
+      # certificates are ready after boot.
+      ProgramArguments = [
+        "/bin/bash"
+        "-c"
+        ''
+          set -u
 
-      # Run the service when the system loads
-      RunAtLoad        = true;
+          echo ">>> [nginx-launchd] Waiting for nginx files after boot"
 
-      # Keep the service alive; if it exits, launchd will restart it
-      KeepAlive        = true;
+          while true; do
+            if [ -x /etc/ven/services/run-nginx-custom ] \
+              && [ -f "${nginxConf}" ] \
+              && [ -d "${appsDir}" ] \
+              && [ -d "${logsDir}" ]
+            then
+              echo ">>> [nginx-launchd] Required paths are ready"
+              exec /etc/ven/services/run-nginx-custom
+            fi
 
-      # Set the working directory for the service to the configuration root
-      WorkingDirectory = "${confRoot}";
+            sleep 2
+          done
+        ''
+      ];
 
-      # Keep launchd runner diagnostics alongside the Nginx logs.
-      StandardOutPath  = "${logsDir}/launchd.out.log";
-      StandardErrorPath = "${logsDir}/launchd.err.log";
+      RunAtLoad = true;
+
+      # Restart if the wrapper or nginx exits unexpectedly.
+      KeepAlive = {
+        SuccessfulExit = false;
+      };
+
+      ThrottleInterval = 10;
+
+      # Do not make launchd enter the user's home directory before starting.
+      WorkingDirectory = "/";
+
+      # launchd opens these files before starting ProgramArguments.
+      # Therefore they must not live under /Users/ven during early boot.
+      StandardOutPath = "/var/log/com.ven.nginx-custom.out.log";
+      StandardErrorPath = "/var/log/com.ven.nginx-custom.err.log";
 
       # Track generated configuration in the plist so a relevant rebuild
       # reloads this daemon after activation has written nginx.conf.
