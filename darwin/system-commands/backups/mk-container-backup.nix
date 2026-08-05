@@ -51,7 +51,6 @@ let
       source_dir=${lib.escapeShellArg sourceDir}
       external_backup_volume="/Volumes/SystemBackup"
       data_backups_root="$external_backup_volume/data-backups"
-      app_backups_root="$data_backups_root/app-backups"
       container_backups_root="$data_backups_root/container-backups"
       destination_dir="$container_backups_root/$app_slug"
       local_staging_dir="/Users/ven/Downloads/backup-staging/$app_slug"
