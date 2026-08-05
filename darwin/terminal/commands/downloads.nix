@@ -338,7 +338,7 @@
           end
 
           if not test -f "$repository_file"
-            printf '%s\n' \
+            printf '%s — missing repository-url.txt\n' \
               "$source_name" \
               >>"$missing_file"
 
@@ -355,7 +355,7 @@
           )
 
           if test -z "$repository_url"
-            printf '%s\n' \
+            printf '%s — repository-url.txt is empty\n' \
               "$source_name" \
               >>"$missing_file"
 
@@ -384,9 +384,9 @@
               '^https?://github\.com/[^/]+/[^/]+$' \
               "$repository_url"
 
-            printf '%s\t%s\n' \
-              "$source_name" \
-              "$repository_url" \
+                printf '%s — invalid repository URL: %s\n' \
+                  "$source_name" \
+                  "$repository_url" \
               >>"$missing_file"
 
             set missing_count (
@@ -400,9 +400,9 @@
             "$repository_url" \
             >>"$repositories_file"
 
-          printf '%s\t%s\n' \
-            "$source_name" \
-            "$repository_url" \
+            printf '%s — invalid repository URL: %s\n' \
+              "$source_name" \
+              "$repository_url" \
             >>"$source_map_file"
 
           set repository_count (
@@ -528,7 +528,7 @@
           )
 
           if test -z "$matching_repository_file"
-            printf '%s\t%s\n' \
+            printf '%s — download failed: %s\n' \
               "$original_name" \
               "$original_url" \
               >>"$failed_file"
@@ -873,8 +873,13 @@
                   dirname "$existing_repository_file"
               )
 
-              if test -f "$existing_plugin_directory/manifest.json"; and \
-                      test -f "$existing_plugin_directory/main.js"
+              if test -r "$existing_plugin_directory/manifest.json"; and \
+                      test -s "$existing_plugin_directory/manifest.json"; and \
+                      command jq -e . \
+                          "$existing_plugin_directory/manifest.json" \
+                          >/dev/null 2>&1; and \
+                      test -r "$existing_plugin_directory/main.js"; and \
+                      test -s "$existing_plugin_directory/main.js"
 
                   echo
                   echo "Skipping:"
@@ -1045,7 +1050,11 @@
 
           set plugin_id (
               command jq -r \
-                  'if (.id | type) == "string" then .id else empty end' \
+                  'if type == "object" then
+                    if (.id | type) == "string" then .id else empty end
+                  else
+                    empty
+                  end' \
                   "$manifest" |
               string trim
           )
@@ -1078,8 +1087,13 @@
           set plugin_directory_exists 0
 
           if test -d "$plugin_directory"
-              if test -f "$plugin_directory/manifest.json"; and \
-                      test -f "$plugin_directory/main.js"; and \
+              if test -r "$plugin_directory/manifest.json"; and \
+                      test -s "$plugin_directory/manifest.json"; and \
+                      command jq -e . \
+                          "$plugin_directory/manifest.json" \
+                          >/dev/null 2>&1; and \
+                      test -r "$plugin_directory/main.js"; and \
+                      test -s "$plugin_directory/main.js"; and \
                       test -f "$plugin_directory/repository-url.txt"
 
                   echo
@@ -1103,7 +1117,11 @@
               command mkdir -p -- "$plugin_stage"
           end
 
-          if not test -f "$plugin_stage/manifest.json"
+          if not test -r "$plugin_stage/manifest.json"; or \
+                  not test -s "$plugin_stage/manifest.json"; or \
+                  not command jq -e . \
+                      "$plugin_stage/manifest.json" \
+                      >/dev/null 2>&1
               command cp -f \
                   "$manifest" \
                   "$plugin_stage/manifest.json"
@@ -1142,7 +1160,8 @@
 
                   switch "$release_asset_name"
                       case main.js styles.css manifest.json
-                          if test -f "$plugin_stage/$release_asset_name"
+                          if test -r "$plugin_stage/$release_asset_name"; and \
+                                  test -s "$plugin_stage/$release_asset_name"
                               continue
                           end
 
@@ -1199,7 +1218,8 @@
           end
 
           for expected_file in main.js styles.css
-              if test -f "$plugin_stage/$expected_file"
+              if test -r "$plugin_stage/$expected_file"; and \
+                      test -s "$plugin_stage/$expected_file"
                   continue
               end
 
@@ -1230,7 +1250,8 @@
               end
           end
 
-          if not test -f "$plugin_stage/main.js"
+          if not test -r "$plugin_stage/main.js"; or \
+                  not test -s "$plugin_stage/main.js"
               echo "Error: main.js was not found in the release or repository."
               command rm -rf -- "$temporary_directory"
               continue
@@ -1279,9 +1300,11 @@
                       "README$readme_extension"
               end
 
-              command cp -f \
-                  "$readme" \
-                  "$plugin_stage/$readme_output"
+              if not test -f "$plugin_stage/$readme_output"
+                  command cp -f \
+                      "$readme" \
+                      "$plugin_stage/$readme_output"
+              end
 
               set saved_files \
                   $saved_files \
@@ -1482,7 +1505,22 @@
                   dirname "$existing_repository_file"
               )
 
-              if test -f "$existing_theme_directory/theme.css"
+              set existing_theme_manifest_ok 1
+
+              if test -e "$existing_theme_directory/manifest.json"; and \
+                      not test -r "$existing_theme_directory/manifest.json"; or \
+                      test -e "$existing_theme_directory/manifest.json"; and \
+                      not test -s "$existing_theme_directory/manifest.json"; or \
+                      test -e "$existing_theme_directory/manifest.json"; and \
+                      not command jq -e . \
+                          "$existing_theme_directory/manifest.json" \
+                          >/dev/null 2>&1
+                  set existing_theme_manifest_ok 0
+              end
+
+              if test -r "$existing_theme_directory/theme.css"; and \
+                      test -s "$existing_theme_directory/theme.css"; and \
+                      test "$existing_theme_manifest_ok" -eq 1
                   echo
                   echo "Skipping:"
                   echo "  $existing_theme_directory (already complete)"
@@ -1710,7 +1748,11 @@
 
               set theme_id (
                   command jq -r \
-                      'if (.id | type) == "string" then .id else empty end' \
+                      'if type == "object" then
+                        if (.id | type) == "string" then .id else empty end
+                      else
+                        empty
+                      end' \
                       "$manifest" |
                   string trim
               )
@@ -1813,7 +1855,22 @@
           set theme_directory_exists 0
 
           if test -d "$theme_directory"
-              if test -f "$theme_directory/theme.css"; and \
+              set theme_manifest_ok 1
+
+              if test -e "$theme_directory/manifest.json"; and \
+                      not test -r "$theme_directory/manifest.json"; or \
+                      test -e "$theme_directory/manifest.json"; and \
+                      not test -s "$theme_directory/manifest.json"; or \
+                      test -e "$theme_directory/manifest.json"; and \
+                      not command jq -e . \
+                          "$theme_directory/manifest.json" \
+                          >/dev/null 2>&1
+                  set theme_manifest_ok 0
+              end
+
+              if test -r "$theme_directory/theme.css"; and \
+                      test -s "$theme_directory/theme.css"; and \
+                      test "$theme_manifest_ok" -eq 1; and \
                       test -f "$theme_directory/repository-url.txt"
 
                   echo
@@ -1858,7 +1915,11 @@
           end
 
           if test -n "$manifest"; and test -f "$manifest"
-              if not test -f "$theme_stage/manifest.json"
+              if not test -r "$theme_stage/manifest.json"; or \
+                      not test -s "$theme_stage/manifest.json"; or \
+                      not command jq -e . \
+                          "$theme_stage/manifest.json" \
+                          >/dev/null 2>&1
                   command cp -f \
                       "$manifest" \
                       "$theme_stage/manifest.json"
@@ -1868,7 +1929,8 @@
           end
 
           if test -f "$source_theme_css"
-              if not test -f "$theme_stage/theme.css"
+              if not test -r "$theme_stage/theme.css"; or \
+                      not test -s "$theme_stage/theme.css"
                   command cp -f \
                       "$source_theme_css" \
                       "$theme_stage/theme.css"
@@ -1876,7 +1938,8 @@
 
               set saved_files $saved_files theme.css
           else
-              if not test -f "$theme_stage/theme.css"
+              if not test -r "$theme_stage/theme.css"; or \
+                      not test -s "$theme_stage/theme.css"
                   command cp -f \
                       "$source_obsidian_css" \
                       "$theme_stage/theme.css"
@@ -1889,7 +1952,8 @@
           end
 
           if test -f "$source_obsidian_css"
-              if not test -f "$theme_stage/obsidian.css"
+              if not test -r "$theme_stage/obsidian.css"; or \
+                      not test -s "$theme_stage/obsidian.css"
                   command cp -f \
                       "$source_obsidian_css" \
                       "$theme_stage/obsidian.css"
@@ -1907,7 +1971,7 @@
               )
 
               if not string match -rq \
-                      '(?i)(screenshot|screen|screencap|preview|previews).+\.(png|jpe?g|gif|webp|svg)$' \
+                      '(?i)(screenshot|screen|screencap|preview|previews|[-_]dark|[-_]light).+\.(png|jpe?g|gif|webp|svg)$' \
                       "$repository_image_name"
 
                   continue
@@ -1936,6 +2000,10 @@
               )
 
               command mkdir -p "$theme_stage/previews"
+
+              if test -f "$theme_stage/previews/$preview_count-$preview_name"
+                  continue
+              end
 
               if command curl \
                       --fail \
@@ -1968,9 +2036,11 @@
                       "README$readme_extension"
               end
 
-              command cp -f \
-                  "$readme" \
-                  "$theme_stage/$readme_output"
+              if not test -f "$theme_stage/$readme_output"
+                  command cp -f \
+                      "$readme" \
+                      "$theme_stage/$readme_output"
+              end
 
               set saved_files \
                   $saved_files \
@@ -2076,6 +2146,10 @@
                       command mkdir -p \
                           "$theme_stage/previews"
 
+                      if test -f "$preview_destination"
+                          continue
+                      end
+
                       if command curl \
                               --fail \
                               --location \
@@ -2112,9 +2186,11 @@
                           command mkdir -p \
                               "$theme_stage/$local_parent"
 
-                          command cp -f \
-                              "$local_image" \
-                              "$theme_stage/$image_path"
+                          if not test -f "$theme_stage/$image_path"
+                              command cp -f \
+                                  "$local_image" \
+                                  "$theme_stage/$image_path"
+                          end
 
                           set saved_files \
                               $saved_files \
@@ -2205,8 +2281,16 @@
         return 1
       end
 
-      set --local missing_entries
-      set --local missing_report "$HOME/Downloads/obsidian-missing.txt"
+        set --local missing_entries
+        set --local missing_report "$HOME/Downloads/obsidian-missing.txt"
+        set --local library_root_name (
+          basename "$library_root" | string lower
+        )
+        set --local requires_plugin_payload 0
+
+        if string match -rq '(plugin|extension)' "$library_root_name"
+          set requires_plugin_payload 1
+        end
 
       for library_entry in "$library_root"/*
         if not test -d "$library_entry"
@@ -2220,29 +2304,9 @@
         set --local repository_file \
           "$library_entry/repository-url.txt"
 
-        set --local existing_repository_file
-
-        if test -f "$repository_file"
-          set existing_repository_file "$repository_file"
-        else if test -f "$library_entry/repo/repository-url.txt"
-          set existing_repository_file \
-            "$library_entry/repo/repository-url.txt"
-        end
-
-        if test -n "$existing_repository_file"
-          set --local existing_repository_url (
-            string trim <"$existing_repository_file"
-          )
-
-          if string match -rq \
-              '^https?://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?(\\.git)?$' \
-              "$existing_repository_url"
-            continue
-          end
-
-          # Repair an empty or malformed URL file instead of permanently
-          # treating it as already resolved.
-          set repository_file "$existing_repository_file"
+        if test -f "$repository_file"; or \
+            test -f "$library_entry/repo/repository-url.txt"
+          continue
         end
 
         set --local manifest_file \
@@ -2261,7 +2325,11 @@
 
         set --local library_id (
           command jq -r \
-            'if (.id | type) == "string" then .id else empty end' \
+            'if type == "object" then
+              if (.id | type) == "string" then .id else empty end
+            else
+              empty
+            end' \
             "$manifest_file" |
           string trim
         )
@@ -2338,13 +2406,17 @@
               --arg author "$author" \
               --arg author_url "$author_url" \
               '
-                (.id? | type) == "string" and .id == $id and
-                (if $author == "" then true else
-                  (.author? | type) == "string" and .author == $author
-                end) and
-                (if $author_url == "" then true else
-                  (.authorUrl? | type) == "string" and .authorUrl == $author_url
-                end)
+                if type == "object" then
+                  (.id | type) == "string" and .id == $id and
+                  (if $author == "" then true else
+                    (.author? | type) == "string" and .author == $author
+                  end) and
+                  (if $author_url == "" then true else
+                    (.authorUrl? | type) == "string" and .authorUrl == $author_url
+                  end)
+                else
+                  false
+                end
               ' \
               >/dev/null
           )
@@ -2409,8 +2481,12 @@
             command base64 -D \
               2>/dev/null |
             command jq -r \
-              'if (.id | type) == "string" then
-                [.id, (.author // ""), (.authorUrl // "")] | @tsv
+              'if type == "object" then
+                if (.id | type) == "string" then
+                  [.id, (.author // ""), (.authorUrl // "")] | @tsv
+                else
+                  empty
+                end
               else
                 empty
               end'
@@ -2429,6 +2505,33 @@
 
           if test "$candidate_id" != "$library_id"
             continue
+          end
+
+          # A plugin candidate must provide a usable compiled payload, either
+          # at its root or in its newest release. Do not offer source-only
+          # repositories that happen to contain a matching manifest.
+          if test "$requires_plugin_payload" -eq 1
+            set --local candidate_main_url (
+              command gh api \
+                "repos/$candidate/contents/main.js" \
+                --jq .download_url \
+                2>/dev/null
+            )
+
+            if test $status -ne 0; or test -z "$candidate_main_url"
+              set candidate_main_url (
+                command gh api \
+                  "repos/$candidate/releases/latest" \
+                  --jq \
+                  '.assets[]? | select(.name == "main.js") | .browser_download_url' \
+                  2>/dev/null |
+                command head -n 1
+              )
+            end
+
+            if test -z "$candidate_main_url"
+              continue
+            end
           end
 
           set --append id_candidates "$candidate"
@@ -2483,29 +2586,24 @@
             )
           end
 
-          if test (count $candidate_urls) -eq 1
-            set --local selected_url \
-              "https://github.com/$candidate_urls[1]"
-          else
-            read --prompt-str "Choose a repository number, or s to skip: " selection
+          read --prompt-str "Choose a repository number, or s to skip: " selection
 
-            if test "$selection" = s; or test "$selection" = S
-              set --append missing_entries \
-                "$entry_name — skipped by user"
-              continue
-            end
-
-            if not string match -rq '^[0-9]+$' "$selection"; or \
-              test "$selection" -lt 1; or \
-              test "$selection" -gt (count $candidate_urls)
-              set --append missing_entries \
-                "$entry_name — invalid repository selection"
-              continue
-            end
-
-            set --local selected_url \
-              "https://github.com/$candidate_urls[$selection]"
+          if test "$selection" = s; or test "$selection" = S
+            set --append missing_entries \
+              "$entry_name — skipped by user"
+            continue
           end
+
+          if not string match -rq '^[0-9]+$' "$selection"; or \
+            test "$selection" -lt 1; or \
+            test "$selection" -gt (count $candidate_urls)
+            set --append missing_entries \
+              "$entry_name — invalid repository selection"
+            continue
+          end
+
+          set --local selected_url \
+            "https://github.com/$candidate_urls[$selection]"
         end
 
         printf '%s\n' "$selected_url" >"$repository_file"
