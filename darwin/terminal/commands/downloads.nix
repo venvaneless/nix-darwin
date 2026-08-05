@@ -24,10 +24,10 @@
   # gitdll --plugins "source path" [...] --to "destination path"
   # gitdll --themes "source path" [...] --to "destination path"
   #
-  # In the Obsidian modes, source directories are checked one level deep
-  # for repository-url.txt or repo/repository-url.txt. Source .txt files
-  # can also provide repository links. The downloader functions remain
-  # responsible for the downloads.
+  # In the Obsidian modes, source directories are checked one level deep.
+  # A saved repository-url.txt is reused immediately. When it is absent,
+  # gitdll resolves only the matching repository metadata and saves the URL
+  # before handing the actual files to the downloader functions.
   # -----------------------------------------------------------------
   gitdll = {
     description = "Download Git repositories or rebuild Obsidian plugin and theme libraries";
@@ -246,6 +246,256 @@
         set --local repository_count 0
         set --local missing_count 0
 
+        # Check only the small files that establish a usable plugin/theme.
+        # This establishes that the manifest-derived direct path is usable;
+        # identity comparison is reserved for fallback repository discovery.
+        function __gitdll_required_files_exist \
+            --argument-names candidate library_type
+
+          set --local manifest_url (
+            command gh api \
+              "repos/$candidate/contents/manifest.json" \
+              --jq .download_url \
+              2>/dev/null
+          )
+
+          if test -z "$manifest_url"
+            return 1
+          end
+
+          set --local payload_url
+
+          if test "$library_type" = plugins
+            set payload_url (
+              command gh api \
+                "repos/$candidate/contents/main.js" \
+                --jq .download_url \
+                2>/dev/null
+            )
+          else
+            for payload_name in theme.css obsidian.css
+              set payload_url (
+                command gh api \
+                  "repos/$candidate/contents/$payload_name" \
+                  --jq .download_url \
+                  2>/dev/null
+              )
+
+              if test -n "$payload_url"
+                break
+              end
+            end
+          end
+
+          test -n "$payload_url"
+        end
+
+        # Compare a remote manifest only in the fallback path. JSON parsing
+        # ignores indentation and formatting; only id and author matter.
+        function __gitdll_remote_matches \
+            --argument-names candidate library_id library_author library_type
+
+          set --local remote_manifest (
+            command gh api \
+              "repos/$candidate/contents/manifest.json" \
+              --jq .content \
+              2>/dev/null |
+            command tr -d '\n' |
+            command base64 -D 2>/dev/null
+          )
+
+          if test -z "$remote_manifest"
+            return 1
+          end
+
+          set --local remote_id (
+            printf '%s' "$remote_manifest" |
+            command jq -r \
+              'if (.id | type) == "string" then .id else empty end' \
+              2>/dev/null |
+            string trim
+          )
+
+          set --local remote_author (
+            printf '%s' "$remote_manifest" |
+            command jq -r \
+              'if (.author | type) == "string" then .author else empty end' \
+              2>/dev/null |
+            string trim
+          )
+
+          set --local normalized_library_id (
+            string lower -- "$library_id" |
+            string replace -ra '[^a-z0-9]' '''
+          )
+
+          set --local normalized_remote_id (
+            string lower -- "$remote_id" |
+            string replace -ra '[^a-z0-9]' '''
+          )
+
+          if test -z "$normalized_library_id"; or \
+              test "$normalized_library_id" != "$normalized_remote_id"
+            return 1
+          end
+
+          if test -n "$library_author"
+            set --local normalized_library_author (
+              string lower -- "$library_author" |
+              string replace -ra '[^a-z0-9]' '''
+            )
+
+            set --local normalized_remote_author (
+              string lower -- "$remote_author" |
+              string replace -ra '[^a-z0-9]' '''
+            )
+
+            if test -z "$normalized_remote_author"; or \
+                test "$normalized_library_author" != "$normalized_remote_author"
+              return 1
+            end
+          end
+
+          __gitdll_required_files_exist "$candidate" "$library_type"
+        end
+
+        function __gitdll_resolve_repository \
+            --argument-names source_folder library_type
+
+          if not command -q gh; or not command -q jq; or \
+              not command -q base64
+            echo "Error: resolving repository URLs requires gh, jq, and base64." >&2
+            return 1
+          end
+
+          set --local manifest_file "$source_folder/manifest.json"
+
+          if not test -f "$manifest_file"
+            set manifest_file "$source_folder/repo/manifest.json"
+          end
+
+          if not test -f "$manifest_file"; or \
+              not command jq -e . "$manifest_file" >/dev/null 2>&1
+            return 1
+          end
+
+          set --local library_id (
+            command jq -r \
+              'if (.id | type) == "string" then .id else empty end' \
+              "$manifest_file" |
+            string trim
+          )
+
+          set --local library_author (
+            command jq -r \
+              'if (.author | type) == "string" then .author else empty end' \
+              "$manifest_file" |
+            string trim
+          )
+
+          set --local author_url (
+            command jq -r \
+              'if (.authorUrl | type) == "string" then .authorUrl else empty end' \
+              "$manifest_file" |
+            string trim
+          )
+
+          if test -z "$library_id"; or \
+              not string match -rq '^[A-Za-z0-9._-]+$' "$library_id"
+            return 1
+          end
+
+          set --local author_url_owner (
+            string match -r --groups-only \
+              '^https?://github\\.com/([^/]+)/?' \
+              -- "$author_url"
+          )
+
+          set --local direct_owners
+
+          if string match -rq '^[A-Za-z0-9-]+$' "$library_author"
+            set --append direct_owners "$library_author"
+          end
+
+          if string match -rq '^[A-Za-z0-9-]+$' "$author_url_owner"; and \
+              not contains -- "$author_url_owner" $direct_owners
+            set --append direct_owners "$author_url_owner"
+          end
+
+          # Do exactly what the manifest describes before considering any
+          # alternatives: author/id, then authorUrl owner/id. If this direct
+          # path contains the required files, use it immediately. Remote
+          # manifest comparison is the fallback for different repo names.
+          for direct_owner in $direct_owners
+            set --local direct_candidate "$direct_owner/$library_id"
+
+            if __gitdll_required_files_exist \
+                "$direct_candidate" \
+                "$library_type"
+              echo "https://github.com/$direct_candidate"
+              return 0
+            end
+          end
+
+          # Only the exact manifest author may supply fallback candidates.
+          set --local fallback_owner "$library_author"
+
+          if not string match -rq '^[A-Za-z0-9-]+$' "$fallback_owner"
+            set fallback_owner "$author_url_owner"
+          end
+
+          if not string match -rq '^[A-Za-z0-9-]+$' "$fallback_owner"
+            return 1
+          end
+
+          set --local candidates (
+            command gh api \
+              "users/$fallback_owner/repos?per_page=100&type=owner" \
+              --jq '.[] | select(.archived | not) | .full_name' \
+              2>/dev/null
+          )
+
+          set --local matches
+
+          for candidate in $candidates
+            if __gitdll_remote_matches \
+                "$candidate" \
+                "$library_id" \
+                "$library_author" \
+                "$library_type"
+              set --append matches "$candidate"
+            end
+          end
+
+          if test (count $matches) -eq 1
+            echo "https://github.com/$matches[1]"
+            return 0
+          end
+
+          if test (count $matches) -lt 2
+            return 1
+          end
+
+          echo "Choose a repository for "(basename "$source_folder")":" >&2
+          set --local candidate_index 1
+
+          for candidate in $matches
+            echo "  $candidate_index) https://github.com/$candidate" >&2
+            set candidate_index (math "$candidate_index + 1")
+          end
+
+          read --prompt-str "Choose a repository number, or s to skip: " selection
+
+          if test "$selection" = s; or test "$selection" = S; or \
+              not string match -rq '^[0-9]+$' "$selection"; or \
+              test "$selection" -lt 1; or \
+              test "$selection" -gt (count $matches)
+            return 1
+          end
+
+          echo "https://github.com/$matches[$selection]"
+        end
+
         for source_input in $source_inputs
           echo "Scanning source:"
           echo "  $source_input"
@@ -337,33 +587,33 @@
               "$source_folder/repo/repository-url.txt"
           end
 
-          if not test -f "$repository_file"
-            printf '%s — missing repository-url.txt\n' \
-              "$source_name" \
-              >>"$missing_file"
+          set --local repository_url
 
-            set missing_count (
-              math "$missing_count + 1"
+          if test -f "$repository_file"
+            set repository_url (
+              command head -n 1 "$repository_file" |
+              string trim
             )
-
-            continue
           end
 
-          set --local repository_url (
-            command head -n 1 "$repository_file" |
-            string trim
-          )
+          if test -n "$repository_url"; and \
+              not string match -rq \
+                '^https?://github\\.com/[^/]+/[^/]+/?$' \
+                "$repository_url"
+            set repository_url
+          end
 
           if test -z "$repository_url"
-            printf '%s — repository-url.txt is empty\n' \
-              "$source_name" \
-              >>"$missing_file"
-
-            set missing_count (
-              math "$missing_count + 1"
+            set repository_url (
+              __gitdll_resolve_repository "$source_folder" "$library_type"
             )
 
-            continue
+            if test -n "$repository_url"
+              # Cache only a verified match. The next run then requires no
+              # GitHub lookup and no interactive choice.
+              printf '%s\n' "$repository_url" \
+                >"$source_folder/repository-url.txt" 2>/dev/null
+            end
           end
 
           set repository_url (
@@ -384,9 +634,8 @@
               '^https?://github\.com/[^/]+/[^/]+$' \
               "$repository_url"
 
-                printf '%s — invalid repository URL: %s\n' \
-                  "$source_name" \
-                  "$repository_url" \
+            printf '%s — missing or invalid repository-url.txt\n' \
+              "$source_name" \
               >>"$missing_file"
 
             set missing_count (
@@ -400,9 +649,9 @@
             "$repository_url" \
             >>"$repositories_file"
 
-            printf '%s — invalid repository URL: %s\n' \
-              "$source_name" \
-              "$repository_url" \
+          printf '%s\t%s\n' \
+            "$source_name" \
+            "$repository_url" \
             >>"$source_map_file"
 
           set repository_count (
