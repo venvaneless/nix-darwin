@@ -1,4 +1,4 @@
-# darwin/system-commands/backups/mk-container-backup.nix
+# darwin/system-commands/backups/container-backup-helper.nix
 #
 # =====================================================================
 # CONTAINER BACKUP HELPER
@@ -58,8 +58,8 @@ let
       marker_file="$destination_dir/.last-backup"
       lock_dir="/private/tmp/com.ven.$app_slug-backup.lock"
       global_lock_dir="/private/tmp/com.ven.backup-archive.lock"
-      backup_interval_seconds=28800
-      cpu_limit_percent=35
+      backup_interval_seconds=${toString cfg.minimumIntervalSeconds}
+      cpu_limit_percent=${toString cfg.cpuLimitPercent}
 
       mode="manual"
       temporary_archive=""
@@ -351,14 +351,32 @@ in
 
     automatic = lib.mkOption {
       type = lib.types.bool;
-      default = true;
-      description = "Run the ${appName} backup automatically through its daily LaunchAgent schedule.";
+      default = false;
+      description = "Run the ${appName} backup automatically through its interval-based LaunchAgent schedule when explicitly enabled.";
+    };
+
+    automaticIntervalSeconds = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 86400;
+      description = "Seconds between automatic ${appName} backup attempts.";
+    };
+
+    minimumIntervalSeconds = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 28800;
+      description = "Minimum seconds between successful scheduled ${appName} backups.";
+    };
+
+    cpuLimitPercent = lib.mkOption {
+      type = lib.types.ints.between 1 100;
+      default = 35;
+      description = "Maximum CPU percentage used for ${appName} archive creation and verification.";
     };
 
     runOnRebuild = lib.mkOption {
       type = lib.types.bool;
-      default = true;
-      description = "Include the ${appName} backup when services.containerBackups.runOnRebuild is enabled.";
+      default = false;
+      description = "Include the ${appName} backup during rebuild only when explicitly enabled.";
     };
   };
 
@@ -373,10 +391,7 @@ in
           ];
           RunAtLoad = false;
           KeepAlive = false;
-          StartCalendarInterval = {
-            Hour = scheduledHour;
-            Minute = scheduledMinute;
-          };
+          StartInterval = cfg.automaticIntervalSeconds;
           ProcessType = "Background";
           Nice = 20;
           LowPriorityIO = true;

@@ -4,7 +4,7 @@
 { lib, pkgs, ... }:
 
 let
-  raycastBackup = import ./mk-app-backup.nix {
+  raycastBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "Raycast";
     appSlug = "raycast";

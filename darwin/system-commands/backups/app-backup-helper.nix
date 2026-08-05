@@ -1,4 +1,4 @@
-# darwin/system-commands/backups/mk-app-backup.nix
+# darwin/system-commands/backups/app-backup-helper.nix
 #
 # =====================================================================
 # APPLICATION BACKUP HELPER
@@ -14,13 +14,34 @@
   appName,
   appSlug,
   commandName ? "${appSlug}-backup",
+  destinationRoot ? "appBackups",
   destinationSegments ? [ appSlug ],
   sources,
   requiredAny ? [ ],
+  extraExcludePatterns ? [ ],
 }:
 
 let
   destinationSuffix = lib.concatStringsSep "/" destinationSegments;
+  destinationRootDefinitions =
+    if destinationRoot == "appBackups" then
+      ''
+        data_backups_root="$external_backup_volume/data-backups"
+        app_backups_root="$data_backups_root/app-backups"
+        destination_base="$app_backups_root"
+      ''
+    else if destinationRoot == "terminalBackups" then
+      ''
+        system_backup_root="$external_backup_volume/system"
+        terminal_backups_root="$system_backup_root/terminal"
+        destination_base="$terminal_backups_root"
+      ''
+    else
+      throw "Unsupported app backup destination root: ${destinationRoot}";
+
+  extraExcludes = lib.concatMapStringsSep "\n" (pattern: ''
+      --exclude=${lib.escapeShellArg pattern}
+  '') extraExcludePatterns;
 
   copySources = lib.concatMapStringsSep "\n" (source: ''
     copy_source ${lib.escapeShellArg source.path} ${lib.escapeShellArg source.destination}
@@ -57,9 +78,8 @@ pkgs.writeShellApplication {
     # -----------------------------------------------------------------
     app_slug="$(printf '%s' ${lib.escapeShellArg appSlug})"
     external_backup_volume="/Volumes/SystemBackup"
-    data_backups_root="$external_backup_volume/data-backups"
-    app_backups_root="$data_backups_root/app-backups"
-    destination_dir="$app_backups_root/${destinationSuffix}"
+    ${destinationRootDefinitions}
+    destination_dir="$destination_base/${destinationSuffix}"
     downloads_dir="/Users/ven/Downloads"
 
     timestamp="$(${pkgs.coreutils}/bin/date '+%Y-%m-%d-%H%M%S')"
@@ -82,6 +102,7 @@ pkgs.writeShellApplication {
       --exclude='.Trash'
       --exclude='.Trash-*'
       --exclude='__MACOSX'
+${extraExcludes}
     )
 
     log() {

@@ -4,7 +4,7 @@
 { lib, pkgs, ... }:
 
 let
-  pasteBackup = import ./mk-app-backup.nix {
+  pasteBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "Paste";
     appSlug = "paste";

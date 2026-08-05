@@ -4,7 +4,7 @@
 { lib, pkgs, ... }:
 
 let
-  vesktopBackup = import ./mk-app-backup.nix {
+  vesktopBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "Vesktop";
     appSlug = "vesktop";

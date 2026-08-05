@@ -4,14 +4,20 @@
 { lib, pkgs, ... }:
 
 let
-  itermBackup = import ./mk-app-backup.nix {
+  itermBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "iTerm2";
     appSlug = "iterm";
+    destinationRoot = "terminalBackups";
+    destinationSegments = [ "iterm" "backups" ];
+    extraExcludePatterns = [
+      "sockets/"
+      "private/socket"
+      "*.sock"
+    ];
     sources = [
-      { path = "/Users/ven/Library/Application Support/iTerm2"; destination = "app-support/iTerm2"; }
-      { path = "/Users/ven/Library/Preferences/com.googlecode.iterm2.plist"; destination = "app-pref/com.googlecode.iterm2.plist"; }
-      { path = "/Users/ven/Library/Preferences/com.googlecode.iterm2.private.plist"; destination = "app-pref/com.googlecode.iterm2.private.plist"; }
+      { path = "/Users/ven/Library/Application Support/iTerm2"; destination = "iTerm2"; }
+      { path = "/Users/ven/Library/Preferences/com.googlecode.iterm2.plist"; destination = "com.googlecode.iterm2.plist"; }
     ];
   };
 in

@@ -4,7 +4,7 @@
 { lib, pkgs, ... }:
 
 let
-  snippetslabBackup = import ./mk-app-backup.nix {
+  snippetslabBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "SnippetsLab";
     appSlug = "snippetslab";

@@ -4,13 +4,13 @@
 { lib, pkgs, ... }:
 
 let
-  chromeCanaryBackup = import ./mk-app-backup.nix {
+  chromeCanaryBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "Chrome Canary";
     appSlug = "chrome-canary";
     destinationSegments = [ "browsers" "chrome-canary" ];
     sources = [
-      { path = "/Users/ven/Library/Application Support/Google/Chrome Canary"; destination = "app-support/Chrome Canary"; }
+      { path = "/Users/ven/Library/Application Support/Google/Chrome Canary"; destination = "Chrome Canary"; }
       { path = "/Users/ven/Library/Preferences/com.google.Chrome.canary.plist"; destination = "com.google.Chrome.canary.plist"; }
     ];
   };

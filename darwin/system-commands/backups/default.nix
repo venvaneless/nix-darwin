@@ -3,9 +3,8 @@
 # =====================================================================
 # APPLICATION AND CONTAINER BACKUPS
 #
-# Container backups are independently enabled. Set runOnRebuild to
-# true to run every enabled backup during darwin-rebuild switch. Each
-# individual backup can still opt out with its runOnRebuild option.
+# Container backups are manual by default. Set an individual `automatic`
+# toggle only when that container should receive a scheduled LaunchAgent.
 # =====================================================================
 
 { lib, ... }:
@@ -18,11 +17,22 @@
   };
 
   config.services.containerBackups = {
+    # ---- ENABLED MANUAL COMMANDS
     archivebox.enable = true;
     browsertrix.enable = true;
     karakeep.enable = true;
     vaultwarden.enable = true;
     wallabag.enable = true;
+
+    # ---- OPTIONAL AUTOMATIC SCHEDULE
+    # Keep these commented defaults manual. To schedule one container, change
+    # its automatic value and tune its attempt, minimum-success, and CPU caps.
+    # vaultwarden = {
+    #   automatic = true;
+    #   automaticIntervalSeconds = 86400;
+    #   minimumIntervalSeconds = 28800;
+    #   cpuLimitPercent = 35;
+    # };
   };
 
   imports = [

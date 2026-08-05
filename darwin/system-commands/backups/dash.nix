@@ -4,7 +4,7 @@
 { lib, pkgs, ... }:
 
 let
-  dashBackup = import ./mk-app-backup.nix {
+  dashBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "Dash";
     appSlug = "dash";

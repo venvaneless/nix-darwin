@@ -4,7 +4,7 @@
 { lib, pkgs, ... }:
 
 let
-  espansoBackup = import ./mk-app-backup.nix {
+  espansoBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "Espanso";
     appSlug = "espanso";

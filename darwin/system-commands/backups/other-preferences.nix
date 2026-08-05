@@ -4,7 +4,7 @@
 { lib, pkgs, ... }:
 
 let
-  otherPreferencesBackup = import ./mk-app-backup.nix {
+  otherPreferencesBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "Other Preferences";
     appSlug = "other-preferences";

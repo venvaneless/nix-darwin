@@ -4,7 +4,7 @@
 { lib, pkgs, ... }:
 
 let
-  heliumBackup = import ./mk-app-backup.nix {
+  heliumBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "Helium";
     appSlug = "helium";

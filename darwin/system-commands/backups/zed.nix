@@ -4,12 +4,12 @@
 { lib, pkgs, ... }:
 
 let
-  zedBackup = import ./mk-app-backup.nix {
+  zedBackup = import ./app-backup-helper.nix {
     inherit lib pkgs;
     appName = "Zed";
     appSlug = "zed";
     sources = [
-      { path = "/Users/ven/Library/Application Support/zed"; destination = "app-support/zed"; }
+      { path = "/Users/ven/Library/Application Support/zed"; destination = "zed"; }
       { path = "/Users/ven/.config/zed"; destination = "user-config/zed"; }
       { path = "/Users/ven/Library/Preferences/dev.zed.Zed.plist"; destination = "dev.zed.Zed.plist"; }
     ];

@@ -10,7 +10,7 @@
   ...
 }:
 
-import ./mk-container-backup.nix {
+import ./container-backup-helper.nix {
   inherit config lib pkgs;
 
   appName = "ArchiveBox";
