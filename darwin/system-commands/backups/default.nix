@@ -7,35 +7,17 @@
 # toggle only when that container should receive a scheduled LaunchAgent.
 # =====================================================================
 
-{ lib, ... }:
+{ lib, pkgs, ... }:
 
+let
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
+in
 {
-  options.services.containerBackups.runOnRebuild = lib.mkOption {
-    type = lib.types.bool;
-    default = false;
-    description = "Run enabled container backups during darwin-rebuild activation.";
-  };
-
-  config.services.containerBackups = {
-    # ---- ENABLED MANUAL COMMANDS
-    archivebox.enable = true;
-    browsertrix.enable = true;
-    karakeep.enable = true;
-    vaultwarden.enable = true;
-    wallabag.enable = true;
-
-    # ---- OPTIONAL AUTOMATIC SCHEDULE
-    # Keep these commented defaults manual. To schedule one container, change
-    # its automatic value and tune its attempt, minimum-success, and CPU caps.
-    # vaultwarden = {
-    #   automatic = true;
-    #   automaticIntervalSeconds = 86400;
-    #   minimumIntervalSeconds = 28800;
-    #   cpuLimitPercent = 35;
-    # };
-  };
-
   imports = [
+    appBackupHelper.settingsModule
+    containerBackupHelper.settingsModule
+
     ./archivebox.nix
     ./better-finder-attributes.nix
     ./better-finder-renamer.nix
@@ -63,4 +45,35 @@
     ./yate.nix
     ./zed.nix
   ];
+
+  config = {
+    # ---- GLOBAL APPLICATION BACKUP CONTROLS
+    # Automatic application backups require this master switch and the
+    # matching individual app module's automatic = true setting.
+    services.appBackups = {
+      automaticEnabled = false;
+      defaultAutomaticIntervalSeconds = 86400;
+      defaultMinimumIntervalSeconds = 28800;
+      defaultCpuLimitPercent = 25;
+    };
+
+    # ---- GLOBAL CONTAINER BACKUP CONTROLS
+    # Automatic container backups require this master switch and the matching
+    # individual container module's automatic = true setting.
+    services.containerBackups = {
+      automaticEnabled = false;
+      defaultAutomaticIntervalSeconds = 86400;
+      defaultMinimumIntervalSeconds = 28800;
+      defaultCpuLimitPercent = 35;
+      runOnRebuild = false;
+
+    # ---- ENABLED MANUAL COMMANDS
+    archivebox.enable = true;
+    browsertrix.enable = true;
+    karakeep.enable = true;
+    vaultwarden.enable = true;
+    wallabag.enable = true;
+
+    };
+  };
 }

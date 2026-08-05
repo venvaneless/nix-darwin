@@ -8,19 +8,61 @@
 # Downloads before its completed archive is moved to SystemBackup.
 # =====================================================================
 
-{
-  config,
-  lib,
-  pkgs,
-  appName,
-  appSlug,
-  sourceDir,
-  scheduledHour,
-  scheduledMinute,
-  prepareArchive ? "",
-}:
+{ lib, pkgs }:
 
 let
+  # ---- GLOBAL CONTAINER BACKUP CONTROLS
+  # Imported once by default.nix. Per-container modules retain their own
+  # schedule, interval, CPU cap, and rebuild toggles.
+  settingsModule = { lib, ... }: {
+    options.services.containerBackups = {
+      automaticEnabled = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Allow container backup modules with automatic = true to create their LaunchAgents.";
+      };
+
+      defaultAutomaticIntervalSeconds = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 86400;
+        description = "Default seconds between automatic container backup attempts.";
+      };
+
+      defaultMinimumIntervalSeconds = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 28800;
+        description = "Default minimum seconds between successful scheduled container backups.";
+      };
+
+      defaultCpuLimitPercent = lib.mkOption {
+        type = lib.types.ints.between 1 100;
+        default = 35;
+        description = "Default CPU percentage used by container backup archive work.";
+      };
+
+      runOnRebuild = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Run enabled container backups during darwin-rebuild activation.";
+      };
+    };
+  };
+
+  mkContainerBackup = {
+    config,
+    appName,
+    appSlug,
+    sourceDir,
+    scheduledHour ? 4,
+    scheduledMinute ? 0,
+    prepareArchive ? "",
+    automatic ? false,
+    automaticIntervalSeconds ? config.services.containerBackups.defaultAutomaticIntervalSeconds,
+    minimumIntervalSeconds ? config.services.containerBackups.defaultMinimumIntervalSeconds,
+    cpuLimitPercent ? config.services.containerBackups.defaultCpuLimitPercent,
+    runOnRebuild ? false,
+  }:
+  let
   cfg = config.services.containerBackups.${appSlug};
   backupCfg = config.services.containerBackups;
 
@@ -357,31 +399,31 @@ in
 
     automaticIntervalSeconds = lib.mkOption {
       type = lib.types.ints.positive;
-      default = 86400;
+      default = automaticIntervalSeconds;
       description = "Seconds between automatic ${appName} backup attempts.";
     };
 
     minimumIntervalSeconds = lib.mkOption {
       type = lib.types.ints.positive;
-      default = 28800;
+      default = minimumIntervalSeconds;
       description = "Minimum seconds between successful scheduled ${appName} backups.";
     };
 
     cpuLimitPercent = lib.mkOption {
       type = lib.types.ints.between 1 100;
-      default = 35;
+      default = cpuLimitPercent;
       description = "Maximum CPU percentage used for ${appName} archive creation and verification.";
     };
 
     runOnRebuild = lib.mkOption {
       type = lib.types.bool;
-      default = false;
+      default = runOnRebuild;
       description = "Include the ${appName} backup during rebuild only when explicitly enabled.";
     };
   };
 
   config = lib.mkIf cfg.enable (lib.mkMerge [
-    (lib.mkIf cfg.automatic {
+    (lib.mkIf (backupCfg.automaticEnabled && cfg.automatic) {
       launchd.user.agents."backup-${appSlug}" = {
         serviceConfig = {
           Label = launchdLabel;
@@ -410,4 +452,9 @@ in
       '';
     })
   ]);
+}
+;
+in
+{
+  inherit mkContainerBackup settingsModule;
 }

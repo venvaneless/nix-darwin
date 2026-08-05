@@ -1,13 +1,19 @@
 # darwin/system-commands/backups/chrome-canary.nix
 # Chrome Canary browser backup command: `chrome-canary-backup`.
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  chromeCanaryBackup = import ./app-backup-helper.nix {
-    inherit lib pkgs;
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  chromeCanaryBackup = appBackupHelper.mkAppBackup {
+    inherit config;
     appName = "Chrome Canary";
     appSlug = "chrome-canary";
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
     destinationSegments = [ "browsers" "chrome-canary" ];
     sources = [
       { path = "/Users/ven/Library/Application Support/Google/Chrome Canary"; destination = "Chrome Canary"; }
@@ -15,6 +21,4 @@ let
     ];
   };
 in
-{
-  environment.systemPackages = [ chromeCanaryBackup ];
-}
+chromeCanaryBackup

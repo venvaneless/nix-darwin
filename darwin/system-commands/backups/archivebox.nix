@@ -10,11 +10,20 @@
   ...
 }:
 
-import ./container-backup-helper.nix {
-  inherit config lib pkgs;
+let
+  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
+in
+containerBackupHelper.mkContainerBackup {
+  inherit config;
 
   appName = "ArchiveBox";
   appSlug = "archivebox";
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 35;
+  runOnRebuild = false;
   sourceDir = config.services.archivebox.dataDir;
   scheduledHour = 1;
   scheduledMinute = 0;

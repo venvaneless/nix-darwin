@@ -1,13 +1,19 @@
 # darwin/system-commands/backups/iterm.nix
 # iTerm2 backup command: `iterm-backup`.
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  itermBackup = import ./app-backup-helper.nix {
-    inherit lib pkgs;
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  itermBackup = appBackupHelper.mkAppBackup {
+    inherit config;
     appName = "iTerm2";
     appSlug = "iterm";
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
     destinationRoot = "terminalBackups";
     destinationSegments = [ "iterm" "backups" ];
     extraExcludePatterns = [
@@ -21,6 +27,4 @@ let
     ];
   };
 in
-{
-  environment.systemPackages = [ itermBackup ];
-}
+itermBackup

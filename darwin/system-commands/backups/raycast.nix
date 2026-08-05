@@ -1,13 +1,19 @@
 # darwin/system-commands/backups/raycast.nix
 # Raycast backup command: `raycast-backup`.
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  raycastBackup = import ./app-backup-helper.nix {
-    inherit lib pkgs;
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  raycastBackup = appBackupHelper.mkAppBackup {
+    inherit config;
     appName = "Raycast";
     appSlug = "raycast";
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
     requiredAny = [ [
       "/Users/ven/Library/Application Support/com.raycast.macos"
       "/Users/ven/Library/Application Support/com.raycast-x.macos"
@@ -21,6 +27,4 @@ let
     ];
   };
 in
-{
-  environment.systemPackages = [ raycastBackup ];
-}
+raycastBackup

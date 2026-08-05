@@ -1,13 +1,19 @@
 # darwin/system-commands/backups/snippetslab.nix
 # SnippetsLab backup command: `snippetslab-backup`.
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  snippetslabBackup = import ./app-backup-helper.nix {
-    inherit lib pkgs;
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  snippetslabBackup = appBackupHelper.mkAppBackup {
+    inherit config;
     appName = "SnippetsLab";
     appSlug = "snippetslab";
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
     sources = [
       { path = "/Users/ven/Library/Containers/com.renfei.SnippetsLab/Data/Library/Application Support/Markdown Themes"; destination = "app-support/Markdown Themes"; }
       { path = "/Users/ven/Library/Containers/com.renfei.SnippetsLab/Data/Library/Application Support/Themes"; destination = "app-support/Themes"; }
@@ -15,6 +21,4 @@ let
     ];
   };
 in
-{
-  environment.systemPackages = [ snippetslabBackup ];
-}
+snippetslabBackup

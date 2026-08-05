@@ -1,13 +1,19 @@
 # darwin/system-commands/backups/better-finder-attributes.nix
 # A Better Finder Attributes backup command: `better-attributes-backup`.
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  betterAttributesBackup = import ./app-backup-helper.nix {
-    inherit lib pkgs;
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  betterAttributesBackup = appBackupHelper.mkAppBackup {
+    inherit config;
     appName = "A Better Finder Attributes";
     appSlug = "better-finder-attributes";
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
     commandName = "better-attributes-backup";
     sources = [
       { path = "/Users/ven/Library/Application Support/A Better Finder Attributes 7"; destination = "A Better Finder Attributes 7"; }
@@ -15,6 +21,4 @@ let
     ];
   };
 in
-{
-  environment.systemPackages = [ betterAttributesBackup ];
-}
+betterAttributesBackup

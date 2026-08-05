@@ -1,13 +1,19 @@
 # darwin/system-commands/backups/wezterm.nix
 # WezTerm backup command: `wezterm-backup`.
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  weztermBackup = import ./app-backup-helper.nix {
-    inherit lib pkgs;
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  weztermBackup = appBackupHelper.mkAppBackup {
+    inherit config;
     appName = "WezTerm";
     appSlug = "wezterm";
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
     sources = [
       { path = "/Users/ven/Library/Application Support/wezterm"; destination = "wezterm"; }
       { path = "/Users/ven/.config/wezterm"; destination = "user-config/wezterm"; }
@@ -15,6 +21,4 @@ let
     ];
   };
 in
-{
-  environment.systemPackages = [ weztermBackup ];
-}
+weztermBackup

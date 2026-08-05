@@ -1,13 +1,19 @@
 # darwin/system-commands/backups/dash.nix
 # Dash backup command: `dash-backup`.
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  dashBackup = import ./app-backup-helper.nix {
-    inherit lib pkgs;
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  dashBackup = appBackupHelper.mkAppBackup {
+    inherit config;
     appName = "Dash";
     appSlug = "dash";
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
     sources = [
       { path = "/Users/ven/Library/Application Support/Dash"; destination = "app-support/Dash"; }
       { path = "/Users/ven/Library/Application Support/com.kapeli.dash-setapp"; destination = "app-support/com.kapeli.dash-setapp"; }
@@ -16,6 +22,4 @@ let
     ];
   };
 in
-{
-  environment.systemPackages = [ dashBackup ];
-}
+dashBackup

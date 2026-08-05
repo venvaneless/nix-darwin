@@ -1,13 +1,19 @@
 # darwin/system-commands/backups/librewolf.nix
 # LibreWolf browser backup command: `librewolf-backup`.
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  librewolfBackup = import ./app-backup-helper.nix {
-    inherit lib pkgs;
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  librewolfBackup = appBackupHelper.mkAppBackup {
+    inherit config;
     appName = "LibreWolf";
     appSlug = "librewolf";
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
     destinationSegments = [ "browsers" "librewolf" ];
     sources = [
       { path = "/Users/ven/Library/Application Support/librewolf"; destination = "librewolf"; }
@@ -16,6 +22,4 @@ let
     ];
   };
 in
-{
-  environment.systemPackages = [ librewolfBackup ];
-}
+librewolfBackup

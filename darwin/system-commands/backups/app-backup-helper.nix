@@ -8,21 +8,57 @@
 # exact application files or directories into the archive layout.
 # =====================================================================
 
-{
-  lib,
-  pkgs,
-  appName,
-  appSlug,
-  commandName ? "${appSlug}-backup",
-  destinationRoot ? "appBackups",
-  destinationSegments ? [ appSlug ],
-  sources,
-  requiredAny ? [ ],
-  extraExcludePatterns ? [ ],
-  cpuLimitPercent ? 25,
-}:
+{ lib, pkgs }:
 
 let
+  # ---- GLOBAL APPLICATION BACKUP CONTROLS
+  # Imported once by default.nix. Individual app modules keep their own
+  # toggles below, while this switch controls every automatic app schedule.
+  settingsModule = { lib, ... }: {
+    options.services.appBackups = {
+      automaticEnabled = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Allow application backup modules with automatic = true to create their LaunchAgents.";
+      };
+
+      defaultAutomaticIntervalSeconds = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 86400;
+        description = "Default seconds between automatic application backup attempts.";
+      };
+
+      defaultMinimumIntervalSeconds = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 28800;
+        description = "Default minimum seconds between successful scheduled application backups.";
+      };
+
+      defaultCpuLimitPercent = lib.mkOption {
+        type = lib.types.ints.between 1 100;
+        default = 25;
+        description = "Default CPU percentage used by application backup archive work.";
+      };
+    };
+  };
+
+  mkAppBackup = {
+    config,
+    appName,
+    appSlug,
+    commandName ? "${appSlug}-backup",
+    destinationRoot ? "appBackups",
+    destinationSegments ? [ appSlug ],
+    sources,
+    requiredAny ? [ ],
+    extraExcludePatterns ? [ ],
+    automatic ? false,
+    automaticIntervalSeconds ? config.services.appBackups.defaultAutomaticIntervalSeconds,
+    minimumIntervalSeconds ? config.services.appBackups.defaultMinimumIntervalSeconds,
+    cpuLimitPercent ? config.services.appBackups.defaultCpuLimitPercent,
+  }:
+  let
+    cfg = config.services.appBackups.${appSlug};
   destinationSuffix = lib.concatStringsSep "/" destinationSegments;
   destinationRootDefinitions =
     if destinationRoot == "appBackups" then
@@ -59,8 +95,8 @@ let
       fail "none of the required alternative sources exists: ${lib.concatStringsSep ", " group}"
     fi
   '') requiredAny;
-in
-pkgs.writeShellApplication {
+
+  backupRunner = pkgs.writeShellApplication {
   name = commandName;
 
   runtimeInputs = with pkgs; [
@@ -87,12 +123,15 @@ pkgs.writeShellApplication {
     timestamp="$(${pkgs.coreutils}/bin/date '+%Y-%m-%d-%H%M%S')"
     archive_name="$timestamp-$app_slug.tar"
     archive_path="$destination_dir/$archive_name"
+    marker_file="$destination_dir/.last-backup"
     staging_dir="$downloads_dir/.$app_slug-backup-$timestamp-$$"
     archive_root="$staging_dir/$app_slug"
     temporary_archive="$downloads_dir/.$archive_name.$$.incomplete"
     global_lock_dir="/private/tmp/com.ven.app-backup.lock"
     global_lock_acquired=0
-    cpu_limit_percent="$(printf '%s' ${toString cpuLimitPercent})"
+    cpu_limit_percent="$(printf '%s' ${toString cfg.cpuLimitPercent})"
+    minimum_interval_seconds=${toString cfg.minimumIntervalSeconds}
+    mode="manual"
     copied_count=0
     exclude_args=(
       --exclude='.DS_Store'
@@ -118,6 +157,17 @@ ${extraExcludes}
       log "ERROR $*"
       exit 1
     }
+
+    case "''${1:-}" in
+      "")
+        ;;
+      --scheduled)
+        mode="scheduled"
+        ;;
+      *)
+        fail "usage: $0 [--scheduled]"
+        ;;
+    esac
 
     cleanup() {
       ${pkgs.coreutils}/bin/rm -f -- "$temporary_archive" 2>/dev/null || true
@@ -181,6 +231,16 @@ ${extraExcludes}
     ${pkgs.coreutils}/bin/mkdir -p -- "$destination_dir"
     ${pkgs.coreutils}/bin/mkdir -p -- "$archive_root"
 
+    if [ "$mode" = "scheduled" ] && [ -e "$marker_file" ]; then
+      previous_backup_epoch="$( ${pkgs.coreutils}/bin/stat -c '%Y' "$marker_file" )"
+      current_epoch="$( ${pkgs.coreutils}/bin/date '+%s' )"
+      elapsed_seconds="$((current_epoch - previous_backup_epoch))"
+      if [ "$elapsed_seconds" -lt "$minimum_interval_seconds" ]; then
+        log "SKIP scheduled backup: next run is due in $((minimum_interval_seconds - elapsed_seconds)) seconds"
+        exit 0
+      fi
+    fi
+
     if [ -e "$archive_path" ]; then
       fail "refusing to overwrite an existing archive: $archive_path"
     fi
@@ -201,7 +261,71 @@ ${extraExcludes}
     ${pkgs.gnutar}/bin/tar --list --file "$temporary_archive" >/dev/null
     ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$archive_path"
     temporary_archive=""
+    ${pkgs.coreutils}/bin/touch -- "$marker_file"
 
     log "DONE $archive_path"
   '';
+  };
+in
+{
+  options.services.appBackups.${appSlug} = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Install the ${appName} backup command.";
+    };
+
+    automatic = lib.mkOption {
+      type = lib.types.bool;
+      default = automatic;
+      description = "Run the ${appName} backup automatically only when services.appBackups.automaticEnabled is also true.";
+    };
+
+    automaticIntervalSeconds = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = automaticIntervalSeconds;
+      description = "Seconds between automatic ${appName} backup attempts.";
+    };
+
+    minimumIntervalSeconds = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = minimumIntervalSeconds;
+      description = "Minimum seconds between successful scheduled ${appName} backups.";
+    };
+
+    cpuLimitPercent = lib.mkOption {
+      type = lib.types.ints.between 1 100;
+      default = cpuLimitPercent;
+      description = "Maximum CPU percentage used for ${appName} backup archive work.";
+    };
+  };
+
+  config = lib.mkIf cfg.enable (lib.mkMerge [
+    {
+      environment.systemPackages = [ backupRunner ];
+    }
+
+    (lib.mkIf (config.services.appBackups.automaticEnabled && cfg.automatic) {
+      launchd.user.agents."backup-${appSlug}" = {
+        serviceConfig = {
+          Label = "com.ven.backup.${appSlug}";
+          ProgramArguments = [ "${backupRunner}/bin/${commandName}" "--scheduled" ];
+          RunAtLoad = false;
+          KeepAlive = false;
+          StartInterval = cfg.automaticIntervalSeconds;
+          ProcessType = "Background";
+          Nice = 20;
+          LowPriorityIO = true;
+          LowPriorityBackgroundIO = true;
+          StandardOutPath = "/Users/ven/Library/Logs/${commandName}.log";
+          StandardErrorPath = "/Users/ven/Library/Logs/${commandName}-error.log";
+        };
+      };
+    })
+  ]);
+}
+;
+in
+{
+  inherit mkAppBackup settingsModule;
 }
