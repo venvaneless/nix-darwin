@@ -55,7 +55,7 @@ pkgs.writeShellApplication {
     # Every path is derived from the previous root to keep the layout
     # consistent for application backup commands.
     # -----------------------------------------------------------------
-    app_slug=${lib.escapeShellArg appSlug}
+    app_slug="$(printf '%s' ${lib.escapeShellArg appSlug})"
     external_backup_volume="/Volumes/SystemBackup"
     data_backups_root="$external_backup_volume/data-backups"
     app_backups_root="$data_backups_root/app-backups"

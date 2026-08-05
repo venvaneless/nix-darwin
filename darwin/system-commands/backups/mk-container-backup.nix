@@ -46,9 +46,9 @@ let
       # -----------------------------------------------------------------
       # BACKUP PATHS
       # -----------------------------------------------------------------
-      app_name=${lib.escapeShellArg appName}
-      app_slug=${lib.escapeShellArg appSlug}
-      source_dir=${lib.escapeShellArg sourceDir}
+      app_name="$(printf '%s' ${lib.escapeShellArg appName})"
+      app_slug="$(printf '%s' ${lib.escapeShellArg appSlug})"
+      source_dir="$(printf '%s' ${lib.escapeShellArg sourceDir})"
       external_backup_volume="/Volumes/SystemBackup"
       data_backups_root="$external_backup_volume/data-backups"
       container_backups_root="$data_backups_root/container-backups"
