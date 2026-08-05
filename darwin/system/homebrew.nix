@@ -155,7 +155,7 @@
           "swiftdialog"
 
           ## macOS statusbar tool for hiding and showing menu bar icons
-          "thaw"
+          
         ]
         ++ casksFor "/Applications/Multimedia" [
           # Ebook management application

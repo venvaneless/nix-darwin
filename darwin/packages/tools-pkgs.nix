@@ -33,6 +33,8 @@ let
 
   betterFinderRenamePackage = pkgs.callPackage ./better-finder-rename.nix { };
 
+  floePackage = pkgs.callPackage ./floe.nix { };
+
   hammerspoonPackage = pkgs.callPackage ./hammerspoon.nix { };
 
   hammerspoonUpdater = pkgs.callPackage ./hammerspoon-update.nix { };
@@ -88,6 +90,17 @@ let
 
       link = true;
       appName = "AssetSnap.app";
+    };
+
+    # ---- Floe
+    # Hides and reveals menu bar applications using native macOS controls.
+    floe = {
+      displayName = "Floe";
+      enable = true;
+      package = floePackage;
+
+      link = true;
+      appName = "Floe.app";
     };
 
     # ---- Hammerspoon
