@@ -50,12 +50,10 @@ let
 
 
       DEFAULT_PLUGINS_DIR = Path(
-          "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/Documents/"
-          "data-backups/app-backups/obsidian/obsidian_extensions"
+          "/Volumes/SystemBackup/data-backups/app-backups/obsidian/obsidian_extensions/"
       )
       DEFAULT_THEMES_DIR = Path(
-          "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/Documents/"
-          "data-backups/app-backups/obsidian/obsidian_themes"
+          "/Volumes/SystemBackup/data-backups/app-backups/obsidian/obsidian_themes/"
       )
       REPOSITORY_FILE = "repository-url.txt"
       MANIFEST_FILE = "manifest.json"
