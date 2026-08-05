@@ -1,6 +1,6 @@
 # darwin/system-commands/backups/archivebox.nix
 #
-# Backs up ArchiveBox container data to iCloud Drive. The SQLite database
+# Backs up ArchiveBox container data to SystemBackup. The SQLite database
 # is copied with SQLite's online backup API before the ZIP is created.
 
 {
@@ -16,6 +16,8 @@ import ./mk-container-backup.nix {
   appName = "ArchiveBox";
   appSlug = "archivebox";
   sourceDir = config.services.archivebox.dataDir;
+  scheduledHour = 1;
+  scheduledMinute = 0;
 
   prepareArchive = ''
     staging_dir="$(

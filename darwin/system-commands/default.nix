@@ -14,6 +14,5 @@
     ./fmove.nix
     ./ftar.nix
     ./generations-cleanup.nix
-    ./rsync.nix
   ];
 }

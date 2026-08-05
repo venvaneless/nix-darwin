@@ -1,0 +1,172 @@
+# darwin/system-commands/backups/obsidian.nix
+#
+# =====================================================================
+# OBSIDIAN BACKUP
+#
+# Synchronizes the requested Obsidian configuration folders directly to
+# SystemBackup. Plugins and themes are version-aware; this command never
+# archives, deletes, or otherwise changes the iCloud-backed source vaults.
+# =====================================================================
+
+{ pkgs, ... }:
+
+let
+  obsidianBackup = pkgs.writeShellApplication {
+    name = "obsidian-backup";
+
+    runtimeInputs = with pkgs; [
+      coreutils
+      gnugrep
+      gnused
+      rsync
+    ];
+
+    text = ''
+      set -euo pipefail
+
+      # -----------------------------------------------------------------
+      # BACKUP PATHS
+      # -----------------------------------------------------------------
+      external_backup_volume="/Volumes/SystemBackup"
+      data_backups_root="$external_backup_volume/data-backups"
+      app_backups_root="$data_backups_root/app-backups"
+      backup_root="$app_backups_root/obsidian"
+      extensions_dir="$backup_root/obsidian_extensions"
+      themes_dir="$backup_root/obsidian_themes"
+      preferences_dir="$backup_root/preferences"
+
+      vault_names=("Obsidian_Hub" "Ven_MainVault")
+      vaults_root="/Users/ven/Library/Mobile Documents/iCloud~md~obsidian/Documents"
+      settings_files=(
+        "core-plugins.json"
+        "workspace.json"
+        "appearance.json"
+        "command-palette.json"
+        "backlink.json"
+        "community-plugins.json"
+        "app.json"
+        "bookmarks.json"
+        "types.json"
+        "hotkeys.json"
+      )
+      exclude_args=(
+        --exclude='.DS_Store'
+        --exclude='._*'
+        --exclude='.AppleDouble'
+        --exclude='.DocumentRevisions-V100'
+        --exclude='.fseventsd'
+        --exclude='.LSOverride'
+        --exclude='.Spotlight-V100'
+        --exclude='.TemporaryItems'
+        --exclude='.Trashes'
+        --exclude='.Trash'
+        --exclude='.Trash-*'
+        --exclude='__MACOSX'
+      )
+
+      log() {
+        printf '[obsidian backup] %s\n' "$*"
+      }
+
+      fail() {
+        log "ERROR $*"
+        exit 1
+      }
+
+      ensure_volume_mounted() {
+        if [ ! -d "$external_backup_volume" ] || ! /sbin/mount | ${pkgs.gnugrep}/bin/grep -Fq " on $external_backup_volume "; then
+          fail "external backup volume is not mounted: $external_backup_volume"
+        fi
+      }
+
+      version_is_higher() {
+        source_version="$1"
+        destination_version="$2"
+        [ "$source_version" != "$destination_version" ] && \
+          [ "$(printf '%s\n%s\n' "$source_version" "$destination_version" | ${pkgs.coreutils}/bin/sort -V | ${pkgs.coreutils}/bin/tail -n 1)" = "$source_version" ]
+      }
+
+      sync_versioned_item() {
+        source_item="$1"
+        destination_parent="$2"
+        item_kind="$3"
+        item_name="$( ${pkgs.coreutils}/bin/basename -- "$source_item" )"
+        source_manifest="$source_item/manifest.json"
+        destination_item="$destination_parent/$item_name"
+        destination_manifest="$destination_item/manifest.json"
+
+        if [ ! -f "$source_manifest" ]; then
+          log "SKIP $item_kind without manifest: $source_item"
+          return 0
+        fi
+
+        source_version="$( ${pkgs.gnugrep}/bin/grep -E '"version"[[:space:]]*:' "$source_manifest" | head -n 1 | ${pkgs.gnused}/bin/sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' )"
+        source_version="''${source_version:-0.0.0}"
+
+        if [ ! -f "$destination_manifest" ]; then
+          ${pkgs.coreutils}/bin/mkdir -p -- "$destination_item"
+          ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
+          log "SYNC $item_kind: $item_name (new or missing manifest)"
+          return 0
+        fi
+
+        destination_version="$( ${pkgs.gnugrep}/bin/grep -E '"version"[[:space:]]*:' "$destination_manifest" | head -n 1 | ${pkgs.gnused}/bin/sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/' )"
+        destination_version="''${destination_version:-0.0.0}"
+
+        if version_is_higher "$source_version" "$destination_version"; then
+          ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
+          log "UPDATE $item_kind: $item_name ($destination_version -> $source_version)"
+        else
+          log "SKIP $item_kind unchanged/newer: $item_name ($destination_version >= $source_version)"
+        fi
+      }
+
+      ensure_volume_mounted
+      ${pkgs.coreutils}/bin/mkdir -p -- "$extensions_dir" "$themes_dir" "$preferences_dir"
+
+      for vault_name in "''${vault_names[@]}"; do
+        vault_path="$vaults_root/$vault_name"
+        obsidian_path="$vault_path/.obsidian"
+        vault_slug="$(printf '%s' "$vault_name" | tr '[:upper:]' '[:lower:]' | ${pkgs.gnused}/bin/sed -E 's/[^a-z0-9]//g')"
+        vault_backup_dir="$backup_root/$vault_slug"
+
+        if [ ! -d "$obsidian_path" ]; then
+          log "SKIP missing vault configuration: $obsidian_path"
+          continue
+        fi
+
+        for plugin_path in "$obsidian_path/plugins"/*; do
+          [ -d "$plugin_path" ] || continue
+          sync_versioned_item "$plugin_path" "$extensions_dir" "plugin"
+        done
+
+        for theme_path in "$obsidian_path/themes"/*; do
+          [ -d "$theme_path" ] || continue
+          sync_versioned_item "$theme_path" "$themes_dir" "theme"
+        done
+
+        for setting_name in "''${settings_files[@]}"; do
+          setting_source="$obsidian_path/$setting_name"
+          if [ -f "$setting_source" ]; then
+            ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$setting_source" "$preferences_dir/$vault_slug-$setting_name"
+            log "SYNC setting: $vault_slug-$setting_name"
+          fi
+        done
+
+        ${pkgs.coreutils}/bin/mkdir -p -- "$vault_backup_dir"
+        for relative_path in ".makemd" ".space" ".obsidian/regex-rulesets" "CardNavigatorPresets" "Excalidraw" "_dev-tools"; do
+          source_path="$vault_path/$relative_path"
+          if [ -d "$source_path" ]; then
+            destination_path="$vault_backup_dir/$relative_path"
+            ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$destination_path" )"
+            ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
+            log "SYNC $vault_slug/$relative_path"
+          fi
+        done
+      done
+    '';
+  };
+in
+{
+  environment.systemPackages = [ obsidianBackup ];
+}

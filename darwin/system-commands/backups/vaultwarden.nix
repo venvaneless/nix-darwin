@@ -1,6 +1,6 @@
 # darwin/system-commands/backups/vaultwarden.nix
 #
-# Backs up Vaultwarden container data to iCloud Drive. The SQLite database
+# Backs up Vaultwarden container data to SystemBackup. The SQLite database
 # is copied with SQLite's online backup API before the ZIP is created.
 
 {
@@ -16,6 +16,8 @@ import ./mk-container-backup.nix {
   appName = "Vaultwarden";
   appSlug = "vaultwarden";
   sourceDir = "/Users/ven/.config/containers/vaultwarden";
+  scheduledHour = 4;
+  scheduledMinute = 0;
 
   prepareArchive = ''
     staging_dir="$(

@@ -10,9 +10,6 @@
 
 {
   imports = [
-    # Functions for creating backups
-    ./backup.nix
-
     # Make script files executable
     ./chmod.nix
     

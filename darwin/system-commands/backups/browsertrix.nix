@@ -1,6 +1,6 @@
 # darwin/system-commands/backups/browsertrix.nix
 #
-# Backs up Browsertrix container data to iCloud Drive.
+# Backs up Browsertrix container data to SystemBackup.
 
 {
   config,
@@ -15,4 +15,6 @@ import ./mk-container-backup.nix {
   appName = "Browsertrix";
   appSlug = "browsertrix";
   sourceDir = "/Users/ven/.config/containers/browsertrix";
+  scheduledHour = 2;
+  scheduledMinute = 0;
 }

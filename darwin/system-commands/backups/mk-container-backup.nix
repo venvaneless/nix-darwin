@@ -3,9 +3,9 @@
 # =====================================================================
 # CONTAINER BACKUP HELPER
 #
-# Creates a manual command, optional LaunchAgent, and optional rebuild
-# hook for one container directory. Each backup is a verified ZIP in
-# iCloud Drive and uses .last-backup to gate scheduled runs.
+# Creates an optional scheduled LaunchAgent and optional rebuild hook for one
+# container directory. Each backup is compressed and verified locally in
+# Downloads before its completed archive is moved to SystemBackup.
 # =====================================================================
 
 {
@@ -15,6 +15,8 @@
   appName,
   appSlug,
   sourceDir,
+  scheduledHour,
+  scheduledMinute,
   prepareArchive ? "",
 }:
 
@@ -29,6 +31,7 @@ let
     name = commandName;
 
     runtimeInputs = with pkgs; [
+      cpulimit
       coreutils
       findutils
       rsync
@@ -46,18 +49,25 @@ let
       app_name=${lib.escapeShellArg appName}
       app_slug=${lib.escapeShellArg appSlug}
       source_dir=${lib.escapeShellArg sourceDir}
-      iCloud_root="/Users/ven/iCloudDocs"
-      backup_root="$iCloud_root/Documents/data-backups/container-backups"
-      destination_dir="$backup_root/$app_slug"
+      external_backup_volume="/Volumes/SystemBackup"
+      data_backups_root="$external_backup_volume/data-backups"
+      app_backups_root="$data_backups_root/app-backups"
+      container_backups_root="$data_backups_root/container-backups"
+      destination_dir="$container_backups_root/$app_slug"
+      local_staging_dir="/Users/ven/Downloads/backup-staging/$app_slug"
 
       marker_file="$destination_dir/.last-backup"
-      lock_dir="$destination_dir/.$app_slug-backup.lock"
+      lock_dir="/private/tmp/com.ven.$app_slug-backup.lock"
+      global_lock_dir="/private/tmp/com.ven.backup-archive.lock"
       backup_interval_seconds=28800
+      cpu_limit_percent=35
 
       mode="manual"
       temporary_archive=""
+      local_archive=""
       temporary_marker=""
       staging_dir=""
+      global_lock_acquired=0
 
       usage() {
         printf 'Usage: %s [--scheduled|--rebuild]\n' "$0" >&2
@@ -77,6 +87,13 @@ let
         ${pkgs.coreutils}/bin/rmdir -- "$lock_dir" 2>/dev/null || true
       }
 
+      release_global_lock() {
+        if [ "$global_lock_acquired" -eq 1 ]; then
+          ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid" 2>/dev/null || true
+          ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" 2>/dev/null || true
+        fi
+      }
+
       cleanup() {
         if [ -n "$temporary_archive" ]; then
           ${pkgs.coreutils}/bin/rm -f -- "$temporary_archive" 2>/dev/null || true
@@ -91,6 +108,7 @@ let
         fi
 
         release_lock
+        release_global_lock
       }
 
       case "''${1:-}" in
@@ -112,15 +130,27 @@ let
         fail "source directory does not exist: $source_dir"
       fi
 
-      if [ ! -d "$iCloud_root" ]; then
-        fail "iCloud Drive is not available at: $iCloud_root"
+      if [ ! -d "$external_backup_volume" ]; then
+        fail "external backup volume is not available at: $external_backup_volume"
       fi
 
-      # Create only this explicitly configured iCloud backup directory.
+      if ! /sbin/mount | ${pkgs.gnugrep}/bin/grep -Fq \
+          " on $external_backup_volume "; then
+        fail "external backup volume is not mounted: $external_backup_volume"
+      fi
+
+      # Create only this explicitly configured external backup directory.
       ${pkgs.coreutils}/bin/mkdir -p -- "$destination_dir"
 
       if [ ! -d "$destination_dir" ]; then
         fail "could not create backup directory: $destination_dir"
+      fi
+
+      # Create only this explicitly configured local staging directory.
+      ${pkgs.coreutils}/bin/mkdir -p -- "$local_staging_dir"
+
+      if [ ! -d "$local_staging_dir" ]; then
+        fail "could not create local staging directory: $local_staging_dir"
       fi
 
       if ! ${pkgs.coreutils}/bin/mkdir -- "$lock_dir" 2>/dev/null; then
@@ -186,6 +216,8 @@ let
               -name '.Trash-*' -o \
               -name '__MACOSX' -o \
               -name 'Icon'$'\r' -o \
+              -name '*-wal' -o \
+              -name '*-shm' -o \
               -name 'Thumbs.db' -o \
               -name 'desktop.ini' \
             \) -prune -o \
@@ -211,23 +243,47 @@ let
 
       ${prepareArchive}
 
+      # Only one backup may compress, verify, or hand off to external storage at once.
+      if ! ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir" 2>/dev/null; then
+        global_previous_pid=""
+
+        if [ -r "$global_lock_dir/pid" ]; then
+          IFS= read -r global_previous_pid < "$global_lock_dir/pid" || true
+        fi
+
+        if [ -n "$global_previous_pid" ] && kill -0 "$global_previous_pid" 2>/dev/null; then
+          log "skipped: another backup is archiving or uploading"
+          exit 0
+        fi
+
+        ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid"
+        ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" || \
+          fail "refusing to replace an unexpected global lock: $global_lock_dir"
+        ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir"
+      fi
+
+      printf '%s\n' "$$" > "$global_lock_dir/pid"
+      global_lock_acquired=1
+
       timestamp="$(
-        ${pkgs.coreutils}/bin/date '+%Y-%m-%d-%H%M'
+        ${pkgs.coreutils}/bin/date '+%Y-%m-%d-%H%M%S'
       )"
       archive="$destination_dir/$timestamp-$app_slug.zip"
-      temporary_archive="$destination_dir/.$timestamp-$app_slug-$$.zip.incomplete"
-      temporary_marker="$destination_dir/.last-backup-$$.incomplete"
+      local_archive="$local_staging_dir/$timestamp-$app_slug.zip"
+      temporary_archive="$local_staging_dir/.$timestamp-$app_slug-$$.zip.incomplete"
+      temporary_marker="$local_staging_dir/.last-backup-$$.incomplete"
 
-      if [ -e "$archive" ]; then
+      if [ -e "$archive" ] || [ -e "$local_archive" ]; then
         fail "refusing to overwrite an existing archive: $archive"
       fi
 
-      log "creating archive: $archive"
+      log "creating local archive: $local_archive"
 
       (
         cd -- "$archive_source_parent"
 
-        ${pkgs.zip}/bin/zip -q -r -y "$temporary_archive" "$archive_source_name" \
+        ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+          ${pkgs.zip}/bin/zip -q -r -y "$temporary_archive" "$archive_source_name" \
           -x '*/.DS_Store' \
           -x '*/._*' \
           -x '*/.AppleDouble' \
@@ -254,9 +310,17 @@ let
           -x '*/desktop.ini'
       )
 
-      ${pkgs.unzip}/bin/unzip -t "$temporary_archive" >/dev/null
-      ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$archive"
+      ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+        ${pkgs.unzip}/bin/unzip -t "$temporary_archive" >/dev/null
+      ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$local_archive"
       temporary_archive=""
+
+      log "moving verified local archive to external storage: $archive"
+      if ! ${pkgs.coreutils}/bin/mv -- "$local_archive" "$archive"; then
+        fail "could not move verified local archive to external storage: $local_archive"
+      fi
+
+      local_archive=""
 
       successful_backup_time="$(
         ${pkgs.coreutils}/bin/date '+%Y-%m-%d %H:%M:%S %Z'
@@ -289,7 +353,7 @@ in
     automatic = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Run the ${appName} backup automatically through LaunchAgent checks.";
+      description = "Run the ${appName} backup automatically through its daily LaunchAgent schedule.";
     };
 
     runOnRebuild = lib.mkOption {
@@ -300,10 +364,6 @@ in
   };
 
   config = lib.mkIf cfg.enable (lib.mkMerge [
-    {
-      environment.systemPackages = [ backupRunner ];
-    }
-
     (lib.mkIf cfg.automatic {
       launchd.user.agents."backup-${appSlug}" = {
         serviceConfig = {
@@ -312,9 +372,14 @@ in
             "${backupRunner}/bin/${commandName}"
             "--scheduled"
           ];
-          RunAtLoad = true;
+          RunAtLoad = false;
           KeepAlive = false;
-          StartInterval = 900;
+          StartCalendarInterval = {
+            Hour = scheduledHour;
+            Minute = scheduledMinute;
+          };
+          ProcessType = "Background";
+          Nice = 20;
           LowPriorityIO = true;
           LowPriorityBackgroundIO = true;
           StandardOutPath = "/Users/ven/Library/Logs/${commandName}.log";

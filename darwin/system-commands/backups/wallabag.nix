@@ -1,6 +1,6 @@
 # darwin/system-commands/backups/wallabag.nix
 #
-# Backs up Wallabag container data to iCloud Drive.
+# Backs up Wallabag container data to SystemBackup.
 
 {
   config,
@@ -15,4 +15,6 @@ import ./mk-container-backup.nix {
   appName = "Wallabag";
   appSlug = "wallabag";
   sourceDir = "/Users/ven/.config/containers/wallabag";
+  scheduledHour = 5;
+  scheduledMinute = 0;
 }
