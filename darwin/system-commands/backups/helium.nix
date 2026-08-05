@@ -10,7 +10,7 @@ let
     appSlug = "helium";
     destinationSegments = [ "browsers" "helium" ];
     sources = [
-      { path = "/Users/ven/Library/Application Support/net.imput.helium"; destination = "app-support/net.imput.helium"; }
+      { path = "/Users/ven/Library/Application Support/net.imput.helium"; destination = "net.imput.helium"; }
       { path = "/Users/ven/Library/Preferences/net.imput.helium.plist"; destination = "net.imput.helium.plist"; }
     ];
   };

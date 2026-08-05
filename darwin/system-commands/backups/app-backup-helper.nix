@@ -19,6 +19,7 @@
   sources,
   requiredAny ? [ ],
   extraExcludePatterns ? [ ],
+  cpuLimitPercent ? 25,
 }:
 
 let
@@ -63,6 +64,7 @@ pkgs.writeShellApplication {
   name = commandName;
 
   runtimeInputs = with pkgs; [
+    cpulimit
     coreutils
     gnutar
     rsync
@@ -88,6 +90,9 @@ pkgs.writeShellApplication {
     staging_dir="$downloads_dir/.$app_slug-backup-$timestamp-$$"
     archive_root="$staging_dir/$app_slug"
     temporary_archive="$downloads_dir/.$archive_name.$$.incomplete"
+    global_lock_dir="/private/tmp/com.ven.app-backup.lock"
+    global_lock_acquired=0
+    cpu_limit_percent="$(printf '%s' ${toString cpuLimitPercent})"
     copied_count=0
     exclude_args=(
       --exclude='.DS_Store'
@@ -117,6 +122,10 @@ ${extraExcludes}
     cleanup() {
       ${pkgs.coreutils}/bin/rm -f -- "$temporary_archive" 2>/dev/null || true
       ${pkgs.coreutils}/bin/rm -rf -- "$staging_dir" 2>/dev/null || true
+      if [ "$global_lock_acquired" -eq 1 ]; then
+        ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid" 2>/dev/null || true
+        ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" 2>/dev/null || true
+      fi
     }
 
     ensure_volume_mounted() {
@@ -137,10 +146,12 @@ ${extraExcludes}
       destination_path="$archive_root/$archive_relative_path"
       if [ -d "$source_path" ]; then
         ${pkgs.coreutils}/bin/mkdir -p -- "$destination_path"
-        ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
+        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+          ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
       else
         ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$destination_path" )"
-        ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path" "$destination_path"
+        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+          ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path" "$destination_path"
       fi
       copied_count=$((copied_count + 1))
       log "COPY $source_path -> $archive_relative_path"
@@ -151,6 +162,22 @@ ${extraExcludes}
     ${checkRequiredGroups}
 
     ensure_volume_mounted
+
+    if ! ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir" 2>/dev/null; then
+      previous_pid=""
+      if [ -r "$global_lock_dir/pid" ]; then
+        IFS= read -r previous_pid < "$global_lock_dir/pid" || true
+      fi
+      if [ -n "$previous_pid" ] && kill -0 "$previous_pid" 2>/dev/null; then
+        fail "another application backup is already running"
+      fi
+      ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid"
+      ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" || fail "refusing to replace an unexpected app backup lock"
+      ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir"
+    fi
+    printf '%s\n' "$$" > "$global_lock_dir/pid"
+    global_lock_acquired=1
+
     ${pkgs.coreutils}/bin/mkdir -p -- "$destination_dir"
     ${pkgs.coreutils}/bin/mkdir -p -- "$archive_root"
 
@@ -167,7 +194,8 @@ ${extraExcludes}
     log "CREATE local archive: $temporary_archive"
     (
       cd -- "$staging_dir"
-      ${pkgs.gnutar}/bin/tar --create --file "$temporary_archive" --directory "$staging_dir" "$app_slug"
+      ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+        ${pkgs.gnutar}/bin/tar --create --file "$temporary_archive" --directory "$staging_dir" "$app_slug"
     )
 
     ${pkgs.gnutar}/bin/tar --list --file "$temporary_archive" >/dev/null
