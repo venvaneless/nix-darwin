@@ -281,7 +281,7 @@ let
       (
         cd -- "$archive_source_parent"
 
-        ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+        ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
           ${pkgs.zip}/bin/zip -q -r -y "$temporary_archive" "$archive_source_name" \
           -x '*/.DS_Store' \
           -x '*/._*' \
@@ -309,7 +309,7 @@ let
           -x '*/desktop.ini'
       )
 
-      ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+      ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
         ${pkgs.unzip}/bin/unzip -t "$temporary_archive" >/dev/null
       ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$local_archive"
       temporary_archive=""

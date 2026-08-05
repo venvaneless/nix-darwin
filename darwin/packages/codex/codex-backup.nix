@@ -273,7 +273,7 @@ let
         \) \
         -prune -o \
         -print0 |
-        ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+        ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
           /usr/bin/tar \
           --format pax \
           --mac-metadata \
@@ -287,7 +287,7 @@ let
     )
 
     # Verify that the completed archive can be read before accepting it.
-    ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+    ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
       /usr/bin/tar -tzf "$temp_archive" > /dev/null
 
     # Complete and verify locally before handing the archive to iCloud.

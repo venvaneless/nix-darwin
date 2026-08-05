@@ -25,7 +25,9 @@ let
       export OBSIDIAN_LIBRARY_GH="${pkgs.gh}/bin/gh"
       export OBSIDIAN_LIBRARY_FZF="${pkgs.fzf}/bin/fzf"
 
-      exec python3 - "$@" <<'PY'
+      # Keep standard input attached to the terminal for the interactive
+      # menus; feeding Python through stdin makes every input() raise EOF.
+      exec python3 <(${pkgs.coreutils}/bin/cat <<'PY'
       #!/usr/bin/env python3
       #
       # Obsidian plugin and theme library manager.
@@ -159,7 +161,7 @@ let
           except OSError as error:
               raise RuntimeError(f"cannot read {REPOSITORY_FILE}: {error}") from error
 
-          match = re.search(r"github[.]com[/:]([^/\\s]+)/([^/\\s#]+)", contents)
+          match = re.search(r"github[.]com[/:]([^/\s]+)/([^/\s#]+)", contents)
           if match is None:
               raise RuntimeError(f"{REPOSITORY_FILE} does not contain a GitHub repository URL")
 
@@ -690,7 +692,7 @@ let
 
 
       def github_repository_from_value(value: str) -> str:
-          match = re.search(r"(?:github[.]com[/:])?([^/\\s]+)/([^/\\s#]+)", value.strip())
+          match = re.search(r"(?:github[.]com[/:])?([^/\s]+)/([^/\s#]+)", value.strip())
           if match is None:
               raise RuntimeError("provide a GitHub repository URL or owner/repository")
 
@@ -976,6 +978,7 @@ let
       if __name__ == "__main__":
           raise SystemExit(main())
       PY
+      ) "$@"
     '';
   };
 in

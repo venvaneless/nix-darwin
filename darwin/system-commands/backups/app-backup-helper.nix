@@ -146,11 +146,11 @@ ${extraExcludes}
       destination_path="$archive_root/$archive_relative_path"
       if [ -d "$source_path" ]; then
         ${pkgs.coreutils}/bin/mkdir -p -- "$destination_path"
-        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
           ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
       else
         ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$destination_path" )"
-        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
           ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path" "$destination_path"
       fi
       copied_count=$((copied_count + 1))
@@ -194,7 +194,7 @@ ${extraExcludes}
     log "CREATE local archive: $temporary_archive"
     (
       cd -- "$staging_dir"
-      ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -f -l "$cpu_limit_percent" -- \
+      ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
         ${pkgs.gnutar}/bin/tar --create --file "$temporary_archive" --directory "$staging_dir" "$app_slug"
     )
 
