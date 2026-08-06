@@ -2,7 +2,7 @@
 #
 # CODEX: DECLARATIVE EXTENSIONS
 # =====================================================================
-# Pins Codex plugin sources and builds codebase-memory-mcp with Nix.
+# Pins Codex plugin sources and installs the upstream codebase-memory-mcp archive.
 # The manually run codex-sync-extensions command reconciles the declared
 # marketplace and MCP entries into both mutable Codex profile configurations.
 # =====================================================================
@@ -214,7 +214,9 @@ let
         "''${release_tag#v}" "$release_url" "$release_hash" >"$temporary_lock"
       ${pkgs.coreutils}/bin/mv -- "$temporary_lock" "$release_lock"
 
-      if ${pkgs.git}/bin/git diff --quiet -- flake.lock; then
+      if ${pkgs.git}/bin/git diff --quiet -- \
+        flake.lock \
+        darwin/packages/codex/codebase-memory-mcp-release.json; then
         printf 'Codex extension sources are already current.\n'
         exit 0
       fi
