@@ -15,21 +15,17 @@ let
   sharedRoot = "/Users/ven/.config/codex/shared";
   codebaseMemoryDataDir = "${sharedRoot}/codebase-memory-mcp";
 
-  # Read the pinned upstream release metadata instead of compiling its source.
-  codebaseMemoryMetadata = builtins.fromJSON (
-    builtins.readFile "${inputs.codebase-memory-mcp}/server.json"
+  # This lock is updated by update-codex-extensions from GitHub release metadata.
+  codebaseMemoryRelease = builtins.fromJSON (
+    builtins.readFile ./codebase-memory-mcp-release.json
   );
-  codebaseMemoryRelease = lib.findFirst
-    (package: lib.hasSuffix "codebase-memory-mcp-darwin-arm64.tar.gz" package.identifier)
-    (throw "codebase-memory-mcp does not publish a Darwin ARM64 release")
-    codebaseMemoryMetadata.packages;
 
   # Install the upstream Apple-Silicon release archive verified by its SHA-256.
   codebaseMemoryMcp = pkgs.stdenvNoCC.mkDerivation {
     pname = "codebase-memory-mcp";
-    version = codebaseMemoryMetadata.version;
+    version = codebaseMemoryRelease.version;
     src = pkgs.fetchurl {
-      url = codebaseMemoryRelease.identifier;
+      url = codebaseMemoryRelease.url;
       sha256 = codebaseMemoryRelease.fileSha256;
     };
 
@@ -181,13 +177,14 @@ let
   codexUpdateExtensions = pkgs.writeShellApplication {
     name = "update-codex-extensions";
 
-    runtimeInputs = [ pkgs.coreutils pkgs.git pkgs.nix ];
+    runtimeInputs = [ pkgs.coreutils pkgs.git pkgs.gh pkgs.jq pkgs.nix ];
 
     text = ''
       set -Eeuo pipefail
 
       flake_root="/Users/ven/.config/nix/nix-config"
       lock_file="$flake_root/flake.lock"
+      release_lock="$flake_root/darwin/packages/codex/codebase-memory-mcp-release.json"
 
       if ! ${pkgs.git}/bin/git -C "$flake_root" diff --quiet -- "$lock_file"; then
         printf 'Refusing to update Codex extensions: flake.lock has uncommitted changes.\n' >&2
@@ -199,8 +196,23 @@ let
 
       ${pkgs.nix}/bin/nix flake lock \
         --update-input caveman \
-        --update-input simple-english \
-        --update-input codebase-memory-mcp
+        --update-input simple-english
+
+      release_json="$(${pkgs.gh}/bin/gh api repos/DeusData/codebase-memory-mcp/releases/latest)"
+      release_tag="$(printf '%s' "$release_json" | ${pkgs.jq}/bin/jq -r '.tag_name')"
+      release_url="$(printf '%s' "$release_json" | ${pkgs.jq}/bin/jq -r '.assets[] | select(.name == "codebase-memory-mcp-darwin-arm64.tar.gz") | .browser_download_url')"
+      release_digest="$(printf '%s' "$release_json" | ${pkgs.jq}/bin/jq -r '.assets[] | select(.name == "codebase-memory-mcp-darwin-arm64.tar.gz") | .digest // empty')"
+
+      if test -z "$release_url" || test -z "$release_digest" || test "$release_digest" = "null"; then
+        printf 'Upstream latest release has no checksum-bearing Darwin ARM64 archive.\n' >&2
+        exit 1
+      fi
+
+      release_hash="''${release_digest#sha256:}"
+      temporary_lock="$(${pkgs.coreutils}/bin/mktemp "$release_lock.XXXXXXXX")"
+      printf '{\n  "version": "%s",\n  "url": "%s",\n  "fileSha256": "%s"\n}\n' \
+        "''${release_tag#v}" "$release_url" "$release_hash" >"$temporary_lock"
+      ${pkgs.coreutils}/bin/mv -- "$temporary_lock" "$release_lock"
 
       if ${pkgs.git}/bin/git diff --quiet -- flake.lock; then
         printf 'Codex extension sources are already current.\n'
