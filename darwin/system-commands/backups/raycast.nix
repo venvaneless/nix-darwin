@@ -4,27 +4,64 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP PATHS
+  applicationSupportEntries = [
+    {
+      relativePath = "com.raycast.macos";
+      destinationPath = "app-support/com.raycast.macos";
+    }
+    {
+      relativePath = "com.raycast-x.macos";
+      destinationPath = "app-support/com.raycast-x.macos";
+    }
+    {
+      relativePath = "com.raycast.shared";
+      destinationPath = "app-support/com.raycast.shared";
+    }
+  ];
+  preferenceEntries = [
+    {
+      relativePath = "com.raycast.macos.plist";
+      destinationPath = "app-pref/com.raycast.macos.plist";
+    }
+  ];
+  configEntries = [
+    {
+      relativePath = "raycast";
+      destinationPath = "user-config/raycast";
+    }
+  ];
+  extraExcludePatterns = [
+    "sockets/"
+    "private/socket"
+    "*.sock"
+  ];
+  additionalSources = [ ];
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 25;
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "raycast";
+  preserveSymlinks = true;
+
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   raycastBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Raycast";
     appSlug = "raycast";
-    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-    automatic = false;
-    automaticIntervalSeconds = 86400;
-    minimumIntervalSeconds = 28800;
-    cpuLimitPercent = 25;
+    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
+    inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
     requiredAny = [ [
       "/Users/ven/Library/Application Support/com.raycast.macos"
       "/Users/ven/Library/Application Support/com.raycast-x.macos"
     ] ];
-    sources = [
-      { path = "/Users/ven/Library/Application Support/com.raycast.macos"; destination = "app-support/com.raycast.macos"; }
-      { path = "/Users/ven/Library/Application Support/com.raycast-x.macos"; destination = "app-support/com.raycast-x.macos"; }
-      { path = "/Users/ven/Library/Application Support/com.raycast.shared"; destination = "app-support/com.raycast.shared"; }
-      { path = "/Users/ven/Library/Preferences/com.raycast.macos.plist"; destination = "com.raycast.macos.plist"; }
-      { path = "/Users/ven/.config/raycast"; destination = "user-config/raycast"; }
-    ];
   };
 in
 raycastBackup

@@ -4,6 +4,30 @@
 { config, lib, pkgs, ... }:
 
 let
+  applicationSupportSources = [
+    {
+      sourcePath = "/Users/ven/Library/Application Support/Pearcleaner";
+      destinationPath = "Pearcleaner";
+    }
+  ];
+  applicationPreferences = [
+    {
+      sourcePath = "/Users/ven/Library/Preferences/com.alienator88.Pearcleaner.plist";
+      destinationPath = "app-pref/com.alienator88.Pearcleaner.plist";
+    }
+    {
+      sourcePath = "/Users/ven/Library/Preferences/group.com.alienator88.Pearcleaner.plist";
+      destinationPath = "app-pref/group.com.alienator88.Pearcleaner.plist";
+    }
+  ];
+  additionalSources = [ ];
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "pearcleaner";
+  preserveSymlinks = true;
+
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   pearcleanerBackup = appBackupHelper.mkAppBackup {
     inherit config;
@@ -14,11 +38,8 @@ let
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
-    sources = [
-      { path = "/Users/ven/Library/Application Support/Pearcleaner"; destination = "Pearcleaner"; }
-      { path = "/Users/ven/Library/Preferences/com.alienator88.Pearcleaner.plist"; destination = "app-pref/com.alienator88.Pearcleaner.plist"; }
-      { path = "/Users/ven/Library/Preferences/group.com.alienator88.Pearcleaner.plist"; destination = "app-pref/group.com.alienator88.Pearcleaner.plist"; }
-    ];
+    inherit applicationSupportSources applicationPreferences additionalSources;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in
 pearcleanerBackup

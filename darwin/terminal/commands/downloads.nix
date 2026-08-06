@@ -20,9 +20,9 @@
   # gitdll "https://github.com/owner/one" "https://github.com/owner/two"
   # gitdll links.txt
   #
-  # Obsidian library rebuild modes:
-  # gitdll --plugins "source path" [...] --to "destination path"
-  # gitdll --themes "source path" [...] --to "destination path"
+  # Obsidian download modes:
+  # gitdll --plugins "https://github.com/owner/plugin" [...]
+  # gitdll --themes links.txt [...]
   #
   # In the Obsidian modes, source directories are checked one level deep.
   # A saved repository-url.txt is reused immediately. When it is absent,
@@ -30,7 +30,7 @@
   # before handing the actual files to the downloader functions.
   # -----------------------------------------------------------------
   gitdll = {
-    description = "Download Git repositories or rebuild Obsidian plugin and theme libraries";
+    description = "Download Git repositories, Obsidian plugins, or Obsidian themes";
 
     body = ''
       if test (count $argv) -gt 0; and \
@@ -70,22 +70,18 @@
         end
 
         if test (count $source_inputs) -eq 0
-          echo "Error: At least one source folder or link file is required."
+          echo "Error: At least one repository URL, source folder, or link file is required."
           echo
           echo "Usage:"
-          echo '  gitdll --plugins "source path" [...] --to "destination path"'
-          echo '  gitdll --themes "source path" [...] --to "destination path"'
-          return 1
-        end
-
-        if test -z "$destination"
-          echo "Error: A destination folder is required with --to."
+          echo '  gitdll --plugins "https://github.com/owner/plugin" [...]'
+          echo '  gitdll --themes links.txt [...]'
           return 1
         end
 
         for source_input in $source_inputs
-          if not test -d "$source_input"; and not test -f "$source_input"
-            echo "Error: Source directory or link file does not exist:"
+          if not test -d "$source_input"; and not test -f "$source_input"; and \
+              not string match -rq '(?i)^(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?/?$' "$source_input"
+            echo "Error: Repository URL, source directory, or link file does not exist:"
             echo "  $source_input"
             return 1
           end
@@ -98,29 +94,35 @@
         set --local failed_report_name
 
         if test "$mode" = "--plugins"
-          if not functions -q gitdll-plugins
-            echo "Error: gitdll-plugins is not available."
+          if not functions -q __gitdll_plugins
+            echo "Error: the plugin downloader is not available."
             return 1
           end
 
           set library_type plugins
-          set downloader_function gitdll-plugins
+          set downloader_function __gitdll_plugins
           set missing_report_name \
             missing-plugin-repository-urls.txt
           set failed_report_name \
             failed-plugin-downloads.txt
+          if test -z "$destination"
+            set destination "$HOME/Downloads/gitdll-plugins"
+          end
         else
-          if not functions -q gitdll-themes
-            echo "Error: gitdll-themes is not available."
+          if not functions -q __gitdll_themes
+            echo "Error: the theme downloader is not available."
             return 1
           end
 
           set library_type themes
-          set downloader_function gitdll-themes
+          set downloader_function __gitdll_themes
           set missing_report_name \
             missing-theme-repository-urls.txt
           set failed_report_name \
             failed-theme-downloads.txt
+          if test -z "$destination"
+            set destination "$HOME/Downloads/gitdll-themes"
+          end
         end
 
         command mkdir -p -- "$destination"
@@ -500,20 +502,66 @@
           echo "Scanning source:"
           echo "  $source_input"
 
+          if string match -rq '(?i)^(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?/?$' "$source_input"
+            set --local repository_url (
+              string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' "$source_input"
+            )
+
+            if not string match -rq '^https?://' "$repository_url"
+              set repository_url "https://$repository_url"
+            end
+
+            set repository_url (
+              string replace -r '^https?://www\\.' 'https://' "$repository_url" |
+              string replace -r '\\.git/?$' ''' |
+              string replace -r '/$' '''
+            )
+
+            printf '%s\n' "$repository_url" >>"$repositories_file"
+            printf '%s\t%s\n' "$source_input" "$repository_url" >>"$source_map_file"
+            set source_count (math "$source_count + 1")
+            set repository_count (math "$repository_count + 1")
+            continue
+          end
+
           if test -f "$source_input"
             set --local source_name (
               basename "$source_input"
             )
+            set --local active_section all
 
-            while read --local repository_url
-              set repository_url (
-                string trim "$repository_url"
+            while read --local line
+              # A list may use Markdown headings, blank lines, or
+              # angle-bracket links. In a named section, retain only URLs for
+              # the selected library type; unsectioned lists keep every URL.
+              set --local section_heading (
+                string match -r -i -g '^##+[[:space:]]*(?:Obsidian[[:space:]]+)?(Plugins|Themes)[[:space:]]*$' "$line" |
+                string lower
               )
 
-              if test -z "$repository_url"; or \
-                  string match -q '#*' "$repository_url"
+              if test -n "$section_heading"
+                set active_section "$section_heading"
                 continue
               end
+
+              if string match -rq '^##+' "$line"
+                set active_section none
+                continue
+              end
+
+              if test "$active_section" != all; and test "$active_section" != "$library_type"
+                continue
+              end
+
+              for repository_url in (string match -r -a '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' "$line")
+
+              if not string match -rq '^https?://' "$repository_url"
+                set repository_url "https://$repository_url"
+              end
+
+              set repository_url (
+                string replace -r '^https?://www\.' 'https://' "$repository_url"
+              )
 
               set source_count (
                 math "$source_count + 1"
@@ -561,6 +609,7 @@
               set repository_count (
                 math "$repository_count + 1"
               )
+              end
             end <"$source_input"
 
             continue
@@ -591,7 +640,7 @@
 
           if test -f "$repository_file"
             set repository_url (
-              command head -n 1 "$repository_file" |
+              string match -r -m 1 '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' <"$repository_file" |
               string trim
             )
           end
@@ -864,8 +913,8 @@
         echo "  gitdll <links.txt> [more-links-or-files ...]"
         echo
         echo "Obsidian library modes:"
-        echo '  gitdll --plugins "source path" [...] --to "destination path"'
-        echo '  gitdll --themes "source path" [...] --to "destination path"'
+        echo '  gitdll --plugins "https://github.com/owner/plugin" [...]'
+        echo '  gitdll --themes links.txt [...]'
         return 1
       end
 
@@ -889,6 +938,7 @@
               continue
             end
 
+            set line (string trim --chars='<> ' "$line")
             set --append repositories "$line"
           end <"$source"
         else
@@ -988,9 +1038,9 @@
   
 
   # -----------------------------------------------------------------
-  # ---- gitdll-plugins -> Download Obsidian plugins ---- #
+  # ---- __gitdll_plugins -> Internal Obsidian plugin downloader ---- #
   # -----------------------------------------------------------------
-  gitdll-plugins = {
+  __gitdll_plugins = {
     description = "Download Obsidian plugin release files and repository metadata";
 
     body = ''
@@ -1053,17 +1103,9 @@
       if test (count $repository_inputs) -eq 1; and \
               test -f "$repository_inputs[1]"
           while read -l line
-              set line (string trim "$line")
-
-              if test -z "$line"
-                  continue
-              end
-
-              if string match -q '#*' "$line"
-                  continue
-              end
-
-              set repositories $repositories "$line"
+              # Lists may contain headings, blank lines, or Markdown links.
+              # Preserve each GitHub repository URL found in the text.
+              set repositories $repositories (string match -r -a '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' "$line")
           end < "$repository_inputs[1]"
       else
           set repositories $repository_inputs
@@ -1112,7 +1154,7 @@
                   -maxdepth 2 \
                   -type f \
                   -name repository-url.txt \
-                  -exec grep -lFx "$canonical_repository_url" {} \; \
+                  -exec grep -lF "$canonical_repository_url" {} \; \
                   2>/dev/null |
               command head -n 1
           )
@@ -1600,9 +1642,9 @@
 
 
   # -----------------------------------------------------------------
-  # ---- gitdll-themes -> Download Obsidian themes ---- #
+  # ---- __gitdll_themes -> Internal Obsidian theme downloader ---- #
   # -----------------------------------------------------------------
-  gitdll-themes = {
+  __gitdll_themes = {
     description = "Download Obsidian themes and repository metadata";
 
     body = ''
@@ -1669,17 +1711,9 @@
       if test (count $repository_inputs) -eq 1; and \
               test -f "$repository_inputs[1]"
           while read -l line
-              set line (string trim "$line")
-
-              if test -z "$line"
-                  continue
-              end
-
-              if string match -q '#*' "$line"
-                  continue
-              end
-
-              set repositories $repositories "$line"
+              # Lists may contain headings, blank lines, or Markdown links.
+              # Preserve each GitHub repository URL found in the text.
+              set repositories $repositories (string match -r -a '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' "$line")
           end < "$repository_inputs[1]"
       else
           set repositories $repository_inputs
@@ -1744,7 +1778,7 @@
                   -maxdepth 2 \
                   -type f \
                   -name repository-url.txt \
-                  -exec grep -lFx "$canonical_repository_url" {} \; \
+                  -exec grep -lF "$canonical_repository_url" {} \; \
                   2>/dev/null |
               command head -n 1
           )

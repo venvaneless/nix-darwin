@@ -16,10 +16,88 @@ let
   # toggles below, while this switch controls every automatic app schedule.
   settingsModule = { lib, ... }: {
     options.services.appBackups = {
+      paths = {
+        homeDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Users/ven";
+          description = "Home directory used by macOS application backup modules.";
+        };
+
+        configDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Users/ven/.config";
+          description = "Configuration root used by macOS application backup modules.";
+        };
+
+        applicationSupportDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Users/ven/Library/Application Support";
+          description = "macOS Application Support root used by application backup modules.";
+        };
+
+        preferencesDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Users/ven/Library/Preferences";
+          description = "macOS Preferences root used by application backup modules.";
+        };
+
+        externalBackupVolume = lib.mkOption {
+          type = lib.types.str;
+          default = "/Volumes/SystemBackup";
+          description = "Mounted external backup volume root.";
+        };
+
+        downloadsDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Users/ven/Downloads";
+          description = "Local staging root for application archives.";
+        };
+
+        dataBackupsDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Volumes/SystemBackup/data-backups";
+          description = "Shared data-backup root on the external backup volume.";
+        };
+
+        appBackupsDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Volumes/SystemBackup/data-backups/app-backups";
+          description = "Application archive root on the external backup volume.";
+        };
+
+        browserBackupsDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Volumes/SystemBackup/data-backups/app-backups/browsers";
+          description = "Browser backup root on the external backup volume.";
+        };
+
+        terminalBackupsDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Volumes/SystemBackup/system/terminal";
+          description = "Terminal backup root on the external backup volume.";
+        };
+      };
+
       automaticEnabled = lib.mkOption {
         type = lib.types.bool;
         default = false;
         description = "Allow application backup modules with automatic = true to create their LaunchAgents.";
+      };
+
+      enabled = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Allow enabled application backup commands to be installed.";
+      };
+
+      defaultExtraExcludePatterns = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [
+          "sockets/"
+          "private/socket"
+          "*.sock"
+        ];
+        description = "Socket paths excluded from every application backup unless its module adds more patterns.";
       };
 
       defaultAutomaticIntervalSeconds = lib.mkOption {
@@ -49,9 +127,31 @@ let
     commandName ? "${appSlug}-backup",
     destinationRoot ? "appBackups",
     destinationSegments ? [ appSlug ],
-    sources,
+    destinationDir ? null,
+    externalBackupVolume ? config.services.appBackups.paths.externalBackupVolume,
+    downloadsDir ? config.services.appBackups.paths.downloadsDirectory,
+    globalLockDir ? "/private/tmp/com.ven.app-backup.lock",
+    sourceMarkerFiles ? [ ],
+    destinationMarkerFile ? null,
+    sources ? [ ],
+    additionalSources ? [ ],
+    applicationSupportSources ? [ ],
+    applicationPreferences ? [ ],
+    applicationConfig ? [ ],
+    applicationSupportEntries ? [ ],
+    preferenceEntries ? [ ],
+    configEntries ? [ ],
+    applicationSupportRoot ? config.services.appBackups.paths.applicationSupportDirectory,
+    preferencesRoot ? config.services.appBackups.paths.preferencesDirectory,
+    configRoot ? config.services.appBackups.paths.configDirectory,
     requiredAny ? [ ],
     extraExcludePatterns ? [ ],
+    archive ? true,
+    stageInDownloads ? true,
+    archiveFilenameTemplate ? "{timestamp}-{appSlug}.tar",
+    archiveTimestampFormat ? "%Y-%m-%d-%H%M%S",
+    archivePrefix ? appSlug,
+    preserveSymlinks ? true,
     automatic ? false,
     automaticIntervalSeconds ? config.services.appBackups.defaultAutomaticIntervalSeconds,
     minimumIntervalSeconds ? config.services.appBackups.defaultMinimumIntervalSeconds,
@@ -60,6 +160,52 @@ let
   let
     cfg = config.services.appBackups.${appSlug};
   destinationSuffix = lib.concatStringsSep "/" destinationSegments;
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportEntries = map (entry: {
+    path = "${applicationSupportRoot}/${entry.relativePath}";
+    destination = entry.destinationPath or entry.destination;
+  }) applicationSupportEntries;
+  preferenceSources = map (entry: {
+    path = "${preferencesRoot}/${entry.relativePath}";
+    destination = entry.destinationPath or entry.destination;
+  }) preferenceEntries;
+  configSources = map (entry: {
+    path = "${configRoot}/${entry.relativePath}";
+    destination = entry.destinationPath or entry.destination;
+  }) configEntries;
+  readableApplicationSupportSources = map (entry: {
+    path = entry.sourcePath;
+    destination = entry.destinationPath;
+  }) applicationSupportSources;
+  readableApplicationPreferences = map (entry: {
+    path = entry.sourcePath;
+    destination = entry.destinationPath;
+  }) applicationPreferences;
+  readableApplicationConfig = map (entry: {
+    path = entry.sourcePath;
+    destination = entry.destinationPath;
+  }) applicationConfig;
+  readableAdditionalSources = map (entry: {
+    path = entry.sourcePath;
+    destination = entry.destinationPath;
+  }) additionalSources;
+  resolvedSources = sources ++ additionalSources ++ applicationSupportEntries ++ preferenceSources ++ configSources ++ readableApplicationSupportSources ++ readableApplicationPreferences ++ readableApplicationConfig;
+  resolvedDestinationDir =
+    if destinationDir != null then
+      destinationDir
+    else if destinationRoot == "appBackups" then
+      "${backupPaths.appBackupsDirectory}/${destinationSuffix}"
+    else if destinationRoot == "browserBackups" then
+      "${backupPaths.browserBackupsDirectory}/${destinationSuffix}"
+    else if destinationRoot == "terminalBackups" then
+      "${backupPaths.terminalBackupsDirectory}/${destinationSuffix}"
+    else
+      throw "Unsupported app backup destination root: ${destinationRoot}";
+  resolvedDestinationMarkerFile =
+    if destinationMarkerFile == null then
+      "${resolvedDestinationDir}/.last-backup"
+    else
+      destinationMarkerFile;
   destinationRootDefinitions =
     if destinationRoot == "appBackups" then
       ''
@@ -67,10 +213,14 @@ let
         app_backups_root="$data_backups_root/app-backups"
         destination_base="$app_backups_root"
       ''
+    else if destinationRoot == "browserBackups" then
+      ''
+        browser_backups_root="$(printf '%s' ${lib.escapeShellArg backupPaths.browserBackupsDirectory})"
+        destination_base="$browser_backups_root"
+      ''
     else if destinationRoot == "terminalBackups" then
       ''
-        system_backup_root="$external_backup_volume/system"
-        terminal_backups_root="$system_backup_root/terminal"
+        terminal_backups_root="$(printf '%s' ${lib.escapeShellArg backupPaths.terminalBackupsDirectory})"
         destination_base="$terminal_backups_root"
       ''
     else
@@ -78,11 +228,19 @@ let
 
   extraExcludes = lib.concatMapStringsSep "\n" (pattern: ''
       --exclude=${lib.escapeShellArg pattern}
-  '') extraExcludePatterns;
+  '') (config.services.appBackups.defaultExtraExcludePatterns ++ extraExcludePatterns);
+
+  rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
 
   copySources = lib.concatMapStringsSep "\n" (source: ''
     copy_source ${lib.escapeShellArg source.path} ${lib.escapeShellArg source.destination}
-  '') sources;
+  '') resolvedSources;
+
+  touchSourceMarkers = lib.concatMapStringsSep "\n" (marker: ''
+    if [ -d ${lib.escapeShellArg (builtins.dirOf marker)} ]; then
+      ${pkgs.coreutils}/bin/touch -- ${lib.escapeShellArg marker}
+    fi
+  '') sourceMarkerFiles;
 
   checkRequiredGroups = lib.concatMapStringsSep "\n" (group: ''
     required_found=0
@@ -115,19 +273,25 @@ let
     # consistent for application backup commands.
     # -----------------------------------------------------------------
     app_slug="$(printf '%s' ${lib.escapeShellArg appSlug})"
-    external_backup_volume="/Volumes/SystemBackup"
+    external_backup_volume="$(printf '%s' ${lib.escapeShellArg externalBackupVolume})"
     ${destinationRootDefinitions}
-    destination_dir="$destination_base/${destinationSuffix}"
-    downloads_dir="/Users/ven/Downloads"
+    destination_dir="$(printf '%s' ${lib.escapeShellArg resolvedDestinationDir})"
+    downloads_dir="$(printf '%s' ${lib.escapeShellArg downloadsDir})"
 
-    timestamp="$(${pkgs.coreutils}/bin/date '+%Y-%m-%d-%H%M%S')"
-    archive_name="$timestamp-$app_slug.tar"
+    timestamp="$(${pkgs.coreutils}/bin/date ${lib.escapeShellArg "+${cfg.archiveTimestampFormat}"})"
+    archive_prefix="$(printf '%s' ${lib.escapeShellArg cfg.archivePrefix})"
+    archive_name_template="$(printf '%s' ${lib.escapeShellArg cfg.archiveFilenameTemplate})"
+    archive_name="''${archive_name_template//\{timestamp\}/$timestamp}"
+    archive_name="''${archive_name//\{prefix\}/$archive_prefix}"
+    archive_name="''${archive_name//\{appSlug\}/$app_slug}"
     archive_path="$destination_dir/$archive_name"
-    marker_file="$destination_dir/.last-backup"
+    marker_file="$(printf '%s' ${lib.escapeShellArg resolvedDestinationMarkerFile})"
     staging_dir="$downloads_dir/.$app_slug-backup-$timestamp-$$"
     archive_root="$staging_dir/$app_slug"
+    archive_in_downloads=${if cfg.stageInDownloads then "1" else "0"}
+    archive_enabled=${if cfg.archive then "1" else "0"}
     temporary_archive="$downloads_dir/.$archive_name.$$.incomplete"
-    global_lock_dir="/private/tmp/com.ven.app-backup.lock"
+    global_lock_dir="$(printf '%s' ${lib.escapeShellArg globalLockDir})"
     global_lock_acquired=0
     cpu_limit_percent="$(printf '%s' ${toString cfg.cpuLimitPercent})"
     minimum_interval_seconds=${toString cfg.minimumIntervalSeconds}
@@ -194,17 +358,18 @@ ${extraExcludes}
       fi
 
       destination_path="$archive_root/$archive_relative_path"
+      log "COPY $source_path -> $archive_relative_path"
       if [ -d "$source_path" ]; then
         ${pkgs.coreutils}/bin/mkdir -p -- "$destination_path"
         ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
-          ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
+          ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --human-readable --info=progress2 "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
       else
         ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$destination_path" )"
         ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
-          ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path" "$destination_path"
+          ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --human-readable --info=progress2 "''${exclude_args[@]}" -- "$source_path" "$destination_path"
       fi
       copied_count=$((copied_count + 1))
-      log "COPY $source_path -> $archive_relative_path"
+      log "COPIED $source_path -> $archive_relative_path"
     }
 
     trap cleanup EXIT INT TERM
@@ -241,7 +406,7 @@ ${extraExcludes}
       fi
     fi
 
-    if [ -e "$archive_path" ]; then
+    if [ "$archive_enabled" -eq 1 ] && [ -e "$archive_path" ]; then
       fail "refusing to overwrite an existing archive: $archive_path"
     fi
 
@@ -251,17 +416,34 @@ ${extraExcludes}
       fail "no backup sources were found"
     fi
 
-    log "CREATE local archive: $temporary_archive"
+    if [ "$archive_enabled" -eq 0 ]; then
+      log "SYNC unarchived backup: $destination_dir"
+      ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --human-readable --info=progress2 "''${exclude_args[@]}" -- "$archive_root/" "$destination_dir/"
+      ${pkgs.coreutils}/bin/touch -- "$marker_file"
+      ${touchSourceMarkers}
+      log "DONE $destination_dir"
+      exit 0
+    fi
+
+    if [ "$archive_in_downloads" -eq 1 ]; then
+      archive_work_path="$temporary_archive"
+    else
+      archive_work_path="$destination_dir/.$archive_name.$$.incomplete"
+      temporary_archive="$archive_work_path"
+    fi
+
+    log "CREATE archive: $archive_work_path"
     (
       cd -- "$staging_dir"
       ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
-        ${pkgs.gnutar}/bin/tar --create --file "$temporary_archive" --directory "$staging_dir" "$app_slug"
+        ${pkgs.gnutar}/bin/tar --create --file "$archive_work_path" --directory "$staging_dir" "$app_slug"
     )
 
-    ${pkgs.gnutar}/bin/tar --list --file "$temporary_archive" >/dev/null
-    ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$archive_path"
+    ${pkgs.gnutar}/bin/tar --list --file "$archive_work_path" >/dev/null
+    ${pkgs.coreutils}/bin/mv -- "$archive_work_path" "$archive_path"
     temporary_archive=""
     ${pkgs.coreutils}/bin/touch -- "$marker_file"
+    ${touchSourceMarkers}
 
     log "DONE $archive_path"
   '';
@@ -298,9 +480,45 @@ in
       default = cpuLimitPercent;
       description = "Maximum CPU percentage used for ${appName} backup archive work.";
     };
+
+    archive = lib.mkOption {
+      type = lib.types.bool;
+      default = archive;
+      description = "Create a TAR archive for ${appName}; false keeps an unarchived rsync copy at its destination.";
+    };
+
+    stageInDownloads = lib.mkOption {
+      type = lib.types.bool;
+      default = stageInDownloads;
+      description = "Create ${appName} archives in Downloads before publishing them to the external destination.";
+    };
+
+    archiveFilenameTemplate = lib.mkOption {
+      type = lib.types.str;
+      default = archiveFilenameTemplate;
+      description = "Archive name template for ${appName}; use {timestamp}, {prefix}, and {appSlug}.";
+    };
+
+    archiveTimestampFormat = lib.mkOption {
+      type = lib.types.str;
+      default = archiveTimestampFormat;
+      description = "strftime timestamp format for ${appName} archives, for example %Y-%m-%d or %Y-%m-%d-%H%M%S.";
+    };
+
+    archivePrefix = lib.mkOption {
+      type = lib.types.str;
+      default = archivePrefix;
+      description = "Prefix substituted for {prefix} in ${appName} archive names.";
+    };
+
+    preserveSymlinks = lib.mkOption {
+      type = lib.types.bool;
+      default = preserveSymlinks;
+      description = "Preserve symbolic links while backing up ${appName}.";
+    };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
+  config = lib.mkIf (config.services.appBackups.enabled && cfg.enable) (lib.mkMerge [
     {
       environment.systemPackages = [ backupRunner ];
     }

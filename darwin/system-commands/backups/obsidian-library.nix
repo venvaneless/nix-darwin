@@ -60,6 +60,7 @@ let
       REPOSITORY_FILE = "repository-url.txt"
       MANIFEST_FILE = "manifest.json"
       README_FILE = "README.md"
+      DEFAULT_DOWNLOADS_DIR = Path.home() / "Downloads"
       GH_BIN = os.environ["OBSIDIAN_LIBRARY_GH"]
       FZF_BIN = os.environ["OBSIDIAN_LIBRARY_FZF"]
 
@@ -123,6 +124,20 @@ let
           print(f"Error: {message}", file=sys.stderr)
 
 
+      def error_log_path() -> Path:
+          return Path(os.environ.get("OBSIDIAN_LIBRARY_DOWNLOADS_DIR", DEFAULT_DOWNLOADS_DIR)) / "obsidian-library-errors.log"
+
+
+      def report_error(message: str) -> None:
+          fail(message)
+          try:
+              error_log_path().parent.mkdir(parents=True, exist_ok=True)
+              with error_log_path().open("a", encoding="utf-8") as error_log:
+                  error_log.write(f"Error: {message}\n")
+          except OSError as error:
+              fail(f"could not save the error log: {error}")
+
+
       def run(command: list[str], *, text: bool = True) -> subprocess.CompletedProcess[Any]:
           return subprocess.run(command, capture_output=True, text=text, check=False)
 
@@ -161,11 +176,17 @@ let
           except OSError as error:
               raise RuntimeError(f"cannot read {REPOSITORY_FILE}: {error}") from error
 
-          match = re.search(r"github[.]com[/:]([^/\s]+)/([^/\s#]+)", contents)
-          if match is None:
+          # Repository files may contain blank lines, Markdown headings,
+          # angle-bracket links, or separate plugin/theme sections. Select
+          # the first actual GitHub repository URL and ignore other text.
+          matches = re.findall(
+              r"(?i)(?:https?://)?(?:www[.])?github[.]com[/:]([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9_.-]+)(?:[/?#>\s]|$)",
+              contents,
+          )
+          if not matches:
               raise RuntimeError(f"{REPOSITORY_FILE} does not contain a GitHub repository URL")
 
-          owner, repository = match.groups()
+          owner, repository = matches[0]
           repository = repository.removesuffix(".git").rstrip("/")
           if not owner or not repository:
               raise RuntimeError(f"{REPOSITORY_FILE} contains an invalid GitHub repository URL")
@@ -215,15 +236,11 @@ let
 
               try:
                   repository = github_repository(repository_url_file(child))
-                  if library_type.is_theme:
-                      payload = child / library_type.payload_file
-                      if not payload.is_file():
-                          raise RuntimeError(f"missing {library_type.payload_file}")
-                      local_version = optional_manifest_version(child / MANIFEST_FILE)
-                  else:
-                      local_version = manifest_version(child / MANIFEST_FILE)
+                  # An incomplete folder with a repository URL is recoverable:
+                  # keep it visible so an update can restore release assets.
+                  local_version = optional_manifest_version(child / MANIFEST_FILE)
               except RuntimeError as error:
-                  fail(f"Skipping {library_type.label.lower()} '{child.name}': {error}")
+                  report_error(f"Skipping {library_type.label.lower()} '{child.name}': {error}")
                   continue
 
               entries.append(LibraryEntry(library_type, child, repository, local_version))
@@ -509,6 +526,20 @@ let
           except RuntimeError as error:
               return CheckResult(entry, "UNAVAILABLE", message=str(error))
 
+          required_files = (MANIFEST_FILE, entry.library_type.payload_file)
+          missing_files = [filename for filename in required_files if not (entry.path / filename).is_file()]
+          if missing_files:
+              return CheckResult(
+                  entry,
+                  "RECOVERY REQUIRED",
+                  remote_version,
+                  f"missing {', '.join(missing_files)}",
+                  release,
+              )
+
+          if entry.local_version is None:
+              return CheckResult(entry, "RECOVERY REQUIRED", remote_version, "invalid manifest.json", release)
+
           comparison = compare_versions(entry.local_version, remote_version)
           if comparison == 0:
               return CheckResult(entry, "UP TO DATE", remote_version, release=release)
@@ -576,7 +607,31 @@ let
               remote = result.remote_version or "-"
               suffix = f" — {result.message}" if result.message else ""
               print(f"[{result.status}] {entry.library_type.label}: {entry.label} ({entry.version_label} -> {remote}){suffix}")
+              if result.status == "UNAVAILABLE":
+                  report_error(f"Checking {entry.library_type.label.lower()} '{entry.label}' failed: {result.message}")
           return results
+
+
+      def offer_updates(
+          results: list[CheckResult],
+          release_cache: dict[str, dict[str, Any] | Exception],
+          manifest_cache: dict[tuple[str, str], tuple[str, Path]],
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> None:
+          updateable = [
+              result.entry
+              for result in results
+              if result.status in {"UPDATE AVAILABLE", "VERSION DIFFERENT", "RECOVERY REQUIRED"}
+          ]
+          if not updateable:
+              return
+
+          answer = input("Download the listed updates and recover incomplete entries now? [y/N]: ").strip().casefold()
+          if answer not in {"y", "yes"}:
+              return
+
+          for entry in updateable:
+              update_entry(entry, release_cache, manifest_cache, repository_contents_cache)
 
 
       def archive_status(entry: LibraryEntry) -> None:
@@ -597,7 +652,7 @@ let
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
       ) -> None:
           result = check_plugin_entry(entry, release_cache, manifest_cache)
-          if result.status != "UPDATE AVAILABLE" or result.release is None:
+          if result.status not in {"UPDATE AVAILABLE", "VERSION DIFFERENT", "RECOVERY REQUIRED"} or result.release is None:
               suffix = f": {result.message}" if result.message else ""
               print(f"[SKIP] {entry.label}: {result.status}{suffix}")
               return
@@ -635,7 +690,7 @@ let
                       shutil.copyfile(source, staging)
                       os.replace(staging, destination)
               except (OSError, RuntimeError) as error:
-                  print(f"[FAILED] {entry.label}: {error}")
+                  report_error(f"[FAILED] {entry.label}: {error}")
                   return
 
           print(f"[UPDATED] {entry.label}: {entry.version_label} -> {result.remote_version} ({', '.join(downloaded)})")
@@ -673,7 +728,7 @@ let
                       shutil.copyfile(source, staging)
                       os.replace(staging, destination)
           except (OSError, RuntimeError) as error:
-              print(f"[FAILED] {entry.label}: {error}")
+              report_error(f"[FAILED] {entry.label}: {error}")
               return
 
           print(f"[UPDATED] {entry.label}: {entry.version_label} -> {result.remote_version} ({', '.join(downloaded)})")
@@ -692,15 +747,18 @@ let
 
 
       def github_repository_from_value(value: str) -> str:
-          match = re.search(r"(?:github[.]com[/:])?([^/\s]+)/([^/\s#]+)", value.strip())
+          matches = re.findall(
+              r"(?i)(?:https?://)?(?:www[.])?github[.]com[/:]([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9_.-]+)(?:[/?#>\s]|$)",
+              value,
+          )
+          if matches:
+              owner, repository = matches[0]
+              return f"{owner}/{repository.removesuffix('.git')}"
+
+          match = re.fullmatch(r"\s*([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9_.-]+)\s*", value)
           if match is None:
               raise RuntimeError("provide a GitHub repository URL or owner/repository")
-
-          owner, repository = match.groups()
-          repository = repository.removesuffix(".git").rstrip("/")
-          if not owner or not repository:
-              raise RuntimeError("provide a valid GitHub repository URL or owner/repository")
-          return f"{owner}/{repository}"
+          return f"{match.group(1)}/{match.group(2).removesuffix('.git')}"
 
 
       def normalized_theme_name(value: str) -> str:
@@ -749,6 +807,69 @@ let
           return trimmed_name
 
 
+      def plugin_folder_name(manifest_file: Path) -> str:
+          try:
+              manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError) as error:
+              raise RuntimeError(f"cannot read valid {MANIFEST_FILE}: {error}") from error
+
+          plugin_id = manifest.get("id") if isinstance(manifest, dict) else None
+          if not isinstance(plugin_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", plugin_id):
+              raise RuntimeError(f"{MANIFEST_FILE} has no safe plugin id")
+          return plugin_id
+
+
+      def download_plugin(
+          library_type: LibraryType,
+          repository_value: str,
+          release_cache: dict[str, dict[str, Any] | Exception],
+      ) -> None:
+          try:
+              repository = github_repository_from_value(repository_value)
+              release = latest_release(repository, release_cache)
+              assets = release_assets(release)
+              required_files = (MANIFEST_FILE, library_type.payload_file)
+              missing_files = [filename for filename in required_files if filename not in assets]
+              if missing_files:
+                  raise RuntimeError(f"latest release is missing {', '.join(missing_files)}")
+          except RuntimeError as error:
+              report_error(f"[FAILED] Plugin: {error}")
+              return
+
+          if not library_type.root.is_dir():
+              report_error(f"[FAILED] Plugin: library directory does not exist: {library_type.root}")
+              return
+
+          allowed_files = required_files + library_type.optional_files + tuple(image_names(list(assets)))
+          try:
+              with tempfile.TemporaryDirectory(prefix=".obsidian-library-plugin-", dir=library_type.root) as temporary_directory:
+                  staging_parent = Path(temporary_directory)
+                  manifest_path = staging_parent / MANIFEST_FILE
+                  download_asset(repository, assets[MANIFEST_FILE], manifest_path)
+                  folder_name = plugin_folder_name(manifest_path)
+                  destination = library_type.root / folder_name
+                  if destination.exists():
+                      print(f"[SKIP] Plugin: {destination} already exists; use Plugins > Check for updates to recover it")
+                      return
+
+                  staging = staging_parent / folder_name
+                  staging.mkdir()
+                  shutil.move(str(manifest_path), staging / MANIFEST_FILE)
+                  downloaded = [MANIFEST_FILE]
+                  for filename in allowed_files:
+                      if filename == MANIFEST_FILE or filename not in assets:
+                          continue
+                      download_asset(repository, assets[filename], staging / filename)
+                      downloaded.append(filename)
+                  (staging / REPOSITORY_FILE).write_text(f"https://github.com/{repository}\n", encoding="utf-8")
+                  os.replace(staging, destination)
+          except (OSError, RuntimeError) as error:
+              report_error(f"[FAILED] Plugin: {error}")
+              return
+
+          print(f"[DOWNLOADED] Plugin: {folder_name} ({', '.join(downloaded)})")
+
+
       def download_theme(
           library_type: LibraryType,
           repository_value: str,
@@ -760,7 +881,7 @@ let
               source = theme_source(repository, release_cache, repository_contents_cache)
               folder_name = theme_folder_name(repository, source)
           except (OSError, RuntimeError) as error:
-              print(f"[FAILED] Theme: {error}")
+              report_error(f"[FAILED] Theme: {error}")
               return
 
           destination = library_type.root / folder_name
@@ -768,7 +889,7 @@ let
               print(f"[SKIP] Theme: {destination} already exists")
               return
           if not library_type.root.is_dir():
-              print(f"[FAILED] Theme: library directory does not exist: {library_type.root}")
+              report_error(f"[FAILED] Theme: library directory does not exist: {library_type.root}")
               return
 
           try:
@@ -779,7 +900,7 @@ let
                   (staging / REPOSITORY_FILE).write_text(f"https://github.com/{repository}\\n", encoding="utf-8")
                   os.replace(staging, destination)
           except (OSError, RuntimeError) as error:
-              print(f"[FAILED] Theme: {error}")
+              report_error(f"[FAILED] Theme: {error}")
               return
 
           print(f"[DOWNLOADED] Theme: {folder_name} ({source.location}; {', '.join(downloaded)})")
@@ -819,6 +940,7 @@ let
               f"--prompt={prompt}",
               f"--header={header}",
               "--no-sort",
+              "--bind=right:accept",
           ]
           if multi:
               command.extend(["--multi", "--bind=tab:toggle+down"])
@@ -864,7 +986,6 @@ let
       def choose_action(library_type: LibraryType) -> str | None:
           actions = [
               "Check for updates",
-              "Update",
               "Remove",
               "Check archived status",
               "Back",
@@ -890,10 +1011,8 @@ let
 
               print_heading(action)
               if action == "Check for updates":
-                  show_checks(entries, release_cache, manifest_cache, repository_contents_cache)
-              elif action == "Update":
-                  for entry in entries:
-                      update_entry(entry, release_cache, manifest_cache, repository_contents_cache)
+                  results = show_checks(entries, release_cache, manifest_cache, repository_contents_cache)
+                  offer_updates(results, release_cache, manifest_cache, repository_contents_cache)
               elif action == "Remove":
                   for entry in entries:
                       remove_entry(entry)
@@ -916,7 +1035,8 @@ let
 
       def main() -> int:
           parser = argparse.ArgumentParser(description="Manage the local Obsidian plugin and theme library.")
-          parser.add_argument("--check-all", action="store_true", help="Check every valid plugin and theme without opening fzf.")
+          parser.add_argument("--check-all", action="store_true", help="Check every recoverable plugin and theme without opening fzf.")
+          parser.add_argument("--download-plugin", metavar="REPOSITORY", help="Download a plugin release from a GitHub repository into the plugin library.")
           parser.add_argument("--download-theme", metavar="REPOSITORY", help="Download a theme from a GitHub repository into the theme library.")
           arguments = parser.parse_args()
 
@@ -940,6 +1060,10 @@ let
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception] = {}
 
           try:
+              if arguments.download_plugin:
+                  download_plugin(library_types[0], arguments.download_plugin, release_cache)
+                  return 0
+
               if arguments.download_theme:
                   download_theme(library_types[1], arguments.download_theme, release_cache, repository_contents_cache)
                   return 0
@@ -949,7 +1073,7 @@ let
                   show_checks(all_entries(library_types), release_cache, manifest_cache, repository_contents_cache)
                   return 0
 
-              menu_items = ["Plugins", "Themes", "Download theme", "Check all updates", "Quit"]
+              menu_items = ["Check for updates", "Plugins", "Themes", "Download a plugin", "Download a theme", "Quit"]
               while True:
                   selection = fzf_select(menu_items, "obsidian-library> ", "Choose a library or check every installed item.")
                   choice = selection[0] if selection else "Quit"
@@ -957,16 +1081,24 @@ let
                       manage_type(library_types[0], release_cache, manifest_cache, repository_contents_cache)
                   elif choice == "Themes":
                       manage_type(library_types[1], release_cache, manifest_cache, repository_contents_cache)
-                  elif choice == "Download theme":
+                  elif choice == "Download a plugin":
+                      repository = input("GitHub repository URL, owner/repository, or text containing a GitHub link: ").strip()
+                      if repository:
+                          download_plugin(library_types[0], repository, release_cache)
+                      else:
+                          print("[SKIP] Plugin: no repository was provided")
+                      input("\\nPress ENTER to return to the main menu.")
+                  elif choice == "Download a theme":
                       repository = input("GitHub repository URL or owner/repository: ").strip()
                       if repository:
                           download_theme(library_types[1], repository, release_cache, repository_contents_cache)
                       else:
                           print("[SKIP] Theme: no repository was provided")
                       input("\\nPress ENTER to return to the main menu.")
-                  elif choice == "Check all updates":
-                      print_heading("Check all updates")
-                      show_checks(all_entries(library_types), release_cache, manifest_cache, repository_contents_cache)
+                  elif choice == "Check for updates":
+                      print_heading("Check for updates")
+                      results = show_checks(all_entries(library_types), release_cache, manifest_cache, repository_contents_cache)
+                      offer_updates(results, release_cache, manifest_cache, repository_contents_cache)
                       input("\nPress ENTER to return to the main menu.")
                   else:
                       return 0

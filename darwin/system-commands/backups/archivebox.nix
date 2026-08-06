@@ -11,6 +11,25 @@
 }:
 
 let
+  # ---- EDITABLE BACKUP PATHS
+  archiveboxSourceDir = config.services.archivebox.dataDir;
+  backupDestinationDir = "/Volumes/SystemBackup/data-backups/container-backups/archivebox";
+  localStagingDir = "/Users/ven/Downloads/backup-staging/archivebox";
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 35;
+  runOnRebuild = false;
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "archivebox";
+  preserveSymlinks = true;
+  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
+
   containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
 in
 containerBackupHelper.mkContainerBackup {
@@ -18,13 +37,11 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "ArchiveBox";
   appSlug = "archivebox";
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 35;
-  runOnRebuild = false;
-  sourceDir = config.services.archivebox.dataDir;
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild extraExcludePatterns;
+  inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
+  sourceDir = archiveboxSourceDir;
+  destinationDir = backupDestinationDir;
+  inherit localStagingDir;
   scheduledHour = 1;
   scheduledMinute = 0;
 
@@ -37,7 +54,7 @@ containerBackupHelper.mkContainerBackup {
     staged_source="$staging_dir/$source_name"
 
     ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source"
-    ${pkgs.rsync}/bin/rsync -a \
+    ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" \
       --exclude='index.sqlite3' \
       --exclude='index.sqlite3-shm' \
       --exclude='index.sqlite3-wal' \

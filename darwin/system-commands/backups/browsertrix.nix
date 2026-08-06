@@ -1,15 +1,55 @@
 # darwin/system-commands/backups/browsertrix.nix
-#
-# Backs up Browsertrix container data to SystemBackup.
+# Browsertrix container backup command: `browsertrix-backup`.
 
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+{ config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.containerBackups.paths;
+  containerDirectory = backupPaths.containerDirectory;
+  destinationDir = "${backupPaths.containerBackupsDirectory}/browsertrix";
+  localStagingDir = "${backupPaths.downloadsDirectory}/backup-staging/browsertrix";
+
+  # ---- EDITABLE BACKUP PATHS
+  # These entries resolve from containerDirectory. Add as many Browsertrix
+  # directories or files as required, each with its archive destination.
+  containerEntries = [
+    {
+      relativePath = "browsertrix";
+      destinationPath = "browsertrix";
+    }
+  ];
+  # Use absolute sourcePath entries for data outside containerDirectory.
+  additionalSources = [
+    # {
+    #   sourcePath = "${backupPaths.homeDirectory}/Library/Somewhere/Browsertrix";
+    #   destinationPath = "additional/Somewhere/Browsertrix";
+    # }
+  ];
+  sourceEntries = containerEntries ++ additionalSources;
+
+  # ---- EDITABLE EXCLUSIONS
+  extraExcludePatterns = [
+    "sockets/"
+    "private/socket"
+    "*.sock"
+  ];
+
+  # ---- INDIVIDUAL BACKUP CONTROLS
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "browsertrix";
+  preserveSymlinks = true;
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 35;
+  runOnRebuild = false;
+
   containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
 in
 containerBackupHelper.mkContainerBackup {
@@ -17,13 +57,10 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "Browsertrix";
   appSlug = "browsertrix";
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 35;
-  runOnRebuild = false;
-  sourceDir = "/Users/ven/.config/containers/browsertrix";
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild;
+  inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
+  inherit sourceEntries destinationDir localStagingDir extraExcludePatterns;
+  sourceRoot = containerDirectory;
   scheduledHour = 2;
   scheduledMinute = 0;
 }

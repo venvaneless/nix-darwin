@@ -4,6 +4,55 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP CONTENTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+
+  # These entries resolve from applicationSupportDirectory. Add one entry for
+  # every Dash path stored in Application Support.
+  applicationSupportEntries = [
+    {
+      relativePath = "Dash";
+      destinationPath = "app-support/Dash";
+    }
+    {
+      relativePath = "com.kapeli.dash-setapp";
+      destinationPath = "app-support/com.kapeli.dash-setapp";
+    }
+  ];
+  # These entries resolve from preferencesDirectory. Add one entry for every
+  # Dash preference file or directory that should be backed up.
+  preferenceEntries = [
+    {
+      relativePath = "com.kapeli.dashdoc.plist";
+      destinationPath = "app-pref/com.kapeli.dashdoc.plist";
+    }
+    {
+      relativePath = "com.kapeli.dash-setapp.plist";
+      destinationPath = "app-pref/com.kapeli.dash-setapp.plist";
+    }
+  ];
+  # Use this list for any additional absolute source outside the standard
+  # roots above; every item is copied to its own destinationPath.
+  additionalSources = [
+    # {
+    #   sourcePath = "${backupPaths.homeDirectory}/Library/Somewhere/Dash";
+    #   destinationPath = "additional/Somewhere/Dash";
+    # }
+  ];
+  extraExcludePatterns = [
+    "sockets/"
+    "private/socket"
+    "*.sock"
+  ];
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "dash";
+  preserveSymlinks = true;
+
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   dashBackup = appBackupHelper.mkAppBackup {
     inherit config;
@@ -14,12 +63,10 @@ let
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
-    sources = [
-      { path = "/Users/ven/Library/Application Support/Dash"; destination = "app-support/Dash"; }
-      { path = "/Users/ven/Library/Application Support/com.kapeli.dash-setapp"; destination = "app-support/com.kapeli.dash-setapp"; }
-      { path = "/Users/ven/Library/Preferences/com.kapeli.dashdoc.plist"; destination = "app-pref/com.kapeli.dashdoc.plist"; }
-      { path = "/Users/ven/Library/Preferences/com.kapeli.dash-setapp.plist"; destination = "app-pref/com.kapeli.dash-setapp.plist"; }
-    ];
+    inherit applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in
 dashBackup

@@ -39,6 +39,22 @@
       url = "github:AstroNvim/template";
       flake = false;
     };
+
+    # Codex extension sources are pinned in flake.lock and assembled locally.
+    caveman = {
+      url = "github:JuliusBrussee/caveman";
+      flake = false;
+    };
+
+    simple-english = {
+      url = "github:AminBlg/SimpleEnglish";
+      flake = false;
+    };
+
+    codebase-memory-mcp = {
+      url = "github:DeusData/codebase-memory-mcp";
+      flake = false;
+    };
   };
 
   outputs =

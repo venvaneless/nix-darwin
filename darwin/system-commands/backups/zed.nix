@@ -4,6 +4,18 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP CONTENTS
+  applicationSupportEntries = [ { relativePath = "zed"; destinationPath = "app-support/zed"; } ];
+  preferenceEntries = [ { relativePath = "dev.zed.Zed.plist"; destinationPath = "app-pref/dev.zed.Zed.plist"; } ];
+  configEntries = [ { relativePath = "zed"; destinationPath = "user-config/zed"; } ];
+  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
+  additionalSources = [ ];
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "zed";
+  preserveSymlinks = true;
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   zedBackup = appBackupHelper.mkAppBackup {
     inherit config;
@@ -14,11 +26,8 @@ let
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
-    sources = [
-      { path = "/Users/ven/Library/Application Support/zed"; destination = "zed"; }
-      { path = "/Users/ven/.config/zed"; destination = "user-config/zed"; }
-      { path = "/Users/ven/Library/Preferences/dev.zed.Zed.plist"; destination = "dev.zed.Zed.plist"; }
-    ];
+    inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in
 zedBackup

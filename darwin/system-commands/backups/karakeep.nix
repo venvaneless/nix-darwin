@@ -15,6 +15,28 @@
 }:
 
 let
+  # ---- EDITABLE BACKUP PATHS
+  containerConfig = [
+    {
+      sourcePath = "/Users/ven/.config/containers/karakeep";
+      destinationPath = "karakeep";
+    }
+  ];
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 35;
+  runOnRebuild = false;
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "karakeep";
+  preserveSymlinks = true;
+  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
+
   containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
 in
 containerBackupHelper.mkContainerBackup {
@@ -22,13 +44,9 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "Karakeep";
   appSlug = "karakeep";
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 35;
-  runOnRebuild = false;
-  sourceDir = config.services.karakeep.dataDir;
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild extraExcludePatterns;
+  inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
+  inherit containerConfig;
   scheduledHour = 6;
   scheduledMinute = 0;
 }

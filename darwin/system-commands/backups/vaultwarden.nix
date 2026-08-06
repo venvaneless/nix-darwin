@@ -11,6 +11,26 @@
 }:
 
 let
+  # ---- EDITABLE BACKUP PATHS
+  backupPaths = config.services.containerBackups.paths;
+  vaultwardenSourceDir = "${backupPaths.containerDirectory}/vaultwarden";
+  backupDestinationDir = "${backupPaths.externalBackupVolume}/data-backups/container-backups/vaultwarden";
+  localStagingDir = "${backupPaths.downloadsDirectory}/backup-staging/vaultwarden";
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 35;
+  runOnRebuild = false;
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "vaultwarden";
+  preserveSymlinks = true;
+  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
+
   containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
 in
 containerBackupHelper.mkContainerBackup {
@@ -18,13 +38,11 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "Vaultwarden";
   appSlug = "vaultwarden";
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 35;
-  runOnRebuild = false;
-  sourceDir = "/Users/ven/.config/containers/vaultwarden";
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild extraExcludePatterns;
+  inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
+  sourceDir = vaultwardenSourceDir;
+  destinationDir = backupDestinationDir;
+  inherit localStagingDir;
   scheduledHour = 4;
   scheduledMinute = 0;
 
@@ -37,7 +55,7 @@ containerBackupHelper.mkContainerBackup {
     staged_source="$staging_dir/$source_name"
 
     ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source"
-    ${pkgs.rsync}/bin/rsync -a \
+    ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" \
       --exclude='.DS_Store' \
       --exclude='._*' \
       --exclude='.AppleDouble' \

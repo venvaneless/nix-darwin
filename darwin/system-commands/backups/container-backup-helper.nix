@@ -16,10 +16,70 @@ let
   # schedule, interval, CPU cap, and rebuild toggles.
   settingsModule = { lib, ... }: {
     options.services.containerBackups = {
+      paths = {
+        homeDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Users/ven";
+          description = "Home directory used by macOS container backup modules.";
+        };
+
+        configDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Users/ven/.config";
+          description = "Configuration root used by macOS container backup modules.";
+        };
+
+        containerDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Users/ven/.config/containers";
+          description = "Container-data root used by macOS container backup modules.";
+        };
+
+        externalBackupVolume = lib.mkOption {
+          type = lib.types.str;
+          default = "/Volumes/SystemBackup";
+          description = "Mounted external backup volume root.";
+        };
+
+        dataBackupsDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Volumes/SystemBackup/data-backups";
+          description = "Shared data-backup root on the external backup volume.";
+        };
+
+        containerBackupsDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Volumes/SystemBackup/data-backups/container-backups";
+          description = "Container archive root on the external backup volume.";
+        };
+
+        downloadsDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = "/Users/ven/Downloads";
+          description = "Local staging root for container archives.";
+        };
+      };
+
       automaticEnabled = lib.mkOption {
         type = lib.types.bool;
         default = false;
         description = "Allow container backup modules with automatic = true to create their LaunchAgents.";
+      };
+
+      enabled = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Allow enabled container backup commands to be installed.";
+      };
+
+      defaultExtraExcludePatterns = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [
+          "sockets/"
+          "private/socket"
+          "*.sock"
+        ];
+        description = "Socket paths excluded from every container backup unless its module adds more patterns.";
       };
 
       defaultAutomaticIntervalSeconds = lib.mkOption {
@@ -52,7 +112,17 @@ let
     config,
     appName,
     appSlug,
-    sourceDir,
+    sourceDir ? null,
+    sourceRoot ? config.services.containerBackups.paths.containerDirectory,
+    sourceEntries ? [ ],
+    containerConfig ? [ ],
+    destinationDir ? "${config.services.containerBackups.paths.containerBackupsDirectory}/${appSlug}",
+    externalBackupVolume ? config.services.containerBackups.paths.externalBackupVolume,
+    localStagingDir ? "${config.services.containerBackups.paths.downloadsDirectory}/backup-staging/${appSlug}",
+    sourceMarkerFile ? null,
+    destinationMarkerFile ? null,
+    lockDir ? "/private/tmp/com.ven.${appSlug}-backup.lock",
+    globalLockDir ? "/private/tmp/com.ven.backup-archive.lock",
     scheduledHour ? 4,
     scheduledMinute ? 0,
     prepareArchive ? "",
@@ -61,10 +131,52 @@ let
     minimumIntervalSeconds ? config.services.containerBackups.defaultMinimumIntervalSeconds,
     cpuLimitPercent ? config.services.containerBackups.defaultCpuLimitPercent,
     runOnRebuild ? false,
+    extraExcludePatterns ? [ ],
+    archive ? true,
+    stageInDownloads ? true,
+    archiveFilenameTemplate ? "{timestamp}-{appSlug}.zip",
+    archiveTimestampFormat ? "%Y-%m-%d-%H%M%S",
+    archivePrefix ? appSlug,
+    preserveSymlinks ? true,
   }:
   let
+  resolvedSourceEntries = map (entry: {
+    sourcePath = if entry ? sourcePath then entry.sourcePath else "${sourceRoot}/${entry.relativePath}";
+    destinationPath = entry.destinationPath;
+  }) sourceEntries;
+  resolvedSourceDir =
+    if resolvedSourceEntries != [ ] then
+      (builtins.head resolvedSourceEntries).sourcePath
+    else if sourceDir != null then
+      sourceDir
+    else if containerConfig != [ ] then
+      (builtins.head containerConfig).sourcePath
+    else
+      throw "A container backup needs sourceDir or a non-empty containerConfig list.";
+  resolvedSourceMarkerFile = if sourceMarkerFile == null then "${resolvedSourceDir}/.last-backup" else sourceMarkerFile;
+  resolvedDestinationMarkerFile = if destinationMarkerFile == null then "${destinationDir}/.last-backup" else destinationMarkerFile;
   cfg = config.services.containerBackups.${appSlug};
   backupCfg = config.services.containerBackups;
+  extraExcludes = lib.concatMapStringsSep "\n" (pattern: ''
+        --exclude=${lib.escapeShellArg pattern}
+  '') (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
+  zipExtraExcludes = lib.concatMapStringsSep " " (pattern: "-x ${lib.escapeShellArg pattern}") (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
+  rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
+  stageSourceEntries = lib.concatMapStringsSep "\n" (entry: ''
+        ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
+        ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} "''${exclude_args[@]}" -- \
+          ${lib.escapeShellArg "${entry.sourcePath}/"} "$staged_source/${entry.destinationPath}/"
+  '') resolvedSourceEntries;
+  prepareSourceEntries = lib.optionalString (resolvedSourceEntries != [ ]) ''
+      staging_dir="$(
+        ${pkgs.coreutils}/bin/mktemp -d "/private/tmp/${appSlug}-backup.XXXXXX"
+      )"
+      archive_source_parent="$staging_dir"
+      archive_source_name="$app_slug"
+      staged_source="$staging_dir/$app_slug"
+      ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source"
+${stageSourceEntries}
+  '';
 
   commandName = "${appSlug}-backup";
   launchdLabel = "com.ven.backup.${appSlug}";
@@ -90,18 +202,22 @@ let
       # -----------------------------------------------------------------
       app_name="$(printf '%s' ${lib.escapeShellArg appName})"
       app_slug="$(printf '%s' ${lib.escapeShellArg appSlug})"
-      source_dir="$(printf '%s' ${lib.escapeShellArg sourceDir})"
-      external_backup_volume="/Volumes/SystemBackup"
-      data_backups_root="$external_backup_volume/data-backups"
-      container_backups_root="$data_backups_root/container-backups"
-      destination_dir="$container_backups_root/$app_slug"
-      local_staging_dir="/Users/ven/Downloads/backup-staging/$app_slug"
+      source_dir="$(printf '%s' ${lib.escapeShellArg resolvedSourceDir})"
+      external_backup_volume="$(printf '%s' ${lib.escapeShellArg externalBackupVolume})"
+      destination_dir="$(printf '%s' ${lib.escapeShellArg destinationDir})"
+      local_staging_dir="$(printf '%s' ${lib.escapeShellArg localStagingDir})"
 
-      marker_file="$destination_dir/.last-backup"
-      lock_dir="/private/tmp/com.ven.$app_slug-backup.lock"
-      global_lock_dir="/private/tmp/com.ven.backup-archive.lock"
+      source_marker_file="$(printf '%s' ${lib.escapeShellArg resolvedSourceMarkerFile})"
+      marker_file="$(printf '%s' ${lib.escapeShellArg resolvedDestinationMarkerFile})"
+      lock_dir="$(printf '%s' ${lib.escapeShellArg lockDir})"
+      global_lock_dir="$(printf '%s' ${lib.escapeShellArg globalLockDir})"
       backup_interval_seconds=${toString cfg.minimumIntervalSeconds}
       cpu_limit_percent=${toString cfg.cpuLimitPercent}
+      archive_enabled=${if cfg.archive then "1" else "0"}
+      archive_in_downloads=${if cfg.stageInDownloads then "1" else "0"}
+      archive_name_template="$(printf '%s' ${lib.escapeShellArg cfg.archiveFilenameTemplate})"
+      archive_timestamp_format="$(printf '%s' ${lib.escapeShellArg cfg.archiveTimestampFormat})"
+      archive_prefix="$(printf '%s' ${lib.escapeShellArg cfg.archivePrefix})"
 
       mode="manual"
       temporary_archive=""
@@ -109,6 +225,21 @@ let
       temporary_marker=""
       staging_dir=""
       global_lock_acquired=0
+      exclude_args=(
+        --exclude='.DS_Store'
+        --exclude='._*'
+        --exclude='.AppleDouble'
+        --exclude='.DocumentRevisions-V100'
+        --exclude='.fseventsd'
+        --exclude='.LSOverride'
+        --exclude='.Spotlight-V100'
+        --exclude='.TemporaryItems'
+        --exclude='.Trashes'
+        --exclude='.Trash'
+        --exclude='.Trash-*'
+        --exclude='__MACOSX'
+${extraExcludes}
+      )
 
       usage() {
         printf 'Usage: %s [--scheduled|--rebuild]\n' "$0" >&2
@@ -282,6 +413,7 @@ let
       archive_source_parent="$source_parent"
       archive_source_name="$source_name"
 
+      ${prepareSourceEntries}
       ${prepareArchive}
 
       # Only one backup may compress, verify, or hand off to external storage at once.
@@ -307,18 +439,34 @@ let
       global_lock_acquired=1
 
       timestamp="$(
-        ${pkgs.coreutils}/bin/date '+%Y-%m-%d-%H%M%S'
+        ${pkgs.coreutils}/bin/date "+$archive_timestamp_format"
       )"
-      archive="$destination_dir/$timestamp-$app_slug.zip"
-      local_archive="$local_staging_dir/$timestamp-$app_slug.zip"
-      temporary_archive="$local_staging_dir/.$timestamp-$app_slug-$$.zip.incomplete"
+      archive_name="''${archive_name_template//\{timestamp\}/$timestamp}"
+      archive_name="''${archive_name//\{prefix\}/$archive_prefix}"
+      archive_name="''${archive_name//\{appSlug\}/$app_slug}"
+      archive="$destination_dir/$archive_name"
+      local_archive="$local_staging_dir/$archive_name"
+      temporary_archive="$local_staging_dir/.$archive_name.$$.incomplete"
       temporary_marker="$local_staging_dir/.last-backup-$$.incomplete"
 
-      if [ -e "$archive" ] || [ -e "$local_archive" ]; then
+      if [ "$archive_enabled" -eq 1 ] && { [ -e "$archive" ] || [ -e "$local_archive" ]; }; then
         fail "refusing to overwrite an existing archive: $archive"
       fi
 
-      log "creating local archive: $local_archive"
+      if [ "$archive_enabled" -eq 0 ]; then
+        log "syncing unarchived backup: $destination_dir"
+        ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} "''${exclude_args[@]}" -- \
+          "$archive_source_parent/$archive_source_name/" "$destination_dir/"
+        ${pkgs.coreutils}/bin/touch -- "$marker_file" "$source_marker_file"
+        log "completed successfully: $destination_dir"
+        exit 0
+      fi
+
+      if [ "$archive_in_downloads" -eq 0 ]; then
+        temporary_archive="$destination_dir/.$archive_name.$$.incomplete"
+      fi
+
+      log "creating archive: $temporary_archive"
 
       (
         cd -- "$archive_source_parent"
@@ -328,37 +476,26 @@ let
           -x '*/.DS_Store' \
           -x '*/._*' \
           -x '*/.AppleDouble' \
-          -x '*/.AppleDouble/*' \
-          -x '*/.DocumentRevisions-V100' \
-          -x '*/.DocumentRevisions-V100/*' \
-          -x '*/.fseventsd' \
-          -x '*/.fseventsd/*' \
-          -x '*/.LSOverride' \
-          -x '*/.Spotlight-V100' \
-          -x '*/.Spotlight-V100/*' \
-          -x '*/.TemporaryItems' \
-          -x '*/.TemporaryItems/*' \
-          -x '*/.Trashes' \
-          -x '*/.Trashes/*' \
-          -x '*/.Trash' \
-          -x '*/.Trash/*' \
-          -x '*/.Trash-*' \
-          -x '*/.Trash-*/*' \
-          -x '*/__MACOSX' \
           -x '*/__MACOSX/*' \
-          -x '*/Icon?' \
           -x '*/Thumbs.db' \
-          -x '*/desktop.ini'
+          -x '*/desktop.ini' \
+          ${zipExtraExcludes}
       )
 
       ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
         ${pkgs.unzip}/bin/unzip -t "$temporary_archive" >/dev/null
-      ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$local_archive"
+      if [ "$archive_in_downloads" -eq 1 ]; then
+        ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$local_archive"
+      else
+        ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$archive"
+      fi
       temporary_archive=""
 
-      log "moving verified local archive to external storage: $archive"
-      if ! ${pkgs.coreutils}/bin/mv -- "$local_archive" "$archive"; then
-        fail "could not move verified local archive to external storage: $local_archive"
+      if [ "$archive_in_downloads" -eq 1 ]; then
+        log "moving verified local archive to external storage: $archive"
+        if ! ${pkgs.coreutils}/bin/mv -- "$local_archive" "$archive"; then
+          fail "could not move verified local archive to external storage: $local_archive"
+        fi
       fi
 
       local_archive=""
@@ -383,6 +520,7 @@ let
       fi
 
       temporary_marker=""
+      ${pkgs.coreutils}/bin/touch -- "$source_marker_file"
       log "completed successfully: $archive"
     '';
   };
@@ -420,9 +558,45 @@ in
       default = runOnRebuild;
       description = "Include the ${appName} backup during rebuild only when explicitly enabled.";
     };
+
+    archive = lib.mkOption {
+      type = lib.types.bool;
+      default = archive;
+      description = "Create a ZIP archive for ${appName}; false keeps an unarchived rsync copy at its destination.";
+    };
+
+    stageInDownloads = lib.mkOption {
+      type = lib.types.bool;
+      default = stageInDownloads;
+      description = "Create ${appName} archives in Downloads before moving them to the external destination.";
+    };
+
+    archiveFilenameTemplate = lib.mkOption {
+      type = lib.types.str;
+      default = archiveFilenameTemplate;
+      description = "Archive name template for ${appName}; use {timestamp}, {prefix}, and {appSlug}.";
+    };
+
+    archiveTimestampFormat = lib.mkOption {
+      type = lib.types.str;
+      default = archiveTimestampFormat;
+      description = "strftime timestamp format for ${appName} archives, for example %Y-%m-%d or %Y-%m-%d-%H%M%S.";
+    };
+
+    archivePrefix = lib.mkOption {
+      type = lib.types.str;
+      default = archivePrefix;
+      description = "Prefix substituted for {prefix} in ${appName} archive names.";
+    };
+
+    preserveSymlinks = lib.mkOption {
+      type = lib.types.bool;
+      default = preserveSymlinks;
+      description = "Preserve symbolic links while backing up ${appName}.";
+    };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
+  config = lib.mkIf (backupCfg.enabled && cfg.enable) (lib.mkMerge [
     (lib.mkIf (backupCfg.automaticEnabled && cfg.automatic) {
       launchd.user.agents."backup-${appSlug}" = {
         serviceConfig = {

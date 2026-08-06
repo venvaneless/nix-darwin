@@ -4,6 +4,21 @@
 { config, lib, pkgs, ... }:
 
 let
+  configEntries = [
+    { relativePath = "espanso"; destinationPath = "user-config/espanso"; }
+  ];
+  preferenceEntries = [
+    { relativePath = "com.federicoterzi.espanso.plist"; destinationPath = "app-pref/com.federicoterzi.espanso.plist"; }
+  ];
+  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
+  additionalSources = [ ];
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "espanso";
+  preserveSymlinks = true;
+
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   espansoBackup = appBackupHelper.mkAppBackup {
     inherit config;
@@ -14,10 +29,8 @@ let
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
-    sources = [
-      { path = "/Users/ven/.config/espanso"; destination = "user-config/espanso"; }
-      { path = "/Users/ven/Library/Preferences/com.federicoterzi.espanso.plist"; destination = "com.federicoterzi.espanso.plist"; }
-    ];
+    inherit configEntries preferenceEntries additionalSources extraExcludePatterns;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in
 espansoBackup

@@ -4,6 +4,23 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP CONTENTS
+  destinationSegments = [ "iterm" "backups" ];
+  applicationSupportEntries = [
+    {
+      relativePath = "iTerm2";
+      destinationPath = "app-support/iTerm2";
+    }
+  ];
+  preferenceEntries = [
+    {
+      relativePath = "com.googlecode.iterm2.plist";
+      destinationPath = "app-pref/com.googlecode.iterm2.plist";
+    }
+  ];
+  additionalSources = [
+    # { sourcePath = "/Users/ven/Library/Somewhere/iTerm2"; destinationPath = "additional/iTerm2"; }
+  ];
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   itermBackup = appBackupHelper.mkAppBackup {
     inherit config;
@@ -14,16 +31,18 @@ let
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "iterm";
+    preserveSymlinks = true;
     destinationRoot = "terminalBackups";
-    destinationSegments = [ "iterm" "backups" ];
+    inherit destinationSegments applicationSupportEntries preferenceEntries additionalSources;
     extraExcludePatterns = [
       "sockets/"
       "private/socket"
       "*.sock"
-    ];
-    sources = [
-      { path = "/Users/ven/Library/Application Support/iTerm2"; destination = "iTerm2"; }
-      { path = "/Users/ven/Library/Preferences/com.googlecode.iterm2.plist"; destination = "com.googlecode.iterm2.plist"; }
     ];
   };
 in

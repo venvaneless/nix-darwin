@@ -39,7 +39,7 @@ let
     source_dir="$source_parent/$source_name"
 
     external_backup_root="/Volumes/SystemBackup"
-    backup_dir="$external_backup_root/data-backups/app-backups/codex"
+    backup_dir="$external_backup_root/data-backups/container-backups/codex"
     local_staging_dir="/Users/ven/Downloads/backup-staging/codex"
     marker_file="$backup_dir/.last-backup"
     lock_dir="/private/tmp/com.ven.codex-backup.lock"

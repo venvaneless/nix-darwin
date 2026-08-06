@@ -4,17 +4,18 @@
 { lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP PATHS
+  destinationDir = "/Volumes/SystemBackup/data-backups/app-backups/mkcert";
+
   mkcertBackup = pkgs.writeShellApplication {
     name = "mkcert-backup";
     runtimeInputs = with pkgs; [ coreutils rsync ];
     text = ''
       set -euo pipefail
 
-      external_backup_volume="/Volumes/SystemBackup"
-      data_backups_root="$external_backup_volume/data-backups"
-      app_backups_root="$data_backups_root/app-backups"
       source_dir="/Users/ven/.config/mkcert"
-      destination_dir="$app_backups_root/mkcert"
+      destination_dir="${destinationDir}"
+      external_backup_volume="/Volumes/SystemBackup"
 
       if [ ! -d "$source_dir" ]; then
         echo "[mkcert backup] ERROR missing source: $source_dir" >&2

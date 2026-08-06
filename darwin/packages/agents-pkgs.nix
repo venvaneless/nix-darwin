@@ -9,6 +9,9 @@
     # Codex configuration and environment variables
     ./codex/codex.nix
 
+    # Declarative shared Codex plugins and MCP synchronization command
+    ./codex/extensions.nix
+
     # Codex backup command and LaunchAgent
     ./codex/codex-backup.nix
   ];
