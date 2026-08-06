@@ -15,29 +15,38 @@ let
   sharedRoot = "/Users/ven/.config/codex/shared";
   codebaseMemoryDataDir = "${sharedRoot}/codebase-memory-mcp";
 
-  # Build the upstream C implementation from the flake-locked source tree.
-  codebaseMemoryMcp = pkgs.stdenv.mkDerivation {
+  # Read the pinned upstream release metadata instead of compiling its source.
+  codebaseMemoryMetadata = builtins.fromJSON (
+    builtins.readFile "${inputs.codebase-memory-mcp}/server.json"
+  );
+  codebaseMemoryRelease = lib.findFirst
+    (package: package.identifier == "https://github.com/DeusData/codebase-memory-mcp/releases/download/v${codebaseMemoryMetadata.version}/codebase-memory-mcp-darwin-arm64.tar.gz")
+    (throw "codebase-memory-mcp does not publish a Darwin ARM64 release")
+    codebaseMemoryMetadata.packages;
+
+  # Install the upstream Apple-Silicon release archive verified by its SHA-256.
+  codebaseMemoryMcp = pkgs.stdenvNoCC.mkDerivation {
     pname = "codebase-memory-mcp";
-    version = "git";
-    src = inputs.codebase-memory-mcp;
+    version = codebaseMemoryMetadata.version;
+    src = pkgs.fetchurl {
+      url = codebaseMemoryRelease.identifier;
+      sha256 = codebaseMemoryRelease.fileSha256;
+    };
 
-    nativeBuildInputs = [ pkgs.gnumake ];
-    buildInputs = [ pkgs.zlib ];
-
-    # The standard build excludes the optional graph UI and its Node dependency.
-    buildPhase = ''
-      runHook preBuild
-
-      make -f Makefile.cbm cbm
-
-      runHook postBuild
-    '';
+    dontUnpack = true;
+    nativeBuildInputs = [ pkgs.findutils pkgs.gnutar ];
 
     installPhase = ''
       runHook preInstall
 
+      mkdir -p extracted
+      ${pkgs.gnutar}/bin/tar -xzf "$src" -C extracted
+
+      binary="$(${pkgs.findutils}/bin/find extracted -type f -name codebase-memory-mcp -print -quit)"
+      test -n "$binary"
+
       install -Dm755 \
-        build/c/codebase-memory-mcp \
+        "$binary" \
         "$out/bin/codebase-memory-mcp"
 
       runHook postInstall
