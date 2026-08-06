@@ -20,7 +20,7 @@ let
     builtins.readFile "${inputs.codebase-memory-mcp}/server.json"
   );
   codebaseMemoryRelease = lib.findFirst
-    (package: package.identifier == "https://github.com/DeusData/codebase-memory-mcp/releases/download/v${codebaseMemoryMetadata.version}/codebase-memory-mcp-darwin-arm64.tar.gz")
+    (package: lib.hasSuffix "codebase-memory-mcp-darwin-arm64.tar.gz" package.identifier)
     (throw "codebase-memory-mcp does not publish a Darwin ARM64 release")
     codebaseMemoryMetadata.packages;
 
