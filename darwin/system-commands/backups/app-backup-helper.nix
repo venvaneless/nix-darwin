@@ -206,26 +206,6 @@ let
       "${resolvedDestinationDir}/.last-backup"
     else
       destinationMarkerFile;
-  destinationRootDefinitions =
-    if destinationRoot == "appBackups" then
-      ''
-        data_backups_root="$external_backup_volume/data-backups"
-        app_backups_root="$data_backups_root/app-backups"
-        destination_base="$app_backups_root"
-      ''
-    else if destinationRoot == "browserBackups" then
-      ''
-        browser_backups_root="$(printf '%s' ${lib.escapeShellArg backupPaths.browserBackupsDirectory})"
-        destination_base="$browser_backups_root"
-      ''
-    else if destinationRoot == "terminalBackups" then
-      ''
-        terminal_backups_root="$(printf '%s' ${lib.escapeShellArg backupPaths.terminalBackupsDirectory})"
-        destination_base="$terminal_backups_root"
-      ''
-    else
-      throw "Unsupported app backup destination root: ${destinationRoot}";
-
   extraExcludes = lib.concatMapStringsSep "\n" (pattern: ''
       --exclude=${lib.escapeShellArg pattern}
   '') (config.services.appBackups.defaultExtraExcludePatterns ++ extraExcludePatterns);
@@ -274,7 +254,6 @@ let
     # -----------------------------------------------------------------
     app_slug="$(printf '%s' ${lib.escapeShellArg appSlug})"
     external_backup_volume="$(printf '%s' ${lib.escapeShellArg externalBackupVolume})"
-    ${destinationRootDefinitions}
     destination_dir="$(printf '%s' ${lib.escapeShellArg resolvedDestinationDir})"
     downloads_dir="$(printf '%s' ${lib.escapeShellArg downloadsDir})"
 
