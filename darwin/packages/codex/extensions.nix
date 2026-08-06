@@ -7,7 +7,7 @@
 # marketplace and MCP entries into both mutable Codex profile configurations.
 # =====================================================================
 
-{ inputs, pkgs, unstablePkgs, ... }:
+{ inputs, lib, pkgs, unstablePkgs, ... }:
 
 let
   # Keep the two Codex profiles aligned while retaining their independent UI state.
@@ -167,10 +167,59 @@ let
       ${pkgs.lib.concatMapStringsSep "\n" (profile: "sync_profile ${pkgs.lib.escapeShellArg profile}") profiles}
     '';
   };
+
+  # Update only the declared Codex sources, then rebuild and synchronize them.
+  codexUpdateExtensions = pkgs.writeShellApplication {
+    name = "update-codex-extensions";
+
+    runtimeInputs = [ pkgs.coreutils pkgs.git pkgs.nix ];
+
+    text = ''
+      set -Eeuo pipefail
+
+      flake_root="/Users/ven/.config/nix/nix-config"
+      lock_file="$flake_root/flake.lock"
+
+      if ! ${pkgs.git}/bin/git -C "$flake_root" diff --quiet -- "$lock_file"; then
+        printf 'Refusing to update Codex extensions: flake.lock has uncommitted changes.\n' >&2
+        printf 'Review or commit the lock-file changes, then run this command again.\n' >&2
+        exit 1
+      fi
+
+      cd -- "$flake_root"
+
+      ${pkgs.nix}/bin/nix flake lock \
+        --update-input caveman \
+        --update-input simple-english \
+        --update-input codebase-memory-mcp
+
+      if ${pkgs.git}/bin/git diff --quiet -- flake.lock; then
+        printf 'Codex extension sources are already current.\n'
+        exit 0
+      fi
+
+      printf 'Codex extension sources changed; rebuilding nix-darwin.\n'
+      exec /usr/bin/sudo -H /run/current-system/sw/bin/darwin-rebuild switch \
+        --flake "$flake_root#macbook"
+    '';
+  };
 in
 {
+  # Synchronize both mutable Codex profile registries after a successful switch.
+  # The sources and MCP binary are already local Nix store paths at activation.
+  system.activationScripts.codexExtensions.text = lib.mkAfter ''
+    if ! /usr/bin/sudo -u ven /usr/bin/env \
+      HOME=/Users/ven \
+      CODEX_PROFILE_HOME_ROOT=/Users/ven/.config/codex \
+      CODEX_PROFILE_CONFIG_HOME=/Users/ven/.config/codex-profile \
+      ${codexSyncExtensions}/bin/codex-sync-extensions; then
+      echo "[nix-darwin][codex] extension synchronization failed; inspect the command output above." >&2
+    fi
+  '';
+
   environment.systemPackages = [
     codebaseMemoryMcp
     codexSyncExtensions
+    codexUpdateExtensions
   ];
 }

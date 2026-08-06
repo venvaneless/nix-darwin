@@ -33,6 +33,38 @@
         "type": "github"
       }
     },
+    "caveman": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785851092,
+        "narHash": "sha256-zYWuv/uPEV5W9AGsmivYuGb4bDAGlVngZ94GbAGcz3M=",
+        "owner": "JuliusBrussee",
+        "repo": "caveman",
+        "rev": "ec83e5bace4c20484d704dea21e12fc4eb94e9aa",
+        "type": "github"
+      },
+      "original": {
+        "owner": "JuliusBrussee",
+        "repo": "caveman",
+        "type": "github"
+      }
+    },
+    "codebase-memory-mcp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785984265,
+        "narHash": "sha256-AxSZzuKBfD7ZyQSk804kHFQ0lOvRpGnDDAAXyEcssL4=",
+        "owner": "DeusData",
+        "repo": "codebase-memory-mcp",
+        "rev": "0d6f26a1708c1e1f0e6a59867bee4bee3fe076b5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "DeusData",
+        "repo": "codebase-memory-mcp",
+        "type": "github"
+      }
+    },
     "darwin": {
       "inputs": {
         "nixpkgs": [
@@ -161,12 +193,31 @@
     "root": {
       "inputs": {
         "astronvim": "astronvim",
+        "caveman": "caveman",
+        "codebase-memory-mcp": "codebase-memory-mcp",
         "darwin": "darwin",
         "flake-parts": "flake-parts",
         "home-manager": "home-manager",
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-unstable": "nixpkgs-unstable"
+        "nixpkgs-unstable": "nixpkgs-unstable",
+        "simple-english": "simple-english"
+      }
+    },
+    "simple-english": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784650100,
+        "narHash": "sha256-XnZ4SbhZMFOqtB4LTqOGuALGJUQ4+IcJMcacjjvkdE0=",
+        "owner": "AminBlg",
+        "repo": "SimpleEnglish",
+        "rev": "379728b51981b6d2ee1de0f201164483a9648972",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AminBlg",
+        "repo": "SimpleEnglish",
+        "type": "github"
       }
     }
   },

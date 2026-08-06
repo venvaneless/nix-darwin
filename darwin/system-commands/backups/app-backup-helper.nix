@@ -161,7 +161,7 @@ let
     cfg = config.services.appBackups.${appSlug};
   destinationSuffix = lib.concatStringsSep "/" destinationSegments;
   backupPaths = config.services.appBackups.paths;
-  applicationSupportEntries = map (entry: {
+  resolvedApplicationSupportEntries = map (entry: {
     path = "${applicationSupportRoot}/${entry.relativePath}";
     destination = entry.destinationPath or entry.destination;
   }) applicationSupportEntries;
@@ -189,7 +189,7 @@ let
     path = entry.sourcePath;
     destination = entry.destinationPath;
   }) additionalSources;
-  resolvedSources = sources ++ additionalSources ++ applicationSupportEntries ++ preferenceSources ++ configSources ++ readableApplicationSupportSources ++ readableApplicationPreferences ++ readableApplicationConfig;
+  resolvedSources = sources ++ additionalSources ++ resolvedApplicationSupportEntries ++ preferenceSources ++ configSources ++ readableApplicationSupportSources ++ readableApplicationPreferences ++ readableApplicationConfig;
   resolvedDestinationDir =
     if destinationDir != null then
       destinationDir
