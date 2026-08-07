@@ -2946,7 +2946,7 @@
 
         set --local normalized_repository_name (
           string lower "$repository_name" |
-          string replace -ar '[^a-z0-9]' ''
+          string replace -ar '[^a-z0-9]' ""
         )
 
         set --local image_blobs (
@@ -2975,12 +2975,12 @@
           set --local blob_sha "$image_parts[2]"
           set --local image_name (basename "$relative_path")
           set --local image_stem (
-            string replace -r '\\.[^.]+$' '' -- "$image_name"
+            string replace -r '\\.[^.]+$' "" -- "$image_name"
           )
 
           set --local normalized_image_name (
             string lower "$image_stem" |
-            string replace -ar '[^a-z0-9]' ''
+            string replace -ar '[^a-z0-9]' ""
           )
 
           set --local is_root_image 0
