@@ -2356,12 +2356,39 @@
           set repository_image_paths
           set use_repository_subfolder 0
           for repository_path in $repository_paths
-              if not string match -rq \
-                      '(?i)^(?:(?:images|assets|screenshots|screencaps|screens?)/.+|(?:screen|image|screenshot|screencap|preview)[A-Za-z0-9._-]*)\.(png|jpe?g|gif|webp)$' \
+              set repository_image_name (basename "$repository_path")
+
+              set is_root_image 0
+              set has_image_keyword 0
+              set is_preview_folder_image 0
+
+              if not string match -q '*/*' "$repository_path"; and \
+                      string match -rq \
+                      '(?i)\.(png|jpe?g|gif|webp)$' \
+                      "$repository_image_name"
+                  set is_root_image 1
+              end
+
+              if string match -rq \
+                      '(?i)(screen|screencap|screenshot|image|preview|previews).*?\.(png|jpe?g|gif|webp)$' \
+                      "$repository_image_name"
+                  set has_image_keyword 1
+              end
+
+              if string match -rq \
+                      '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
                       "$repository_path"
+                  set is_preview_folder_image 1
+              end
+
+              if test "$is_root_image" -eq 0; and \
+                      test "$has_image_keyword" -eq 0; and \
+                      test "$is_preview_folder_image" -eq 0
                   continue
               end
+
               set --append repository_image_paths "$repository_path"
+
               if string match -q '*/*' "$repository_path"
                   set use_repository_subfolder 1
               end

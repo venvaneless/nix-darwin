@@ -434,21 +434,38 @@ let
 
 
       def download_repository_file(repository: str, repository_path: str, destination: Path) -> None:
+          metadata = gh_json(
+              f"repos/{repository}/contents/{repository_path}"
+          )
+
+          download_url = metadata.get("download_url")
+          if not isinstance(download_url, str) or not download_url:
+              raise RuntimeError(
+                  f"repository file has no usable download URL: {repository_path}"
+              )
+
           completed = run(
               [
-                  GH_BIN,
-                  "api",
-                  "-H",
-                  "Accept: application/vnd.github.raw+json",
-                  f"repos/{repository}/contents/{repository_path}",
+                  CURL_BIN,
+                  "--fail",
+                  "--location",
+                  "--silent",
+                  "--show-error",
+                  "--output",
+                  str(destination),
+                  download_url,
               ],
-              text=False,
           )
           if completed.returncode != 0:
-              detail = completed.stderr.decode("utf-8", errors="replace").strip()
-              raise RuntimeError(detail or f"could not download repository file {repository_path}")
+              detail = completed.stderr.strip() or completed.stdout.strip()
+              raise RuntimeError(
+                  detail or f"could not download repository file {repository_path}"
+              )
 
-          destination.write_bytes(completed.stdout)
+          if not is_nonempty_file(destination):
+              raise RuntimeError(
+                  f"downloaded repository file is empty: {repository_path}"
+              )
 
 
       def download_repository_readme(repository: str, destination: Path) -> bool:
@@ -520,57 +537,231 @@ let
           )
 
 
-      def repository_root_files(
+      def repository_files(
           repository: str,
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
-      ) -> dict[str, dict[str, Any]]:
+      ) -> list[dict[str, Any]]:
           cached = repository_contents_cache.get(repository)
           if isinstance(cached, Exception):
               raise cached
           if cached is None:
               try:
-                  cached = gh_list(f"repos/{repository}/contents")
+                  tree = gh_json(
+                      f"repos/{repository}/git/trees/HEAD?recursive=1"
+                  ).get("tree")
+                  if not isinstance(tree, list):
+                      raise RuntimeError("GitHub returned no usable repository tree")
+
+                  cached = [
+                      item
+                      for item in tree
+                      if isinstance(item, dict)
+                      and item.get("type") == "blob"
+                      and isinstance(item.get("path"), str)
+                  ]
               except RuntimeError as error:
                   repository_contents_cache[repository] = error
                   raise
+
               repository_contents_cache[repository] = cached
 
+          return cached
+
+
+      def repository_root_files(
+          repository: str,
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> dict[str, dict[str, Any]]:
           return {
-              item["name"]: item
-              for item in cached
-              if item.get("type") == "file"
-              and isinstance(item.get("name"), str)
-              and isinstance(item.get("path"), str)
+              item["path"]: item
+              for item in repository_files(
+                  repository,
+                  repository_contents_cache,
+              )
+              if "/" not in item["path"]
           }
+
+
+      def normalized_image_match_name(value: str) -> str:
+          return re.sub(
+              r"[^0-9a-z]+",
+              "",
+              value.casefold(),
+          )
+
+
+      def is_theme_image_path(
+          repository: str,
+          repository_path: str,
+      ) -> bool:
+          image_suffixes = {
+              ".gif",
+              ".jpeg",
+              ".jpg",
+              ".png",
+              ".webp",
+          }
+
+          path = Path(repository_path)
+          if path.suffix.casefold() not in image_suffixes:
+              return False
+
+          filename = path.name.casefold()
+
+          # Every supported image directly in the repository root is kept.
+          if len(path.parts) == 1:
+              return True
+
+          # Screenshot-style keywords may occur anywhere in the filename.
+          filename_keywords = (
+              "screen",
+              "screencap",
+              "screenshot",
+              "image",
+              "preview",
+              "previews",
+          )
+          if any(keyword in filename for keyword in filename_keywords):
+              return True
+
+          # Preview/screenshot folder names may contain additional words.
+          folder_keywords = (
+              "preview",
+              "previews",
+              "screenshot",
+              "screenshots",
+          )
+          for folder in path.parts[:-1]:
+              folder_name = folder.casefold()
+              if any(keyword in folder_name for keyword in folder_keywords):
+                  return True
+
+          # Also keep images whose filename contains the repository/theme name.
+          repository_name = repository.rsplit("/", 1)[1]
+          normalized_repository_name = normalized_image_match_name(
+              repository_name
+          )
+          normalized_filename = normalized_image_match_name(
+              path.stem
+          )
+
+          if (
+              normalized_repository_name
+              and normalized_repository_name in normalized_filename
+          ):
+              return True
+
+          return False
+
+
+      def repository_theme_images(
+          repository: str,
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> list[ThemeRemoteFile]:
+          image_paths = sorted(
+              item["path"]
+              for item in repository_files(
+                  repository,
+                  repository_contents_cache,
+              )
+              if is_theme_image_path(
+                  repository,
+                  item["path"],
+              )
+          )
+
+          use_repository_subfolder = (
+              len(image_paths) > 1
+              or any("/" in image_path for image_path in image_paths)
+          )
+
+          files: list[ThemeRemoteFile] = []
+          for image_path in image_paths:
+              destination_name = image_path
+              if use_repository_subfolder:
+                  destination_name = f"repo/{image_path}"
+
+              files.append(
+                  ThemeRemoteFile(
+                      Path(image_path).name,
+                      destination_name,
+                      repository_path=image_path,
+                  )
+              )
+
+          return files
 
 
       def theme_repository_source(
           repository: str,
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> ThemeSource:
-          files_by_name = repository_root_files(repository, repository_contents_cache)
+          files_by_name = repository_root_files(
+              repository,
+              repository_contents_cache,
+          )
           if "theme.css" not in files_by_name and "obsidian.css" not in files_by_name:
               raise RuntimeError("repository root has neither theme.css nor obsidian.css")
 
           def repository_file(filename: str, destination_name: str) -> ThemeRemoteFile:
               item = files_by_name[filename]
-              return ThemeRemoteFile(filename, destination_name, repository_path=item["path"])
+              return ThemeRemoteFile(
+                  filename,
+                  destination_name,
+                  repository_path=item["path"],
+              )
 
           files: list[ThemeRemoteFile] = []
+
           if "theme.css" in files_by_name:
-              files.append(repository_file("theme.css", "theme.css"))
+              files.append(
+                  repository_file(
+                      "theme.css",
+                      "theme.css",
+                  )
+              )
+
           if "obsidian.css" in files_by_name:
-              destination_name = "obsidian.css" if "theme.css" in files_by_name else "theme.css"
-              files.append(repository_file("obsidian.css", destination_name))
+              destination_name = (
+                  "obsidian.css"
+                  if "theme.css" in files_by_name
+                  else "theme.css"
+              )
+              files.append(
+                  repository_file(
+                      "obsidian.css",
+                      destination_name,
+                  )
+              )
+
           if MANIFEST_FILE in files_by_name:
-              files.append(repository_file(MANIFEST_FILE, MANIFEST_FILE))
+              files.append(
+                  repository_file(
+                      MANIFEST_FILE,
+                      MANIFEST_FILE,
+                  )
+              )
+
           if README_FILE in files_by_name:
-              files.append(repository_file(README_FILE, README_FILE))
+              files.append(
+                  repository_file(
+                      README_FILE,
+                      README_FILE,
+                  )
+              )
 
-          for image_name in image_names(list(files_by_name)):
-              files.append(repository_file(image_name, image_name))
+          files.extend(
+              repository_theme_images(
+                  repository,
+                  repository_contents_cache,
+              )
+          )
 
-          return ThemeSource("repository root", None, tuple(files))
+          return ThemeSource(
+              "repository root",
+              None,
+              tuple(files),
+          )
 
 
       def release_theme_source_with_repository_files(
@@ -578,25 +769,64 @@ let
           source: ThemeSource,
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> ThemeSource:
-          # Keep release CSS authoritative, but add repository files that the
-          # release did not include so README image links still work locally.
+          # Keep release CSS authoritative, but add repository metadata and
+          # matching repository screenshots that the release does not include.
           try:
-              files_by_name = repository_root_files(repository, repository_contents_cache)
+              files_by_name = repository_root_files(
+                  repository,
+                  repository_contents_cache,
+              )
           except RuntimeError:
               return source
 
           files = list(source.files)
-          if MANIFEST_FILE in files_by_name and not any(remote_file.destination_name == MANIFEST_FILE for remote_file in files):
-              files.append(ThemeRemoteFile(MANIFEST_FILE, MANIFEST_FILE, repository_path=files_by_name[MANIFEST_FILE]["path"]))
-          if README_FILE in files_by_name and not any(remote_file.destination_name == README_FILE for remote_file in files):
-              files.append(ThemeRemoteFile(README_FILE, README_FILE, repository_path=files_by_name[README_FILE]["path"]))
 
-          downloaded_names = {remote_file.destination_name for remote_file in files}
-          for image_name in image_names(list(files_by_name)):
-              if image_name not in downloaded_names:
-                  files.append(ThemeRemoteFile(image_name, image_name, repository_path=files_by_name[image_name]["path"]))
+          if MANIFEST_FILE in files_by_name and not any(
+              remote_file.destination_name == MANIFEST_FILE
+              for remote_file in files
+          ):
+              files.append(
+                  ThemeRemoteFile(
+                      MANIFEST_FILE,
+                      MANIFEST_FILE,
+                      repository_path=files_by_name[MANIFEST_FILE]["path"],
+                  )
+              )
 
-          return ThemeSource(source.location, source.version_label, tuple(files))
+          if README_FILE in files_by_name and not any(
+              remote_file.destination_name == README_FILE
+              for remote_file in files
+          ):
+              files.append(
+                  ThemeRemoteFile(
+                      README_FILE,
+                      README_FILE,
+                      repository_path=files_by_name[README_FILE]["path"],
+                  )
+              )
+
+          downloaded_names = {
+              remote_file.destination_name
+              for remote_file in files
+          }
+
+          for remote_file in repository_theme_images(
+              repository,
+              repository_contents_cache,
+          ):
+              if remote_file.destination_name in downloaded_names:
+                  continue
+
+              files.append(remote_file)
+              downloaded_names.add(
+                  remote_file.destination_name
+              )
+
+          return ThemeSource(
+              source.location,
+              source.version_label,
+              tuple(files),
+          )
 
 
       def theme_source(
