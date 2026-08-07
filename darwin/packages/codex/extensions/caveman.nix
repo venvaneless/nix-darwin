@@ -88,11 +88,13 @@ let
 
         printf 'Installing Caveman skill: %s\n' "$skill_name"
 
-        rm -rf -- "${shared_skills:?}/${skill_name:?}"
-        
+        rm -rf -- "''${shared_skills:?}/''${skill_name:?}"
+
         cp -R \
           "$skill" \
-          "${shared_skills:?}/${skill_name:?}"
+          "''${shared_skills:?}/''${skill_name:?}"
+      done
+      
 
       # COMPLETE
       # =========================
