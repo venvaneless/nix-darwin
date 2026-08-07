@@ -21,8 +21,10 @@
   # gitdll links.txt
   #
   # Obsidian download modes:
-  # gitdll --plugins "https://github.com/owner/plugin" [...]
-  # gitdll --themes links.txt [...]
+  # gitdll --plugin "https://github.com/owner/plugin" [...]
+  # gitdll --theme links.txt [...]
+  # gitdll-plugins "https://github.com/owner/plugin" [...]
+  # gitdll-themes links.txt [...]
   #
   # In the Obsidian modes, source directories are checked one level deep.
   # A saved repository-url.txt is reused immediately. When it is absent,
@@ -34,9 +36,17 @@
 
     body = ''
       if test (count $argv) -gt 0; and \
-          contains -- "$argv[1]" --plugins --themes
+          contains -- "$argv[1]" --plugin --plugins --theme --themes
 
         set --local mode "$argv[1]"
+
+        # Accept singular and plural mode flags, while keeping one internal
+        # representation for the rest of the downloader.
+        if test "$mode" = "--plugin"
+          set mode --plugins
+        else if test "$mode" = "--theme"
+          set mode --themes
+        end
         set --local source_inputs
         set --local destination
         set --local argument_index 2
@@ -73,8 +83,8 @@
           echo "Error: At least one repository URL, source folder, or link file is required."
           echo
           echo "Usage:"
-          echo '  gitdll --plugins "https://github.com/owner/plugin" [...]'
-          echo '  gitdll --themes links.txt [...]'
+          echo '  gitdll --plugin "https://github.com/owner/plugin" [...]'
+          echo '  gitdll --theme links.txt [...]'
           return 1
         end
 
@@ -913,8 +923,8 @@
         echo "  gitdll <links.txt> [more-links-or-files ...]"
         echo
         echo "Obsidian library modes:"
-        echo '  gitdll --plugins "https://github.com/owner/plugin" [...]'
-        echo '  gitdll --themes links.txt [...]'
+        echo '  gitdll --plugin "https://github.com/owner/plugin" [...]'
+        echo '  gitdll --theme links.txt [...]'
         return 1
       end
 
@@ -1680,6 +1690,26 @@
 
           command rm -rf -- "$temporary_directory"
       end
+    '';
+  };
+  # -----------------------------------------------------------------
+
+  # -----------------------------------------------------------------
+  # ---- gitdll-plugins and gitdll-themes -> Obsidian download shortcuts ---- #
+  # -----------------------------------------------------------------
+  gitdll-plugins = {
+    description = "Download Obsidian plugins with gitdll's plugin mode";
+
+    body = ''
+      gitdll --plugins $argv
+    '';
+  };
+
+  gitdll-themes = {
+    description = "Download Obsidian themes with gitdll's theme mode";
+
+    body = ''
+      gitdll --themes $argv
     '';
   };
   # -----------------------------------------------------------------
