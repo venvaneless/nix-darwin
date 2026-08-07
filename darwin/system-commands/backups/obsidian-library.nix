@@ -57,8 +57,9 @@ let
       DEFAULT_THEMES_DIR = Path(
           "/Volumes/SystemBackup/data-backups/app-backups/obsidian/obsidian_themes/"
       )
-      REPOSITORY_FILE = "repository-url.txt"
       MANIFEST_FILE = "manifest.json"
+      PLUGIN_URL_FIELD = "pluginUrl"
+      THEME_URL_FIELD = "themeUrl"
       README_FILE = "README.md"
       DEFAULT_DOWNLOADS_DIR = Path.home() / "Downloads"
       GH_BIN = os.environ["OBSIDIAN_LIBRARY_GH"]
@@ -177,47 +178,45 @@ let
           return response
 
 
-      def github_repository(directory: Path) -> str:
-          # A direct file is preferred, but an empty, malformed, or whitespace-only
-          # direct file must not hide a valid repository URL in the repo subfolder.
-          repository_files = (
-              directory / REPOSITORY_FILE,
-              directory / "repo" / REPOSITORY_FILE,
+      def repository_field(library_type: LibraryType) -> str:
+          return THEME_URL_FIELD if library_type.is_theme else PLUGIN_URL_FIELD
+
+
+      def github_repository_from_url(value: Any) -> str | None:
+          if not isinstance(value, str):
+              return None
+          match = re.fullmatch(
+              r"\s*https?://(?:www[.])?github[.]com/([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9_.-]+)(?:[.]git)?/?\s*",
+              value,
+              flags=re.IGNORECASE,
           )
-          inspected_files: list[Path] = []
+          if match is None:
+              return None
+          return f"{match.group(1)}/{match.group(2).removesuffix('.git')}"
 
-          for repository_file in repository_files:
-              if not repository_file.is_file():
-                  continue
-              inspected_files.append(repository_file)
 
-              try:
-                  contents = repository_file.read_text(encoding="utf-8").strip()
-              except OSError:
-                  continue
+      def manifest_repository(directory: Path, library_type: LibraryType) -> str | None:
+          try:
+              manifest = json.loads(manifest_file(directory).read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError):
+              return None
+          if not isinstance(manifest, dict):
+              return None
+          return github_repository_from_url(manifest.get(repository_field(library_type)))
 
-              # Blank lines and trailing whitespace are harmless. Select the first
-              # actual GitHub repository URL from the remaining file contents.
-              matches = re.findall(
-                  r"(?i)(?:https?://)?(?:www[.])?github[.]com[/:]([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9_.-]+)(?:[/?#>\s]|$)",
-                  contents,
-              )
-              if not matches:
-                  continue
 
-              owner, repository = matches[0]
-              repository = repository.removesuffix(".git").rstrip("/")
-              if owner and repository:
-                  return f"{owner}/{repository}"
+      def set_manifest_repository(manifest_path: Path, library_type: LibraryType, repository: str) -> None:
+          try:
+              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError) as error:
+              raise RuntimeError(f"cannot read valid {MANIFEST_FILE}: {error}") from error
+          if not isinstance(manifest, dict):
+              raise RuntimeError(f"{MANIFEST_FILE} does not contain an object")
 
-          if not inspected_files:
-              raise RuntimeError(
-                  f"{REPOSITORY_FILE} is missing both here and in the repo subfolder"
-              )
-
-          raise RuntimeError(
-              f"{REPOSITORY_FILE} has no GitHub repository URL in the direct or repo subfolder file"
-          )
+          manifest[repository_field(library_type)] = f"https://github.com/{repository}"
+          staging = manifest_path.with_name(f".{manifest_path.name}.obsidian-library-new")
+          staging.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          os.replace(staging, manifest_path)
 
 
       def manifest_file(directory: Path) -> Path:
@@ -297,10 +296,7 @@ let
                   report_error(f"Skipping {library_type.label.lower()} '{child.name}': {error}")
                   continue
 
-              try:
-                  repository = github_repository(child)
-              except RuntimeError:
-                  repository = None
+              repository = manifest_repository(child, library_type)
 
               entries.append(
                   LibraryEntry(
@@ -721,7 +717,7 @@ let
               return CheckResult(
                   entry,
                   "REPOSITORY URL REQUIRED",
-                  message=f"{REPOSITORY_FILE} is missing or has no GitHub URL",
+                  message=f"{repository_field(entry.library_type)} is missing or has no GitHub URL",
               )
           if entry.library_type.is_theme:
               return check_theme_entry(entry, release_cache, repository_contents_cache)
@@ -867,7 +863,7 @@ let
 
       def archive_status(entry: LibraryEntry) -> None:
           if entry.repository is None:
-              print(f"[SKIP] {entry.label}: {REPOSITORY_FILE} is missing or has no GitHub URL")
+              print(f"[SKIP] {entry.label}: {repository_field(entry.library_type)} is missing or has no GitHub URL")
               return
 
           try:
@@ -925,6 +921,8 @@ let
                   if not is_nonempty_file(readme_path) and download_repository_readme(entry.repository, readme_path):
                       downloaded.append(README_FILE)
 
+                  set_manifest_repository(temporary_path / MANIFEST_FILE, entry.library_type, entry.repository)
+
                   downloaded_version = manifest_version(temporary_path / MANIFEST_FILE)
                   if downloaded_version != result.remote_version:
                       raise RuntimeError(
@@ -933,7 +931,7 @@ let
 
                   for filename in downloaded:
                       source = temporary_path / filename
-                      destination = entry.path / filename
+                      destination = manifest_file(entry.path) if filename == MANIFEST_FILE else entry.path / filename
                       staging = destination.with_name(f".{destination.name}.obsidian-library-new")
                       shutil.copyfile(source, staging)
                       os.replace(staging, destination)
@@ -944,7 +942,12 @@ let
           print(f"[UPDATED] {entry.label}: {entry.version_label} -> {result.remote_version} ({', '.join(downloaded)})")
 
 
-      def write_theme_source(directory: Path, repository: str, source: ThemeSource) -> list[str]:
+      def write_theme_source(
+          directory: Path,
+          library_type: LibraryType,
+          repository: str,
+          source: ThemeSource,
+      ) -> list[str]:
           downloaded: list[str] = []
           for remote_file in source.files:
               destination = directory / remote_file.destination_name
@@ -955,6 +958,10 @@ let
           readme_path = directory / README_FILE
           if not is_nonempty_file(readme_path) and download_repository_readme(repository, readme_path):
               downloaded.append(README_FILE)
+          manifest_path = directory / MANIFEST_FILE
+          if not manifest_path.is_file():
+              raise RuntimeError(f"theme source does not provide {MANIFEST_FILE}")
+          set_manifest_repository(manifest_path, library_type, repository)
           return downloaded
 
 
@@ -972,10 +979,10 @@ let
           try:
               with tempfile.TemporaryDirectory(prefix="obsidian-library-theme-update-") as temporary_directory:
                   temporary_path = Path(temporary_directory)
-                  downloaded = write_theme_source(temporary_path, entry.repository, result.theme_source)
+                  downloaded = write_theme_source(temporary_path, entry.library_type, entry.repository, result.theme_source)
                   for filename in downloaded:
                       source = temporary_path / filename
-                      destination = entry.path / filename
+                      destination = manifest_file(entry.path) if filename == MANIFEST_FILE else entry.path / filename
                       staging = destination.with_name(f".{destination.name}.obsidian-library-new")
                       shutil.copyfile(source, staging)
                       os.replace(staging, destination)
@@ -1130,7 +1137,7 @@ let
                   readme_path = staging / README_FILE
                   if not is_nonempty_file(readme_path) and download_repository_readme(repository, readme_path):
                       downloaded.append(README_FILE)
-                  (staging / REPOSITORY_FILE).write_text(f"https://github.com/{repository}\n", encoding="utf-8")
+                  set_manifest_repository(staging / MANIFEST_FILE, library_type, repository)
                   if refresh_existing_plugin:
                       for filename in downloaded:
                           source = staging / filename
@@ -1174,8 +1181,8 @@ let
               with tempfile.TemporaryDirectory(prefix=".obsidian-library-theme-", dir=library_type.root) as temporary_directory:
                   staging = Path(temporary_directory) / folder_name
                   staging.mkdir()
-                  downloaded = write_theme_source(staging, repository, source)
-                  (staging / REPOSITORY_FILE).write_text(f"https://github.com/{repository}\\n", encoding="utf-8")
+                  downloaded = write_theme_source(staging, library_type, repository, source)
+                  set_manifest_repository(staging / MANIFEST_FILE, library_type, repository)
                   os.replace(staging, destination)
           except (OSError, RuntimeError) as error:
               report_error(f"[FAILED] Theme: {error}")
@@ -1254,7 +1261,7 @@ let
           selected_rows = fzf_select(
               rows,
               f"{library_type.label.lower()}> ",
-              "Columns: id, author, description, version, repository-url. TAB selects entries; ENTER continues.",
+              "Columns: id, author, description, version, repository URL. TAB selects entries; ENTER continues.",
               multi=True,
           )
           selected = set(selected_rows)

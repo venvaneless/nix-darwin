@@ -1413,7 +1413,11 @@
                           >/dev/null 2>&1; and \
                       test -r "$plugin_directory/main.js"; and \
                       test -s "$plugin_directory/main.js"; and \
-                      test -f "$plugin_directory/repository-url.txt"; and \
+                      command jq -e \
+                          --arg url "$canonical_repository_url" \
+                          '.pluginUrl == $url' \
+                          "$plugin_directory/manifest.json" \
+                          >/dev/null 2>&1; and \
                       test "$plugin_readme_ok" -eq 1
 
                   echo
@@ -1637,13 +1641,20 @@
               echo "Notice: No README file was found."
           end
 
-          printf '%s\n' \
-              "$canonical_repository_url" \
-              >"$plugin_stage/repository-url.txt"
-
-          set saved_files \
-              $saved_files \
-              repository-url.txt
+          if not command jq \
+                  --arg url "$canonical_repository_url" \
+                  '.pluginUrl = $url' \
+                  "$plugin_stage/manifest.json" \
+                  >"$plugin_stage/manifest.json.gitdll-new"; or \
+                  not command mv \
+                  -- \
+                  "$plugin_stage/manifest.json.gitdll-new" \
+                  "$plugin_stage/manifest.json"
+              command rm -f -- "$plugin_stage/manifest.json.gitdll-new"
+              echo "Error: Could not save pluginUrl in manifest.json."
+              command rm -rf -- "$temporary_directory"
+              continue
+          end
 
           if test "$plugin_directory_exists" -eq 1
               echo "Updated:"
@@ -2210,7 +2221,11 @@
               if test -r "$theme_directory/theme.css"; and \
                       test -s "$theme_directory/theme.css"; and \
                       test "$theme_manifest_ok" -eq 1; and \
-                      test -f "$theme_directory/repository-url.txt"; and \
+                      command jq -e \
+                          --arg url "$canonical_repository_url" \
+                          '.themeUrl == $url' \
+                          "$theme_directory/manifest.json" \
+                          >/dev/null 2>&1; and \
                       test "$theme_readme_ok" -eq 1
 
                   echo
@@ -2548,13 +2563,20 @@
               echo "Notice: No README file was found."
           end
 
-          printf '%s\n' \
-              "$canonical_repository_url" \
-              >"$theme_stage/repository-url.txt"
-
-          set saved_files \
-              $saved_files \
-              repository-url.txt
+          if not command jq \
+                  --arg url "$canonical_repository_url" \
+                  '.themeUrl = $url' \
+                  "$theme_stage/manifest.json" \
+                  >"$theme_stage/manifest.json.gitdll-new"; or \
+                  not command mv \
+                  -- \
+                  "$theme_stage/manifest.json.gitdll-new" \
+                  "$theme_stage/manifest.json"
+              command rm -f -- "$theme_stage/manifest.json.gitdll-new"
+              echo "Error: Could not save themeUrl in manifest.json."
+              command rm -rf -- "$temporary_directory"
+              continue
+          end
 
           if test "$theme_directory_exists" -eq 1
               echo "Updated:"
@@ -2586,10 +2608,10 @@
 
 
   # -----------------------------------------------------------------
-  # ---- obsidian-missing -> Restore repository URL files ---- #
+  # ---- obsidian-missing -> Migrate and restore manifest repository URLs ---- #
   # -----------------------------------------------------------------
   obsidian-missing = {
-    description = "Interactively restore missing Obsidian repository-url.txt files";
+    description = "Migrate and restore Obsidian manifest repository URLs";
 
     body = ''
       if test (count $argv) -ne 1
@@ -2621,29 +2643,63 @@
         return 1
       end
 
-      # Write only a verified, non-empty GitHub URL. A temporary sibling file
-      # prevents a failed lookup from truncating an existing repository file.
+      # Normalize GitHub URLs before they are stored in a manifest field.
+      function __obsidian_missing_canonical_repository_url --argument-names repository_url
+        set --local repository (
+          string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
+          string replace -r '\\.git/?$' "" |
+          string trim --chars=/
+        )
+        if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
+          return 1
+        end
+        printf 'https://github.com/%s\n' "$repository"
+      end
+
+      # Write only a verified GitHub URL to the relevant manifest field. A
+      # temporary sibling file prevents a failed lookup from truncating it.
       function __obsidian_missing_save_repository_url \
-          --argument-names repository_file repository_url
+          --argument-names manifest_file url_field repository_url
 
         if not string match -rq '^https://github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository_url"
           return 1
         end
 
-        if test -L "$repository_file"
-          echo "Error: Refusing to replace symlinked repository-url.txt: $repository_file"
+        if test -L "$manifest_file"
+          echo "Error: Refusing to replace symlinked manifest.json: $manifest_file"
           return 1
         end
 
-        set --local staging_file "$repository_file.obsidian-missing-new"
+        set --local staging_file "$manifest_file.obsidian-missing-new"
 
-        if not printf '%s\n' "$repository_url" >"$staging_file"
+        if not command jq \
+            --arg field "$url_field" \
+            --arg url "$repository_url" \
+            '.[$field] = $url' \
+            "$manifest_file" >"$staging_file"
           command rm -f -- "$staging_file"
           return 1
         end
 
-        if not command mv -- "$staging_file" "$repository_file"
+        if not command mv -- "$staging_file" "$manifest_file"
           command rm -f -- "$staging_file"
+          return 1
+        end
+      end
+
+      # Move legacy metadata to Trash only after the manifest write succeeds.
+      function __obsidian_missing_trash_legacy_url --argument-names legacy_file
+        if not test -e "$legacy_file"; and not test -L "$legacy_file"
+          return 0
+        end
+
+        set --local apple_path (
+          string replace -a '\\' '\\\\' -- "$legacy_file" |
+          string replace -a '"' '\\"'
+        )
+        if not /usr/bin/osascript \
+            -e "tell application \"Finder\" to delete POSIX file \"$apple_path\""
+          echo "Notice: Manifest was migrated, but legacy cleanup needs attention: $legacy_file"
           return 1
         end
       end
@@ -2701,9 +2757,11 @@
         basename "$library_root" | string lower
       )
       set --local requires_plugin_payload 0
+      set --local manifest_url_field themeUrl
 
       if string match -rq '(plugin|extension)' "$library_root_name"
         set requires_plugin_payload 1
+        set manifest_url_field pluginUrl
       end
 
       # List every manifest-backed entry before looking for a repository URL.
@@ -2785,10 +2843,18 @@
           "$table_description" \
           "$table_version"
 
-        set --local repository_file \
-          "$library_entry/repository-url.txt"
-
-        set --local existing_repository_url
+        set --local manifest_repository_url (
+          command jq -r \
+            --arg field "$manifest_url_field" \
+            'if (.[$field] | type) == "string" then .[$field] else empty end' \
+            "$manifest_file" |
+          string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?'
+        )
+        if test -n "$manifest_repository_url"
+          set manifest_repository_url (__obsidian_missing_canonical_repository_url "$manifest_repository_url")
+        end
+        set --local legacy_repository_file
+        set --local legacy_repository_url
         for repository_candidate in \
             "$library_entry/repository-url.txt" \
             "$library_entry/repo/repository-url.txt"
@@ -2797,35 +2863,64 @@
             continue
           end
 
-          set existing_repository_url (
+          set legacy_repository_url (
             string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' <"$repository_candidate"
           )
-          if test -n "$existing_repository_url"
-            set repository_file "$repository_candidate"
+          if test -n "$legacy_repository_url"
+            set legacy_repository_url (__obsidian_missing_canonical_repository_url "$legacy_repository_url")
+          end
+          if test -n "$legacy_repository_url"
+            set legacy_repository_file "$repository_candidate"
             break
           end
         end
 
-        if test -n "$existing_repository_url"
-          echo "Keeping existing repository URL: $repository_file"
+        if test -n "$manifest_repository_url"
+          if test -n "$legacy_repository_url"; and \
+              test "$manifest_repository_url" != "$legacy_repository_url"
+            echo "Repository URL conflict for $entry_name:"
+            echo "  manifest $manifest_url_field: $manifest_repository_url"
+            echo "  legacy repository-url.txt: $legacy_repository_url"
+            read --prompt-str "Use manifest (m) or legacy (l)? " conflict_choice
+            if test "$conflict_choice" = l; or test "$conflict_choice" = L
+              if not __obsidian_missing_save_repository_url \
+                  "$manifest_file" \
+                  "$manifest_url_field" \
+                  "$legacy_repository_url"
+                echo "Notice: Could not save the legacy URL into $manifest_file"
+                continue
+              end
+              set manifest_repository_url "$legacy_repository_url"
+            else if test "$conflict_choice" != m; and test "$conflict_choice" != M
+              echo "Skipping unresolved URL conflict: $entry_name"
+              continue
+            end
+          end
+
+          if test -n "$legacy_repository_file"
+            __obsidian_missing_trash_legacy_url "$legacy_repository_file"
+          end
           __obsidian_missing_restore_readme \
             "$library_entry" \
-            "$existing_repository_url"
+            "$manifest_repository_url"
+          continue
+        end
+
+        if test -n "$legacy_repository_url"
+          if not __obsidian_missing_save_repository_url \
+              "$manifest_file" \
+              "$manifest_url_field" \
+              "$legacy_repository_url"
+            echo "Notice: Could not migrate $entry_name"
+            set --append missing_repository_entries "$entry_name"
+            continue
+          end
+          __obsidian_missing_trash_legacy_url "$legacy_repository_file"
+          __obsidian_missing_restore_readme "$library_entry" "$legacy_repository_url"
           continue
         end
 
         set --append missing_repository_entries "$entry_name"
-
-        if not test -f "$repository_file"; and \
-            test -f "$library_entry/repo/repository-url.txt"
-          set repository_file "$library_entry/repo/repository-url.txt"
-        end
-
-        if test -f "$repository_file"; and test -s "$repository_file"
-          set --append missing_entries \
-            "$entry_name — repository-url.txt is non-empty but has no GitHub URL; preserved"
-          continue
-        end
 
         set --local library_id (
           command jq -r \
@@ -2921,14 +3016,15 @@
             set --local direct_repository_url "https://github.com/$direct_candidate"
 
             if not __obsidian_missing_save_repository_url \
-                "$repository_file" \
+                "$manifest_file" \
+                "$manifest_url_field" \
                 "$direct_repository_url"
               set --append missing_entries \
                 "$entry_name — could not save verified repository URL"
               continue
             end
 
-            echo "Saved $repository_file"
+            echo "Saved $manifest_url_field in $manifest_file"
             __obsidian_missing_restore_readme "$library_entry" "$direct_repository_url"
             continue
           end
@@ -3123,24 +3219,49 @@
         end
 
         if not __obsidian_missing_save_repository_url \
-            "$repository_file" \
+            "$manifest_file" \
+            "$manifest_url_field" \
             "$selected_url"
           set --append missing_entries \
             "$entry_name — could not save verified repository URL"
           continue
         end
 
-        echo "Saved $repository_file"
+        echo "Saved $manifest_url_field in $manifest_file"
         __obsidian_missing_restore_readme "$library_entry" "$selected_url"
       end
 
-      if test (count $missing_repository_entries) -gt 0
-        printf '%s\n' $missing_repository_entries >"$missing_report"
-        echo "Folders that were missing a usable repository-url.txt:"
+      set --local unresolved_repository_entries
+      for library_entry in "$library_root"/*
+        if not test -d "$library_entry"
+          continue
+        end
+        set --local manifest_file "$library_entry/manifest.json"
+        if not test -f "$manifest_file"
+          set manifest_file "$library_entry/repo/manifest.json"
+        end
+        if not test -f "$manifest_file"
+          continue
+        end
+        set --local manifest_repository_url (
+          command jq -r \
+            --arg field "$manifest_url_field" \
+            'if (.[$field] | type) == "string" then .[$field] else empty end' \
+            "$manifest_file" |
+          string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?'
+        )
+        if test -z "$manifest_repository_url"
+          set --append unresolved_repository_entries (basename "$library_entry")
+        end
+      end
+
+      if test (count $unresolved_repository_entries) -gt 0
+        printf '%s\n' $unresolved_repository_entries >"$missing_report"
+        echo "Folders that still need a usable manifest repository URL:"
         echo "  $missing_report"
       else
-        printf '%s\n' "All scanned entries have a usable repository-url.txt." >"$missing_report"
-        echo "All scanned entries have a usable repository-url.txt."
+        printf '%s\n' "All scanned entries have a usable manifest repository URL." >"$missing_report"
+        echo "All scanned entries have a usable manifest repository URL."
       end
     '';
   };
