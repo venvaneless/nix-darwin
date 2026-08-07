@@ -239,18 +239,22 @@ let
 
           identifier = manifest.get("id")
           if not isinstance(identifier, str) or not identifier.strip():
-              identifier = directory.name
+              raise RuntimeError(f"{MANIFEST_FILE} has no usable id")
 
           author_value = manifest.get("author")
           author = author_value.strip() if isinstance(author_value, str) else ""
+          if not author:
+              raise RuntimeError(f"{MANIFEST_FILE} has no usable author")
           if re.fullmatch(r"https?://[^\s]+", author, flags=re.IGNORECASE):
               author = re.sub(r"^https?://(?:www[.])?", "", author, flags=re.IGNORECASE)
               author = author.rstrip("/").rsplit("/", 1)[-1]
-          author = re.sub(r"\s+", " ", author).strip() or "-"
+          author = re.sub(r"\s+", " ", author).strip()
+          if not author:
+              raise RuntimeError(f"{MANIFEST_FILE} has no usable author")
 
           description_value = manifest.get("description")
           description = description_value.strip() if isinstance(description_value, str) else ""
-          description = re.sub(r"\s+", " ", description).strip() or "-"
+          description = re.sub(r"\s+", " ", description).strip()
 
           return identifier.strip(), author, description, optional_manifest_version(source)
 
@@ -410,15 +414,15 @@ let
               return False
 
 
-      def manifest_is_canonically_indented(manifest_file: Path) -> bool:
-          # Keep manifest formatting consistent with the managed library.
+      def manifest_is_valid(manifest_file: Path) -> bool:
+          # Formatting is deliberately unrestricted: compact, tab-indented,
+          # space-indented, CRLF, and trailing blank lines are all valid JSON.
           try:
-              contents = manifest_file.read_text(encoding="utf-8")
-              manifest = json.loads(contents)
+              manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
           except (OSError, json.JSONDecodeError):
               return False
 
-          return contents == json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
+          return isinstance(manifest, dict)
 
 
       def image_names(filenames: list[str]) -> list[str]:
@@ -646,15 +650,6 @@ let
 
           if entry.local_version is None:
               return CheckResult(entry, "RECOVERY REQUIRED", remote_version, "invalid manifest.json", release)
-
-          if not manifest_is_canonically_indented(manifest):
-              return CheckResult(
-                  entry,
-                  "RECOVERY REQUIRED",
-                  remote_version,
-                  "manifest.json is not canonically indented",
-                  release,
-              )
 
           if not is_nonempty_file(entry.path / README_FILE):
               return CheckResult(
@@ -904,13 +899,13 @@ let
               print(f"[SKIP] {entry.label}: latest release is missing {', '.join(missing_files)}")
               return
 
-          if not manifest_is_canonically_indented(manifest_file(entry.path)):
+          if not manifest_is_valid(manifest_file(entry.path)):
               answer = input(
-                  f"{entry.label}: manifest.json is not canonically indented. "
+                  f"{entry.label}: manifest.json is invalid. "
                   "Re-download this plugin now? [y/N]: "
               ).strip().casefold()
               if answer not in {"y", "yes"}:
-                  print(f"[SKIP] {entry.label}: manifest-format repair was not confirmed")
+                  print(f"[SKIP] {entry.label}: manifest repair was not confirmed")
                   return
 
           allowed_files = required_files + entry.library_type.optional_files + tuple(image_names(list(assets)))
@@ -1110,16 +1105,16 @@ let
                       if not destination.is_dir():
                           print(f"[SKIP] Plugin: {destination} exists but is not a directory")
                           return
-                      if manifest_is_canonically_indented(destination / MANIFEST_FILE):
+                      if manifest_is_valid(manifest_file(destination)):
                           print(f"[SKIP] Plugin: {destination} already exists; use Plugins > Check for updates to recover it")
                           return
 
                       answer = input(
-                          f"{folder_name}: manifest.json is not canonically indented. "
+                          f"{folder_name}: manifest.json is invalid. "
                           "Re-download this plugin now? [y/N]: "
                       ).strip().casefold()
                       if answer not in {"y", "yes"}:
-                          print(f"[SKIP] Plugin: manifest-format repair was not confirmed for {folder_name}")
+                          print(f"[SKIP] Plugin: manifest repair was not confirmed for {folder_name}")
                           return
                       refresh_existing_plugin = True
 

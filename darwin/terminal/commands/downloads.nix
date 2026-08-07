@@ -1394,7 +1394,6 @@
           set refresh_plugin_manifest 0
 
           if test -d "$plugin_directory"
-              set plugin_manifest_indented 0
               set plugin_readme_ok 0
 
               if command find "$plugin_directory" \
@@ -1409,18 +1408,9 @@
 
               if test -r "$plugin_directory/manifest.json"; and \
                       test -s "$plugin_directory/manifest.json"; and \
-                      command jq -e . "$plugin_directory/manifest.json" >/dev/null 2>&1; and \
-                      command jq --indent 2 . "$plugin_directory/manifest.json" | \
-                          command cmp -s - "$plugin_directory/manifest.json"
-                  set plugin_manifest_indented 1
-              end
-
-              if test -r "$plugin_directory/manifest.json"; and \
-                      test -s "$plugin_directory/manifest.json"; and \
                       command jq -e . \
                           "$plugin_directory/manifest.json" \
                           >/dev/null 2>&1; and \
-                      test "$plugin_manifest_indented" -eq 1; and \
                       test -r "$plugin_directory/main.js"; and \
                       test -s "$plugin_directory/main.js"; and \
                       test -f "$plugin_directory/repository-url.txt"; and \
@@ -1431,25 +1421,6 @@
                   echo "  $plugin_id (already complete)"
                   command rm -rf -- "$temporary_directory"
                   continue
-              end
-
-              if test -r "$plugin_directory/manifest.json"; and \
-                      test -s "$plugin_directory/manifest.json"; and \
-                      command jq -e . "$plugin_directory/manifest.json" >/dev/null 2>&1; and \
-                      test "$plugin_manifest_indented" -eq 0; and \
-                      test -r "$plugin_directory/main.js"; and \
-                      test -s "$plugin_directory/main.js"; and \
-                      test -f "$plugin_directory/repository-url.txt"
-                  echo
-                  echo "Plugin manifest.json is not canonically indented:"
-                  echo "  $plugin_id"
-                  read --local --prompt-str="Re-download this plugin now? [y/N] " confirmation
-                  if not string match -irq '^y(es)?$' -- "$confirmation"
-                      echo "Skipping unchanged plugin: $plugin_id"
-                      command rm -rf -- "$temporary_directory"
-                      continue
-                  end
-                  set refresh_plugin_manifest 1
               end
 
               echo
@@ -2780,15 +2751,13 @@
         set --local manifest_columns (
           string split \t "$manifest_fields"
         )
-        set --local table_id "$entry_name"
-        set --local table_author "-"
-        set --local table_description "-"
-        set --local table_version "-"
+        set --local table_id
+        set --local table_author
+        set --local table_description ""
+        set --local table_version ""
 
         if test (count $manifest_columns) -eq 4
-          if test -n "$manifest_columns[1]"
-            set table_id "$manifest_columns[1]"
-          end
+          set table_id "$manifest_columns[1]"
           set table_author "$manifest_columns[2]"
           set table_description "$manifest_columns[3]"
           set table_version "$manifest_columns[4]"
@@ -2805,14 +2774,10 @@
         set table_author (string replace -ra '[[:space:]]+' ' ' -- "$table_author" | string trim)
         set table_description (string replace -ra '[[:space:]]+' ' ' -- "$table_description" | string trim)
         set table_version (string trim -- "$table_version")
-        if test -z "$table_author"
-          set table_author "-"
-        end
-        if test -z "$table_description"
-          set table_description "-"
-        end
-        if test -z "$table_version"
-          set table_version "-"
+        if test -z "$table_id"; or test -z "$table_author"
+          set --append missing_entries \
+            "$entry_name — manifest.json has no usable id or author"
+          continue
         end
         printf '%-28s %-20s %-56s %s\n' \
           "$table_id" \
