@@ -1094,6 +1094,8 @@
           )
 
           # Prefer standard files from the newest release before repository fallback.
+          set release_theme_css 0
+          set release_obsidian_css 0
           set release_json (
               command gh api \
                   "repos/$repository_owner/$repository_name/releases/latest" \
@@ -1805,7 +1807,7 @@
                   set release_asset_url "$release_asset_parts[2]"
 
                   switch "$release_asset_name"
-                      case manifest.json theme.css obsidian.css
+                      case manifest.json main.js
                           command curl \
                               --fail \
                               --location \
@@ -1813,11 +1815,40 @@
                               --show-error \
                               --output "$extracted/$release_asset_name" \
                               "$release_asset_url"
+                      case theme.css
+                          if command curl \
+                                  --fail \
+                                  --location \
+                                  --silent \
+                                  --show-error \
+                                  --output "$extracted/theme.css" \
+                                  "$release_asset_url"
+                              set release_theme_css 1
+                          end
+                      case obsidian.css
+                          if command curl \
+                                  --fail \
+                                  --location \
+                                  --silent \
+                                  --show-error \
+                                  --output "$extracted/obsidian.css" \
+                                  "$release_asset_url"
+                              set release_obsidian_css 1
+                          end
                   end
               end
           end
 
+          set repository_primary_stylesheets 1
+          if test "$release_theme_css" -eq 1; or test "$release_obsidian_css" -eq 1
+              set repository_primary_stylesheets 0
+          end
+
           for expected_file in manifest.json theme.css obsidian.css
+              if test "$repository_primary_stylesheets" -eq 0; and \
+                      test "$expected_file" != manifest.json
+                  continue
+              end
               if test -f "$extracted/$expected_file"
                   continue
               end
@@ -1914,7 +1945,7 @@
                   set release_asset_url "$release_asset_parts[2]"
 
                   switch "$release_asset_name"
-                      case manifest.json theme.css obsidian.css
+                      case manifest.json theme.css obsidian.css main.js
                           if not command curl \
                                   --fail \
                                   --location \
@@ -1927,8 +1958,10 @@
                                   "Notice: Could not download release asset: $release_asset_name"
                           end
 
-                      case '*'
-                          # GitHub's source archives are not listed in .assets.
+                      case '*.css' '*.js' fonts.zip
+                          # Download only explicitly supported release assets.
+                          # GitHub source archives are not release assets and
+                          # are never downloaded by this command.
                           command mkdir -p \
                               "$extracted/release-assets"
 
@@ -2133,21 +2166,45 @@
 
           set saved_files
 
-          if test -d "$extracted/release-assets"
-              command mkdir -p "$theme_stage/release-assets"
+          # A lone root screenshot and README stay at the theme root. Multiple
+          # screenshots, or any supported screenshot folder, keep their
+          # repository-relative layout under repo/.
+          set repository_image_paths
+          set use_repository_subfolder 0
+          for repository_path in $repository_paths
+              if not string match -rq \
+                      '(?i)^(?:(?:images|assets|screenshots|screencaps|screens?)/.+|(?:screen|image|screenshot|screencap|preview)[A-Za-z0-9._-]*)\.(png|jpe?g|gif|webp)$' \
+                      "$repository_path"
+                  continue
+              end
+              set --append repository_image_paths "$repository_path"
+              if string match -q '*/*' "$repository_path"
+                  set use_repository_subfolder 1
+              end
+          end
+          if test (count $repository_image_paths) -gt 1
+              set use_repository_subfolder 1
+          end
 
+          set repository_asset_root "$theme_stage"
+          if test "$use_repository_subfolder" -eq 1
+              set repository_asset_root "$theme_stage/repo"
+          end
+
+          if test -d "$extracted/release-assets"
               for release_asset in "$extracted/release-assets"/*
                   set release_asset_name (basename "$release_asset")
 
-                  if test -e "$theme_stage/release-assets/$release_asset_name"
+                  if test -e "$theme_stage/repo/$release_asset_name"
                       continue
                   end
 
-                  command cp -R \
+                  command mkdir -p "$theme_stage/repo"
+                  command cp -f \
                       "$release_asset" \
-                      "$theme_stage/release-assets/$release_asset_name"
+                      "$theme_stage/repo/$release_asset_name"
 
-                  set saved_files release-assets
+                  set saved_files $saved_files "repo/$release_asset_name"
               end
           end
 
@@ -2199,17 +2256,18 @@
               set saved_files $saved_files obsidian.css
           end
 
+          if test -f "$extracted/main.js"
+              if not test -s "$theme_stage/main.js"
+                  command cp -f "$extracted/main.js" "$theme_stage/main.js"
+              end
+              set saved_files $saved_files main.js
+          end
+
           # Save only supported screenshot files, preserving their exact
           # repository-relative paths. This downloads individual files via
           # the GitHub contents API and never an archive.
 
-          for repository_image_path in $repository_paths
-              if not string match -rq \
-                      '(?i)^(?:(?:images|assets|screenshots|screencaps|screens?)/.+|(?:screen|image|screenshot|screencap|preview)[A-Za-z0-9._-]*)\.(png|jpe?g|gif|webp)$' \
-                      "$repository_image_path"
-
-                  continue
-              end
+          for repository_image_path in $repository_image_paths
 
               set repository_image_url (
                   command gh api \
@@ -2222,7 +2280,7 @@
                   continue
               end
 
-              set image_destination "$theme_stage/$repository_image_path"
+              set image_destination "$repository_asset_root/$repository_image_path"
               if test -s "$image_destination"
                   continue
               end
@@ -2239,10 +2297,41 @@
 
                   set saved_files \
                       $saved_files \
-                      "$repository_image_path"
+                      (string replace "$theme_stage/" "" -- "$image_destination")
               else
                   echo \
                       "Notice: Could not download theme screenshot: $repository_image_path"
+              end
+          end
+
+          # Repository snippets remain in repo/snippets/. Only CSS files are
+          # selected, and each is fetched individually from GitHub.
+          for snippet_path in $repository_paths
+              if not string match -rq '(?i)^snippets/.+\.css$' "$snippet_path"
+                  continue
+              end
+              set snippet_url (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/contents/$snippet_path" \
+                      --jq .download_url \
+                      2>/dev/null
+              )
+              if test -z "$snippet_url"
+                  continue
+              end
+              set snippet_destination "$theme_stage/repo/$snippet_path"
+              if test -s "$snippet_destination"
+                  continue
+              end
+              command mkdir -p (dirname "$snippet_destination")
+              if command curl \
+                      --fail \
+                      --location \
+                      --silent \
+                      --show-error \
+                      --output "$snippet_destination" \
+                      "$snippet_url"
+                  set saved_files $saved_files "repo/$snippet_path"
               end
           end
 
@@ -2260,15 +2349,16 @@
                       "README$readme_extension"
               end
 
-              if not test -s "$theme_stage/$readme_output"
+              if not test -s "$repository_asset_root/$readme_output"
+                  command mkdir -p "$repository_asset_root"
                   command cp -f \
                       "$readme" \
-                      "$theme_stage/$readme_output"
+                      "$repository_asset_root/$readme_output"
               end
 
               set saved_files \
                   $saved_files \
-                  "$readme_output"
+                  (string replace "$theme_stage/" "" -- "$repository_asset_root/$readme_output")
 
               set readme_directory (dirname "$readme")
               set readme_contents (command cat "$readme")
@@ -2339,17 +2429,17 @@
                               (dirname "$relative_image_path")
 
                           command mkdir -p \
-                              "$theme_stage/$local_parent"
+                              "$repository_asset_root/$local_parent"
 
-                          if not test -f "$theme_stage/$relative_image_path"
+                          if not test -f "$repository_asset_root/$relative_image_path"
                               command cp -f \
                                   "$local_image" \
-                                  "$theme_stage/$relative_image_path"
+                                  "$repository_asset_root/$relative_image_path"
                           end
 
                           set saved_files \
                               $saved_files \
-                              "$relative_image_path"
+                              (string replace "$theme_stage/" "" -- "$repository_asset_root/$relative_image_path")
                       else
                           echo \
                               "Notice: README preview image was not found in the repository: $image_reference"
@@ -2684,6 +2774,18 @@
         if not test -f "$manifest_file"
           set --append missing_entries \
             "$entry_name — manifest.json missing"
+          continue
+        end
+
+        # An explicitly abandoned entry remains on disk for inspection or
+        # removal, but is not resolved, migrated, or downloaded again.
+        set --local entry_abandoned (
+          command jq -r \
+            'if type == "object" and .abandoned == "yes" then "yes" else empty end' \
+            "$manifest_file" \
+            2>/dev/null
+        )
+        if test "$entry_abandoned" = yes
           continue
         end
 
@@ -3152,6 +3254,15 @@
         end
         if not test -f "$manifest_file"
           set --append unresolved_repository_entries (basename "$library_entry")
+          continue
+        end
+        set --local entry_abandoned (
+          command jq -r \
+            'if type == "object" and .abandoned == "yes" then "yes" else empty end' \
+            "$manifest_file" \
+            2>/dev/null
+        )
+        if test "$entry_abandoned" = yes
           continue
         end
         set --local manifest_repository_url (

@@ -730,8 +730,6 @@ let
       ) -> CheckResult:
           if entry.abandoned:
               return CheckResult(entry, "ABANDONED", message="manifest marks this repository as abandoned")
-          if entry.archived:
-              return CheckResult(entry, "ARCHIVED", message="manifest marks this repository as archived")
           if entry.repository is None:
               return CheckResult(
                   entry,
