@@ -42,8 +42,8 @@ in
         else
           "Default";
 
-      # Use the terminal background instead of painting a solid one.
-      theme_background = false;
+      # Use the terminal or btop background
+      theme_background = true;
 
       # Use full 24-bit terminal colors.
       truecolor = true;
@@ -57,6 +57,9 @@ in
       # Rounded panel corners.
       rounded_corners = true;
 
+      # Enable mouse interaction.
+      disable_mouse = false;
+
       # Enable mouse support.
       vim_keys = false;
 
@@ -64,21 +67,28 @@ in
       # LAYOUT
       # ---------------------------------------------------------------
 
-      # Display all four standard monitoring boxes.
+      # Display all four standard monitoring boxes
       shown_boxes = "cpu mem net proc";
 
-      # Put the process list on the left.
+      # Put the process list on the left
       proc_left = true;
 
-      # Put the CPU graph across the bottom instead of the top.
+      # Put the CPU graph across the bottom instead of the top
       cpu_bottom = true;
 
-      # Keep memory/disks above network in the right-hand column.
+      # Keep memory/disks above network in the right-hand column
       mem_below_net = false;
 
-      # One CPU graph instead of two stacked CPU graphs.
-      # This helps keep the bottom CPU section smaller.
+      # One CPU graph instead of two stacked CPU graphs
+      # This helps keep the bottom CPU section smaller
       cpu_single_graph = true;
+
+      # Show CPU power usage in watts
+      show_cpu_watts = true;
+
+	  # Show battery power usage in watts
+      selected_battery = "Auto";
+      show_battery_watts = true;
 
       # ---------------------------------------------------------------
       # GRAPH APPEARANCE
