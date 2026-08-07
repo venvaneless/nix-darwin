@@ -578,7 +578,7 @@
                   '^https?://github\\.com/[^/]+/[^/]+$' \
                   "$repository_url"
 
-                printf '%s\\t%s\\n' \
+                printf '%s\t%s\n' \
                   "$source_name" \
                   "$repository_url" \
                   >>"$missing_file"
@@ -590,12 +590,12 @@
                 continue
               end
 
-              printf '%s\\n' \
+              printf '%s\n' \
                 "$repository_url" \
                 >>"$repositories_file"
 
-              printf '%s\\t%s\\n' \
-                "$source_name" \
+              printf '%s\t%s\n' \
+                "$repository_url" \
                 "$repository_url" \
                 >>"$source_map_file"
 
@@ -725,9 +725,9 @@
           "$downloader_function" \
           "$repositories_file" \
           "$destination" \
-          >"$temporary_directory/downloader.log" 2>&1
+          2>&1 | tee "$temporary_directory/downloader.log"
 
-        set --local downloader_status $status
+        set --local downloader_status $pipestatus[1]
 
         function __gitdll_download_includes \
             --argument-names repository_url destination_directory
