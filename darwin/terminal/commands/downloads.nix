@@ -101,7 +101,6 @@
         set --local library_type
         set --local downloader_function
         set --local manifest_url_field
-        set --local missing_report_name
         set --local failed_report_name
 
         if test "$mode" = "--plugins"
@@ -113,8 +112,6 @@
           set library_type plugins
           set downloader_function __gitdll_plugins
           set manifest_url_field pluginUrl
-          set missing_report_name \
-            missing-plugin-repository-urls.txt
           set failed_report_name \
             failed-plugin-downloads.txt
           if test -z "$destination"
@@ -129,8 +126,6 @@
           set library_type themes
           set downloader_function __gitdll_themes
           set manifest_url_field themeUrl
-          set missing_report_name \
-            missing-theme-repository-urls.txt
           set failed_report_name \
             failed-theme-downloads.txt
           if test -z "$destination"
@@ -167,6 +162,9 @@
         set --local failed_file \
           "$temporary_directory/failed.txt"
 
+        set --local failed_report \
+          "$destination/$failed_report_name"
+
         set --local function_file \
           "$temporary_directory/downloader.fish"
 
@@ -187,6 +185,20 @@
           "$source_map_file" \
           "$missing_file" \
           "$failed_file"
+
+        function __gitdll_write_failure_report \
+            --no-scope-shadowing
+
+          set --local staged_report "$temporary_directory/failed-report.txt"
+          command cat "$missing_file" "$failed_file" | \
+            command sort -u >"$staged_report"
+
+          if test -s "$staged_report"
+            command mv -- "$staged_report" "$failed_report"
+          else
+            command rm -f -- "$staged_report" "$failed_report"
+          end
+        end
 
         functions "$downloader_function" \
           >"$function_file"
@@ -512,9 +524,6 @@
         end
 
         for source_input in $source_inputs
-          echo "Scanning source:"
-          echo "  $source_input"
-
           if string match -rq '(?i)^(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?/?$' "$source_input"
             set --local repository_url (
               string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' "$source_input"
@@ -722,59 +731,17 @@
           end
         end
 
-        set --local missing_report \
-          "$destination/$missing_report_name"
-
-        if test -s "$missing_file"
-          command cp -f \
-            "$missing_file" \
-            "$missing_report"
-        else
-          command rm -f -- "$missing_report"
-        end
-
-        echo
-        echo "============================================================"
-        echo "OBSIDIAN "(string upper "$library_type")
-        echo "============================================================"
-        echo "Sources:"
-        for source_input in $source_inputs
-          echo "  $source_input"
-        end
-        echo
-        echo "Destination:"
-        echo "  $destination"
-        echo
-        echo "Source entries:          $source_count"
-        echo "Usable repository URLs: $repository_count"
-        echo "Missing or invalid URLs: $missing_count"
-        echo "============================================================"
-
-        if test "$missing_count" -gt 0
-          echo
-          echo "Folders without a usable repository-url.txt:"
-          echo
-
-          while read --local missing_entry
-            if test -n "$missing_entry"
-              echo "  $missing_entry"
-            end
-          end <"$missing_file"
-
-          echo
-          echo "Missing URL report:"
-          echo "  $missing_report"
-        end
-
         if test "$repository_count" -eq 0
           command sort -u "$missing_file" >"$undownloaded_file"
 
           __gitdll_write_undownloaded_report
           set --local report_status $status
 
+          __gitdll_write_failure_report
+
           functions -e __gitdll_write_undownloaded_report
-          echo
-          echo "Error: No usable repository URLs were found."
+          functions -e __gitdll_write_failure_report
+          echo "Failed. Details: $failed_report"
           command rm -rf -- "$temporary_directory"
 
           if test "$report_status" -ne 0
@@ -783,10 +750,6 @@
 
           return 1
         end
-
-        echo
-        echo "Downloading fresh copies..."
-        echo
 
         env \
           TMPDIR="$downloader_temporary_directory" \
@@ -799,7 +762,8 @@
           "$function_file" \
           "$downloader_function" \
           "$repositories_file" \
-          "$destination"
+          "$destination" \
+          >"$temporary_directory/downloader.log" 2>&1
 
         set --local downloader_status $status
 
@@ -843,10 +807,19 @@
           end
 
           if test -z "$matching_manifest_file"
-            printf '%s — download failed: %s\n' \
-              "$original_name" \
-              "$original_url" \
-              >>"$failed_file"
+            set --local repository_name (
+              string replace -r '^https://github\\.com/' "" -- "$original_url"
+            )
+            if command gh api "repos/$repository_name" >/dev/null 2>&1
+              printf '%s — no compatible %s files were downloaded\n' \
+                "$original_name" \
+                "$library_type" \
+                >>"$failed_file"
+            else
+              printf '%s — repository unavailable (wrong URL, private repository, or connection error)\n' \
+                "$original_name" \
+                >>"$failed_file"
+            end
           else
             set downloaded_count (
               math "$downloaded_count + 1"
@@ -854,15 +827,8 @@
           end
         end <"$source_map_file"
 
-        set --local failed_report \
-          "$destination/$failed_report_name"
-
-        if test -s "$failed_file"
-          command cp -f \
-            "$failed_file" \
-            "$failed_report"
-        else
-          command rm -f -- "$failed_report"
+        if test "$downloader_status" -ne 0; and not test -s "$failed_file"
+          echo "The downloader stopped before reporting a specific reason" >>"$failed_file"
         end
 
         set --local failed_count (
@@ -878,47 +844,24 @@
         __gitdll_write_undownloaded_report
         set --local report_status $status
 
-        echo
-        echo "============================================================"
-        echo "DOWNLOAD SUMMARY"
-        echo "============================================================"
-        echo "Available at destination: $downloaded_count"
-        echo "Missing repository URL:  $missing_count"
-        echo "Failed downloads:        $failed_count"
-        echo "============================================================"
-
-        if test "$failed_count" -gt 0
-          echo
-          echo "Repositories that were not downloaded:"
-          echo
-
-          while read --local failed_entry
-            if test -n "$failed_entry"
-              echo "  $failed_entry"
-            end
-          end <"$failed_file"
-
-          echo
-          echo "Failed download report:"
-          echo "  $failed_report"
-        end
+        __gitdll_write_failure_report
 
         command rm -rf -- "$temporary_directory"
 
         functions -e __gitdll_write_undownloaded_report
+        functions -e __gitdll_write_failure_report
 
         if test "$report_status" -ne 0
           return "$report_status"
         end
 
-        if test "$downloader_status" -ne 0
-          return "$downloader_status"
-        end
-
-        if test "$failed_count" -gt 0
+        if test "$downloader_status" -ne 0; or test "$missing_count" -gt 0; or \
+            test "$failed_count" -gt 0
+          echo "Failed. Details: $failed_report"
           return 1
         end
 
+        echo "Successful"
         return 0
       end
 
@@ -1893,15 +1836,6 @@
                   set existing_theme_manifest_ok 0
               end
 
-              if test -r "$existing_theme_directory/theme.css"; and \
-                      test -s "$existing_theme_directory/theme.css"; and \
-                      test "$existing_theme_manifest_ok" -eq 1; and \
-                      test "$existing_theme_readme_ok" -eq 1
-                  echo
-                  echo "Skipping:"
-                  echo "  $existing_theme_directory (already complete)"
-                  continue
-              end
           end
 
           echo
@@ -2255,26 +2189,8 @@
                   set theme_manifest_ok 0
               end
 
-              if test -r "$theme_directory/theme.css"; and \
-                      test -s "$theme_directory/theme.css"; and \
-                      test "$theme_manifest_ok" -eq 1; and \
-                      command jq -e \
-                          --arg url "$canonical_repository_url" \
-                          '.themeUrl == $url' \
-                          "$theme_directory/manifest.json" \
-                          >/dev/null 2>&1; and \
-                      test "$theme_readme_ok" -eq 1
-
-                  echo
-                  echo "Skipping:"
-                  echo "  $theme_folder_name (already complete)"
-                  command rm -rf -- "$temporary_directory"
-                  continue
-              end
-
-              echo
-              echo "Resuming incomplete theme:"
-              echo "  $theme_folder_name"
+              # Existing themes are refreshed so newly supported repository
+              # screenshots and asset folders are added on later runs.
               set theme_directory_exists 1
           end
 
@@ -2354,17 +2270,14 @@
               set saved_files $saved_files obsidian.css
           end
 
-          # Save named theme preview images without downloading an archive.
-          set preview_count 0
+          # Save only supported screenshot files, preserving their exact
+          # repository-relative paths. This downloads individual files via
+          # the GitHub contents API and never an archive.
 
           for repository_image_path in $repository_paths
-              set repository_image_name (
-                  basename "$repository_image_path"
-              )
-
               if not string match -rq \
-                      '(?i)(screenshot|screen|screencap|preview|previews|[-_]dark|[-_]light).+\.(png|jpe?g|gif|webp|svg)$' \
-                      "$repository_image_name"
+                      '(?i)^(?:(?:images|assets|screenshots|screencaps|screens?)/.+|(?:screen|image|screenshot|screencap|preview)[A-Za-z0-9._-]*)\.(png|jpe?g|gif|webp)$' \
+                      "$repository_image_path"
 
                   continue
               end
@@ -2380,37 +2293,27 @@
                   continue
               end
 
-              set preview_count (
-                  math "$preview_count + 1"
-              )
-
-              set preview_name (
-                  string replace -ra \
-                      '[^A-Za-z0-9._-]' \
-                      '_' \
-                      "$repository_image_name"
-              )
-
-              command mkdir -p "$theme_stage/previews"
-
-              if test -f "$theme_stage/previews/$preview_count-$preview_name"
+              set image_destination "$theme_stage/$repository_image_path"
+              if test -s "$image_destination"
                   continue
               end
+
+              command mkdir -p (dirname "$image_destination")
 
               if command curl \
                       --fail \
                       --location \
                       --silent \
                       --show-error \
-                      --output "$theme_stage/previews/$preview_count-$preview_name" \
+                      --output "$image_destination" \
                       "$repository_image_url"
 
                   set saved_files \
                       $saved_files \
-                      "previews/$preview_count-$preview_name"
+                      "$repository_image_path"
               else
                   echo \
-                      "Notice: Could not download theme preview image: $repository_image_name"
+                      "Notice: Could not download theme screenshot: $repository_image_path"
               end
           end
 
@@ -2457,10 +2360,9 @@
                           "<img[^>]+src=[\"']([^\"']+)" \
                           -- \
                           $readme_contents
-                  )
+              )
 
               set seen_images
-              set preview_count 0
 
               for image_reference in $image_references
                   if contains \
@@ -2486,83 +2388,10 @@
                           '^https?://' \
                           "$image_path"
 
-                      set download_url \
-                          "$image_reference"
-
-                      if string match -rq \
-                              '^https://github\.com/' \
-                              "$download_url"
-
-                          set download_url (
-                              string replace -r \
-                                  '^https://github\.com/' \
-                                  'https://raw.githubusercontent.com/' \
-                                  "$download_url"
-                          )
-
-                          set download_url (
-                              string replace \
-                                  '/blob/' \
-                                  '/' \
-                                  "$download_url"
-                          )
-                      end
-
-                      set remote_filename (
-                          basename (
-                              string replace -r \
-                                  '[?#].*$' \
-                                  ''' \
-                                  "$download_url"
-                          )
-                      )
-
-                      if test -z "$remote_filename"; or \
-                              test "$remote_filename" = "/"
-
-                          set remote_filename preview
-                      end
-
-                      set remote_filename (
-                          string replace -ra \
-                              '[^A-Za-z0-9._-]' \
-                              '_' \
-                              "$remote_filename"
-                      )
-
-                      set preview_count (
-                          math "$preview_count + 1"
-                      )
-
-                      set preview_destination \
-                          "$theme_stage/previews/$preview_count-$remote_filename"
-
-                      command mkdir -p \
-                          "$theme_stage/previews"
-
-                      if test -f "$preview_destination"
-                          continue
-                      end
-
-                      if command curl \
-                              --fail \
-                              --location \
-                              --silent \
-                              --show-error \
-                              --output "$preview_destination" \
-                              "$download_url"
-
-                          set saved_files \
-                              $saved_files \
-                              "previews/$preview_count-$remote_filename"
-                      else
-                          command rm -f \
-                              -- \
-                              "$preview_destination"
-
-                          echo \
-                              "Notice: Could not download README preview image: $image_reference"
-                      end
+                      # Remote README images have no trustworthy repository-
+                      # relative destination. The repository scan above saves
+                      # the supported local screenshot paths unchanged.
+                      continue
                   else if not string match -rq \
                           '(^|/)\.\.(/|$)' \
                           "$image_path"; and \
@@ -2574,21 +2403,24 @@
                           "$readme_directory/$image_path"
 
                       if test -f "$local_image"
+                          set relative_image_path (
+                              string replace "$extracted/" "" -- "$local_image"
+                          )
                           set local_parent \
-                              (dirname "$image_path")
+                              (dirname "$relative_image_path")
 
                           command mkdir -p \
                               "$theme_stage/$local_parent"
 
-                          if not test -f "$theme_stage/$image_path"
+                          if not test -f "$theme_stage/$relative_image_path"
                               command cp -f \
                                   "$local_image" \
-                                  "$theme_stage/$image_path"
+                                  "$theme_stage/$relative_image_path"
                           end
 
                           set saved_files \
                               $saved_files \
-                              "$image_path"
+                              "$relative_image_path"
                       else
                           echo \
                               "Notice: README preview image was not found in the repository: $image_reference"
