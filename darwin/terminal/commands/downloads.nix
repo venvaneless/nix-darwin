@@ -2949,30 +2949,38 @@
           string replace -ar '[^a-z0-9]' ""
         )
 
-        set --local image_blobs (
+        set --local default_branch (
           command gh api \
-            "repos/$repository/git/trees/HEAD?recursive=1" \
-            --jq '
-              .tree[]?
-              | select(.type == "blob")
-              | select(.path | test("\\.(png|jpe?g|webp|gif)$"; "i"))
-              | [.path, .sha] | @tsv
-            ' \
+            "repos/$repository" \
+            --jq .default_branch \
             2>/dev/null
         )
-        if test $status -ne 0
+
+        if test -z "$default_branch"
+          echo "Notice: Could not determine the default branch for $repository"
+          return 1
+        end
+
+        set --local repository_paths (
+          command gh api \
+            "repos/$repository/git/trees/$default_branch?recursive=1" \
+            --jq '.tree[]? | select(.type == "blob") | .path'
+        )
+
+        set --local repository_tree_status $status
+
+        if test "$repository_tree_status" -ne 0
           echo "Notice: Could not inspect theme preview images for $library_entry"
           return 1
         end
 
-        for image_blob in $image_blobs
-          set --local image_parts (string split \t "$image_blob")
-          if test (count $image_parts) -ne 2
+        for relative_path in $repository_paths
+          if not string match -rq \
+              '(?i)\.(png|jpe?g|gif|webp)$' \
+              "$relative_path"
             continue
           end
 
-          set --local relative_path "$image_parts[1]"
-          set --local blob_sha "$image_parts[2]"
           set --local image_name (basename "$relative_path")
           set --local image_stem (
             string replace -r '\\.[^.]+$' "" -- "$image_name"
