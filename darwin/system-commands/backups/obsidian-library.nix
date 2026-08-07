@@ -24,6 +24,7 @@ let
     text = ''
       export OBSIDIAN_LIBRARY_GH="${pkgs.gh}/bin/gh"
       export OBSIDIAN_LIBRARY_FZF="${pkgs.fzf}/bin/fzf"
+      export OBSIDIAN_LIBRARY_CURL="${pkgs.curl}/bin/curl"
 
       # Keep standard input attached to the terminal for the interactive
       # menus; feeding Python through stdin makes every input() raise EOF.
@@ -67,6 +68,7 @@ let
       DEFAULT_DOWNLOADS_DIR = Path.home() / "Downloads"
       GH_BIN = os.environ["OBSIDIAN_LIBRARY_GH"]
       FZF_BIN = os.environ["OBSIDIAN_LIBRARY_FZF"]
+      CURL_BIN = os.environ["OBSIDIAN_LIBRARY_CURL"]
 
 
       @dataclass(frozen=True)

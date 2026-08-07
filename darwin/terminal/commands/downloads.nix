@@ -2761,6 +2761,11 @@
         return 1
       end
 
+      if not command -q curl
+        echo "Error: curl is not installed."
+        return 1
+      end
+
       if not command -q base64
         echo "Error: base64 is not installed."
         return 1
@@ -2827,8 +2832,49 @@
         end
       end
 
+      # Download a missing file without replacing a healthy existing file.
+      function __obsidian_missing_download_url \
+          --argument-names destination download_url description
+
+        if test -s "$destination"
+          return 0
+        end
+
+        if test -L "$destination"
+          echo "Notice: Refusing to replace symlinked file: $destination"
+          return 1
+        end
+
+        set --local destination_parent (dirname "$destination")
+
+        if not command mkdir -p -- "$destination_parent"
+          echo "Notice: Could not create destination folder: $destination_parent"
+          return 1
+        end
+
+        set --local staging_file \
+          "$destination.obsidian-missing-new"
+
+        if not command curl \
+            --fail \
+            --location \
+            --silent \
+            --show-error \
+            --output "$staging_file" \
+            "$download_url"; or \
+            not test -s "$staging_file"; or \
+            not command mv -- "$staging_file" "$destination"
+
+          command rm -f -- "$staging_file"
+          echo "Notice: Could not restore $description"
+          return 1
+        end
+
+        echo "Saved $destination"
+      end
+
       # Keep an existing non-empty README untouched. When no usable README is
-      # present, restore README.md from the verified GitHub repository.
+      # present, restore the repository README using its original filename.
       function __obsidian_missing_restore_readme \
           --argument-names library_entry repository_url
 
@@ -2846,36 +2892,43 @@
           string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
           string replace -r '\\.git$' ""
         )
+
         if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
-          echo "Notice: Could not restore README.md for $library_entry; repository URL is invalid."
-          return 1
-        end
-        if test -L "$library_entry/README.md"
-          echo "Error: Refusing to replace symlinked README.md: $library_entry/README.md"
-          return 1
-        end
-        set --local staging_readme "$library_entry/README.md.obsidian-missing-new"
-
-        if not command gh api "repos/$repository/readme" --jq .content 2>/dev/null | \
-            command base64 -D >"$staging_readme"
-          command rm -f -- "$staging_readme"
-          echo "Notice: Could not restore README.md for $library_entry"
+          echo "Notice: Could not restore README for $library_entry; repository URL is invalid."
           return 1
         end
 
-        if not test -s "$staging_readme"; or \
-            not command mv -- "$staging_readme" "$library_entry/README.md"
-          command rm -f -- "$staging_readme"
-          echo "Notice: Could not save README.md for $library_entry"
+        set --local readme_metadata (
+          command gh api \
+            "repos/$repository/readme" \
+            --jq '[.name, .download_url] | @tsv' \
+            2>/dev/null
+        )
+
+        if test $status -ne 0; or test -z "$readme_metadata"
+          echo "Notice: Repository has no downloadable README: $repository"
           return 1
         end
 
-        echo "Saved $library_entry/README.md"
+        set --local readme_parts \
+          (string split \t "$readme_metadata")
+
+        if test (count $readme_parts) -ne 2
+          echo "Notice: Could not read repository README metadata: $repository"
+          return 1
+        end
+
+        set --local readme_name "$readme_parts[1]"
+        set --local readme_url "$readme_parts[2]"
+
+        __obsidian_missing_download_url \
+          "$library_entry/$readme_name" \
+          "$readme_url" \
+          "$readme_name"
       end
 
-      # Restore only common theme preview images. This asks GitHub for the
-      # repository tree and downloads individual matching blobs; it never
-      # downloads or extracts a repository archive.
+      # Restore missing theme screenshots and preview images while preserving
+      # their original repository-relative paths.
       function __obsidian_missing_restore_theme_screenshots \
           --argument-names library_entry repository_url
 
@@ -2887,16 +2940,22 @@
           return 1
         end
 
+        set --local repository_name (
+          string split / "$repository"
+        )[-1]
+
+        set --local normalized_repository_name (
+          string lower "$repository_name" |
+          string replace -ar '[^a-z0-9]' ''
+        )
+
         set --local image_blobs (
           command gh api \
             "repos/$repository/git/trees/HEAD?recursive=1" \
             --jq '
               .tree[]?
               | select(.type == "blob")
-              | select(
-                  (.path | test("^(?:screenshots?|images|assets)/.+\\.(?:png|jpe?g|webp|gif)$"; "i")) or
-                  (.path | test("^(?:screen|screencap|screenshot|preview)[A-Za-z0-9._-]*\\.(?:png|jpe?g|webp|gif)$"; "i"))
-                )
+              | select(.path | test("\\.(?:png|jpe?g|webp|gif)$"; "i"))
               | [.path, .sha] | @tsv
             ' \
             2>/dev/null
@@ -2914,16 +2973,56 @@
 
           set --local relative_path "$image_parts[1]"
           set --local blob_sha "$image_parts[2]"
-          if not string match -rq \
-              '^(?:(?:screenshots?|images|assets)/.+|(?:screen|screencap|screenshot|preview)[A-Za-z0-9._-]*)\\.(?:png|jpe?g|webp|gif)$' \
+          set --local image_name (basename "$relative_path")
+          set --local image_stem (
+            string replace -r '\\.[^.]+$' '' -- "$image_name"
+          )
+
+          set --local normalized_image_name (
+            string lower "$image_stem" |
+            string replace -ar '[^a-z0-9]' ''
+          )
+
+          set --local is_root_image 0
+          set --local has_image_keyword 0
+          set --local is_preview_folder_image 0
+          set --local has_theme_name 0
+
+          if not string match -q '*/*' "$relative_path"
+            set is_root_image 1
+          end
+
+          if string match -rq \
+              '(?i)(screen|screencap|screenshot|image|preview|previews)' \
+              "$image_name"
+            set has_image_keyword 1
+          end
+
+          if string match -rq \
+              '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots)[^/]*/' \
               "$relative_path"
+            set is_preview_folder_image 1
+          end
+
+          if test -n "$normalized_repository_name"; and \
+              string match -q "*$normalized_repository_name*" \
+              "$normalized_image_name"
+            set has_theme_name 1
+          end
+
+          if test "$is_root_image" -eq 0; and \
+              test "$has_image_keyword" -eq 0; and \
+              test "$is_preview_folder_image" -eq 0; and \
+              test "$has_theme_name" -eq 0
             continue
           end
 
           set --local destination "$library_entry/$relative_path"
+
           if test -s "$destination"
             continue
           end
+
           if test -L "$destination"
             echo "Notice: Refusing to replace symlinked theme preview: $destination"
             continue
@@ -2931,25 +3030,30 @@
 
           set --local checked_path "$library_entry"
           set --local unsafe_path 0
+
           for component in (string split / "$relative_path")
             set checked_path "$checked_path/$component"
+
             if test -L "$checked_path"
               echo "Notice: Refusing to write through symlinked theme path: $checked_path"
               set unsafe_path 1
               break
             end
           end
+
           if test "$unsafe_path" -eq 1
             continue
           end
 
           set --local destination_parent (dirname "$destination")
+
           if not command mkdir -p -- "$destination_parent"
             echo "Notice: Could not create theme preview folder: $destination_parent"
             continue
           end
 
           set --local staging_image "$destination.obsidian-missing-new"
+
           if not command gh api \
               "repos/$repository/git/blobs/$blob_sha" \
               --jq .content \
@@ -2962,6 +3066,233 @@
           end
 
           echo "Saved $destination"
+        end
+      end
+
+      # Restore all standard files that the normal plugin/theme downloaders
+      # would keep. Release assets are preferred before repository fallback.
+      function __obsidian_missing_restore_standard_files \
+          --argument-names library_entry repository_url requires_plugin_payload
+
+        set --local repository (
+          string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
+          string replace -r '\\.git$' ""
+        )
+
+        if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
+          echo "Notice: Could not restore files for $library_entry; repository URL is invalid."
+          return 1
+        end
+
+        set --local repository_paths (
+          command gh api \
+            "repos/$repository/git/trees/HEAD?recursive=1" \
+            --jq \
+            '.tree[]? | select(.type == "blob" and (.path | test("(^|/)node_modules/") | not)) | .path' \
+            2>/dev/null
+        )
+
+        if test $status -ne 0
+          echo "Notice: Could not inspect repository files for $library_entry"
+          return 1
+        end
+
+        set --local release_assets
+        set --local release_json (
+          command gh api \
+            "repos/$repository/releases/latest" \
+            2>/dev/null
+        )
+
+        if test $status -eq 0; and test -n "$release_json"
+          set release_assets (
+            printf '%s' "$release_json" |
+            command jq -r \
+              '.assets[]? | [.name, .browser_download_url] | @tsv'
+          )
+        end
+
+        if test "$requires_plugin_payload" -eq 1
+          # Plugins: manifest.json, main.js, and optional styles.css.
+          for expected_file in manifest.json main.js styles.css
+            set --local destination \
+              "$library_entry/$expected_file"
+
+            if test -s "$destination"
+              continue
+            end
+
+            set --local release_url
+
+            for release_asset in $release_assets
+              set --local release_parts \
+                (string split \t "$release_asset")
+
+              if test (count $release_parts) -lt 2
+                continue
+              end
+
+              if test "$release_parts[1]" = "$expected_file"
+                set release_url "$release_parts[2]"
+                break
+              end
+            end
+
+            if test -n "$release_url"
+              if __obsidian_missing_download_url \
+                  "$destination" \
+                  "$release_url" \
+                  "$expected_file"
+                continue
+              end
+            end
+
+            set --local repository_file_path (
+              printf '%s\n' $repository_paths |
+              command awk -F/ \
+                -v expected_file="$expected_file" \
+                '$NF == expected_file { print; exit }'
+            )
+
+            if test -z "$repository_file_path"
+              continue
+            end
+
+            set --local repository_file_url (
+              command gh api \
+                "repos/$repository/contents/$repository_file_path" \
+                --jq .download_url \
+                2>/dev/null
+            )
+
+            if test -z "$repository_file_url"
+              continue
+            end
+
+            __obsidian_missing_download_url \
+              "$destination" \
+              "$repository_file_url" \
+              "$expected_file"
+          end
+        else
+          # Themes: restore manifest.json from release before repository.
+          if not test -s "$library_entry/manifest.json"
+            set --local manifest_release_url
+
+            for release_asset in $release_assets
+              set --local release_parts \
+                (string split \t "$release_asset")
+
+              if test (count $release_parts) -lt 2
+                continue
+              end
+
+              if test "$release_parts[1]" = manifest.json
+                set manifest_release_url "$release_parts[2]"
+                break
+              end
+            end
+
+            if test -n "$manifest_release_url"
+              __obsidian_missing_download_url \
+                "$library_entry/manifest.json" \
+                "$manifest_release_url" \
+                "manifest.json"
+            else
+              set --local manifest_repository_path (
+                printf '%s\n' $repository_paths |
+                command awk -F/ \
+                  '$NF == "manifest.json" { print; exit }'
+              )
+
+              if test -n "$manifest_repository_path"
+                set --local manifest_repository_url (
+                  command gh api \
+                    "repos/$repository/contents/$manifest_repository_path" \
+                    --jq .download_url \
+                    2>/dev/null
+                )
+
+                if test -n "$manifest_repository_url"
+                  __obsidian_missing_download_url \
+                    "$library_entry/manifest.json" \
+                    "$manifest_repository_url" \
+                    "manifest.json"
+                end
+              end
+            end
+          end
+
+          # Themes always store the active stylesheet locally as theme.css.
+          if not test -s "$library_entry/theme.css"
+            set --local theme_css_url
+            set --local theme_css_source
+
+            for source_name in theme.css obsidian.css
+              for release_asset in $release_assets
+                set --local release_parts \
+                  (string split \t "$release_asset")
+
+                if test (count $release_parts) -lt 2
+                  continue
+                end
+
+                if test "$release_parts[1]" = "$source_name"
+                  set theme_css_source "$source_name"
+                  set theme_css_url "$release_parts[2]"
+                  break
+                end
+              end
+
+              if test -n "$theme_css_url"
+                break
+              end
+            end
+
+            if test -z "$theme_css_url"
+              for source_name in theme.css obsidian.css
+                set --local repository_css_path (
+                  printf '%s\n' $repository_paths |
+                  command awk -F/ \
+                    -v expected_file="$source_name" \
+                    '$NF == expected_file { print; exit }'
+                )
+
+                if test -z "$repository_css_path"
+                  continue
+                end
+
+                set theme_css_url (
+                  command gh api \
+                    "repos/$repository/contents/$repository_css_path" \
+                    --jq .download_url \
+                    2>/dev/null
+                )
+
+                if test -n "$theme_css_url"
+                  set theme_css_source "$source_name"
+                  break
+                end
+              end
+            end
+
+            if test -n "$theme_css_url"
+              __obsidian_missing_download_url \
+                "$library_entry/theme.css" \
+                "$theme_css_url" \
+                "$theme_css_source"
+            end
+          end
+        end
+
+        __obsidian_missing_restore_readme \
+          "$library_entry" \
+          "$repository_url"
+
+        if test "$requires_plugin_payload" -eq 0
+          __obsidian_missing_restore_theme_screenshots \
+            "$library_entry" \
+            "$repository_url"
         end
       end
 
@@ -3005,9 +3336,44 @@
         end
 
         if not test -f "$manifest_file"
-          set --append missing_entries \
-            "$entry_name — manifest.json missing"
-          continue
+          set --local legacy_manifest_repository_url
+
+          for repository_candidate in \
+              "$library_entry/repository-url.txt" \
+              "$library_entry/repo/repository-url.txt"
+
+            if not test -s "$repository_candidate"
+              continue
+            end
+
+            set legacy_manifest_repository_url (
+              string match -r -m 1 \
+                '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' \
+                <"$repository_candidate"
+            )
+
+            if test -n "$legacy_manifest_repository_url"
+              set legacy_manifest_repository_url \
+                (__obsidian_missing_canonical_repository_url "$legacy_manifest_repository_url")
+              break
+            end
+          end
+
+          if test -n "$legacy_manifest_repository_url"
+            __obsidian_missing_restore_standard_files \
+              "$library_entry" \
+              "$legacy_manifest_repository_url" \
+              "$requires_plugin_payload"
+
+            set manifest_file \
+              "$library_entry/manifest.json"
+          end
+
+          if not test -f "$manifest_file"
+            set --append missing_entries \
+              "$entry_name — manifest.json missing and repository could not be resolved"
+            continue
+          end
         end
 
         # An explicitly abandoned entry remains on disk for inspection or
@@ -3125,14 +3491,11 @@
           if test -n "$legacy_repository_file"
             __obsidian_missing_trash_legacy_url "$legacy_repository_file"
           end
-          __obsidian_missing_restore_readme \
+          __obsidian_missing_restore_standard_files \
             "$library_entry" \
-            "$manifest_repository_url"
-          if test "$requires_plugin_payload" -eq 0
-            __obsidian_missing_restore_theme_screenshots \
-              "$library_entry" \
-              "$manifest_repository_url"
-          end
+            "$manifest_repository_url" \
+            "$requires_plugin_payload"
+
           continue
         end
 
@@ -3146,12 +3509,12 @@
             continue
           end
           __obsidian_missing_trash_legacy_url "$legacy_repository_file"
-          __obsidian_missing_restore_readme "$library_entry" "$legacy_repository_url"
-          if test "$requires_plugin_payload" -eq 0
-            __obsidian_missing_restore_theme_screenshots \
-              "$library_entry" \
-              "$legacy_repository_url"
-          end
+
+          __obsidian_missing_restore_standard_files \
+            "$library_entry" \
+            "$legacy_repository_url" \
+            "$requires_plugin_payload"
+
           continue
         end
 
@@ -3260,12 +3623,12 @@
             end
 
             echo "Saved $manifest_url_field in $manifest_file"
-            __obsidian_missing_restore_readme "$library_entry" "$direct_repository_url"
-            if test "$requires_plugin_payload" -eq 0
-              __obsidian_missing_restore_theme_screenshots \
-                "$library_entry" \
-                "$direct_repository_url"
-            end
+
+            __obsidian_missing_restore_standard_files \
+              "$library_entry" \
+              "$direct_repository_url" \
+              "$requires_plugin_payload"
+
             continue
           end
         end
@@ -3468,12 +3831,11 @@
         end
 
         echo "Saved $manifest_url_field in $manifest_file"
-        __obsidian_missing_restore_readme "$library_entry" "$selected_url"
-        if test "$requires_plugin_payload" -eq 0
-          __obsidian_missing_restore_theme_screenshots \
-            "$library_entry" \
-            "$selected_url"
-        end
+
+        __obsidian_missing_restore_standard_files \
+          "$library_entry" \
+          "$selected_url" \
+          "$requires_plugin_payload"
       end
 
       set --local unresolved_repository_entries
