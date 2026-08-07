@@ -1925,14 +1925,12 @@ let
                           download_plugin(library_types[0], repository, release_cache)
                       else:
                           print("[SKIP] Plugin: no repository was provided")
-                      input("\\nPress ENTER to return to the main menu.")
                   elif choice == "Download a theme":
                       repository = input("GitHub repository URL or owner/repository: ").strip()
                       if repository:
                           download_theme(library_types[1], repository, release_cache, repository_contents_cache)
                       else:
                           print("[SKIP] Theme: no repository was provided")
-                      input("\\nPress ENTER to return to the main menu.")
                   elif choice == "Check for updates":
                       manage_updates(
                           library_types,

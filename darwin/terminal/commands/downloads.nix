@@ -2955,7 +2955,7 @@
             --jq '
               .tree[]?
               | select(.type == "blob")
-              | select(.path | test("\\.(?:png|jpe?g|webp|gif)$"; "i"))
+              | select(.path | test("\\.(png|jpe?g|webp|gif)$"; "i"))
               | [.path, .sha] | @tsv
             ' \
             2>/dev/null
@@ -3052,20 +3052,22 @@
             continue
           end
 
-          set --local staging_image "$destination.obsidian-missing-new"
+          set --local image_url (
+            command gh api \
+              "repos/$repository/contents/$relative_path" \
+              --jq .download_url \
+              2>/dev/null
+          )
 
-          if not command gh api \
-              "repos/$repository/git/blobs/$blob_sha" \
-              --jq .content \
-              2>/dev/null | command tr -d '\\n' | command base64 -D >"$staging_image"; or \
-              not test -s "$staging_image"; or \
-              not command mv -- "$staging_image" "$destination"
-            command rm -f -- "$staging_image"
-            echo "Notice: Could not save theme preview: $relative_path"
+          if test -z "$image_url"
+            echo "Notice: Could not resolve theme preview: $relative_path"
             continue
           end
 
-          echo "Saved $destination"
+          __obsidian_missing_download_url \
+            "$destination" \
+            "$image_url" \
+            "$relative_path"
         end
       end
 
@@ -3110,6 +3112,30 @@
             command jq -r \
               '.assets[]? | [.name, .browser_download_url] | @tsv'
           )
+        end
+
+        # Restore supported image assets from the latest release.
+        for release_asset in $release_assets
+          set --local release_parts \
+            (string split \t "$release_asset")
+
+          if test (count $release_parts) -lt 2
+            continue
+          end
+
+          set --local release_asset_name "$release_parts[1]"
+          set --local release_asset_url "$release_parts[2]"
+
+          if not string match -rq \
+              '(?i)\\.(png|jpe?g|gif|webp|svg|avif)$' \
+              "$release_asset_name"
+            continue
+          end
+
+          __obsidian_missing_download_url \
+            "$library_entry/$release_asset_name" \
+            "$release_asset_url" \
+            "$release_asset_name"
         end
 
         if test "$requires_plugin_payload" -eq 1
@@ -3175,6 +3201,55 @@
               "$expected_file"
           end
         else
+          # Restore additional theme release assets that gitdll preserves.
+          for release_asset in $release_assets
+            set --local release_parts \
+              (string split \t "$release_asset")
+
+            if test (count $release_parts) -lt 2
+              continue
+            end
+
+            set --local release_asset_name "$release_parts[1]"
+            set --local release_asset_url "$release_parts[2]"
+
+            switch "$release_asset_name"
+              case manifest.json theme.css obsidian.css main.js
+                continue
+
+              case '*.css' '*.js' fonts.zip
+                __obsidian_missing_download_url \
+                  "$library_entry/repo/$release_asset_name" \
+                  "$release_asset_url" \
+                  "repo/$release_asset_name"
+            end
+          end
+
+
+          if not test -s "$library_entry/main.js"
+            for release_asset in $release_assets
+              set --local release_parts \
+                (string split \t "$release_asset")
+
+              if test (count $release_parts) -lt 2
+                continue
+              end
+
+              if test "$release_parts[1]" != main.js
+                continue
+              end
+
+              __obsidian_missing_download_url \
+                "$library_entry/main.js" \
+                "$release_parts[2]" \
+                "main.js"
+
+              break
+            end
+          end
+
+
+          
           # Themes: restore manifest.json from release before repository.
           if not test -s "$library_entry/manifest.json"
             set --local manifest_release_url
