@@ -82,6 +82,7 @@ let
           identifier: str
           author: str
           description: str
+          manifest_missing: bool
           repository: str | None
           local_version: str | None
 
@@ -96,6 +97,10 @@ let
           @property
           def repository_url_label(self) -> str:
               return "yes" if self.repository is not None else "no"
+
+          @property
+          def manifest_missing_label(self) -> str:
+              return "yes" if self.manifest_missing else "no"
 
 
       @dataclass(frozen=True)
@@ -226,36 +231,39 @@ let
           return directory / "repo" / MANIFEST_FILE
 
 
-      def manifest_metadata(directory: Path) -> tuple[str, str, str, str | None]:
+      def manifest_metadata(directory: Path) -> tuple[str, str, str, str | None, bool]:
           source = manifest_file(directory)
           try:
               manifest = json.loads(source.read_text(encoding="utf-8"))
-          except (OSError, json.JSONDecodeError) as error:
-              raise RuntimeError(f"cannot read valid {MANIFEST_FILE}: {error}") from error
+          except (OSError, json.JSONDecodeError):
+              return directory.name, "", "", None, True
 
           if not isinstance(manifest, dict):
-              raise RuntimeError(f"{MANIFEST_FILE} does not contain an object")
+              return directory.name, "", "", None, True
 
           identifier = manifest.get("id")
-          if not isinstance(identifier, str) or not identifier.strip():
-              raise RuntimeError(f"{MANIFEST_FILE} has no usable id")
+          name = manifest.get("name")
+          if isinstance(name, str) and name.strip():
+              identifier = name.strip()
+          elif isinstance(identifier, str) and identifier.strip():
+              identifier = identifier.strip()
+          else:
+              identifier = directory.name
 
           author_value = manifest.get("author")
           author = author_value.strip() if isinstance(author_value, str) else ""
           if not author:
-              raise RuntimeError(f"{MANIFEST_FILE} has no usable author")
+              author_url = manifest.get("authorUrl")
+              author = author_url.strip() if isinstance(author_url, str) else ""
           if re.fullmatch(r"https?://[^\s]+", author, flags=re.IGNORECASE):
               author = re.sub(r"^https?://(?:www[.])?", "", author, flags=re.IGNORECASE)
               author = author.rstrip("/").rsplit("/", 1)[-1]
           author = re.sub(r"\s+", " ", author).strip()
-          if not author:
-              raise RuntimeError(f"{MANIFEST_FILE} has no usable author")
-
           description_value = manifest.get("description")
           description = description_value.strip() if isinstance(description_value, str) else ""
           description = re.sub(r"\s+", " ", description).strip()
 
-          return identifier.strip(), author, description, optional_manifest_version(source)
+          return identifier, author, description, optional_manifest_version(source), False
 
 
       def manifest_version(manifest_file: Path) -> str:
@@ -290,11 +298,7 @@ let
               if child.name.startswith(".") or child.is_symlink() or not child.is_dir():
                   continue
 
-              try:
-                  identifier, author, description, local_version = manifest_metadata(child)
-              except RuntimeError as error:
-                  report_error(f"Skipping {library_type.label.lower()} '{child.name}': {error}")
-                  continue
+              identifier, author, description, local_version, manifest_missing = manifest_metadata(child)
 
               repository = manifest_repository(child, library_type)
 
@@ -305,6 +309,7 @@ let
                       identifier,
                       author,
                       description,
+                      manifest_missing,
                       repository,
                       local_version,
                   )
@@ -628,33 +633,8 @@ let
           except RuntimeError as error:
               return CheckResult(entry, "UNAVAILABLE", message=str(error))
 
-          manifest = manifest_file(entry.path)
-          required_files = (MANIFEST_FILE, entry.library_type.payload_file)
-          missing_files = []
-          if not is_nonempty_file(entry.path / entry.library_type.payload_file):
-              missing_files.append(entry.library_type.payload_file)
-          if not is_nonempty_file(manifest):
-              missing_files.insert(0, MANIFEST_FILE)
-          if missing_files:
-              return CheckResult(
-                  entry,
-                  "RECOVERY REQUIRED",
-                  remote_version,
-                  f"missing {', '.join(missing_files)}",
-                  release,
-              )
-
           if entry.local_version is None:
-              return CheckResult(entry, "RECOVERY REQUIRED", remote_version, "invalid manifest.json", release)
-
-          if not is_nonempty_file(entry.path / README_FILE):
-              return CheckResult(
-                  entry,
-                  "RECOVERY REQUIRED",
-                  remote_version,
-                  "README.md is missing or empty",
-                  release,
-              )
+              return CheckResult(entry, "UNAVAILABLE", remote_version, "manifest has no version", release)
 
           comparison = compare_versions(entry.local_version, remote_version)
           if comparison == 0:
@@ -694,14 +674,6 @@ let
               return CheckResult(entry, "UNAVAILABLE", message=str(error))
 
           remote_version = source.version_label or source.location
-          if not is_nonempty_file(entry.path / README_FILE):
-              return CheckResult(
-                  entry,
-                  "UPDATE AVAILABLE",
-                  remote_version,
-                  "README.md is missing or empty",
-                  theme_source=source,
-              )
           if matches:
               return CheckResult(entry, "UP TO DATE", remote_version, theme_source=source)
           return CheckResult(entry, "UPDATE AVAILABLE", remote_version, theme_source=source)
@@ -740,6 +712,18 @@ let
               if result.status == "UNAVAILABLE":
                   report_error(f"Checking {entry.library_type.label.lower()} '{entry.label}' failed: {result.message}")
           return results
+
+
+      def check_results(
+          entries: list[LibraryEntry],
+          release_cache: dict[str, dict[str, Any] | Exception],
+          manifest_cache: dict[tuple[str, str], tuple[str, Path]],
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> list[CheckResult]:
+          return [
+              check_entry(entry, release_cache, manifest_cache, repository_contents_cache)
+              for entry in entries
+          ]
 
 
       def offer_updates(
@@ -820,10 +804,8 @@ let
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> None:
-          # Recheck when this menu opens so each submenu always lists the
-          # current set of recoverable or newer plugins and themes.
-          print_heading("Check for updates")
-          results = show_checks(
+          # Check silently so the two submenus contain only actual updates.
+          results = check_results(
               all_entries(library_types),
               release_cache,
               manifest_cache,
@@ -1251,17 +1233,17 @@ let
               return []
 
           if not entries:
-              print(f"No valid {library_type.label.lower()} were found in {library_type.root}.")
+              print(f"No {library_type.label.lower()} folders were found in {library_type.root}.")
               return []
 
           rows = [
-              f"{entry.label}\t{entry.author}\t{entry.description}\t{entry.version_label}\t{entry.repository_url_label}"
+              f"{entry.label}\t{entry.manifest_missing_label}\t{entry.author}\t{entry.description}\t{entry.version_label}\t{entry.repository_url_label}"
               for entry in entries
           ]
           selected_rows = fzf_select(
               rows,
               f"{library_type.label.lower()}> ",
-              "Columns: id, author, description, version, repository URL. TAB selects entries; ENTER continues.",
+              "Columns: name, manifest missing, author, description, version, repository URL. TAB selects entries; ENTER continues.",
               multi=True,
           )
           selected = set(selected_rows)
