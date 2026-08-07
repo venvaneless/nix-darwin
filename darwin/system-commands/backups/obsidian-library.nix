@@ -253,6 +253,24 @@ let
               raise
 
 
+      def create_theme_manifest(manifest_path: Path, repository: str, theme_name: str) -> None:
+          owner = repository.split("/", 1)[0]
+
+          manifest = {
+              "name": theme_name,
+              "author": owner,
+              "version": "0.0.0",
+              "minAppVersion": "0.0.0",
+              "themeUrl": f"https://github.com/{repository}",
+              "generatedManifest": True,
+          }
+
+          manifest_path.write_text(
+              json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+
+
       def set_manifest_repository(manifest_path: Path, library_type: LibraryType, repository: str) -> None:
           write_manifest_fields(manifest_path, { repository_field(library_type): f"https://github.com/{repository}" })
 
@@ -1061,10 +1079,18 @@ let
           readme_path = directory / README_FILE
           if not is_nonempty_file(readme_path) and download_repository_readme(repository, readme_path):
               downloaded.append(README_FILE)
+
           manifest_path = directory / MANIFEST_FILE
           if not manifest_path.is_file():
-              raise RuntimeError(f"theme source does not provide {MANIFEST_FILE}")
-          set_manifest_repository(manifest_path, library_type, repository)
+              create_theme_manifest(
+                  manifest_path,
+                  repository,
+                  directory.name,
+              )
+              downloaded.append(MANIFEST_FILE)
+          else:
+              set_manifest_repository(manifest_path, library_type, repository)
+
           return downloaded
 
 
@@ -1385,7 +1411,6 @@ let
                   staging = Path(temporary_directory) / folder_name
                   staging.mkdir()
                   downloaded = write_theme_source(staging, library_type, repository, source)
-                  set_manifest_repository(staging / MANIFEST_FILE, library_type, repository)
                   os.replace(staging, destination)
           except (OSError, RuntimeError) as error:
               report_error(f"[FAILED] Theme: {error}")

@@ -10,7 +10,7 @@
     ./codex/codex.nix
 
     # Declarative shared Codex plugins and MCP synchronization command
-    ./codex/extensions.nix
+    ./codex/extensions
 
     # Codex backup command and LaunchAgent
     ./codex/codex-backup.nix

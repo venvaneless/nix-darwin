@@ -1246,6 +1246,8 @@
           echo "Repository:"
           echo "  $canonical_repository_url"
 
+          command mkdir -p -- "$TMPDIR"
+
           set temporary_directory (
               command mktemp -d \
                   "$TMPDIR/gitdll-plugins.XXXXXXXXXX"
@@ -1934,6 +1936,8 @@
           echo "Repository:"
           echo "  $canonical_repository_url"
 
+          command mkdir -p -- "$TMPDIR"
+
           set temporary_directory (
               command mktemp -d \
                   "$TMPDIR/gitdll-themes.XXXXXXXXXX"
@@ -1958,6 +1962,9 @@
           )
 
           # Prefer standard files from the newest release before repository fallback.
+          set release_theme_css 0
+          set release_obsidian_css 0
+
           set release_json (
               command gh api \
                   "repos/$repository_owner/$repository_name/releases/latest" \
@@ -2628,6 +2635,28 @@
               end
           else
               echo "Notice: No README file was found."
+          end
+
+          if not test -s "$theme_stage/manifest.json"
+              if not command jq -n \
+                      --arg name "$theme_folder_name" \
+                      --arg author "$repository_owner" \
+                      --arg url "$canonical_repository_url" \
+                      '{
+                          name: $name,
+                          author: $author,
+                          version: "0.0.0",
+                          minAppVersion: "0.0.0",
+                          themeUrl: $url,
+                          generatedManifest: true
+                      }' \
+                      >"$theme_stage/manifest.json"
+                  echo "Error: Could not generate manifest.json."
+                  command rm -rf -- "$temporary_directory"
+                  continue
+              end
+
+              set saved_files $saved_files manifest.json
           end
 
           if not command jq \
