@@ -1654,7 +1654,7 @@
                       "$auxiliary_path"
                   set auxiliary_path_supported 1
               else if string match -rq \
-                      '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|md|markdown|org)$' \
+                      '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|svg|avif|md|markdown|org)$' \
                       "$auxiliary_path"
                   set auxiliary_path_supported 1
               else if string match -rq \
@@ -2437,7 +2437,7 @@
               end
 
               if string match -rq \
-                      '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+                      '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots|images|assets)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
                       "$repository_path"
                   set is_preview_folder_image 1
               end
@@ -2628,7 +2628,7 @@
                       "$auxiliary_path"
                   set auxiliary_path_supported 1
               else if string match -rq \
-                      '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|md|markdown|org)$' \
+                      '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|svg|avif|md|markdown|org)$' \
                       "$auxiliary_path"
                   set auxiliary_path_supported 1
               else if string match -rq \
@@ -2965,17 +2965,12 @@
         end
       end
 
-      # Download a missing file without replacing a healthy existing file.
+      # Download a file only when its destination does not already exist.
       function __obsidian_missing_download_url \
           --argument-names destination download_url description
 
-        if test -s "$destination"
+        if test -e "$destination"; or test -L "$destination"
           return 0
-        end
-
-        if test -L "$destination"
-          echo "Notice: Refusing to replace symlinked file: $destination"
-          return 1
         end
 
         set --local destination_parent (dirname "$destination")
@@ -3006,19 +3001,27 @@
         echo "Saved $destination"
       end
 
-      # Keep an existing non-empty README untouched. When no usable README is
-      # present, restore the repository README using its original filename.
+      # Keep an existing non-empty README untouched. Themes use the same
+      # root/repo placement rules as gitdll --themes.
       function __obsidian_missing_restore_readme \
           --argument-names library_entry repository_url
 
-        if command find "$library_entry" \
-            -maxdepth 1 \
-            -type f \
-            \( -iname 'README' -o -iname 'README.md' -o -iname 'README.markdown' -o -iname 'README.txt' \) \
-            -size +0c \
-            -print \
-            -quit | read --local existing_readme
-          return 0
+        for readme_root in \
+            "$library_entry" \
+            "$library_entry/repo"
+
+          for readme_name in \
+              README \
+              README.md \
+              README.markdown \
+              README.txt
+
+            if test -e "$readme_root/$readme_name"; or \
+                test -L "$readme_root/$readme_name"
+
+              return 0
+            end
+          end
         end
 
         set --local repository (
@@ -3026,7 +3029,10 @@
           string replace -r '\\.git$' ""
         )
 
-        if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
+        if not string match -rq \
+            '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' \
+            "$repository"
+
           echo "Notice: Could not restore README for $library_entry; repository URL is invalid."
           return 1
         end
@@ -3051,17 +3057,87 @@
           return 1
         end
 
-        set --local readme_name "$readme_parts[1]"
-        set --local readme_url "$readme_parts[2]"
+        set --local readme_name \
+          "$readme_parts[1]"
+
+        set --local readme_url \
+          "$readme_parts[2]"
+
+        set --local repository_paths (
+          command gh api \
+            "repos/$repository/git/trees/HEAD?recursive=1" \
+            --jq '.tree[]? | select(.type == "blob") | .path' \
+            2>/dev/null
+        )
+
+        set --local repository_image_paths
+        set --local use_repository_subfolder 0
+
+        for repository_path in $repository_paths
+          set --local repository_image_name \
+            (basename "$repository_path")
+
+          set --local is_root_image 0
+          set --local has_image_keyword 0
+          set --local is_image_folder_image 0
+
+          if not string match -q '*/*' "$repository_path"; and \
+              string match -rq \
+              '(?i)\.(png|jpe?g|gif|webp)$' \
+              "$repository_image_name"
+
+            set is_root_image 1
+          end
+
+          if string match -rq \
+              '(?i)(screen|screencap|screenshot|image|preview|previews).*?\.(png|jpe?g|gif|webp)$' \
+              "$repository_image_name"
+
+            set has_image_keyword 1
+          end
+
+          if string match -rq \
+              '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots|images|assets)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+              "$repository_path"
+
+            set is_image_folder_image 1
+          end
+
+          if test "$is_root_image" -eq 0; and \
+              test "$has_image_keyword" -eq 0; and \
+              test "$is_image_folder_image" -eq 0
+
+            continue
+          end
+
+          set --append repository_image_paths \
+            "$repository_path"
+
+          if string match -q '*/*' "$repository_path"
+            set use_repository_subfolder 1
+          end
+        end
+
+        if test (count $repository_image_paths) -gt 1
+          set use_repository_subfolder 1
+        end
+
+        set --local readme_root \
+          "$library_entry"
+
+        if test "$use_repository_subfolder" -eq 1
+          set readme_root \
+            "$library_entry/repo"
+        end
 
         __obsidian_missing_download_url \
-          "$library_entry/$readme_name" \
+          "$readme_root/$readme_name" \
           "$readme_url" \
           "$readme_name"
       end
 
-      # Restore missing theme screenshots and preview images while preserving
-      # their original repository-relative paths.
+      # Restore missing theme images using the same root/repo placement rules
+      # as gitdll --themes.
       function __obsidian_missing_restore_theme_screenshots \
           --argument-names library_entry repository_url
 
@@ -3069,111 +3145,102 @@
           string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
           string replace -r '\\.git$' ""
         )
-        if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
-          return 1
-        end
 
-        set --local repository_name (
-          string split / "$repository"
-        )[-1]
+        if not string match -rq \
+            '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' \
+            "$repository"
 
-        set --local normalized_repository_name (
-          string lower "$repository_name" |
-          string replace -ar '[^a-z0-9]' ""
-        )
-
-        set --local default_branch (
-          command gh api \
-            "repos/$repository" \
-            --jq .default_branch \
-            2>/dev/null
-        )
-
-        if test -z "$default_branch"
-          echo "Notice: Could not determine the default branch for $repository"
           return 1
         end
 
         set --local repository_paths (
           command gh api \
-            "repos/$repository/git/trees/$default_branch?recursive=1" \
-            --jq '.tree[]? | select(.type == "blob") | .path'
+            "repos/$repository/git/trees/HEAD?recursive=1" \
+            --jq '.tree[]? | select(.type == "blob") | .path' \
+            2>/dev/null
         )
 
-        set --local repository_tree_status $status
-
-        if test "$repository_tree_status" -ne 0
-          echo "Notice: Could not inspect theme preview images for $library_entry"
+        if test $status -ne 0
+          echo "Notice: Could not inspect theme images for $library_entry"
           return 1
         end
 
-        for relative_path in $repository_paths
-          if not string match -rq \
-              '(?i)\.(png|jpe?g|gif|webp)$' \
-              "$relative_path"
-            continue
-          end
+        set --local repository_image_paths
+        set --local use_repository_subfolder 0
 
-          set --local image_name (basename "$relative_path")
-          set --local image_stem (
-            string replace -r '\\.[^.]+$' "" -- "$image_name"
-          )
-
-          set --local normalized_image_name (
-            string lower "$image_stem" |
-            string replace -ar '[^a-z0-9]' ""
-          )
+        for repository_path in $repository_paths
+          set --local repository_image_name \
+            (basename "$repository_path")
 
           set --local is_root_image 0
           set --local has_image_keyword 0
-          set --local is_preview_folder_image 0
-          set --local has_theme_name 0
+          set --local is_image_folder_image 0
 
-          if not string match -q '*/*' "$relative_path"
+          if not string match -q '*/*' "$repository_path"; and \
+              string match -rq \
+              '(?i)\.(png|jpe?g|gif|webp)$' \
+              "$repository_image_name"
+
             set is_root_image 1
           end
 
           if string match -rq \
-              '(?i)(screen|screencap|screenshot|image|preview|previews)' \
-              "$image_name"
+              '(?i)(screen|screencap|screenshot|image|preview|previews).*?\.(png|jpe?g|gif|webp)$' \
+              "$repository_image_name"
+
             set has_image_keyword 1
           end
 
           if string match -rq \
-              '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots)[^/]*/' \
-              "$relative_path"
-            set is_preview_folder_image 1
-          end
+              '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots|images|assets)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+              "$repository_path"
 
-          if test -n "$normalized_repository_name"; and \
-              string match -q "*$normalized_repository_name*" \
-              "$normalized_image_name"
-            set has_theme_name 1
+            set is_image_folder_image 1
           end
 
           if test "$is_root_image" -eq 0; and \
               test "$has_image_keyword" -eq 0; and \
-              test "$is_preview_folder_image" -eq 0; and \
-              test "$has_theme_name" -eq 0
+              test "$is_image_folder_image" -eq 0
+
             continue
           end
 
-          set --local destination "$library_entry/$relative_path"
+          set --append repository_image_paths \
+            "$repository_path"
 
-          if test -s "$destination"
+          if string match -q '*/*' "$repository_path"
+            set use_repository_subfolder 1
+          end
+        end
+
+        if test (count $repository_image_paths) -gt 1
+          set use_repository_subfolder 1
+        end
+
+        set --local repository_asset_root \
+          "$library_entry"
+
+        if test "$use_repository_subfolder" -eq 1
+          set repository_asset_root \
+            "$library_entry/repo"
+        end
+
+        for repository_image_path in $repository_image_paths
+          set --local destination \
+            "$repository_asset_root/$repository_image_path"
+
+          if test -e "$destination"; or test -L "$destination"
             continue
           end
 
-          if test -L "$destination"
-            echo "Notice: Refusing to replace symlinked theme preview: $destination"
-            continue
-          end
+          set --local checked_path \
+            "$repository_asset_root"
 
-          set --local checked_path "$library_entry"
           set --local unsafe_path 0
 
-          for component in (string split / "$relative_path")
-            set checked_path "$checked_path/$component"
+          for component in (string split / "$repository_image_path")
+            set checked_path \
+              "$checked_path/$component"
 
             if test -L "$checked_path"
               echo "Notice: Refusing to write through symlinked theme path: $checked_path"
@@ -3186,29 +3253,22 @@
             continue
           end
 
-          set --local destination_parent (dirname "$destination")
-
-          if not command mkdir -p -- "$destination_parent"
-            echo "Notice: Could not create theme preview folder: $destination_parent"
-            continue
-          end
-
           set --local image_url (
             command gh api \
-              "repos/$repository/contents/$relative_path" \
+              "repos/$repository/contents/$repository_image_path" \
               --jq .download_url \
               2>/dev/null
           )
 
           if test -z "$image_url"
-            echo "Notice: Could not resolve theme preview: $relative_path"
+            echo "Notice: Could not resolve theme image: $repository_image_path"
             continue
           end
 
           __obsidian_missing_download_url \
             "$destination" \
             "$image_url" \
-            "$relative_path"
+            "$repository_image_path"
         end
       end
 
@@ -3532,7 +3592,7 @@
               "$auxiliary_path"
             set auxiliary_path_supported 1
           else if string match -rq \
-              '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|md|markdown|org)$' \
+              '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|svg|avif|md|markdown|org)$' \
               "$auxiliary_path"
             set auxiliary_path_supported 1
           else if string match -rq \
@@ -3548,12 +3608,9 @@
           set --local auxiliary_destination \
             "$library_entry/repo/$auxiliary_path"
 
-          if test -s "$auxiliary_destination"
-            continue
-          end
+          if test -e "$auxiliary_destination"; or \
+              test -L "$auxiliary_destination"
 
-          if test -L "$auxiliary_destination"
-            echo "Notice: Refusing to replace symlinked repository file: $auxiliary_destination"
             continue
           end
 
