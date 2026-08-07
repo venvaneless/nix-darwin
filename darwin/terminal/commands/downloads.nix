@@ -27,9 +27,9 @@
   # gitdll-themes links.txt [...]
   #
   # In the Obsidian modes, source directories are checked one level deep.
-  # A saved repository-url.txt is reused immediately. When it is absent,
-  # gitdll resolves only the matching repository metadata and saves the URL
-  # before handing the actual files to the downloader functions.
+  # A saved manifest URL is reused immediately. When it is absent, gitdll
+  # resolves only the matching repository metadata and saves the URL before
+  # handing the actual files to the downloader functions.
   # -----------------------------------------------------------------
   gitdll = {
     description = "Download Git repositories, Obsidian plugins, or Obsidian themes";
@@ -100,6 +100,7 @@
         # Keep selected downloader settings outside the mode conditional.
         set --local library_type
         set --local downloader_function
+        set --local manifest_url_field
         set --local missing_report_name
         set --local failed_report_name
 
@@ -111,6 +112,7 @@
 
           set library_type plugins
           set downloader_function __gitdll_plugins
+          set manifest_url_field pluginUrl
           set missing_report_name \
             missing-plugin-repository-urls.txt
           set failed_report_name \
@@ -126,6 +128,7 @@
 
           set library_type themes
           set downloader_function __gitdll_themes
+          set manifest_url_field themeUrl
           set missing_report_name \
             missing-theme-repository-urls.txt
           set failed_report_name \
@@ -821,21 +824,25 @@
           set --local original_url \
             "$mapping_parts[2]"
 
-          set --local matching_repository_file (
-            command find "$destination" \
+          set --local matching_manifest_file
+          for manifest_candidate in (command find "$destination" \
               -mindepth 2 \
               -maxdepth 2 \
               -type f \
-              -name repository-url.txt \
-              -exec grep \
-                -lFx \
-                "$original_url" \
-                {} \; \
-              2>/dev/null |
-            command head -n 1
-          )
+              -name manifest.json \
+              -print 2>/dev/null)
+            if command jq -e \
+                --arg field "$manifest_url_field" \
+                --arg url "$original_url" \
+                '.[$field] == $url' \
+                "$manifest_candidate" \
+                >/dev/null 2>&1
+              set matching_manifest_file "$manifest_candidate"
+              break
+            end
+          end
 
-          if test -z "$matching_repository_file"
+          if test -z "$matching_manifest_file"
             printf '%s — download failed: %s\n' \
               "$original_name" \
               "$original_url" \
@@ -2438,6 +2445,7 @@
                   string match -ra \
                       --groups-only \
                       '!\[[^]]*\]\(\s*<?([^ >)]+)' \
+                      -- \
                       $readme_contents
               )
 
@@ -2447,6 +2455,7 @@
                       string match -ria \
                           --groups-only \
                           "<img[^>]+src=[\"']([^\"']+)" \
+                          -- \
                           $readme_contents
                   )
 
@@ -2780,6 +2789,98 @@
         echo "Saved $library_entry/README.md"
       end
 
+      # Restore only common theme preview images. This asks GitHub for the
+      # repository tree and downloads individual matching blobs; it never
+      # downloads or extracts a repository archive.
+      function __obsidian_missing_restore_theme_screenshots \
+          --argument-names library_entry repository_url
+
+        set --local repository (
+          string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
+          string replace -r '\\.git$' ""
+        )
+        if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
+          return 1
+        end
+
+        set --local image_blobs (
+          command gh api \
+            "repos/$repository/git/trees/HEAD?recursive=1" \
+            --jq '
+              .tree[]?
+              | select(.type == "blob")
+              | select(
+                  (.path | test("^(?:screenshots?|images|assets)/.+\\.(?:png|jpe?g|webp|gif)$"; "i")) or
+                  (.path | test("^(?:screen|screencap|screenshot|preview)[A-Za-z0-9._-]*\\.(?:png|jpe?g|webp|gif)$"; "i"))
+                )
+              | [.path, .sha] | @tsv
+            ' \
+            2>/dev/null
+        )
+        if test $status -ne 0
+          echo "Notice: Could not inspect theme preview images for $library_entry"
+          return 1
+        end
+
+        for image_blob in $image_blobs
+          set --local image_parts (string split \t "$image_blob")
+          if test (count $image_parts) -ne 2
+            continue
+          end
+
+          set --local relative_path "$image_parts[1]"
+          set --local blob_sha "$image_parts[2]"
+          if not string match -rq \
+              '^(?:(?:screenshots?|images|assets)/.+|(?:screen|screencap|screenshot|preview)[A-Za-z0-9._-]*)\\.(?:png|jpe?g|webp|gif)$' \
+              "$relative_path"
+            continue
+          end
+
+          set --local destination "$library_entry/$relative_path"
+          if test -s "$destination"
+            continue
+          end
+          if test -L "$destination"
+            echo "Notice: Refusing to replace symlinked theme preview: $destination"
+            continue
+          end
+
+          set --local checked_path "$library_entry"
+          set --local unsafe_path 0
+          for component in (string split / "$relative_path")
+            set checked_path "$checked_path/$component"
+            if test -L "$checked_path"
+              echo "Notice: Refusing to write through symlinked theme path: $checked_path"
+              set unsafe_path 1
+              break
+            end
+          end
+          if test "$unsafe_path" -eq 1
+            continue
+          end
+
+          set --local destination_parent (dirname "$destination")
+          if not command mkdir -p -- "$destination_parent"
+            echo "Notice: Could not create theme preview folder: $destination_parent"
+            continue
+          end
+
+          set --local staging_image "$destination.obsidian-missing-new"
+          if not command gh api \
+              "repos/$repository/git/blobs/$blob_sha" \
+              --jq .content \
+              2>/dev/null | command tr -d '\\n' | command base64 -D >"$staging_image"; or \
+              not test -s "$staging_image"; or \
+              not command mv -- "$staging_image" "$destination"
+            command rm -f -- "$staging_image"
+            echo "Notice: Could not save theme preview: $relative_path"
+            continue
+          end
+
+          echo "Saved $destination"
+        end
+      end
+
       set --local missing_entries
       set --local missing_repository_entries
       set --local missing_report "$HOME/Downloads/obsidian-missing.txt"
@@ -2794,8 +2895,8 @@
         set manifest_url_field pluginUrl
       end
 
-      # List every manifest-backed entry before looking for a repository URL.
-      # Repository metadata is needed only for recovery and downloads.
+      # List every entry before looking for a repository URL. Incomplete
+      # manifests still appear, and only affect automatic URL resolution.
       printf '%-28s %-20s %-56s %s\n' \
         "ID" \
         "AUTHOR" \
@@ -2828,7 +2929,7 @@
         set --local manifest_fields (
           command jq -r \
             'if type == "object" then
-              [(.id // ""), (.author // ""), (.description // ""), (.version // "")]
+              [(.name // .id // ""), (.author // .authorUrl // ""), (.description // ""), (.version // "")]
               | map(if type == "string" then . else "" end)
               | @tsv
             else
@@ -2862,10 +2963,8 @@
         set table_author (string replace -ra '[[:space:]]+' ' ' -- "$table_author" | string trim)
         set table_description (string replace -ra '[[:space:]]+' ' ' -- "$table_description" | string trim)
         set table_version (string trim -- "$table_version")
-        if test -z "$table_id"; or test -z "$table_author"
-          set --append missing_entries \
-            "$entry_name — manifest.json has no usable id or author"
-          continue
+        if test -z "$table_id"
+          set table_id "$entry_name"
         end
         printf '%-28s %-20s %-56s %s\n' \
           "$table_id" \
@@ -2933,6 +3032,11 @@
           __obsidian_missing_restore_readme \
             "$library_entry" \
             "$manifest_repository_url"
+          if test "$requires_plugin_payload" -eq 0
+            __obsidian_missing_restore_theme_screenshots \
+              "$library_entry" \
+              "$manifest_repository_url"
+          end
           continue
         end
 
@@ -2947,6 +3051,11 @@
           end
           __obsidian_missing_trash_legacy_url "$legacy_repository_file"
           __obsidian_missing_restore_readme "$library_entry" "$legacy_repository_url"
+          if test "$requires_plugin_payload" -eq 0
+            __obsidian_missing_restore_theme_screenshots \
+              "$library_entry" \
+              "$legacy_repository_url"
+          end
           continue
         end
 
@@ -3056,6 +3165,11 @@
 
             echo "Saved $manifest_url_field in $manifest_file"
             __obsidian_missing_restore_readme "$library_entry" "$direct_repository_url"
+            if test "$requires_plugin_payload" -eq 0
+              __obsidian_missing_restore_theme_screenshots \
+                "$library_entry" \
+                "$direct_repository_url"
+            end
             continue
           end
         end
@@ -3259,6 +3373,11 @@
 
         echo "Saved $manifest_url_field in $manifest_file"
         __obsidian_missing_restore_readme "$library_entry" "$selected_url"
+        if test "$requires_plugin_payload" -eq 0
+          __obsidian_missing_restore_theme_screenshots \
+            "$library_entry" \
+            "$selected_url"
+        end
       end
 
       set --local unresolved_repository_entries
@@ -3271,6 +3390,7 @@
           set manifest_file "$library_entry/repo/manifest.json"
         end
         if not test -f "$manifest_file"
+          set --append unresolved_repository_entries (basename "$library_entry")
           continue
         end
         set --local manifest_repository_url (

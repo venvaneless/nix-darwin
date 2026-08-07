@@ -798,45 +798,93 @@ let
               update_entry(result.entry, release_cache, manifest_cache, repository_contents_cache)
 
 
+      def update_all_results(
+          results: list[CheckResult],
+          library_type: LibraryType,
+          release_cache: dict[str, dict[str, Any] | Exception],
+          manifest_cache: dict[tuple[str, str], tuple[str, Path]],
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> None:
+          updateable = updateable_results(results, library_type)
+          if not updateable:
+              print(f"No {library_type.label.lower()} are ready to update.")
+              return
+
+          print(f"{len(updateable)} {library_type.label.lower()} are ready to update:")
+          for result in updateable:
+              print(f"  {result.entry.label} ({result.entry.version_label} -> {result.remote_version or '-'})")
+
+          answer = input(
+              f"Update all {len(updateable)} listed {library_type.label.lower()} now? [y/N]: "
+          ).strip().casefold()
+          if answer not in {"y", "yes"}:
+              return
+
+          for result in updateable:
+              update_entry(result.entry, release_cache, manifest_cache, repository_contents_cache)
+
+
+      def check_library_type(
+          library_type: LibraryType,
+          release_cache: dict[str, dict[str, Any] | Exception],
+          manifest_cache: dict[tuple[str, str], tuple[str, Path]],
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> list[CheckResult]:
+          try:
+              entries = library_entries(library_type)
+          except RuntimeError as error:
+              fail(str(error))
+              return []
+
+          print(f"Checking {len(entries)} {library_type.label.lower()} for updates…")
+          return check_results(entries, release_cache, manifest_cache, repository_contents_cache)
+
+
       def manage_updates(
           library_types: tuple[LibraryType, ...],
           release_cache: dict[str, dict[str, Any] | Exception],
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> None:
-          # Check silently so the two submenus contain only actual updates.
-          results = check_results(
-              all_entries(library_types),
-              release_cache,
-              manifest_cache,
-              repository_contents_cache,
-          )
-          plugin_count = len(updateable_results(results, library_types[0]))
-          theme_count = len(updateable_results(results, library_types[1]))
-
           actions = [
-              f"Update plugins ({plugin_count} ready)",
-              f"Update themes ({theme_count} ready)",
+              "Plugins",
+              "Themes",
+              "Update all plugins",
+              "Update all themes",
               "Back",
           ]
           selection = fzf_select(
               actions,
               "updates> ",
-              "Choose a type to list and update only ready entries.",
+              "Check one type at a time, or update every available item of that type.",
           )
           choice = selection[0] if selection else "Back"
-          if choice.startswith("Update plugins"):
+          if choice == "Back":
+              return
+
+          if choice in {"Plugins", "Update all plugins"}:
+              library_type = library_types[0]
+          else:
+              library_type = library_types[1]
+
+          results = check_library_type(
+              library_type,
+              release_cache,
+              manifest_cache,
+              repository_contents_cache,
+          )
+          if choice in {"Plugins", "Themes"}:
               update_selected_results(
                   results,
-                  library_types[0],
+                  library_type,
                   release_cache,
                   manifest_cache,
                   repository_contents_cache,
               )
-          elif choice.startswith("Update themes"):
-              update_selected_results(
+          else:
+              update_all_results(
                   results,
-                  library_types[1],
+                  library_type,
                   release_cache,
                   manifest_cache,
                   repository_contents_cache,
