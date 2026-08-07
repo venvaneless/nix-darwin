@@ -1163,14 +1163,29 @@
               set existing_plugin_directory (
                   dirname "$existing_repository_file"
               )
+              set existing_plugin_readme 0
+
+              if command find "$existing_plugin_directory" \
+                      -maxdepth 1 \
+                      -type f \
+                      \( -iname "README" -o -iname "README.md" -o -iname "README.markdown" -o -iname "README.txt" \) \
+                      -size +0c \
+                      -print \
+                      -quit | read --local existing_readme
+                  set existing_plugin_readme 1
+              end
 
               if test -r "$existing_plugin_directory/manifest.json"; and \
                       test -s "$existing_plugin_directory/manifest.json"; and \
                       command jq -e . \
                           "$existing_plugin_directory/manifest.json" \
                           >/dev/null 2>&1; and \
+                      command jq --indent 2 . \
+                          "$existing_plugin_directory/manifest.json" | \
+                          command cmp -s - "$existing_plugin_directory/manifest.json"; and \
                       test -r "$existing_plugin_directory/main.js"; and \
-                      test -s "$existing_plugin_directory/main.js"
+                      test -s "$existing_plugin_directory/main.js"; and \
+                      test "$existing_plugin_readme" -eq 1
 
                   echo
                   echo "Skipping:"
@@ -1376,22 +1391,65 @@
 
           set plugin_directory "$destination/$plugin_id"
           set plugin_directory_exists 0
+          set refresh_plugin_manifest 0
 
           if test -d "$plugin_directory"
+              set plugin_manifest_indented 0
+              set plugin_readme_ok 0
+
+              if command find "$plugin_directory" \
+                      -maxdepth 1 \
+                      -type f \
+                      \( -iname "README" -o -iname "README.md" -o -iname "README.markdown" -o -iname "README.txt" \) \
+                      -size +0c \
+                      -print \
+                      -quit | read --local plugin_readme
+                  set plugin_readme_ok 1
+              end
+
+              if test -r "$plugin_directory/manifest.json"; and \
+                      test -s "$plugin_directory/manifest.json"; and \
+                      command jq -e . "$plugin_directory/manifest.json" >/dev/null 2>&1; and \
+                      command jq --indent 2 . "$plugin_directory/manifest.json" | \
+                          command cmp -s - "$plugin_directory/manifest.json"
+                  set plugin_manifest_indented 1
+              end
+
               if test -r "$plugin_directory/manifest.json"; and \
                       test -s "$plugin_directory/manifest.json"; and \
                       command jq -e . \
                           "$plugin_directory/manifest.json" \
                           >/dev/null 2>&1; and \
+                      test "$plugin_manifest_indented" -eq 1; and \
                       test -r "$plugin_directory/main.js"; and \
                       test -s "$plugin_directory/main.js"; and \
-                      test -f "$plugin_directory/repository-url.txt"
+                      test -f "$plugin_directory/repository-url.txt"; and \
+                      test "$plugin_readme_ok" -eq 1
 
                   echo
                   echo "Skipping:"
                   echo "  $plugin_id (already complete)"
                   command rm -rf -- "$temporary_directory"
                   continue
+              end
+
+              if test -r "$plugin_directory/manifest.json"; and \
+                      test -s "$plugin_directory/manifest.json"; and \
+                      command jq -e . "$plugin_directory/manifest.json" >/dev/null 2>&1; and \
+                      test "$plugin_manifest_indented" -eq 0; and \
+                      test -r "$plugin_directory/main.js"; and \
+                      test -s "$plugin_directory/main.js"; and \
+                      test -f "$plugin_directory/repository-url.txt"
+                  echo
+                  echo "Plugin manifest.json is not canonically indented:"
+                  echo "  $plugin_id"
+                  read --local --prompt-str="Re-download this plugin now? [y/N] " confirmation
+                  if not string match -irq '^y(es)?$' -- "$confirmation"
+                      echo "Skipping unchanged plugin: $plugin_id"
+                      command rm -rf -- "$temporary_directory"
+                      continue
+                  end
+                  set refresh_plugin_manifest 1
               end
 
               echo
@@ -1410,6 +1468,7 @@
 
           if not test -r "$plugin_stage/manifest.json"; or \
                   not test -s "$plugin_stage/manifest.json"; or \
+                  test "$refresh_plugin_manifest" -eq 1; or \
                   not command jq -e . \
                       "$plugin_stage/manifest.json" \
                       >/dev/null 2>&1
@@ -1452,7 +1511,8 @@
                   switch "$release_asset_name"
                       case main.js styles.css manifest.json
                           if test -r "$plugin_stage/$release_asset_name"; and \
-                                  test -s "$plugin_stage/$release_asset_name"
+                                  test -s "$plugin_stage/$release_asset_name"; and \
+                                  test "$refresh_plugin_manifest" -eq 0
                               continue
                           end
 
@@ -1510,7 +1570,8 @@
 
           for expected_file in main.js styles.css
               if test -r "$plugin_stage/$expected_file"; and \
-                      test -s "$plugin_stage/$expected_file"
+                      test -s "$plugin_stage/$expected_file"; and \
+                      test "$refresh_plugin_manifest" -eq 0
                   continue
               end
 
@@ -1591,7 +1652,8 @@
                       "README$readme_extension"
               end
 
-              if not test -f "$plugin_stage/$readme_output"
+              if not test -s "$plugin_stage/$readme_output"; or \
+                      test "$refresh_plugin_manifest" -eq 1
                   command cp -f \
                       "$readme" \
                       "$plugin_stage/$readme_output"
@@ -1789,6 +1851,17 @@
               )
 
               set existing_theme_manifest_ok 1
+              set existing_theme_readme_ok 0
+
+              if command find "$existing_theme_directory" \
+                      -maxdepth 1 \
+                      -type f \
+                      \( -iname "README" -o -iname "README.md" -o -iname "README.markdown" -o -iname "README.txt" \) \
+                      -size +0c \
+                      -print \
+                      -quit | read --local existing_theme_readme
+                  set existing_theme_readme_ok 1
+              end
 
               if test -e "$existing_theme_directory/manifest.json"; and \
                       not test -r "$existing_theme_directory/manifest.json"; or \
@@ -1803,7 +1876,8 @@
 
               if test -r "$existing_theme_directory/theme.css"; and \
                       test -s "$existing_theme_directory/theme.css"; and \
-                      test "$existing_theme_manifest_ok" -eq 1
+                      test "$existing_theme_manifest_ok" -eq 1; and \
+                      test "$existing_theme_readme_ok" -eq 1
                   echo
                   echo "Skipping:"
                   echo "  $existing_theme_directory (already complete)"
@@ -2139,6 +2213,17 @@
 
           if test -d "$theme_directory"
               set theme_manifest_ok 1
+              set theme_readme_ok 0
+
+              if command find "$theme_directory" \
+                      -maxdepth 1 \
+                      -type f \
+                      \( -iname "README" -o -iname "README.md" -o -iname "README.markdown" -o -iname "README.txt" \) \
+                      -size +0c \
+                      -print \
+                      -quit | read --local existing_theme_readme
+                  set theme_readme_ok 1
+              end
 
               if test -e "$theme_directory/manifest.json"; and \
                       not test -r "$theme_directory/manifest.json"; or \
@@ -2154,7 +2239,8 @@
               if test -r "$theme_directory/theme.css"; and \
                       test -s "$theme_directory/theme.css"; and \
                       test "$theme_manifest_ok" -eq 1; and \
-                      test -f "$theme_directory/repository-url.txt"
+                      test -f "$theme_directory/repository-url.txt"; and \
+                      test "$theme_readme_ok" -eq 1
 
                   echo
                   echo "Skipping:"
@@ -2319,7 +2405,7 @@
                       "README$readme_extension"
               end
 
-              if not test -f "$theme_stage/$readme_output"
+              if not test -s "$theme_stage/$readme_output"
                   command cp -f \
                       "$readme" \
                       "$theme_stage/$readme_output"
@@ -2564,16 +2650,98 @@
         return 1
       end
 
-        set --local missing_entries
-        set --local missing_report "$HOME/Downloads/obsidian-missing.txt"
-        set --local library_root_name (
-          basename "$library_root" | string lower
-        )
-        set --local requires_plugin_payload 0
+      # Write only a verified, non-empty GitHub URL. A temporary sibling file
+      # prevents a failed lookup from truncating an existing repository file.
+      function __obsidian_missing_save_repository_url \
+          --argument-names repository_file repository_url
 
-        if string match -rq '(plugin|extension)' "$library_root_name"
-          set requires_plugin_payload 1
+        if not string match -rq '^https://github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository_url"
+          return 1
         end
+
+        if test -L "$repository_file"
+          echo "Error: Refusing to replace symlinked repository-url.txt: $repository_file"
+          return 1
+        end
+
+        set --local staging_file "$repository_file.obsidian-missing-new"
+
+        if not printf '%s\n' "$repository_url" >"$staging_file"
+          command rm -f -- "$staging_file"
+          return 1
+        end
+
+        if not command mv -- "$staging_file" "$repository_file"
+          command rm -f -- "$staging_file"
+          return 1
+        end
+      end
+
+      # Keep an existing non-empty README untouched. When no usable README is
+      # present, restore README.md from the verified GitHub repository.
+      function __obsidian_missing_restore_readme \
+          --argument-names library_entry repository_url
+
+        if command find "$library_entry" \
+            -maxdepth 1 \
+            -type f \
+            \( -iname 'README' -o -iname 'README.md' -o -iname 'README.markdown' -o -iname 'README.txt' \) \
+            -size +0c \
+            -print \
+            -quit | read --local existing_readme
+          return 0
+        end
+
+        set --local repository (
+          string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
+          string replace -r '\\.git$' ""
+        )
+        if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
+          echo "Notice: Could not restore README.md for $library_entry; repository URL is invalid."
+          return 1
+        end
+        if test -L "$library_entry/README.md"
+          echo "Error: Refusing to replace symlinked README.md: $library_entry/README.md"
+          return 1
+        end
+        set --local staging_readme "$library_entry/README.md.obsidian-missing-new"
+
+        if not command gh api "repos/$repository/readme" --jq .content 2>/dev/null | \
+            command base64 -D >"$staging_readme"
+          command rm -f -- "$staging_readme"
+          echo "Notice: Could not restore README.md for $library_entry"
+          return 1
+        end
+
+        if not test -s "$staging_readme"; or \
+            not command mv -- "$staging_readme" "$library_entry/README.md"
+          command rm -f -- "$staging_readme"
+          echo "Notice: Could not save README.md for $library_entry"
+          return 1
+        end
+
+        echo "Saved $library_entry/README.md"
+      end
+
+      set --local missing_entries
+      set --local missing_repository_entries
+      set --local missing_report "$HOME/Downloads/obsidian-missing.txt"
+      set --local library_root_name (
+        basename "$library_root" | string lower
+      )
+      set --local requires_plugin_payload 0
+
+      if string match -rq '(plugin|extension)' "$library_root_name"
+        set requires_plugin_payload 1
+      end
+
+      # List every manifest-backed entry before looking for a repository URL.
+      # Repository metadata is needed only for recovery and downloads.
+      printf '%-28s %-20s %-56s %s\n' \
+        "ID" \
+        "AUTHOR" \
+        "DESCRIPTION" \
+        "VERSION"
 
       for library_entry in "$library_root"/*
         if not test -d "$library_entry"
@@ -2583,14 +2751,6 @@
         set --local entry_name (
           basename "$library_entry"
         )
-
-        set --local repository_file \
-          "$library_entry/repository-url.txt"
-
-        if test -f "$repository_file"; or \
-            test -f "$library_entry/repo/repository-url.txt"
-          continue
-        end
 
         set --local manifest_file \
           "$library_entry/manifest.json"
@@ -2603,6 +2763,102 @@
         if not test -f "$manifest_file"
           set --append missing_entries \
             "$entry_name — manifest.json missing"
+          continue
+        end
+
+        set --local manifest_fields (
+          command jq -r \
+            'if type == "object" then
+              [(.id // ""), (.author // ""), (.description // ""), (.version // "")]
+              | map(if type == "string" then . else "" end)
+              | @tsv
+            else
+              empty
+            end' \
+            "$manifest_file"
+        )
+        set --local manifest_columns (
+          string split \t "$manifest_fields"
+        )
+        set --local table_id "$entry_name"
+        set --local table_author "-"
+        set --local table_description "-"
+        set --local table_version "-"
+
+        if test (count $manifest_columns) -eq 4
+          if test -n "$manifest_columns[1]"
+            set table_id "$manifest_columns[1]"
+          end
+          set table_author "$manifest_columns[2]"
+          set table_description "$manifest_columns[3]"
+          set table_version "$manifest_columns[4]"
+        end
+
+        if string match -rq '^https?://[^[:space:]]+$' "$table_author"
+          set table_author (
+            string replace -r '^https?://(?:www\\.)?' "" -- "$table_author" |
+            string replace -r '/+$' "" |
+            string split / |
+            command tail -n 1
+          )
+        end
+        set table_author (string replace -ra '[[:space:]]+' ' ' -- "$table_author" | string trim)
+        set table_description (string replace -ra '[[:space:]]+' ' ' -- "$table_description" | string trim)
+        set table_version (string trim -- "$table_version")
+        if test -z "$table_author"
+          set table_author "-"
+        end
+        if test -z "$table_description"
+          set table_description "-"
+        end
+        if test -z "$table_version"
+          set table_version "-"
+        end
+        printf '%-28s %-20s %-56s %s\n' \
+          "$table_id" \
+          "$table_author" \
+          "$table_description" \
+          "$table_version"
+
+        set --local repository_file \
+          "$library_entry/repository-url.txt"
+
+        set --local existing_repository_url
+        for repository_candidate in \
+            "$library_entry/repository-url.txt" \
+            "$library_entry/repo/repository-url.txt"
+          if not test -f "$repository_candidate"; or \
+              not test -s "$repository_candidate"
+            continue
+          end
+
+          set existing_repository_url (
+            string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' <"$repository_candidate"
+          )
+          if test -n "$existing_repository_url"
+            set repository_file "$repository_candidate"
+            break
+          end
+        end
+
+        if test -n "$existing_repository_url"
+          echo "Keeping existing repository URL: $repository_file"
+          __obsidian_missing_restore_readme \
+            "$library_entry" \
+            "$existing_repository_url"
+          continue
+        end
+
+        set --append missing_repository_entries "$entry_name"
+
+        if not test -f "$repository_file"; and \
+            test -f "$library_entry/repo/repository-url.txt"
+          set repository_file "$library_entry/repo/repository-url.txt"
+        end
+
+        if test -f "$repository_file"; and test -s "$repository_file"
+          set --append missing_entries \
+            "$entry_name — repository-url.txt is non-empty but has no GitHub URL; preserved"
           continue
         end
 
@@ -2635,22 +2891,21 @@
           set library_id "$entry_name"
         end
 
-        set --local github_owner (
-          string replace -r \
-            '^https?://github\\.com/([^/]+)/?.*$' \
-            '$1' \
-            -- \
+        set --local author_url_owner (
+          string match -r -g \
+            '^https?://(?:www\\.)?github\\.com/([A-Za-z0-9-]+)/?' \
             "$author_url"
         )
 
-        if test "$github_owner" = "$author_url"
-          set github_owner "$author"
+        set --local direct_owners
+
+        if string match -rq '^[A-Za-z0-9-]+$' "$author"
+          set --append direct_owners "$author"
         end
 
-        set --local has_github_owner 0
-
-        if string match -rq '^[A-Za-z0-9-]+$' "$github_owner"
-          set has_github_owner 1
+        if string match -rq '^[A-Za-z0-9-]+$' "$author_url_owner"; and \
+            not contains -- "$author_url_owner" $direct_owners
+          set --append direct_owners "$author_url_owner"
         end
 
         set --local normalized_id (
@@ -2664,21 +2919,18 @@
           continue
         end
 
-        # First try the deterministic author-and-id repository URL. A URL
-        # alone is not enough: its manifest must agree with every populated
-        # local identity field before it is accepted automatically.
-        if test "$has_github_owner" -eq 1; and \
-            string match -rq '^[A-Za-z0-9._-]+$' "$library_id"
-          set --local direct_repository_url (
-            command gh api \
-              "repos/$github_owner/$library_id" \
-              --jq .html_url \
-              2>/dev/null
-          )
+        # Resolve the manifest's declared repository path first: author/id,
+        # then the GitHub owner in authorUrl/id. A remote manifest must have
+        # the same id and author before its URL can be saved.
+        for direct_owner in $direct_owners
+          if not string match -rq '^[A-Za-z0-9._-]+$' "$library_id"
+            continue
+          end
 
+          set --local direct_candidate "$direct_owner/$library_id"
           set --local direct_manifest_matches (
             command gh api \
-              "repos/$github_owner/$library_id/contents/manifest.json" \
+              "repos/$direct_candidate/contents/manifest.json" \
               --jq .content \
               2>/dev/null |
             command tr -d '\n' |
@@ -2687,15 +2939,11 @@
             command jq -e \
               --arg id "$library_id" \
               --arg author "$author" \
-              --arg author_url "$author_url" \
               '
                 if type == "object" then
                   (.id | type) == "string" and .id == $id and
                   (if $author == "" then true else
                     (.author? | type) == "string" and .author == $author
-                  end) and
-                  (if $author_url == "" then true else
-                    (.authorUrl? | type) == "string" and .authorUrl == $author_url
                   end)
                 else
                   false
@@ -2704,9 +2952,19 @@
               >/dev/null
           )
 
-          if test $status -eq 0; and test -n "$direct_repository_url"
-            printf '%s\n' "$direct_repository_url" >"$repository_file"
+          if test $status -eq 0
+            set --local direct_repository_url "https://github.com/$direct_candidate"
+
+            if not __obsidian_missing_save_repository_url \
+                "$repository_file" \
+                "$direct_repository_url"
+              set --append missing_entries \
+                "$entry_name — could not save verified repository URL"
+              continue
+            end
+
             echo "Saved $repository_file"
+            __obsidian_missing_restore_readme "$library_entry" "$direct_repository_url"
             continue
           end
         end
@@ -2729,18 +2987,30 @@
 
         if test $status -eq 0
           set candidates $manifest_candidates
-        else if test "$has_github_owner" -eq 1
+        else
           # Code search may be unavailable for a GitHub token. In that case,
-          # only inspect repositories owned by the manifest's GitHub author.
-          set --local owner_candidates (
-            command gh api \
-              "users/$github_owner/repos?per_page=100&type=owner" \
-              --jq '.[] | select(.archived | not) | .full_name' \
-              2>/dev/null
-          )
+          # only inspect repositories owned by the manifest author.
+          set --local fallback_owner "$author"
 
-          if test $status -eq 0
-            set candidates $owner_candidates
+          if not string match -rq '^[A-Za-z0-9-]+$' "$fallback_owner"
+            set fallback_owner "$author_url_owner"
+          end
+
+          if not string match -rq '^[A-Za-z0-9-]+$' "$fallback_owner"
+            set fallback_owner
+          end
+
+          if test -n "$fallback_owner"
+            set --local owner_candidates (
+              command gh api \
+                "users/$fallback_owner/repos?per_page=100&type=owner" \
+                --jq '.[] | select(.archived | not) | .full_name' \
+                2>/dev/null
+            )
+
+            if test $status -eq 0
+              set candidates $owner_candidates
+            end
           end
         end
 
@@ -2750,7 +3020,6 @@
           continue
         end
 
-        set --local exact_url
         set --local id_candidates
         set --local candidate_details
 
@@ -2790,6 +3059,10 @@
             continue
           end
 
+          if test "$candidate_author" != "$author"
+            continue
+          end
+
           # A plugin candidate must provide a usable compiled payload, either
           # at its root or in its newest release. Do not offer source-only
           # repositories that happen to contain a matching manifest.
@@ -2825,22 +3098,17 @@
               "$candidate_author_url"
           )
 
-          if test "$candidate_author" = "$author"; and \
-              test "$candidate_author_url" = "$author_url"
-            set exact_url "https://github.com/$candidate"
-            break
-          end
         end
 
-        if test -n "$exact_url"
-          set --local selected_url "$exact_url"
-        else
-          if test (count $id_candidates) -eq 0
-            set --append missing_entries \
-              "$entry_name — no remote manifest with matching id"
-            continue
-          end
+        if test (count $id_candidates) -eq 0
+          set --append missing_entries \
+            "$entry_name — no remote manifest with matching id and author"
+          continue
+        end
 
+        if test (count $id_candidates) -eq 1
+          set --local selected_url "https://github.com/$id_candidates[1]"
+        else
           set --local candidate_urls
           set --local candidate_index 1
 
@@ -2889,17 +3157,25 @@
             "https://github.com/$candidate_urls[$selection]"
         end
 
-        printf '%s\n' "$selected_url" >"$repository_file"
+        if not __obsidian_missing_save_repository_url \
+            "$repository_file" \
+            "$selected_url"
+          set --append missing_entries \
+            "$entry_name — could not save verified repository URL"
+          continue
+        end
+
         echo "Saved $repository_file"
+        __obsidian_missing_restore_readme "$library_entry" "$selected_url"
       end
 
-      if test (count $missing_entries) -gt 0
-        printf '%s\n' $missing_entries >"$missing_report"
-        echo "Unmatched entries:"
+      if test (count $missing_repository_entries) -gt 0
+        printf '%s\n' $missing_repository_entries >"$missing_report"
+        echo "Folders that were missing a usable repository-url.txt:"
         echo "  $missing_report"
       else
-        printf '%s\n' "All scanned entries were matched." >"$missing_report"
-        echo "All scanned entries were matched."
+        printf '%s\n' "All scanned entries have a usable repository-url.txt." >"$missing_report"
+        echo "All scanned entries have a usable repository-url.txt."
       end
     '';
   };
@@ -2985,9 +3261,8 @@
     # -----------------------------------------------------------------
     # ---- resolve-obsidian-repos -> Find repository URLs ---- #
     #
-    # Scans Downloads plus the permanent Obsidian plugin or
-    # theme library and writes repository-url.txt into folders
-    # where the repository can be resolved.
+    # Resolves only missing or empty repository-url.txt files in the
+    # permanent Obsidian plugin or theme library.
     #
     # Examples:
     # resolve-obsidian-repos plugins
@@ -2995,29 +3270,48 @@
     # resolve-obsidian-repos all
     # -----------------------------------------------------------------
     resolve-obsidian-repos = {
-      description = "Find and save GitHub repository URLs for Obsidian plugins and themes";
+      description = "Safely restore missing Obsidian repository URLs";
 
       body = ''
-        set --local resolver_script "/Users/ven/Downloads/resolve-obsidian-repositories.py"
-
-        set --local downloads_root "/Users/ven/Downloads"
-
         set --local plugins_root "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/Documents/data-backups/app-backups/obsidian/obsidian_extensions"
 
         set --local themes_root "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/Documents/data-backups/app-backups/obsidian/obsidian_themes"
 
-        if not test -f "$resolver_script"
-          echo "Resolver script not found:"
-          echo "$resolver_script"
+        if test (count $argv) -gt 1; or \
+            test (count $argv) -eq 1; and \
+            not contains -- "$argv[1]" plugins themes all
+          echo "Usage: resolve-obsidian-repos [plugins|themes|all]"
           return 1
         end
 
-        /usr/bin/env python3 \
-          "$resolver_script" \
-          $argv \
-          --downloads "$downloads_root" \
-          --plugins-root "$plugins_root" \
-          --themes-root "$themes_root"
+        set --local target all
+
+        if test (count $argv) -eq 1
+          set target "$argv[1]"
+        end
+
+        if not functions -q obsidian-missing
+          echo "Error: obsidian-missing is not available."
+          return 1
+        end
+
+        switch "$target"
+          case plugins
+            obsidian-missing "$plugins_root"
+          case themes
+            obsidian-missing "$themes_root"
+          case all
+            obsidian-missing "$plugins_root"
+            set --local plugins_status $status
+            obsidian-missing "$themes_root"
+            set --local themes_status $status
+
+            if test "$plugins_status" -ne 0
+              return "$plugins_status"
+            end
+
+            return "$themes_status"
+        end
       '';
     };
     # -----------------------------------------------------------------

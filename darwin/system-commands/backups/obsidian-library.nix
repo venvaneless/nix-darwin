@@ -78,16 +78,23 @@ let
       class LibraryEntry:
           library_type: LibraryType
           path: Path
-          repository: str
+          identifier: str
+          author: str
+          description: str
+          repository: str | None
           local_version: str | None
 
           @property
           def label(self) -> str:
-              return self.path.name
+              return self.identifier
 
           @property
           def version_label(self) -> str:
               return self.local_version or "unversioned"
+
+          @property
+          def repository_url_label(self) -> str:
+              return "yes" if self.repository is not None else "no"
 
 
       @dataclass(frozen=True)
@@ -170,36 +177,82 @@ let
           return response
 
 
-      def github_repository(repository_file: Path) -> str:
-          try:
-              contents = repository_file.read_text(encoding="utf-8")
-          except OSError as error:
-              raise RuntimeError(f"cannot read {REPOSITORY_FILE}: {error}") from error
-
-          # Repository files may contain blank lines, Markdown headings,
-          # angle-bracket links, or separate plugin/theme sections. Select
-          # the first actual GitHub repository URL and ignore other text.
-          matches = re.findall(
-              r"(?i)(?:https?://)?(?:www[.])?github[.]com[/:]([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9_.-]+)(?:[/?#>\s]|$)",
-              contents,
+      def github_repository(directory: Path) -> str:
+          # A direct file is preferred, but an empty, malformed, or whitespace-only
+          # direct file must not hide a valid repository URL in the repo subfolder.
+          repository_files = (
+              directory / REPOSITORY_FILE,
+              directory / "repo" / REPOSITORY_FILE,
           )
-          if not matches:
-              raise RuntimeError(f"{REPOSITORY_FILE} does not contain a GitHub repository URL")
+          inspected_files: list[Path] = []
 
-          owner, repository = matches[0]
-          repository = repository.removesuffix(".git").rstrip("/")
-          if not owner or not repository:
-              raise RuntimeError(f"{REPOSITORY_FILE} contains an invalid GitHub repository URL")
+          for repository_file in repository_files:
+              if not repository_file.is_file():
+                  continue
+              inspected_files.append(repository_file)
 
-          return f"{owner}/{repository}"
+              try:
+                  contents = repository_file.read_text(encoding="utf-8").strip()
+              except OSError:
+                  continue
+
+              # Blank lines and trailing whitespace are harmless. Select the first
+              # actual GitHub repository URL from the remaining file contents.
+              matches = re.findall(
+                  r"(?i)(?:https?://)?(?:www[.])?github[.]com[/:]([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9_.-]+)(?:[/?#>\s]|$)",
+                  contents,
+              )
+              if not matches:
+                  continue
+
+              owner, repository = matches[0]
+              repository = repository.removesuffix(".git").rstrip("/")
+              if owner and repository:
+                  return f"{owner}/{repository}"
+
+          if not inspected_files:
+              raise RuntimeError(
+                  f"{REPOSITORY_FILE} is missing both here and in the repo subfolder"
+              )
+
+          raise RuntimeError(
+              f"{REPOSITORY_FILE} has no GitHub repository URL in the direct or repo subfolder file"
+          )
 
 
-      def repository_url_file(directory: Path) -> Path:
-          direct_file = directory / REPOSITORY_FILE
+      def manifest_file(directory: Path) -> Path:
+          direct_file = directory / MANIFEST_FILE
           if direct_file.is_file():
               return direct_file
+          return directory / "repo" / MANIFEST_FILE
 
-          return directory / "repo" / REPOSITORY_FILE
+
+      def manifest_metadata(directory: Path) -> tuple[str, str, str, str | None]:
+          source = manifest_file(directory)
+          try:
+              manifest = json.loads(source.read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError) as error:
+              raise RuntimeError(f"cannot read valid {MANIFEST_FILE}: {error}") from error
+
+          if not isinstance(manifest, dict):
+              raise RuntimeError(f"{MANIFEST_FILE} does not contain an object")
+
+          identifier = manifest.get("id")
+          if not isinstance(identifier, str) or not identifier.strip():
+              identifier = directory.name
+
+          author_value = manifest.get("author")
+          author = author_value.strip() if isinstance(author_value, str) else ""
+          if re.fullmatch(r"https?://[^\s]+", author, flags=re.IGNORECASE):
+              author = re.sub(r"^https?://(?:www[.])?", "", author, flags=re.IGNORECASE)
+              author = author.rstrip("/").rsplit("/", 1)[-1]
+          author = re.sub(r"\s+", " ", author).strip() or "-"
+
+          description_value = manifest.get("description")
+          description = description_value.strip() if isinstance(description_value, str) else ""
+          description = re.sub(r"\s+", " ", description).strip() or "-"
+
+          return identifier.strip(), author, description, optional_manifest_version(source)
 
 
       def manifest_version(manifest_file: Path) -> str:
@@ -235,15 +288,27 @@ let
                   continue
 
               try:
-                  repository = github_repository(repository_url_file(child))
-                  # An incomplete folder with a repository URL is recoverable:
-                  # keep it visible so an update can restore release assets.
-                  local_version = optional_manifest_version(child / MANIFEST_FILE)
+                  identifier, author, description, local_version = manifest_metadata(child)
               except RuntimeError as error:
                   report_error(f"Skipping {library_type.label.lower()} '{child.name}': {error}")
                   continue
 
-              entries.append(LibraryEntry(library_type, child, repository, local_version))
+              try:
+                  repository = github_repository(child)
+              except RuntimeError:
+                  repository = None
+
+              entries.append(
+                  LibraryEntry(
+                      library_type,
+                      child,
+                      identifier,
+                      author,
+                      description,
+                      repository,
+                      local_version,
+                  )
+              )
 
           return entries
 
@@ -317,6 +382,43 @@ let
               raise RuntimeError(detail or f"could not download repository file {repository_path}")
 
           destination.write_bytes(completed.stdout)
+
+
+      def download_repository_readme(repository: str, destination: Path) -> bool:
+          # GitHub resolves README, README.md, and supported case variants.
+          completed = run(
+              [
+                  GH_BIN,
+                  "api",
+                  "-H",
+                  "Accept: application/vnd.github.raw+json",
+                  f"repos/{repository}/readme",
+              ],
+              text=False,
+          )
+          if completed.returncode != 0 or not completed.stdout:
+              return False
+
+          destination.write_bytes(completed.stdout)
+          return destination.is_file() and destination.stat().st_size > 0
+
+
+      def is_nonempty_file(path: Path) -> bool:
+          try:
+              return path.is_file() and path.stat().st_size > 0
+          except OSError:
+              return False
+
+
+      def manifest_is_canonically_indented(manifest_file: Path) -> bool:
+          # Keep manifest formatting consistent with the managed library.
+          try:
+              contents = manifest_file.read_text(encoding="utf-8")
+              manifest = json.loads(contents)
+          except (OSError, json.JSONDecodeError):
+              return False
+
+          return contents == json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
 
 
       def image_names(filenames: list[str]) -> list[str]:
@@ -526,8 +628,13 @@ let
           except RuntimeError as error:
               return CheckResult(entry, "UNAVAILABLE", message=str(error))
 
+          manifest = manifest_file(entry.path)
           required_files = (MANIFEST_FILE, entry.library_type.payload_file)
-          missing_files = [filename for filename in required_files if not (entry.path / filename).is_file()]
+          missing_files = []
+          if not is_nonempty_file(entry.path / entry.library_type.payload_file):
+              missing_files.append(entry.library_type.payload_file)
+          if not is_nonempty_file(manifest):
+              missing_files.insert(0, MANIFEST_FILE)
           if missing_files:
               return CheckResult(
                   entry,
@@ -539,6 +646,24 @@ let
 
           if entry.local_version is None:
               return CheckResult(entry, "RECOVERY REQUIRED", remote_version, "invalid manifest.json", release)
+
+          if not manifest_is_canonically_indented(manifest):
+              return CheckResult(
+                  entry,
+                  "RECOVERY REQUIRED",
+                  remote_version,
+                  "manifest.json is not canonically indented",
+                  release,
+              )
+
+          if not is_nonempty_file(entry.path / README_FILE):
+              return CheckResult(
+                  entry,
+                  "RECOVERY REQUIRED",
+                  remote_version,
+                  "README.md is missing or empty",
+                  release,
+              )
 
           comparison = compare_versions(entry.local_version, remote_version)
           if comparison == 0:
@@ -578,6 +703,14 @@ let
               return CheckResult(entry, "UNAVAILABLE", message=str(error))
 
           remote_version = source.version_label or source.location
+          if not is_nonempty_file(entry.path / README_FILE):
+              return CheckResult(
+                  entry,
+                  "UPDATE AVAILABLE",
+                  remote_version,
+                  "README.md is missing or empty",
+                  theme_source=source,
+              )
           if matches:
               return CheckResult(entry, "UP TO DATE", remote_version, theme_source=source)
           return CheckResult(entry, "UPDATE AVAILABLE", remote_version, theme_source=source)
@@ -589,6 +722,12 @@ let
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> CheckResult:
+          if entry.repository is None:
+              return CheckResult(
+                  entry,
+                  "REPOSITORY URL REQUIRED",
+                  message=f"{REPOSITORY_FILE} is missing or has no GitHub URL",
+              )
           if entry.library_type.is_theme:
               return check_theme_entry(entry, release_cache, repository_contents_cache)
           return check_plugin_entry(entry, release_cache, manifest_cache)
@@ -634,7 +773,108 @@ let
               update_entry(entry, release_cache, manifest_cache, repository_contents_cache)
 
 
+      def updateable_results(results: list[CheckResult], library_type: LibraryType) -> list[CheckResult]:
+          if library_type.is_theme:
+              allowed_statuses = {"UPDATE AVAILABLE"}
+          else:
+              allowed_statuses = {"UPDATE AVAILABLE", "VERSION DIFFERENT", "RECOVERY REQUIRED"}
+
+          return [
+              result
+              for result in results
+              if result.entry.library_type == library_type and result.status in allowed_statuses
+          ]
+
+
+      def update_selected_results(
+          results: list[CheckResult],
+          library_type: LibraryType,
+          release_cache: dict[str, dict[str, Any] | Exception],
+          manifest_cache: dict[tuple[str, str], tuple[str, Path]],
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> None:
+          updateable = updateable_results(results, library_type)
+          if not updateable:
+              print(f"No {library_type.label.lower()} are ready to update.")
+              return
+
+          rows = [
+              f"{result.entry.label}\t{result.entry.version_label}\t{result.remote_version or '-'}\t{result.status}\t{result.message or '-'}"
+              for result in updateable
+          ]
+          selected_rows = fzf_select(
+              rows,
+              f"update {library_type.label.lower()}> ",
+              "TAB selects entries; ENTER updates the selected entries.",
+              multi=True,
+          )
+          selected = set(selected_rows)
+          selected_results = [result for result, row in zip(updateable, rows, strict=True) if row in selected]
+          if not selected_results:
+              return
+
+          answer = input(
+              f"Update {len(selected_results)} selected {library_type.label.lower()} now? [y/N]: "
+          ).strip().casefold()
+          if answer not in {"y", "yes"}:
+              return
+
+          for result in selected_results:
+              update_entry(result.entry, release_cache, manifest_cache, repository_contents_cache)
+
+
+      def manage_updates(
+          library_types: tuple[LibraryType, ...],
+          release_cache: dict[str, dict[str, Any] | Exception],
+          manifest_cache: dict[tuple[str, str], tuple[str, Path]],
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> None:
+          # Recheck when this menu opens so each submenu always lists the
+          # current set of recoverable or newer plugins and themes.
+          print_heading("Check for updates")
+          results = show_checks(
+              all_entries(library_types),
+              release_cache,
+              manifest_cache,
+              repository_contents_cache,
+          )
+          plugin_count = len(updateable_results(results, library_types[0]))
+          theme_count = len(updateable_results(results, library_types[1]))
+
+          actions = [
+              f"Update plugins ({plugin_count} ready)",
+              f"Update themes ({theme_count} ready)",
+              "Back",
+          ]
+          selection = fzf_select(
+              actions,
+              "updates> ",
+              "Choose a type to list and update only ready entries.",
+          )
+          choice = selection[0] if selection else "Back"
+          if choice.startswith("Update plugins"):
+              update_selected_results(
+                  results,
+                  library_types[0],
+                  release_cache,
+                  manifest_cache,
+                  repository_contents_cache,
+              )
+          elif choice.startswith("Update themes"):
+              update_selected_results(
+                  results,
+                  library_types[1],
+                  release_cache,
+                  manifest_cache,
+                  repository_contents_cache,
+              )
+
+
       def archive_status(entry: LibraryEntry) -> None:
+          if entry.repository is None:
+              print(f"[SKIP] {entry.label}: {REPOSITORY_FILE} is missing or has no GitHub URL")
+              return
+
           try:
               repository = gh_json(f"repos/{entry.repository}")
           except RuntimeError as error:
@@ -664,6 +904,15 @@ let
               print(f"[SKIP] {entry.label}: latest release is missing {', '.join(missing_files)}")
               return
 
+          if not manifest_is_canonically_indented(manifest_file(entry.path)):
+              answer = input(
+                  f"{entry.label}: manifest.json is not canonically indented. "
+                  "Re-download this plugin now? [y/N]: "
+              ).strip().casefold()
+              if answer not in {"y", "yes"}:
+                  print(f"[SKIP] {entry.label}: manifest-format repair was not confirmed")
+                  return
+
           allowed_files = required_files + entry.library_type.optional_files + tuple(image_names(list(assets)))
           with tempfile.TemporaryDirectory(prefix="obsidian-library-update-") as temporary_directory:
               temporary_path = Path(temporary_directory)
@@ -676,6 +925,10 @@ let
                       destination = temporary_path / filename
                       download_asset(entry.repository, asset, destination)
                       downloaded.append(filename)
+
+                  readme_path = temporary_path / README_FILE
+                  if not is_nonempty_file(readme_path) and download_repository_readme(entry.repository, readme_path):
+                      downloaded.append(README_FILE)
 
                   downloaded_version = manifest_version(temporary_path / MANIFEST_FILE)
                   if downloaded_version != result.remote_version:
@@ -703,6 +956,10 @@ let
               destination.parent.mkdir(parents=True, exist_ok=True)
               download_theme_file(repository, remote_file, destination)
               downloaded.append(remote_file.destination_name)
+
+          readme_path = directory / README_FILE
+          if not is_nonempty_file(readme_path) and download_repository_readme(repository, readme_path):
+              downloaded.append(README_FILE)
           return downloaded
 
 
@@ -848,9 +1105,23 @@ let
                   download_asset(repository, assets[MANIFEST_FILE], manifest_path)
                   folder_name = plugin_folder_name(manifest_path)
                   destination = library_type.root / folder_name
+                  refresh_existing_plugin = False
                   if destination.exists():
-                      print(f"[SKIP] Plugin: {destination} already exists; use Plugins > Check for updates to recover it")
-                      return
+                      if not destination.is_dir():
+                          print(f"[SKIP] Plugin: {destination} exists but is not a directory")
+                          return
+                      if manifest_is_canonically_indented(destination / MANIFEST_FILE):
+                          print(f"[SKIP] Plugin: {destination} already exists; use Plugins > Check for updates to recover it")
+                          return
+
+                      answer = input(
+                          f"{folder_name}: manifest.json is not canonically indented. "
+                          "Re-download this plugin now? [y/N]: "
+                      ).strip().casefold()
+                      if answer not in {"y", "yes"}:
+                          print(f"[SKIP] Plugin: manifest-format repair was not confirmed for {folder_name}")
+                          return
+                      refresh_existing_plugin = True
 
                   staging = staging_parent / folder_name
                   staging.mkdir()
@@ -861,13 +1132,25 @@ let
                           continue
                       download_asset(repository, assets[filename], staging / filename)
                       downloaded.append(filename)
+                  readme_path = staging / README_FILE
+                  if not is_nonempty_file(readme_path) and download_repository_readme(repository, readme_path):
+                      downloaded.append(README_FILE)
                   (staging / REPOSITORY_FILE).write_text(f"https://github.com/{repository}\n", encoding="utf-8")
-                  os.replace(staging, destination)
+                  if refresh_existing_plugin:
+                      for filename in downloaded:
+                          source = staging / filename
+                          refreshed_file = destination / filename
+                          staging_file = refreshed_file.with_name(f".{refreshed_file.name}.obsidian-library-new")
+                          shutil.copyfile(source, staging_file)
+                          os.replace(staging_file, refreshed_file)
+                  else:
+                      os.replace(staging, destination)
           except (OSError, RuntimeError) as error:
               report_error(f"[FAILED] Plugin: {error}")
               return
 
-          print(f"[DOWNLOADED] Plugin: {folder_name} ({', '.join(downloaded)})")
+          action = "REDOWNLOADED" if refresh_existing_plugin else "DOWNLOADED"
+          print(f"[{action}] Plugin: {folder_name} ({', '.join(downloaded)})")
 
 
       def download_theme(
@@ -970,13 +1253,13 @@ let
               return []
 
           rows = [
-              f"{entry.label}\t{entry.version_label}\t{entry.repository}"
+              f"{entry.label}\t{entry.author}\t{entry.description}\t{entry.version_label}\t{entry.repository_url_label}"
               for entry in entries
           ]
           selected_rows = fzf_select(
               rows,
               f"{library_type.label.lower()}> ",
-              "TAB selects multiple entries; ENTER continues with the selected entries.",
+              "Columns: id, author, description, version, repository-url. TAB selects entries; ENTER continues.",
               multi=True,
           )
           selected = set(selected_rows)
@@ -1096,9 +1379,12 @@ let
                           print("[SKIP] Theme: no repository was provided")
                       input("\\nPress ENTER to return to the main menu.")
                   elif choice == "Check for updates":
-                      print_heading("Check for updates")
-                      results = show_checks(all_entries(library_types), release_cache, manifest_cache, repository_contents_cache)
-                      offer_updates(results, release_cache, manifest_cache, repository_contents_cache)
+                      manage_updates(
+                          library_types,
+                          release_cache,
+                          manifest_cache,
+                          repository_contents_cache,
+                      )
                       input("\nPress ENTER to return to the main menu.")
                   else:
                       return 0
