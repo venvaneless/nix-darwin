@@ -60,6 +60,8 @@ let
       MANIFEST_FILE = "manifest.json"
       PLUGIN_URL_FIELD = "pluginUrl"
       THEME_URL_FIELD = "themeUrl"
+      ABANDONED_FIELD = "abandoned"
+      ARCHIVED_FIELD = "archived"
       README_FILE = "README.md"
       DEFAULT_DOWNLOADS_DIR = Path.home() / "Downloads"
       GH_BIN = os.environ["OBSIDIAN_LIBRARY_GH"]
@@ -85,6 +87,8 @@ let
           manifest_missing: bool
           repository: str | None
           local_version: str | None
+          abandoned: bool
+          archived: bool
 
           @property
           def label(self) -> str:
@@ -101,6 +105,14 @@ let
           @property
           def manifest_missing_label(self) -> str:
               return "yes" if self.manifest_missing else "no"
+
+          @property
+          def repository_status_label(self) -> str:
+              if self.abandoned:
+                  return "abandoned"
+              if self.archived:
+                  return "archived"
+              return ""
 
 
       @dataclass(frozen=True)
@@ -210,7 +222,19 @@ let
           return github_repository_from_url(manifest.get(repository_field(library_type)))
 
 
-      def set_manifest_repository(manifest_path: Path, library_type: LibraryType, repository: str) -> None:
+      def manifest_status(directory: Path) -> tuple[bool, bool]:
+          try:
+              manifest = json.loads(manifest_file(directory).read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError):
+              return False, False
+          if not isinstance(manifest, dict):
+              return False, False
+          return manifest.get(ABANDONED_FIELD) == "yes", manifest.get(ARCHIVED_FIELD) == "yes"
+
+
+      def write_manifest_fields(manifest_path: Path, fields: dict[str, str]) -> None:
+          if manifest_path.is_symlink():
+              raise RuntimeError(f"refusing to replace symlinked {MANIFEST_FILE}: {manifest_path}")
           try:
               manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
           except (OSError, json.JSONDecodeError) as error:
@@ -218,10 +242,26 @@ let
           if not isinstance(manifest, dict):
               raise RuntimeError(f"{MANIFEST_FILE} does not contain an object")
 
-          manifest[repository_field(library_type)] = f"https://github.com/{repository}"
+          manifest.update(fields)
           staging = manifest_path.with_name(f".{manifest_path.name}.obsidian-library-new")
-          staging.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-          os.replace(staging, manifest_path)
+          try:
+              staging.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+              os.replace(staging, manifest_path)
+          except OSError:
+              staging.unlink(missing_ok=True)
+              raise
+
+
+      def set_manifest_repository(manifest_path: Path, library_type: LibraryType, repository: str) -> None:
+          write_manifest_fields(manifest_path, { repository_field(library_type): f"https://github.com/{repository}" })
+
+
+      def mark_repository_status(entry: LibraryEntry, field: str) -> str:
+          try:
+              write_manifest_fields(manifest_file(entry.path), { field: "yes" })
+          except RuntimeError as error:
+              return f"; could not save {field}: {error}"
+          return ""
 
 
       def manifest_file(directory: Path) -> Path:
@@ -301,6 +341,7 @@ let
               identifier, author, description, local_version, manifest_missing = manifest_metadata(child)
 
               repository = manifest_repository(child, library_type)
+              abandoned, archived = manifest_status(child)
 
               entries.append(
                   LibraryEntry(
@@ -312,6 +353,8 @@ let
                       manifest_missing,
                       repository,
                       local_version,
+                      abandoned,
+                      archived,
                   )
               )
 
@@ -685,12 +728,35 @@ let
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> CheckResult:
+          if entry.abandoned:
+              return CheckResult(entry, "ABANDONED", message="manifest marks this repository as abandoned")
+          if entry.archived:
+              return CheckResult(entry, "ARCHIVED", message="manifest marks this repository as archived")
           if entry.repository is None:
               return CheckResult(
                   entry,
                   "REPOSITORY URL REQUIRED",
                   message=f"{repository_field(entry.library_type)} is missing or has no GitHub URL",
               )
+
+          completed = run([GH_BIN, "api", f"repos/{entry.repository}"])
+          if completed.returncode != 0:
+              detail = completed.stderr.strip() or completed.stdout.strip()
+              if re.search(r"(?:HTTP[ ]*)?404|not found", detail, flags=re.IGNORECASE):
+                  suffix = mark_repository_status(entry, ABANDONED_FIELD)
+                  return CheckResult(entry, "ABANDONED", message=f"GitHub returned 404; marked abandoned{suffix}")
+              return CheckResult(entry, "UNAVAILABLE", message=detail or "could not check repository availability")
+
+          try:
+              repository_metadata = json.loads(completed.stdout)
+          except json.JSONDecodeError as error:
+              return CheckResult(entry, "UNAVAILABLE", message=f"GitHub returned invalid repository metadata: {error}")
+          if not isinstance(repository_metadata, dict):
+              return CheckResult(entry, "UNAVAILABLE", message="GitHub returned unexpected repository metadata")
+          if repository_metadata.get("archived") is True:
+              suffix = mark_repository_status(entry, ARCHIVED_FIELD)
+              return CheckResult(entry, "ARCHIVED", message=f"GitHub marks this repository as archived{suffix}")
+
           if entry.library_type.is_theme:
               return check_theme_entry(entry, release_cache, repository_contents_cache)
           return check_plugin_entry(entry, release_cache, manifest_cache)
@@ -899,10 +965,18 @@ let
           try:
               repository = gh_json(f"repos/{entry.repository}")
           except RuntimeError as error:
+              if re.search(r"(?:HTTP[ ]*)?404|not found", str(error), flags=re.IGNORECASE):
+                  suffix = mark_repository_status(entry, ABANDONED_FIELD)
+                  print(f"[ABANDONED] {entry.label}: GitHub returned 404; marked abandoned{suffix}")
+                  return
               print(f"[UNAVAILABLE] {entry.label} — {error}")
               return
 
           archived = repository.get("archived") is True
+          if archived:
+              suffix = mark_repository_status(entry, ARCHIVED_FIELD)
+              print(f"[ARCHIVED] {entry.library_type.label}: {entry.label} ({entry.repository}); marked archived{suffix}")
+              return
           status = "ARCHIVED" if archived else "ACTIVE"
           print(f"[{status}] {entry.library_type.label}: {entry.label} ({entry.repository})")
 
@@ -1285,13 +1359,13 @@ let
               return []
 
           rows = [
-              f"{entry.label}\t{entry.manifest_missing_label}\t{entry.author}\t{entry.description}\t{entry.version_label}\t{entry.repository_url_label}"
+              f"{entry.label}\t{entry.repository_status_label}\t{entry.manifest_missing_label}\t{entry.author}\t{entry.description}\t{entry.version_label}\t{entry.repository_url_label}"
               for entry in entries
           ]
           selected_rows = fzf_select(
               rows,
               f"{library_type.label.lower()}> ",
-              "Columns: name, manifest missing, author, description, version, repository URL. TAB selects entries; ENTER continues.",
+              "Columns: name, repository status, manifest missing, author, description, version, repository URL. TAB selects entries; ENTER continues.",
               multi=True,
           )
           selected = set(selected_rows)
