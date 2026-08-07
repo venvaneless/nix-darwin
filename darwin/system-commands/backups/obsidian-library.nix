@@ -489,6 +489,144 @@ let
           return destination.is_file() and destination.stat().st_size > 0
 
 
+      def download_repository_documentation(
+          repository: str,
+          directory: Path,
+      ) -> list[str]:
+          tree = gh_json(
+              f"repos/{repository}/git/trees/HEAD?recursive=1"
+          ).get("tree")
+
+          if not isinstance(tree, list):
+              return []
+
+          documentation_folders = {
+              "doc",
+              "docs",
+              "documentation",
+              "documentaion",
+          }
+
+          documentation_suffixes = {
+              ".md",
+              ".markdown",
+              ".org",
+          }
+
+          asset_suffixes = {
+              ".avif",
+              ".gif",
+              ".jpeg",
+              ".jpg",
+              ".md",
+              ".markdown",
+              ".org",
+              ".png",
+              ".svg",
+              ".webp",
+          }
+
+          repository_paths: list[str] = []
+
+          for item in tree:
+              if not isinstance(item, dict):
+                  continue
+
+              if item.get("type") != "blob":
+                  continue
+
+              repository_path = item.get("path")
+              if not isinstance(repository_path, str):
+                  continue
+
+              path = Path(repository_path)
+              path_parts = tuple(
+                  part.casefold()
+                  for part in path.parts
+              )
+              suffix = path.suffix.casefold()
+
+              is_documentation_file = (
+                  suffix in documentation_suffixes
+                  and any(
+                      part in documentation_folders
+                      for part in path_parts[:-1]
+                  )
+              )
+
+              is_asset_file = (
+                  suffix in asset_suffixes
+                  and "assets" in path_parts[:-1]
+              )
+
+              is_root_org_file = (
+                  len(path.parts) == 1
+                  and suffix == ".org"
+              )
+
+              if not (
+                  is_documentation_file
+                  or is_asset_file
+                  or is_root_org_file
+              ):
+                  continue
+
+              repository_paths.append(repository_path)
+
+          downloaded: list[str] = []
+
+          for repository_path in sorted(repository_paths):
+              destination_name = f"repo/{repository_path}"
+              destination = directory / destination_name
+
+              if is_nonempty_file(destination):
+                  continue
+
+              destination.parent.mkdir(
+                  parents=True,
+                  exist_ok=True,
+              )
+
+              download_repository_file(
+                  repository,
+                  repository_path,
+                  destination,
+              )
+
+              downloaded.append(destination_name)
+
+          return downloaded
+
+
+      def download_plugin_release_data(
+          repository: str,
+          assets: dict[str, dict[str, Any]],
+          directory: Path,
+      ) -> list[str]:
+          data_asset = assets.get("data.json")
+          if data_asset is None:
+              return []
+
+          destination_name = "release-assets/data.json"
+          destination = directory / destination_name
+
+          if is_nonempty_file(destination):
+              return []
+
+          destination.parent.mkdir(
+              parents=True,
+              exist_ok=True,
+          )
+
+          download_asset(
+              repository,
+              data_asset,
+              destination,
+          )
+
+          return [destination_name]
+
+
       def is_nonempty_file(path: Path) -> bool:
           try:
               return path.is_file() and path.stat().st_size > 0
@@ -530,6 +668,15 @@ let
 
           for image_name in image_names(list(assets)):
               files.append(ThemeRemoteFile(image_name, image_name, release_asset=assets[image_name]))
+
+          if "data.json" in assets:
+              files.append(
+                  ThemeRemoteFile(
+                      "data.json",
+                      "repo/data.json",
+                      release_asset=assets["data.json"],
+                  )
+              )
 
           tag_name = release.get("tag_name")
           return ThemeSource(
@@ -1274,6 +1421,21 @@ let
                   if not is_nonempty_file(readme_path) and download_repository_readme(entry.repository, readme_path):
                       downloaded.append(README_FILE)
 
+                  downloaded.extend(
+                      download_repository_documentation(
+                          entry.repository,
+                          temporary_path,
+                      )
+                  )
+
+                  downloaded.extend(
+                      download_plugin_release_data(
+                          entry.repository,
+                          assets,
+                          temporary_path,
+                      )
+                  )
+
                   set_manifest_repository(temporary_path / MANIFEST_FILE, entry.library_type, entry.repository)
 
                   downloaded_version = manifest_version(temporary_path / MANIFEST_FILE)
@@ -1285,6 +1447,7 @@ let
                   for filename in downloaded:
                       source = temporary_path / filename
                       destination = manifest_file(entry.path) if filename == MANIFEST_FILE else entry.path / filename
+                      destination.parent.mkdir(parents=True, exist_ok=True)
                       staging = destination.with_name(f".{destination.name}.obsidian-library-new")
                       shutil.copyfile(source, staging)
                       os.replace(staging, destination)
@@ -1311,6 +1474,13 @@ let
           readme_path = directory / README_FILE
           if not is_nonempty_file(readme_path) and download_repository_readme(repository, readme_path):
               downloaded.append(README_FILE)
+
+          downloaded.extend(
+              download_repository_documentation(
+                  repository,
+                  directory,
+              )
+          )
 
           manifest_path = directory / MANIFEST_FILE
           if not manifest_path.is_file():
@@ -1344,6 +1514,7 @@ let
                   for filename in downloaded:
                       source = temporary_path / filename
                       destination = manifest_file(entry.path) if filename == MANIFEST_FILE else entry.path / filename
+                      destination.parent.mkdir(parents=True, exist_ok=True)
                       staging = destination.with_name(f".{destination.name}.obsidian-library-new")
                       shutil.copyfile(source, staging)
                       os.replace(staging, destination)
@@ -1447,6 +1618,22 @@ let
                       readme = staging / README_FILE
                       if not is_nonempty_file(readme) and download_repository_readme(entry.repository, readme):
                           downloaded.append(README_FILE)
+
+                      downloaded.extend(
+                          download_repository_documentation(
+                              entry.repository,
+                              staging,
+                          )
+                      )
+
+                      downloaded.extend(
+                          download_plugin_release_data(
+                              entry.repository,
+                              assets,
+                              staging,
+                          )
+                      )
+
                       set_manifest_repository(staging / MANIFEST_FILE, entry.library_type, entry.repository)
 
                   if choice == "Replace selected entry":
@@ -1598,11 +1785,29 @@ let
                   readme_path = staging / README_FILE
                   if not is_nonempty_file(readme_path) and download_repository_readme(repository, readme_path):
                       downloaded.append(README_FILE)
+
+                  downloaded.extend(
+                      download_repository_documentation(
+                          repository,
+                          staging,
+                      )
+                  )
+
+                  downloaded.extend(
+                      download_plugin_release_data(
+                          repository,
+                          assets,
+                          staging,
+                      )
+                  )
+
                   set_manifest_repository(staging / MANIFEST_FILE, library_type, repository)
+
                   if refresh_existing_plugin:
                       for filename in downloaded:
                           source = staging / filename
                           refreshed_file = destination / filename
+                          refreshed_file.parent.mkdir(parents=True, exist_ok=True)
                           staging_file = refreshed_file.with_name(f".{refreshed_file.name}.obsidian-library-new")
                           shutil.copyfile(source, staging_file)
                           os.replace(staging_file, refreshed_file)

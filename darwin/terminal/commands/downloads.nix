@@ -1644,6 +1644,67 @@
               end
           end
 
+          # Preserve supported repository documentation and assets under repo/
+          # while keeping their complete repository-relative paths.
+          for auxiliary_path in $repository_paths
+              set auxiliary_path_supported 0
+
+              if string match -rq \
+                      '(?i)(^|/)(docs?|documentation|documentaion)/.*\.(md|markdown|org)$' \
+                      "$auxiliary_path"
+                  set auxiliary_path_supported 1
+              else if string match -rq \
+                      '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|md|markdown|org)$' \
+                      "$auxiliary_path"
+                  set auxiliary_path_supported 1
+              else if string match -rq \
+                      '(?i)^[^/]+\.org$' \
+                      "$auxiliary_path"
+                  set auxiliary_path_supported 1
+              end
+
+              if test "$auxiliary_path_supported" -eq 0
+                  continue
+              end
+
+              set auxiliary_url (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
+                      --jq .download_url \
+                      2>/dev/null
+              )
+
+              if test -z "$auxiliary_url"
+                  continue
+              end
+
+              set auxiliary_destination \
+                  "$plugin_stage/repo/$auxiliary_path"
+
+              if test -s "$auxiliary_destination"
+                  continue
+              end
+
+              command mkdir -p \
+                  (dirname "$auxiliary_destination")
+
+              if command curl \
+                      --fail \
+                      --location \
+                      --silent \
+                      --show-error \
+                      --output "$auxiliary_destination" \
+                      "$auxiliary_url"
+
+                  set saved_files \
+                      $saved_files \
+                      "repo/$auxiliary_path"
+              else
+                  echo \
+                      "Notice: Could not download plugin repository file: $auxiliary_path"
+              end
+          end
+
           if not test -r "$plugin_stage/main.js"; or \
                   not test -s "$plugin_stage/main.js"
               echo "Error: main.js was not found in the release or repository."
@@ -2142,7 +2203,7 @@
                                   "Notice: Could not download release asset: $release_asset_name"
                           end
 
-                      case '*.css' '*.js' fonts.zip
+                      case '*.css' '*.js' fonts.zip data.json
                           # Download only explicitly supported release assets.
                           # GitHub source archives are not release assets and
                           # are never downloaded by this command.
@@ -2521,20 +2582,28 @@
               if not string match -rq '(?i)^snippets/.+\.css$' "$snippet_path"
                   continue
               end
+
               set snippet_url (
                   command gh api \
                       "repos/$repository_owner/$repository_name/contents/$snippet_path" \
                       --jq .download_url \
                       2>/dev/null
               )
+
               if test -z "$snippet_url"
                   continue
               end
-              set snippet_destination "$theme_stage/repo/$snippet_path"
+
+              set snippet_destination \
+                  "$theme_stage/repo/$snippet_path"
+
               if test -s "$snippet_destination"
                   continue
               end
-              command mkdir -p (dirname "$snippet_destination")
+
+              command mkdir -p \
+                  (dirname "$snippet_destination")
+
               if command curl \
                       --fail \
                       --location \
@@ -2542,7 +2611,71 @@
                       --show-error \
                       --output "$snippet_destination" \
                       "$snippet_url"
-                  set saved_files $saved_files "repo/$snippet_path"
+
+                  set saved_files \
+                      $saved_files \
+                      "repo/$snippet_path"
+              end
+          end
+
+          # Preserve supported repository documentation and assets under repo/
+          # while keeping their complete repository-relative paths.
+          for auxiliary_path in $repository_paths
+              set auxiliary_path_supported 0
+
+              if string match -rq \
+                      '(?i)(^|/)(docs?|documentation|documentaion)/.*\.(md|markdown|org)$' \
+                      "$auxiliary_path"
+                  set auxiliary_path_supported 1
+              else if string match -rq \
+                      '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|md|markdown|org)$' \
+                      "$auxiliary_path"
+                  set auxiliary_path_supported 1
+              else if string match -rq \
+                      '(?i)^[^/]+\.org$' \
+                      "$auxiliary_path"
+                  set auxiliary_path_supported 1
+              end
+
+              if test "$auxiliary_path_supported" -eq 0
+                  continue
+              end
+
+              set auxiliary_url (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
+                      --jq .download_url \
+                      2>/dev/null
+              )
+
+              if test -z "$auxiliary_url"
+                  continue
+              end
+
+              set auxiliary_destination \
+                  "$theme_stage/repo/$auxiliary_path"
+
+              if test -s "$auxiliary_destination"
+                  continue
+              end
+
+              command mkdir -p \
+                  (dirname "$auxiliary_destination")
+
+              if command curl \
+                      --fail \
+                      --location \
+                      --silent \
+                      --show-error \
+                      --output "$auxiliary_destination" \
+                      "$auxiliary_url"
+
+                  set saved_files \
+                      $saved_files \
+                      "repo/$auxiliary_path"
+              else
+                  echo \
+                      "Notice: Could not download theme repository file: $auxiliary_path"
               end
           end
 
@@ -3208,6 +3341,27 @@
               "$repository_file_url" \
               "$expected_file"
           end
+
+          # Restore data.json from the GitHub release when provided.
+          for release_asset in $release_assets
+            set --local release_parts \
+              (string split \t "$release_asset")
+
+            if test (count $release_parts) -lt 2
+              continue
+            end
+
+            if test "$release_parts[1]" != data.json
+              continue
+            end
+
+            __obsidian_missing_download_url \
+              "$library_entry/release-assets/data.json" \
+              "$release_parts[2]" \
+              "release-assets/data.json"
+
+            break
+          end
         else
           # Restore additional theme release assets that gitdll preserves.
           for release_asset in $release_assets
@@ -3225,7 +3379,7 @@
               case manifest.json theme.css obsidian.css main.js
                 continue
 
-              case '*.css' '*.js' fonts.zip
+              case '*.css' '*.js' fonts.zip data.json
                 __obsidian_missing_download_url \
                   "$library_entry/repo/$release_asset_name" \
                   "$release_asset_url" \
@@ -3366,6 +3520,59 @@
                 "$theme_css_source"
             end
           end
+        end
+
+        # Restore supported repository documentation and assets under repo/
+        # while keeping their complete repository-relative paths.
+        for auxiliary_path in $repository_paths
+          set --local auxiliary_path_supported 0
+
+          if string match -rq \
+              '(?i)(^|/)(docs?|documentation|documentaion)/.*\.(md|markdown|org)$' \
+              "$auxiliary_path"
+            set auxiliary_path_supported 1
+          else if string match -rq \
+              '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|md|markdown|org)$' \
+              "$auxiliary_path"
+            set auxiliary_path_supported 1
+          else if string match -rq \
+              '(?i)^[^/]+\.org$' \
+              "$auxiliary_path"
+            set auxiliary_path_supported 1
+          end
+
+          if test "$auxiliary_path_supported" -eq 0
+            continue
+          end
+
+          set --local auxiliary_destination \
+            "$library_entry/repo/$auxiliary_path"
+
+          if test -s "$auxiliary_destination"
+            continue
+          end
+
+          if test -L "$auxiliary_destination"
+            echo "Notice: Refusing to replace symlinked repository file: $auxiliary_destination"
+            continue
+          end
+
+          set --local auxiliary_url (
+            command gh api \
+              "repos/$repository/contents/$auxiliary_path" \
+              --jq .download_url \
+              2>/dev/null
+          )
+
+          if test -z "$auxiliary_url"
+            echo "Notice: Could not resolve repository file: $auxiliary_path"
+            continue
+          end
+
+          __obsidian_missing_download_url \
+            "$auxiliary_destination" \
+            "$auxiliary_url" \
+            "$auxiliary_path"
         end
 
         __obsidian_missing_restore_readme \
