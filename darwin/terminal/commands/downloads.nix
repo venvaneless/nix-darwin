@@ -48,6 +48,8 @@
           set mode --themes
         end
         set --local source_inputs
+        set --local include_paths
+        set --local include_list_files
         set --local destination
         set --local argument_index 2
 
@@ -64,6 +66,22 @@
               end
 
               set destination "$argv[$argument_index]"
+
+            case --include
+              set argument_index (math "$argument_index + 1")
+              if test "$argument_index" -gt (count $argv)
+                echo "Error: --include requires a repository-relative path."
+                return 1
+              end
+              set --append include_paths "$argv[$argument_index]"
+
+            case --include-file
+              set argument_index (math "$argument_index + 1")
+              if test "$argument_index" -gt (count $argv)
+                echo "Error: --include-file requires a path-list file."
+                return 1
+              end
+              set --append include_list_files "$argv[$argument_index]"
 
             case '--*'
               echo "Error: Unknown option:"
@@ -86,6 +104,26 @@
           echo '  gitdll --plugin "https://github.com/owner/plugin" [...]'
           echo '  gitdll --theme links.txt [...]'
           return 1
+        end
+
+        for include_list_file in $include_list_files
+          if not test -f "$include_list_file"
+            echo "Error: Include list does not exist: $include_list_file"
+            return 1
+          end
+          while read --local include_line
+            set include_line (string trim "$include_line")
+            if test -n "$include_line"; and not string match -q '#*' "$include_line"
+              set --append include_paths "$include_line"
+            end
+          end <"$include_list_file"
+        end
+
+        for include_path in $include_paths
+          if string match -rq '(^|/)\.\.(/|$)|^/' "$include_path"; or test -z "$include_path"
+            echo "Error: Unsafe include path: $include_path"
+            return 1
+          end
         end
 
         for source_input in $source_inputs
@@ -670,6 +708,7 @@
           functions -e __gitdll_write_failure_report
           echo "Failed. Details: $failed_report"
           command rm -rf -- "$temporary_directory"
+          command rm -rf -- "$downloader_temporary_directory"
 
           return 1
         end
@@ -689,6 +728,62 @@
           >"$temporary_directory/downloader.log" 2>&1
 
         set --local downloader_status $status
+
+        function __gitdll_download_includes \
+            --argument-names repository_url destination_directory
+
+          if test (count $include_paths) -eq 0
+            return 0
+          end
+
+          set --local repository_name (
+            string replace -r '^https://github\\.com/' "" -- "$repository_url"
+          )
+          set --local repository_files (
+            command gh api \
+              "repos/$repository_name/git/trees/HEAD?recursive=1" \
+              --jq '.tree[]? | select(.type == "blob") | .path' \
+              2>/dev/null
+          )
+          if test $status -ne 0
+            printf '%s — could not inspect repository paths for includes\n' "$repository_url" >>"$failed_file"
+            return 1
+          end
+
+          for include_path in $include_paths
+            set --local matched_paths (
+              printf '%s\n' $repository_files | \
+                command awk -v requested="$include_path" '$0 == requested || index($0, requested "/") == 1'
+            )
+            if test (count $matched_paths) -eq 0
+              printf '%s — requested path not found: %s\n' "$repository_url" "$include_path" >>"$failed_file"
+              continue
+            end
+            for repository_path in $matched_paths
+              set --local destination_file "$destination_directory/$repository_path"
+              if test -L "$destination_file"
+                printf '%s — refusing to replace symlinked include: %s\n' "$repository_url" "$repository_path" >>"$failed_file"
+                continue
+              end
+              if test -s "$destination_file"
+                continue
+              end
+              command mkdir -p (dirname "$destination_file")
+              set --local download_url (
+                command gh api \
+                  "repos/$repository_name/contents/$repository_path" \
+                  --jq .download_url \
+                  2>/dev/null
+              )
+              if test -z "$download_url"; or not command curl \
+                  --fail --location --silent --show-error \
+                  --output "$destination_file" "$download_url"
+                command rm -f -- "$destination_file"
+                printf '%s — could not download requested path: %s\n' "$repository_url" "$repository_path" >>"$failed_file"
+              end
+            end
+          end
+        end
 
         set --local downloaded_count 0
 
@@ -744,6 +839,9 @@
                 >>"$failed_file"
             end
           else
+            __gitdll_download_includes \
+              "$original_url" \
+              (dirname "$matching_manifest_file")
             set downloaded_count (
               math "$downloaded_count + 1"
             )
@@ -763,8 +861,10 @@
         __gitdll_write_failure_report
 
         command rm -rf -- "$temporary_directory"
+        command rm -rf -- "$downloader_temporary_directory"
 
         functions -e __gitdll_write_failure_report
+        functions -e __gitdll_download_includes
 
         if test "$downloader_status" -ne 0; or test "$missing_count" -gt 0; or \
             test "$failed_count" -gt 0
@@ -777,6 +877,83 @@
       end
 
       set --local destination "$HOME/Downloads/gitdll"
+
+      # Generic partial-download mode: `gitdll REPOSITORY --include path`.
+      # It fetches individual GitHub blobs and never clones or archives a repo.
+      if contains -- --include $argv; or contains -- --include-file $argv
+        set --local generic_repositories
+        set --local generic_includes
+        set --local generic_index 1
+        while test "$generic_index" -le (count $argv)
+          switch "$argv[$generic_index]"
+            case --include
+              set generic_index (math "$generic_index + 1")
+              if test "$generic_index" -gt (count $argv)
+                echo "Error: --include requires a path."
+                return 1
+              end
+              set --append generic_includes "$argv[$generic_index]"
+            case --include-file
+              set generic_index (math "$generic_index + 1")
+              if test "$generic_index" -gt (count $argv); or not test -f "$argv[$generic_index]"
+                echo "Error: --include-file requires an existing path-list file."
+                return 1
+              end
+              while read --local generic_line
+                set generic_line (string trim "$generic_line")
+                if test -n "$generic_line"; and not string match -q '#*' "$generic_line"
+                  set --append generic_includes "$generic_line"
+                end
+              end <"$argv[$generic_index]"
+            case '*'
+              set --append generic_repositories "$argv[$generic_index]"
+          end
+          set generic_index (math "$generic_index + 1")
+        end
+        if test (count $generic_repositories) -ne 1; or test (count $generic_includes) -eq 0
+          echo "Usage: gitdll REPOSITORY --include path [--include path | --include-file paths.txt]"
+          return 1
+        end
+        set --local generic_repository (
+          string replace -r '^https?://github\\.com/' "" -- "$generic_repositories[1]" |
+          string replace -r '\\.git/?$' "" |
+          string trim --chars=/
+        )
+        if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$generic_repository"
+          echo "Error: Generic includes require one GitHub owner/repository URL."
+          return 1
+        end
+        if not command -q gh; or not command -q curl
+          echo "Error: Generic includes require gh and curl."
+          return 1
+        end
+        set --local generic_destination "$destination/"(basename "$generic_repository")
+        command mkdir -p -- "$generic_destination"
+        set --local generic_files (command gh api "repos/$generic_repository/git/trees/HEAD?recursive=1" --jq '.tree[]? | select(.type == "blob") | .path' 2>/dev/null)
+        for generic_include in $generic_includes
+          if string match -rq '(^|/)\.\.(/|$)|^/' "$generic_include"
+            echo "Error: Unsafe include path: $generic_include"
+            return 1
+          end
+          set --local generic_matches (printf '%s\n' $generic_files | command awk -v requested="$generic_include" '$0 == requested || index($0, requested "/") == 1')
+          if test (count $generic_matches) -eq 0
+            echo "Error: Requested path not found: $generic_include"
+            return 1
+          end
+          for generic_file in $generic_matches
+            set --local generic_url (command gh api "repos/$generic_repository/contents/$generic_file" --jq .download_url 2>/dev/null)
+            set --local generic_target "$generic_destination/$generic_file"
+            command mkdir -p (dirname "$generic_target")
+            if not command curl --fail --location --silent --show-error --output "$generic_target" "$generic_url"
+              command rm -f -- "$generic_target"
+              echo "Error: Could not download $generic_file"
+              return 1
+            end
+          end
+        end
+        echo "Successful"
+        return 0
+      end
 
       if test (count $argv) -eq 0
         echo "Usage:"

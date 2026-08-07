@@ -47,6 +47,7 @@ let
       import sys
       import tempfile
       from dataclasses import dataclass
+      from datetime import datetime
       from pathlib import Path
       from typing import Any
 
@@ -1107,6 +1108,106 @@ let
           update_plugin_entry(entry, release_cache, manifest_cache)
 
 
+      def select_release(repository: str) -> dict[str, Any] | None:
+          try:
+              releases = gh_list(f"repos/{repository}/releases?per_page=100")
+          except RuntimeError as error:
+              print(f"[UNAVAILABLE] {repository}: {error}")
+              return None
+
+          def eligible(include_prereleases: bool) -> list[dict[str, Any]]:
+              return [
+                  release for release in releases
+                  if release.get("draft") is not True
+                  and (include_prereleases or release.get("prerelease") is not True)
+                  and isinstance(release.get("tag_name"), str)
+              ]
+
+          include_prereleases = False
+          while True:
+              available = eligible(include_prereleases)
+              lines = ["Latest release", *(str(release["tag_name"]) for release in available)]
+              if not include_prereleases:
+                  lines.append("Show prereleases")
+              lines.append("Back")
+              selected = fzf_select(lines, "release> ", "Choose a one-time release; it will not be pinned.")
+              choice = selected[0] if selected else "Back"
+              if choice == "Back":
+                  return None
+              if choice == "Show prereleases":
+                  include_prereleases = True
+                  continue
+              if choice == "Latest release":
+                  return available[0] if available else None
+              return next((release for release in available if release.get("tag_name") == choice), None)
+
+
+      def download_another_version(
+          entry: LibraryEntry,
+          release_cache: dict[str, dict[str, Any] | Exception],
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> None:
+          if entry.abandoned:
+              print(f"[SKIP] {entry.label}: manifest marks this repository as abandoned")
+              return
+          if entry.repository is None:
+              print(f"[SKIP] {entry.label}: {repository_field(entry.library_type)} is missing or invalid")
+              return
+          release = select_release(entry.repository)
+          if release is None:
+              return
+          tag = str(release.get("tag_name"))
+          destination_kind = fzf_select(["Replace selected entry", "Create side-by-side copy", "Back"], "version destination> ", "Choose where to save the selected release.")
+          choice = destination_kind[0] if destination_kind else "Back"
+          if choice == "Back":
+              return
+          destination = entry.path if choice == "Replace selected entry" else entry.path.with_name(f"{entry.path.name}--{re.sub(r'[^0-9A-Za-z._-]+', '-', tag).strip('-')}")
+          if choice != "Replace selected entry" and destination.exists():
+              print(f"[SKIP] {entry.label}: {destination.name} already exists")
+              return
+
+          try:
+              with tempfile.TemporaryDirectory(prefix=".obsidian-library-version-", dir=entry.library_type.root) as temporary_directory:
+                  staging = Path(temporary_directory) / destination.name
+                  staging.mkdir()
+                  if entry.library_type.is_theme:
+                      source = theme_release_source(release)
+                      if source is None or not any(file.destination_name == MANIFEST_FILE for file in source.files):
+                          raise RuntimeError(f"release {tag} has no usable theme.css/obsidian.css and manifest.json")
+                      downloaded = write_theme_source(staging, entry.library_type, entry.repository, source)
+                  else:
+                      assets = release_assets(release)
+                      required = (MANIFEST_FILE, entry.library_type.payload_file)
+                      missing = [name for name in required if name not in assets]
+                      if missing:
+                          raise RuntimeError(f"release {tag} is missing {', '.join(missing)}")
+                      downloaded = []
+                      for name in required + entry.library_type.optional_files + tuple(image_names(list(assets))):
+                          if name in assets:
+                              download_asset(entry.repository, assets[name], staging / name)
+                              downloaded.append(name)
+                      readme = staging / README_FILE
+                      if not is_nonempty_file(readme) and download_repository_readme(entry.repository, readme):
+                          downloaded.append(README_FILE)
+                      set_manifest_repository(staging / MANIFEST_FILE, entry.library_type, entry.repository)
+
+                  if choice == "Replace selected entry":
+                      for source_file in staging.rglob("*"):
+                          if not source_file.is_file():
+                              continue
+                          target = entry.path / source_file.relative_to(staging)
+                          target.parent.mkdir(parents=True, exist_ok=True)
+                          staged = target.with_name(f".{target.name}.obsidian-library-new")
+                          shutil.copyfile(source_file, staged)
+                          os.replace(staged, target)
+                  else:
+                      os.replace(staging, destination)
+          except (OSError, RuntimeError) as error:
+              report_error(f"[FAILED] {entry.label}: {error}")
+              return
+          print(f"[DOWNLOADED] {entry.label}: {tag} -> {destination.name}")
+
+
       def github_repository_from_value(value: str) -> str:
           matches = re.findall(
               r"(?i)(?:https?://)?(?:www[.])?github[.]com[/:]([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9_.-]+)(?:[/?#>\s]|$)",
@@ -1373,6 +1474,7 @@ let
       def choose_action(library_type: LibraryType) -> str | None:
           actions = [
               "Check for updates",
+              "Download another version",
               "Remove",
               "Check archived status",
               "Back",
@@ -1400,6 +1502,9 @@ let
               if action == "Check for updates":
                   results = show_checks(entries, release_cache, manifest_cache, repository_contents_cache)
                   offer_updates(results, release_cache, manifest_cache, repository_contents_cache)
+              elif action == "Download another version":
+                  for entry in entries:
+                      download_another_version(entry, release_cache, repository_contents_cache)
               elif action == "Remove":
                   for entry in entries:
                       remove_entry(entry)
@@ -1420,9 +1525,90 @@ let
           return entries
 
 
+      def audit_report_path() -> Path:
+          stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+          return Path(os.environ.get("OBSIDIAN_LIBRARY_DOWNLOADS_DIR", DEFAULT_DOWNLOADS_DIR)) / f"obsidian-library-audit-{stamp}.txt"
+
+
+      def audit_library(library_types: tuple[LibraryType, ...], remote: bool) -> None:
+          lines = [f"Obsidian library audit ({'remote' if remote else 'local'})", ""]
+          markers: list[tuple[LibraryEntry, str]] = []
+          seen_ids: dict[tuple[str, str], list[str]] = {}
+          seen_repositories: dict[tuple[str, str], list[str]] = {}
+
+          for entry in all_entries(library_types):
+              issues: list[str] = []
+              if entry.manifest_missing:
+                  issues.append("manifest.json missing or unreadable")
+              if entry.repository is None:
+                  issues.append(f"{repository_field(entry.library_type)} missing or invalid")
+              if not is_nonempty_file(entry.path / entry.library_type.payload_file):
+                  issues.append(f"{entry.library_type.payload_file} missing or empty")
+              if not is_nonempty_file(entry.path / README_FILE):
+                  issues.append("README.md missing or empty")
+              if entry.abandoned:
+                  issues.append("marked abandoned")
+              if entry.archived:
+                  issues.append("marked archived")
+
+              seen_ids.setdefault((entry.library_type.label, entry.identifier.casefold()), []).append(entry.path.name)
+              if entry.repository is not None:
+                  seen_repositories.setdefault((entry.library_type.label, entry.repository.casefold()), []).append(entry.path.name)
+
+              if remote and entry.repository is not None:
+                  completed = run([GH_BIN, "api", f"repos/{entry.repository}"])
+                  if completed.returncode != 0:
+                      detail = completed.stderr.strip() or completed.stdout.strip()
+                      if re.search(r"(?:HTTP[ ]*)?404|not found", detail, flags=re.IGNORECASE):
+                          issues.append("remote repository returned 404")
+                          markers.append((entry, ABANDONED_FIELD))
+                      else:
+                          issues.append(f"remote check unavailable: {detail or 'unknown error'}")
+                  else:
+                      try:
+                          metadata = json.loads(completed.stdout)
+                      except json.JSONDecodeError:
+                          issues.append("remote repository returned invalid JSON")
+                      else:
+                          if isinstance(metadata, dict) and metadata.get("archived") is True:
+                              issues.append("remote repository is archived")
+                              markers.append((entry, ARCHIVED_FIELD))
+                          elif isinstance(metadata, dict):
+                              result = (
+                                  check_theme_entry(entry, {}, {})
+                                  if entry.library_type.is_theme
+                                  else check_plugin_entry(entry, {}, {})
+                              )
+                              if result.status == "UPDATE AVAILABLE":
+                                  issues.append(f"update available: {result.remote_version or '-'}")
+
+              status = "; ".join(issues) if issues else "OK"
+              lines.append(f"[{entry.library_type.label}] {entry.label} ({entry.path.name}): {status}")
+
+          for (kind, identity), folders in sorted(seen_ids.items()):
+              if len(folders) > 1:
+                  lines.append(f"[DUPLICATE {kind} id/name] {identity}: {', '.join(folders)}")
+          for (kind, repository), folders in sorted(seen_repositories.items()):
+              if len(folders) > 1:
+                  lines.append(f"[DUPLICATE {kind} repository] {repository}: {', '.join(folders)}")
+
+          report = audit_report_path()
+          report.parent.mkdir(parents=True, exist_ok=True)
+          report.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print(f"Audit report: {report}")
+
+          if remote:
+              for entry, field in markers:
+                  answer = input(f"{entry.label}: add {field}: yes to manifest.json? [y/N]: ").strip().casefold()
+                  if answer in {"y", "yes"}:
+                      suffix = mark_repository_status(entry, field)
+                      print(f"[{field}] {entry.label}{suffix}")
+
+
       def main() -> int:
           parser = argparse.ArgumentParser(description="Manage the local Obsidian plugin and theme library.")
           parser.add_argument("--check-all", action="store_true", help="Check every recoverable plugin and theme without opening fzf.")
+          parser.add_argument("--audit", choices=("local", "remote"), help="Write a dated local or remote library audit report.")
           parser.add_argument("--download-plugin", metavar="REPOSITORY", help="Download a plugin release from a GitHub repository into the plugin library.")
           parser.add_argument("--download-theme", metavar="REPOSITORY", help="Download a theme from a GitHub repository into the theme library.")
           arguments = parser.parse_args()
@@ -1460,7 +1646,11 @@ let
                   show_checks(all_entries(library_types), release_cache, manifest_cache, repository_contents_cache)
                   return 0
 
-              menu_items = ["Check for updates", "Plugins", "Themes", "Download a plugin", "Download a theme", "Quit"]
+              if arguments.audit:
+                  audit_library(library_types, arguments.audit == "remote")
+                  return 0
+
+              menu_items = ["Check for updates", "Audit local library", "Audit remote library", "Plugins", "Themes", "Download a plugin", "Download a theme", "Quit"]
               while True:
                   selection = fzf_select(menu_items, "obsidian-library> ", "Choose a library or check every installed item.")
                   choice = selection[0] if selection else "Quit"
@@ -1468,6 +1658,10 @@ let
                       manage_type(library_types[0], release_cache, manifest_cache, repository_contents_cache)
                   elif choice == "Themes":
                       manage_type(library_types[1], release_cache, manifest_cache, repository_contents_cache)
+                  elif choice == "Audit local library":
+                      audit_library(library_types, False)
+                  elif choice == "Audit remote library":
+                      audit_library(library_types, True)
                   elif choice == "Download a plugin":
                       repository = input("GitHub repository URL, owner/repository, or text containing a GitHub link: ").strip()
                       if repository:
