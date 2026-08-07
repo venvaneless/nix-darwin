@@ -1236,31 +1236,46 @@
               string trim
           )
 
-          if test -z "$plugin_id"
-              echo "Error: manifest.json does not contain a valid plugin id."
+          set plugin_name (
+              command jq -r \
+                  'if type == "object" then
+                    if (.name | type) == "string" then .name else empty end
+                  else
+                    empty
+                  end' \
+                  "$manifest" |
+              string trim
+          )
+
+          # Plugins prefer the machine-stable id, then a readable name, then
+          # the GitHub repository name when the manifest supplies neither.
+          set plugin_folder_name "$plugin_id"
+          if test -z "$plugin_folder_name"
+              set plugin_folder_name "$plugin_name"
+          end
+          if test -z "$plugin_folder_name"
+              set plugin_folder_name "$repository_name"
+          end
+
+          if string match -rq '[/\x00]' "$plugin_folder_name"
+              echo "Error: Plugin folder name contains unsafe characters."
               command rm -rf -- "$temporary_directory"
               continue
           end
 
-          if string match -rq '[/\x00]' "$plugin_id"
-              echo "Error: Plugin id contains unsafe folder-name characters."
+          if test "$plugin_folder_name" = "."
+              echo "Error: Plugin folder name is unsafe."
               command rm -rf -- "$temporary_directory"
               continue
           end
 
-          if test "$plugin_id" = "."
-              echo "Error: Plugin id is unsafe."
+          if test "$plugin_folder_name" = ".."
+              echo "Error: Plugin folder name is unsafe."
               command rm -rf -- "$temporary_directory"
               continue
           end
 
-          if test "$plugin_id" = ".."
-              echo "Error: Plugin id is unsafe."
-              command rm -rf -- "$temporary_directory"
-              continue
-          end
-
-          set plugin_directory "$destination/$plugin_id"
+          set plugin_directory "$destination/$plugin_folder_name"
           set plugin_directory_exists 0
           set refresh_plugin_manifest 0
 
@@ -1293,14 +1308,14 @@
 
                   echo
                   echo "Skipping:"
-                  echo "  $plugin_id (already complete)"
+                  echo "  $plugin_folder_name (already complete)"
                   command rm -rf -- "$temporary_directory"
                   continue
               end
 
               echo
               echo "Resuming incomplete plugin:"
-              echo "  $plugin_id"
+              echo "  $plugin_folder_name"
               set plugin_directory_exists 1
           end
 
@@ -1690,21 +1705,8 @@
           set canonical_repository_url \
               "https://github.com/$repository_owner/$repository_name"
 
-          set fallback_folder_name (
-              string lower "$repository_name" |
-              string replace -ra \
-                  '(?i)(?:-?(?:master|repo|dotfiles|main))+$' \
-                  ''' |
-              string replace -ra '[ _]+' '-' |
-              string replace -ra '[^a-z0-9._-]' '-' |
-              string replace -ra -- '-+' '-' |
-              string trim --chars=- |
-              string trim
-          )
-
-          if test -z "$fallback_folder_name"
-              set fallback_folder_name theme
-          end
+          # Keep the repository name as the final, filesystem-safe fallback.
+          set fallback_folder_name "$repository_name"
 
           # Skip completed destinations before making any network requests.
           set existing_repository_file (
@@ -1962,10 +1964,22 @@
           end
 
           set manifest_directory "$extracted"
+          set theme_name
           set theme_id
 
           if test -n "$manifest"
               set manifest_directory (dirname "$manifest")
+
+              set theme_name (
+                  command jq -r \
+                      'if type == "object" then
+                        if (.name | type) == "string" then .name else empty end
+                      else
+                        empty
+                      end' \
+                      "$manifest" |
+                  string trim
+              )
 
               set theme_id (
                   command jq -r \
@@ -1979,26 +1993,30 @@
               )
           end
 
-          set theme_folder_name "$theme_id"
+          set theme_folder_name "$theme_name"
+
+          if test -z "$theme_folder_name"
+              set theme_folder_name "$theme_id"
+          end
 
           if test -z "$theme_folder_name"
               set theme_folder_name "$fallback_folder_name"
           end
 
           if string match -rq '[/\x00]' "$theme_folder_name"
-              echo "Error: Theme id contains unsafe folder-name characters."
+              echo "Error: Theme name contains unsafe folder-name characters."
               command rm -rf -- "$temporary_directory"
               continue
           end
 
           if test "$theme_folder_name" = "."
-              echo "Error: Theme id contains an unsafe folder name."
+              echo "Error: Theme name contains an unsafe folder name."
               command rm -rf -- "$temporary_directory"
               continue
           end
 
           if test "$theme_folder_name" = ".."
-              echo "Error: Theme id contains an unsafe folder name."
+              echo "Error: Theme name contains an unsafe folder name."
               command rm -rf -- "$temporary_directory"
               continue
           end
