@@ -1,6 +1,6 @@
 # CODEX: CAVEMAN
 # =========================
-# Install Caveman using the developer's official Codex installer
+# Install or update Caveman using the developer's official Codex installer
 
 { lib, pkgs, ... }:
 
@@ -10,6 +10,7 @@ let
 
     runtimeInputs = [
       pkgs.coreutils
+      pkgs.findutils
       pkgs.nodejs
     ];
 
@@ -19,16 +20,16 @@ let
 
       # PATHS
       # =========================
-      # Shared skill directory used by both Codex profiles
+      # Shared skills used by both Codex profiles
       shared_skills="/Users/ven/.config/codex/shared/skills"
 
-      # Temporary project used by the official skills installer
+      # Temporary project for the upstream skills installer
       temporary_dir="$(${pkgs.coreutils}/bin/mktemp -d)"
 
 
       # CLEANUP
       # =========================
-      # Remove the temporary installer directory when finished
+      # Remove temporary files after installation
       cleanup() {
         rm -rf -- "$temporary_dir"
       }
@@ -38,7 +39,7 @@ let
 
       # INSTALL
       # =========================
-      # Run Caveman's official Codex installation command
+      # Use Caveman's official Codex installation method
       cd -- "$temporary_dir"
 
       ${pkgs.nodejs}/bin/npx \
@@ -52,27 +53,52 @@ let
 
       # VERIFY
       # =========================
-      # The Codex project installation must contain the Caveman skill
-      installed_skill="$temporary_dir/.agents/skills/caveman"
+      # Codex project skills are installed here by the upstream installer
+      installed_skills="$temporary_dir/.agents/skills"
 
-      if ! test -d "$installed_skill"; then
-        printf 'Caveman installer did not create: %s\n' "$installed_skill" >&2
+      if ! test -d "$installed_skills"; then
+        printf 'Caveman installer did not create a Codex skills directory.\n' >&2
+        printf 'Expected: %s\n' "$installed_skills" >&2
+        exit 1
+      fi
+
+      if ! ${pkgs.findutils}/bin/find \
+          "$installed_skills" \
+          -mindepth 1 \
+          -maxdepth 1 \
+          -type d \
+          -print \
+          -quit \
+          | grep -q .; then
+
+        printf 'Caveman installer created no skills.\n' >&2
         exit 1
       fi
 
 
       # SHARED INSTALL
       # =========================
-      # Replace the shared copy with the newly installed version
+      # Copy every Caveman skill produced by the official installer
       mkdir -p -- "$shared_skills"
 
-      rm -rf -- "$shared_skills/caveman"
+      for skill in "$installed_skills"/*; do
+        test -d "$skill" || continue
 
-      cp -R \
-        "$installed_skill" \
-        "$shared_skills/caveman"
+        skill_name="$(${pkgs.coreutils}/bin/basename "$skill")"
 
-      printf 'Caveman installed: %s\n' "$shared_skills/caveman"
+        printf 'Installing Caveman skill: %s\n' "$skill_name"
+
+        rm -rf -- "$shared_skills/$skill_name"
+
+        cp -R \
+          "$skill" \
+          "$shared_skills/$skill_name"
+      done
+
+
+      # COMPLETE
+      # =========================
+      printf 'Caveman skills installed into: %s\n' "$shared_skills"
     '';
   };
 in
@@ -86,12 +112,13 @@ in
   # =========================
   # Install or refresh Caveman after nix-darwin switches
   system.activationScripts.codexCaveman.text = lib.mkAfter ''
-    echo "[nix-darwin][codex] Installing Caveman..."
+    echo "[nix-darwin][codex] Installing/updating Caveman..."
 
     /usr/bin/sudo \
       -u ven \
       /usr/bin/env \
       HOME=/Users/ven \
+      PATH=/run/current-system/sw/bin:/usr/bin:/bin \
       ${installCaveman}/bin/install-codex-caveman
   '';
 }

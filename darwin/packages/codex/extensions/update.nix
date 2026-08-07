@@ -1,6 +1,6 @@
 # CODEX: EXTENSION UPDATER
 # =========================
-# Update all independently managed Codex extensions
+# Discover and update all installed Codex extensions
 
 { pkgs, ... }:
 
@@ -10,45 +10,61 @@ let
 
     runtimeInputs = [
       pkgs.coreutils
+      pkgs.findutils
     ];
 
     text = ''
       set -Eeuo pipefail
 
 
-      # CAVEMAN
+      # PATHS
       # =========================
-      printf '\nUpdating Caveman...\n'
+      # nix-darwin exposes extension installers here
+      system_bin="/run/current-system/sw/bin"
 
-      /run/current-system/sw/bin/install-codex-caveman
 
-
-      # SIMPLE ENGLISH
+      # DISCOVER
       # =========================
-      printf '\nUpdating SimpleEnglish...\n'
+      # Find every declaratively installed Codex extension installer
+      installers="$(
+        ${pkgs.findutils}/bin/find \
+          "$system_bin" \
+          -maxdepth 1 \
+          -type l \
+          -name 'install-codex-*' \
+          -print \
+          | sort
+      )"
 
-      /run/current-system/sw/bin/install-codex-simple-english
 
-
-      # CODEBASE MEMORY MCP
+      # VERIFY
       # =========================
-      printf '\nUpdating Codebase Memory MCP...\n'
+      if test -z "$installers"; then
+        printf 'No Codex extension installers were found.\n'
+        exit 0
+      fi
 
-      /run/current-system/sw/bin/install-codebase-memory-mcp
 
-      /run/current-system/sw/bin/sync-codebase-memory-mcp
-
-
-      # SCHOLARBRAIN
+      # UPDATE
       # =========================
-      printf '\nUpdating ScholarBrain...\n'
+      # Each installer independently checks/downloads its upstream extension
+      while IFS= read -r installer; do
+        test -n "$installer" || continue
 
-      /run/current-system/sw/bin/install-scholarbrain
+        name="$(${pkgs.coreutils}/bin/basename "$installer")"
+
+        printf '\n'
+        printf 'Updating: %s\n' "$name"
+        printf '%s\n' '----------------------------------------'
+
+        "$installer"
+      done <<< "$installers"
 
 
-      # FINISHED
+      # COMPLETE
       # =========================
-      printf '\nCodex extensions updated successfully.\n'
+      printf '\n'
+      printf 'All Codex extensions are current.\n'
     '';
   };
 in

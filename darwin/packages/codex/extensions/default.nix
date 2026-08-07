@@ -11,6 +11,6 @@
     #./codebase-memory-mcp.nix
     #./scholarbrain.nix
 
-    #./update.nix
+    ./update.nix
   ];
 }
