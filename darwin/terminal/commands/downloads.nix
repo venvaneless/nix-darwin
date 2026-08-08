@@ -12,6 +12,107 @@
 
 {
   programs.fish.functions = {
+
+  # -----------------------------------------------------------------
+  # ---- Obsidian -> Shared download rules ---- #
+  #
+  # Central rules shared by plugin/theme download and repair commands.
+  # Blocked names are case-insensitive and match with or without any extension.
+  # -----------------------------------------------------------------
+  __obsidian_download_name_blocked = {
+    description = "Check whether an Obsidian download filename is blocked";
+
+    body = ''
+      # ---- BLOCKED FILE NAMES ---- #
+      #
+      # Add or remove names here to change the shared blacklist.
+      set --local blocked_names \
+          license \
+          changelog \
+          contributing \
+          security \
+          privacy
+
+      # ---- FILE NAME ---- #
+      set --local filename \
+          (string lower -- (basename "$argv[1]"))
+
+      # ---- MATCH BLOCKED NAMES ---- #
+      for blocked_name in $blocked_names
+        if test "$filename" = "$blocked_name"; or \
+            string match -q "$blocked_name.*" "$filename"
+
+          return 0
+        end
+      end
+
+      return 1
+    '';
+  };
+
+
+  # -----------------------------------------------------------------
+  # ---- Obsidian -> Repository fallback names ---- #
+  #
+  # Remove generic repository suffixes before a repository name is used as
+  # the fallback folder name for an Obsidian plugin or theme.
+  # -----------------------------------------------------------------
+  __obsidian_repository_fallback_name = {
+    description = "Clean an Obsidian repository fallback folder name";
+
+    body = ''
+      set --local repository_name "$argv[1]"
+      set --local fallback_name "$repository_name"
+
+      # ---- GENERIC REPOSITORY SUFFIXES ---- #
+      set --local generic_names \
+          main \
+          manifest \
+          master \
+          repo \
+          dotfiles \
+          dots
+
+      # ---- REMOVE GENERIC SUFFIXES ---- #
+      while test -n "$fallback_name"
+        set --local previous_name "$fallback_name"
+
+        for generic_name in $generic_names
+          set fallback_name (
+            string replace -r \
+              "(?i)[-_ ]$generic_name\$" \
+              "" \
+              "$fallback_name"
+          )
+
+          if test "$fallback_name" != "$previous_name"
+            set fallback_name \
+              (string trim --chars='-_ ' "$fallback_name")
+            break
+          end
+        end
+
+        if test "$fallback_name" = "$previous_name"
+          break
+        end
+      end
+
+      # ---- REJECT GENERIC-ONLY NAMES ---- #
+      for generic_name in $generic_names
+        if test (string lower -- "$fallback_name") = "$generic_name"
+          return 1
+        end
+      end
+
+      if test -z "$fallback_name"
+        return 1
+      end
+
+      printf '%s\n' "$fallback_name"
+    '';
+  };
+
+
   # -----------------------------------------------------------------
   # ---- gitdll -> Download Git repositories or rebuild Obsidian libraries ---- #
   #
@@ -1284,9 +1385,8 @@
                       string match -rq \
                       '(^|/)node_modules/' \
                       "$repository_path"; or \
-                      string match -rq \
-                      '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
-                      "$repository_file_name"
+                      __obsidian_download_name_blocked \
+                          "$repository_file_name"
 
                   continue
               end
@@ -1311,7 +1411,9 @@
               set release_assets (
                   printf "%s" "$release_json" |
                   command jq -r \
-                      '.assets[]? | [.name, .browser_download_url] | @tsv'
+                      '.assets[]?
+                      | [.name, .browser_download_url]
+                      | @tsv'
               )
 
               for release_asset in $release_assets
@@ -1326,8 +1428,7 @@
                   set release_asset_name "$release_asset_parts[1]"
                   set release_asset_url "$release_asset_parts[2]"
 
-                  if string match -rq \
-                          '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
+                  if __obsidian_download_name_blocked \
                           "$release_asset_name"
 
                       continue
@@ -1383,7 +1484,7 @@
           end
 
           # Preserve one README when the repository provides one.
-          for readme_name in README README.md README.markdown README.txt
+          for readme_name in README README.md README.markdown README.org README.txt
               set readme_path (
                   printf '%s\n' $repository_paths |
                   command awk -F/ \
@@ -1461,14 +1562,25 @@
               string trim
           )
 
-          # Plugins prefer the machine-stable id, then a readable name, then
-          # the GitHub repository name when the manifest supplies neither.
+          # Plugins prefer manifest.id, then manifest.name, then the cleaned
+          # GitHub repository name when the manifest supplies neither.
           set plugin_folder_name "$plugin_id"
+
           if test -z "$plugin_folder_name"
               set plugin_folder_name "$plugin_name"
           end
+
           if test -z "$plugin_folder_name"
-              set plugin_folder_name "$repository_name"
+              set plugin_folder_name (
+                  __obsidian_repository_fallback_name \
+                      "$repository_name"
+              )
+          end
+
+          if test -z "$plugin_folder_name"
+              echo "Error: Repository name cannot produce a plugin folder name."
+              command rm -rf -- "$temporary_directory"
+              continue
           end
 
           if string match -rq '[/\x00]' "$plugin_folder_name"
@@ -1568,7 +1680,9 @@
               set release_assets (
                   printf "%s" "$release_json" |
                   command jq -r \
-                      '.assets[]? | [.name, .browser_download_url] | @tsv'
+                      '.assets[]?
+                      | [.name, .browser_download_url]
+                      | @tsv'
               )
 
               for release_asset in $release_assets
@@ -2182,9 +2296,8 @@
                       string match -rq \
                       '(^|/)node_modules/' \
                       "$repository_path"; or \
-                      string match -rq \
-                      '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
-                      "$repository_file_name"
+                      __obsidian_download_name_blocked \
+                          "$repository_file_name"
 
                   continue
               end
@@ -2210,7 +2323,9 @@
               set release_assets (
                   printf "%s" "$release_json" |
                   command jq -r \
-                      '.assets[]? | [.name, .browser_download_url] | @tsv'
+                      '.assets[]?
+                      | [.name, .browser_download_url]
+                      | @tsv'
               )
 
               for release_asset in $release_assets
@@ -2304,7 +2419,7 @@
           end
 
           # Preserve one README when the repository provides one.
-          for readme_name in README README.md README.markdown README.txt
+          for readme_name in README README.md README.markdown README.org README.txt
               set readme_path (
                   printf '%s\n' $repository_paths |
                   command awk -F/ \
@@ -2348,7 +2463,9 @@
               set release_assets (
                   printf "%s" "$release_json" |
                   command jq -r \
-                      '.assets[]? | [.name, .browser_download_url] | @tsv'
+                      '.assets[]?
+                      | [.name, .browser_download_url]
+                      | @tsv'
               )
 
               for release_asset in $release_assets
@@ -2445,6 +2562,8 @@
               )
           end
 
+          # Themes prefer manifest.name, then manifest.id, then the cleaned
+          # GitHub repository name when the manifest supplies neither.
           set theme_folder_name "$theme_name"
 
           if test -z "$theme_folder_name"
@@ -2452,7 +2571,16 @@
           end
 
           if test -z "$theme_folder_name"
-              set theme_folder_name "$fallback_folder_name"
+              set theme_folder_name (
+                  __obsidian_repository_fallback_name \
+                      "$fallback_folder_name"
+              )
+          end
+
+          if test -z "$theme_folder_name"
+              echo "Error: Repository name cannot produce a theme folder name."
+              command rm -rf -- "$temporary_directory"
+              continue
           end
 
           if string match -rq '[/\x00]' "$theme_folder_name"
@@ -2596,6 +2724,7 @@
               set is_root_image 0
               set has_image_keyword 0
               set is_preview_folder_image 0
+              set is_repository_named_image 0
 
               if not string match -q '*/*' "$repository_path"; and \
                       string match -rq \
@@ -2616,9 +2745,39 @@
                   set is_preview_folder_image 1
               end
 
+              # Preserve supported images whose filename contains the
+              # normalized repository/theme name.
+              if string match -rq \
+                      '(?i)\.(png|jpe?g|gif|webp)$' \
+                      "$repository_image_name"
+
+                  set normalized_repository_name (
+                      string lower -- "$repository_name" |
+                      string replace -ra '[^0-9a-z]+' ""
+                  )
+
+                  set normalized_image_name (
+                      string replace -r \
+                          '\.[^.]+$' \
+                          "" \
+                          "$repository_image_name" |
+                      string lower |
+                      string replace -ra '[^0-9a-z]+' ""
+                  )
+
+                  if test -n "$normalized_repository_name"; and \
+                          string match -q \
+                          "*$normalized_repository_name*" \
+                          "$normalized_image_name"
+
+                      set is_repository_named_image 1
+                  end
+              end
+
               if test "$is_root_image" -eq 0; and \
                       test "$has_image_keyword" -eq 0; and \
-                      test "$is_preview_folder_image" -eq 0
+                      test "$is_preview_folder_image" -eq 0; and \
+                      test "$is_repository_named_image" -eq 0
                   continue
               end
 
@@ -3257,12 +3416,21 @@
         end
       end
 
-      # Download a file only when its destination does not already exist.
+      # Download a file only when a healthy destination does not already exist.
       function __obsidian_missing_download_url \
           --argument-names destination download_url description
 
-        if test -e "$destination"; or test -L "$destination"
+        if test -L "$destination"
+          echo "Notice: Refusing to replace symlinked file: $destination"
+          return 1
+        end
+
+        if test -f "$destination"; and test -s "$destination"
           return 0
+        end
+
+        if test -e "$destination"
+          command rm -f -- "$destination"
         end
 
         set --local destination_parent (dirname "$destination")
@@ -3459,9 +3627,8 @@
               string match -rq \
               '(^|/)node_modules/' \
               "$repository_path"; or \
-              string match -rq \
-              '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
-              "$repository_image_name"
+              __obsidian_download_name_blocked \
+                  "$repository_image_name"
 
             continue
           end
@@ -3653,11 +3820,6 @@
             printf '%s' "$release_json" |
             command jq -r \
               '.assets[]?
-              | select(
-                  .name
-                  | test("^(LICENSE|CHANGELOG|CONTRIBUTING)(\\..*)?$"; "i")
-                  | not
-                )
               | [.name, .browser_download_url]
               | @tsv'
           )
@@ -3678,6 +3840,12 @@
 
           set --local release_asset_url \
             "$release_parts[2]"
+
+            if __obsidian_download_name_blocked \
+                "$release_asset_name"
+  
+              continue
+            end
 
           __obsidian_missing_download_url \
             "$library_entry/$release_asset_name" \
@@ -3859,6 +4027,14 @@
           end
         end
 
+        set --local repository_name \
+          (basename "$repository")
+
+        set --local normalized_repository_name (
+          string lower -- "$repository_name" |
+          string replace -ra '[^0-9a-z]+' ""
+        )
+
         # Build the same repository auxiliary-file set used by gitdll.
         set --local repository_auxiliary_paths
 
@@ -3874,9 +4050,8 @@
               string match -rq \
               '(^|/)node_modules/' \
               "$auxiliary_path"; or \
-              string match -rq \
-              '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
-              "$auxiliary_name"
+              __obsidian_download_name_blocked \
+                  "$auxiliary_name"
 
             continue
           end
@@ -3909,6 +4084,30 @@
               "$auxiliary_name"
 
             set auxiliary_path_supported 1
+
+          # Themes also preserve supported images whose filename contains the
+          # normalized repository/theme name.
+          else if test "$requires_plugin_payload" -eq 0; and \
+              string match -rq \
+              '(?i)\.(png|jpe?g|gif|webp)$' \
+              "$auxiliary_name"
+
+            set --local normalized_auxiliary_name (
+              string replace -r \
+                '\.[^.]+$' \
+                "" \
+                "$auxiliary_name" |
+              string lower |
+              string replace -ra '[^0-9a-z]+' ""
+            )
+
+            if test -n "$normalized_repository_name"; and \
+                string match -q \
+                "*$normalized_repository_name*" \
+                "$normalized_auxiliary_name"
+
+              set auxiliary_path_supported 1
+            end
           end
 
           # Themes additionally preserve CSS snippets.

@@ -74,6 +74,8 @@ let
           "license",
           "changelog",
           "contributing",
+          "security",
+          "privacy",
       }
 
 
@@ -602,6 +604,7 @@ let
               repository: str,
               directory: Path,
               existing_root: Path | None = None,
+              include_theme_snippets: bool = False,
           ) -> tuple[list[str], bool]:
               tree = gh_json(
                   f"repos/{repository}/git/trees/HEAD?recursive=1"
@@ -735,11 +738,19 @@ let
                           )
                       )
                   )
+
+                  is_theme_snippet = (
+                      include_theme_snippets
+                      and suffix == ".css"
+                      and len(path_parts) > 1
+                      and path_parts[0] == "snippets"
+                  )
     
                   if not (
                       is_documentation
                       or is_documentation_folder_file
                       or is_image
+                      or is_theme_snippet
                   ):
                       continue
     
@@ -1968,6 +1979,7 @@ let
                   repository,
                   directory,
                   existing_root,
+                  include_theme_snippets=True,
               )
 
           downloaded.extend(
@@ -1995,7 +2007,8 @@ let
           )
 
           manifest_path = directory / MANIFEST_FILE
-          if not manifest_path.is_file():
+
+          if not manifest_is_valid(manifest_path):
               create_theme_manifest(
                   manifest_path,
                   repository,
@@ -2003,7 +2016,11 @@ let
               )
               downloaded.append(MANIFEST_FILE)
           else:
-              set_manifest_repository(manifest_path, library_type, repository)
+              set_manifest_repository(
+                  manifest_path,
+                  library_type,
+                  repository,
+              )
 
           return downloaded
 
@@ -2215,55 +2232,129 @@ let
           return normalized
 
 
+      def repository_fallback_name(repository: str) -> str:
+          repository_name = repository.rsplit(
+              "/",
+              1,
+          )[1]
+
+          fallback_name = repository_name
+
+          while True:
+              cleaned_name = re.sub(
+                  r"(?i)[-_ ](?:main|manifest|master|repo|dotfiles|dots)$",
+                  "",
+                  fallback_name,
+              ).rstrip("-_ ")
+
+              if cleaned_name == fallback_name:
+                  break
+
+              fallback_name = cleaned_name
+
+          if fallback_name.casefold() in {
+              "main",
+              "manifest",
+              "master",
+              "repo",
+              "dotfiles",
+              "dots",
+          }:
+              fallback_name = ""
+
+          if not fallback_name:
+              raise RuntimeError(
+                  f"repository name '{repository_name}' cannot produce a folder name"
+              )
+
+          return fallback_name
+
+
       def theme_identifier(repository: str, source: ThemeSource) -> str:
-          manifest = next((remote_file for remote_file in source.files if remote_file.destination_name == MANIFEST_FILE), None)
-          if manifest is None:
-              raise RuntimeError("an 'obsidian' repository needs manifest.json with an id or name")
+          manifest = next(
+              (
+                  remote_file
+                  for remote_file in source.files
+                  if remote_file.destination_name == MANIFEST_FILE
+              ),
+              None,
+          )
 
-          with tempfile.TemporaryDirectory(prefix="obsidian-library-theme-id-") as temporary_directory:
-              manifest_file = Path(temporary_directory) / MANIFEST_FILE
-              download_theme_file(repository, manifest, manifest_file)
-              try:
-                  contents = json.loads(manifest_file.read_text(encoding="utf-8"))
-              except (OSError, json.JSONDecodeError) as error:
-                  raise RuntimeError(f"cannot read valid {MANIFEST_FILE}: {error}") from error
+          if manifest is not None:
+              with tempfile.TemporaryDirectory(
+                  prefix="obsidian-library-theme-id-"
+              ) as temporary_directory:
+                  manifest_file = Path(temporary_directory) / MANIFEST_FILE
 
-          if not isinstance(contents, dict):
-              raise RuntimeError(f"{MANIFEST_FILE} does not contain an object")
-          for field in ("id", "name"):
-              value = contents.get(field)
-              if isinstance(value, str) and value.strip():
-                  return value.strip()
-          raise RuntimeError(f"{MANIFEST_FILE} has no usable id or name")
+                  download_theme_file(
+                      repository,
+                      manifest,
+                      manifest_file,
+                  )
+
+                  try:
+                      contents = json.loads(
+                          manifest_file.read_text(
+                              encoding="utf-8"
+                          )
+                      )
+                  except (OSError, json.JSONDecodeError):
+                      contents = None
+
+              if isinstance(contents, dict):
+                  for field in ("name", "id"):
+                      value = contents.get(field)
+
+                      if isinstance(value, str) and value.strip():
+                          return value.strip()
+
+          return repository_fallback_name(
+              repository
+          )
 
 
       def theme_folder_name(repository: str, source: ThemeSource) -> str:
-          repository_name = repository.rsplit("/", 1)[1]
-          trimmed_name = repository_name
-          while True:
-              without_suffix = re.sub(r"(?i)[-_ ](?:main|master|repo)$", "", trimmed_name)
-              if without_suffix == trimmed_name:
-                  break
-              trimmed_name = without_suffix
-          if trimmed_name.casefold() in {"main", "master", "repo"}:
-              trimmed_name = ""
-          if repository_name.casefold() == "obsidian" or trimmed_name.casefold() == "obsidian":
-              return normalized_theme_name(theme_identifier(repository, source))
-          if not trimmed_name:
-              raise RuntimeError(f"repository name '{repository_name}' cannot produce a folder name")
-          return trimmed_name
+          return theme_identifier(
+              repository,
+              source,
+          )
 
 
-      def plugin_folder_name(manifest_file: Path) -> str:
+      def plugin_folder_name(
+          manifest_file: Path,
+          repository: str,
+      ) -> str:
           try:
-              manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
+              manifest = json.loads(
+                  manifest_file.read_text(
+                      encoding="utf-8"
+                  )
+              )
           except (OSError, json.JSONDecodeError) as error:
-              raise RuntimeError(f"cannot read valid {MANIFEST_FILE}: {error}") from error
+              raise RuntimeError(
+                  f"cannot read valid {MANIFEST_FILE}: {error}"
+              ) from error
 
-          plugin_id = manifest.get("id") if isinstance(manifest, dict) else None
-          if not isinstance(plugin_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", plugin_id):
-              raise RuntimeError(f"{MANIFEST_FILE} has no safe plugin id")
-          return plugin_id
+          if isinstance(manifest, dict):
+              for field in ("id", "name"):
+                  value = manifest.get(field)
+
+                  if (
+                      isinstance(value, str)
+                      and value.strip()
+                  ):
+                      folder_name = value.strip()
+
+                      if (
+                          "/" not in folder_name
+                          and "\x00" not in folder_name
+                          and folder_name not in {".", ".."}
+                      ):
+                          return folder_name
+
+          return repository_fallback_name(
+              repository
+          )
 
 
       def download_plugin(
@@ -2293,20 +2384,35 @@ let
                   staging_parent = Path(temporary_directory)
                   manifest_path = staging_parent / MANIFEST_FILE
                   download_asset(repository, assets[MANIFEST_FILE], manifest_path)
-                  folder_name = plugin_folder_name(manifest_path)
+                  folder_name = plugin_folder_name(
+                      manifest_path,
+                      repository,
+                  )
                   destination = library_type.root / folder_name
                   refresh_existing_plugin = False
                   if destination.exists():
                       if not destination.is_dir():
                           print(f"[SKIP] Plugin: {destination} exists but is not a directory")
                           return
-                      if manifest_is_valid(manifest_file(destination)):
-                          print(f"[SKIP] Plugin: {destination} already exists; use Plugins > Check for updates to recover it")
+                      manifest_healthy = manifest_is_valid(
+                          manifest_file(destination)
+                      )
+
+                      main_healthy = is_nonempty_file(
+                          destination / "main.js"
+                      )
+
+                      if manifest_healthy and main_healthy:
+                          print(
+                              f"[SKIP] Plugin: {destination} already exists; "
+                              "use Plugins > Check for updates to recover it"
+                          )
                           return
 
                       answer = input(
-                          f"{folder_name}: manifest.json is invalid. "
-                          "Re-download this plugin now? [y/N]: "
+                          f"{folder_name}: manifest.json or main.js is "
+                          "missing, empty, or invalid. "
+                          "Re-download both from the latest release now? [y/N]: "
                       ).strip().casefold()
                       if answer not in {"y", "yes"}:
                           print(f"[SKIP] Plugin: manifest repair was not confirmed for {folder_name}")

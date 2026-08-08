@@ -1,8 +1,13 @@
 # CODEX: CAVEMAN
 # =========================
-# Fetch and install the Caveman Codex plugin
+# Package, install, register, and update the Caveman Codex plugin
 
-{ lib, pkgs, unstablePkgs, ... }:
+{
+  lib,
+  pkgs,
+  unstablePkgs,
+  ...
+}:
 
 let
   userName = "ven";
@@ -17,26 +22,49 @@ let
   ];
 
 
-  # SOURCE
+  # PACKAGE
   # =========================
-  # Version information updated by update-codex-extensions
+  # Caveman source and updater metadata live together
 
-  source = builtins.fromJSON (
-    builtins.readFile ./caveman-source.json
-  );
+  caveman = pkgs.stdenvNoCC.mkDerivation rec {
+    pname = "codex-caveman";
+    version = "1.8.2";
 
-  cavemanSource = pkgs.fetchFromGitHub {
-    owner = "JuliusBrussee";
-    repo = "caveman";
+    src = pkgs.fetchFromGitHub {
+      owner = "JuliusBrussee";
+      repo = "caveman";
 
-    rev = source.rev;
-    hash = source.hash;
+      rev = "v${version}";
+      hash = "sha256-Jlfas2MPoQx3pOw+yKCta8kYlOEY27SP5NXJtSL+GGI=";
+    };
+
+    dontBuild = true;
+
+    installPhase = ''
+      runHook preInstall
+
+      mkdir -p "$out"
+
+      cp -R \
+        plugins/caveman/. \
+        "$out/"
+
+      runHook postInstall
+    '';
+
+    passthru.updateScript = pkgs.nix-update-script { };
+
+    meta = {
+      description = "Caveman plugin for Codex";
+      homepage = "https://github.com/JuliusBrussee/caveman";
+      platforms = lib.platforms.all;
+    };
   };
 
 
   # MARKETPLACE
   # =========================
-  # Local Codex marketplace containing only Caveman
+  # Local marketplace exposing the packaged Caveman plugin
 
   marketplaceMetadata = pkgs.writeText "caveman-marketplace.json" ''
     {
@@ -67,7 +95,7 @@ let
       "$out/plugins"
 
     ln -s \
-      ${cavemanSource}/plugins/caveman \
+      ${caveman} \
       "$out/plugins/caveman"
 
     install -Dm444 \
@@ -78,7 +106,7 @@ let
 
   # SYNC
   # =========================
-  # Register Caveman with every Codex profile
+  # Register the plugin with both Codex profiles
 
   syncCaveman = pkgs.writeShellApplication {
     name = "codex-sync-caveman";
@@ -124,8 +152,6 @@ let
         CODEX_CLI="$codex_cli" \
           "$codex_profile" cli "$profile" \
           plugin add "caveman@$marketplace_name"
-
-        printf 'Caveman synchronized for Codex profile: %s\n' "$profile"
       }
 
       ${lib.concatMapStringsSep "\n" (
@@ -133,127 +159,22 @@ let
       ) profiles}
     '';
   };
-
-
-  # UPDATE
-  # =========================
-  # Update Caveman source metadata and rebuild nix-darwin
-
-  updateCaveman = pkgs.writeShellApplication {
-    name = "update-codex-caveman";
-
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.curl
-      pkgs.gawk
-      pkgs.git
-      pkgs.jq
-      pkgs.nix
-      pkgs.nix-prefetch-github
-    ];
-
-    text = ''
-      set -Eeuo pipefail
-
-      flake_root="/Users/ven/.config/nix/nix-config"
-      source_file="$flake_root/darwin/packages/codex/extensions/caveman-source.json"
-
-      echo "Checking Caveman..."
-
-      latest_json="$(
-        curl -fsSL \
-          "https://api.github.com/repos/JuliusBrussee/caveman/releases/latest"
-      )"
-
-      latest_version="$(
-        printf '%s' "$latest_json" \
-          | jq -r '.tag_name'
-      )"
-
-      latest_rev="$(
-        git ls-remote \
-          "https://github.com/JuliusBrussee/caveman.git" \
-          "refs/tags/$latest_version^{}" \
-          | awk 'NR == 1 { print $1 }'
-      )"
-
-      if test -z "$latest_rev"; then
-        latest_rev="$(
-          git ls-remote \
-            "https://github.com/JuliusBrussee/caveman.git" \
-            "refs/tags/$latest_version" \
-            | awk 'NR == 1 { print $1 }'
-        )"
-      fi
-
-      current_rev="$(
-        jq -r '.rev' "$source_file"
-      )"
-
-      if test "$current_rev" = "$latest_rev"; then
-        echo "Caveman is already current."
-        exit 0
-      fi
-
-      prefetch="$(
-        nix-prefetch-github \
-          JuliusBrussee \
-          caveman \
-          --rev "$latest_rev"
-      )"
-
-      new_hash="$(
-        printf '%s' "$prefetch" \
-          | jq -r '.hash // .sha256'
-      )"
-
-      jq \
-        --arg version "''${latest_version#v}" \
-        --arg rev "$latest_rev" \
-        --arg hash "$new_hash" \
-        '
-          .version = $version
-          | .rev = $rev
-          | .hash = $hash
-        ' \
-        "$source_file" \
-        > "$source_file.tmp"
-
-      mv \
-        "$source_file.tmp" \
-        "$source_file"
-
-      echo "Caveman updated to: $latest_version"
-    '';
-  };
-
-
 in
 {
-	# UPDATE COMMAND
-	environment.systemPackages = [
-    updateCaveman
-  ];
-
-  # CODEX: CAVEMAN PLUGIN
-  # =========================
-  # Make the plugin source visible through the shared plugin directory
-
   system.activationScripts.codexCaveman.text = lib.mkAfter ''
-    echo "[nix-darwin][codex] Configuring Caveman..."
+    echo "[nix-darwin][codex] Installing Caveman..."
 
     mkdir -p "${sharedPlugins}"
 
     rm -rf "${sharedPlugins}/caveman"
 
     ln -s \
-      "${cavemanSource}/plugins/caveman" \
+      "${caveman}" \
       "${sharedPlugins}/caveman"
 
     chown -h \
       ${userName}:staff \
       "${sharedPlugins}/caveman"
-
 
     /usr/bin/sudo \
       -u ${userName} \
@@ -263,6 +184,4 @@ in
       CODEX_PROFILE_CONFIG_HOME=${homeDir}/.config/codex-profile \
       ${syncCaveman}/bin/codex-sync-caveman
   '';
-
-  
 }
