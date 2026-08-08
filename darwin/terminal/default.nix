@@ -17,8 +17,10 @@
     enable = true;
 
     # -------------------------------------------- #
-    # PLUGINS
+    # FISH SETTINGS
     # -------------------------------------------- #
+
+    # ---- PLUGINS ---- #
     plugins = [
       {
       	# Plugin that allows for automatic pairing of brackets, quotes, etc.
@@ -32,9 +34,7 @@
       }
     ];
 
-    # -------------------------------------------- #
-    # CONFIG
-    # -------------------------------------------- #
+    # ---- CONFIGURATION ---- #
     shellInit = ''
       # Hide default greeting
       set fish_greeting
@@ -44,9 +44,6 @@
 
     # Direnv integration
     	direnv hook fish | source
-
-    # Docker completion
-    	source ${pkgs.docker_29}/share/fish/vendor_completions.d/docker.fish
     '';
 
     interactiveShellInit = ''
@@ -61,13 +58,17 @@
     '';
   };
 
+  # ---- COMPLETIONS ---- #
+  xdg.configFile."fish/completions/docker.fish".source =
+    "${pkgs.docker_29}/share/fish/vendor_completions.d/docker.fish";
+
+
+  # ---- THEMES ---- #
   # Set the default Fish theme
   terminal.fish.theme = "gruvbox";
 
-  # -------------------------------------------- #
-  # ENVIRONMENT
-  # -------------------------------------------- #
-  # Paths
+  
+  # ---- ENVIRONMENT ---- #
   home = {
     sessionPath = [
       # homebrew PATHS
@@ -78,8 +79,9 @@
       # Docker PATH
       "/Applications/Programming/Docker.app/Contents/Resources/bin"
     ];
+    
 
-    # Environment
+    # ---- ENVIRONMENT VARIABLES ---- #
     sessionVariables = {
       # COLORTERM = "truecolor";
       MICRO_TRUECOLOR = "1";
@@ -88,6 +90,7 @@
       CHATGPT_APP = "/Applications/ChatGPT.app";
     };
   };
+  
 
   # -------------------------------------------- #
   # MODULES

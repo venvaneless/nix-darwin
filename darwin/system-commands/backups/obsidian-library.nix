@@ -603,19 +603,8 @@ let
               directory: Path,
               existing_root: Path | None = None,
           ) -> tuple[list[str], bool]:
-              repository_metadata = gh_json(
-                  f"repos/{repository}"
-              )
-
-              default_branch = repository_metadata.get(
-                  "default_branch"
-              )
-
-              if not isinstance(default_branch, str) or not default_branch:
-                  return [], False
-
               tree = gh_json(
-                  f"repos/{repository}/git/trees/{default_branch}?recursive=1"
+                  f"repos/{repository}/git/trees/HEAD?recursive=1"
               ).get("tree")
     
               if not isinstance(tree, list):
@@ -689,6 +678,9 @@ let
                       continue
     
                   if not isinstance(remote_size, int):
+                      continue
+
+                  if is_blocked_download_name(repository_path):
                       continue
     
                   path = Path(repository_path)

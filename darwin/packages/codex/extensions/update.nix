@@ -1,8 +1,8 @@
 # CODEX: EXTENSION UPDATER
 # =========================
-# Discover and update all installed Codex extensions
+# Update all declaratively managed Codex extensions
 
-{ pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   updateCodexExtensions = pkgs.writeShellApplication {
@@ -10,7 +10,12 @@ let
 
     runtimeInputs = [
       pkgs.coreutils
-      pkgs.findutils
+      pkgs.curl
+      pkgs.gawk
+      pkgs.git
+      pkgs.jq
+      pkgs.nix
+      pkgs.nix-prefetch-github
     ];
 
     text = ''
@@ -19,52 +24,28 @@ let
 
       # PATHS
       # =========================
-      # nix-darwin exposes extension installers here
-      system_bin="/run/current-system/sw/bin"
 
-
-      # DISCOVER
-      # =========================
-      # Find every declaratively installed Codex extension installer
-      installers="$(
-        ${pkgs.findutils}/bin/find \
-          "$system_bin" \
-          -maxdepth 1 \
-          -type l \
-          -name 'install-codex-*' \
-          -print \
-          | sort
-      )"
-
-
-      # VERIFY
-      # =========================
-      if test -z "$installers"; then
-        printf 'No Codex extension installers were found.\n'
-        exit 0
-      fi
+      flake_root="/Users/ven/.config/nix/nix-config"
 
 
       # UPDATE
       # =========================
-      # Each installer independently checks/downloads its upstream extension
-      while IFS= read -r installer; do
-        test -n "$installer" || continue
 
-        name="$(${pkgs.coreutils}/bin/basename "$installer")"
+      cd "$flake_root"
 
-        printf '\n'
-        printf 'Updating: %s\n' "$name"
-        printf '%s\n' '----------------------------------------'
-
-        "$installer"
-      done <<< "$installers"
+      ${lib.concatStringsSep "\n\n" config.codex.extensionUpdaters}
 
 
-      # COMPLETE
+      # REBUILD
       # =========================
-      printf '\n'
-      printf 'All Codex extensions are current.\n'
+
+      echo
+      echo "Rebuilding nix-darwin..."
+
+      exec /usr/bin/sudo \
+        /run/current-system/sw/bin/darwin-rebuild \
+        switch \
+        --flake "$flake_root#macbook"
     '';
   };
 in

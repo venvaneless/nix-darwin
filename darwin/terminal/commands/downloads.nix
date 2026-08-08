@@ -1263,36 +1263,40 @@
 
           command mkdir -p -- "$repository_extract"
 
-          # Resolve the repository's default branch before inspecting files.
-          set repository_default_branch (
+          # Fetch repository file paths using the original working mechanism.
+          set repository_paths (
               command gh api \
-                  "repos/$repository_owner/$repository_name" \
-                  --jq .default_branch \
+                  "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
+                  --jq '.tree[]? | select(.type == "blob") | .path' \
                   2>/dev/null
           )
 
-          set repository_paths
+          # Filter only what may be considered for download.
+          set filtered_repository_paths
 
-          if test -n "$repository_default_branch"
-              set repository_paths (
-                  command gh api \
-                      "repos/$repository_owner/$repository_name/git/trees/$repository_default_branch?recursive=1" \
-                      --jq \
-                      '.tree[]? | select(
-                        .type == "blob"
-                        and (.path | test("(^|/)node_modules/") | not)
-                        and (.path | test("(^|/)\\.[^/]+") | not)
-                        and (
-                          .path
-                          | split("/")
-                          | last
-                          | test("^(LICENSE|CHANGELOG|CONTRIBUTING)(\\..*)?$"; "i")
-                          | not
-                        )
-                      ) | .path' \
-                      2>/dev/null
-              )
+          for repository_path in $repository_paths
+              set repository_name \
+                  (basename "$repository_path")
+
+              if string match -rq \
+                      '(^|/)\.[^/]+' \
+                      "$repository_path"; or \
+                      string match -rq \
+                      '(^|/)node_modules/' \
+                      "$repository_path"; or \
+                      string match -rq \
+                      '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
+                      "$repository_name"
+
+                  continue
+              end
+
+              set --append filtered_repository_paths \
+                  "$repository_path"
           end
+
+          set repository_paths \
+              $filtered_repository_paths
 
           # Prefer standard files from the newest release before repository fallback.
           set release_theme_css 0
@@ -2157,36 +2161,40 @@
 
           command mkdir -p "$extracted"
 
-          # Resolve the repository's default branch before inspecting files.
-          set repository_default_branch (
+          # Fetch repository file paths using the original working mechanism.
+          set repository_paths (
               command gh api \
-                  "repos/$repository_owner/$repository_name" \
-                  --jq .default_branch \
+                  "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
+                  --jq '.tree[]? | select(.type == "blob") | .path' \
                   2>/dev/null
           )
 
-          set repository_paths
+          # Filter only what may be considered for download.
+          set filtered_repository_paths
 
-          if test -n "$repository_default_branch"
-              set repository_paths (
-                  command gh api \
-                      "repos/$repository_owner/$repository_name/git/trees/$repository_default_branch?recursive=1" \
-                      --jq \
-                      '.tree[]? | select(
-                        .type == "blob"
-                        and (.path | test("(^|/)node_modules/") | not)
-                        and (.path | test("(^|/)\\.[^/]+") | not)
-                        and (
-                          .path
-                          | split("/")
-                          | last
-                          | test("^(LICENSE|CHANGELOG|CONTRIBUTING)(\\..*)?$"; "i")
-                          | not
-                        )
-                      ) | .path' \
-                      2>/dev/null
-              )
+          for repository_path in $repository_paths
+              set repository_name \
+                  (basename "$repository_path")
+
+              if string match -rq \
+                      '(^|/)\.[^/]+' \
+                      "$repository_path"; or \
+                      string match -rq \
+                      '(^|/)node_modules/' \
+                      "$repository_path"; or \
+                      string match -rq \
+                      '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
+                      "$repository_name"
+
+                  continue
+              end
+
+              set --append filtered_repository_paths \
+                  "$repository_path"
           end
+
+          set repository_paths \
+              $filtered_repository_paths
 
           # Prefer standard files from the newest release before repository fallback.
           set release_theme_css 0
@@ -3194,6 +3202,7 @@
           string replace -r '\\.git/?$' "" |
           string trim --chars=/
         )
+        
         if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
           return 1
         end
@@ -3425,28 +3434,12 @@
           return 1
         end
 
-        set --local repository_default_branch (
+        set --local repository_paths (
           command gh api \
-            "repos/$repository" \
-            --jq .default_branch \
+            "repos/$repository/git/trees/HEAD?recursive=1" \
+            --jq '.tree[]? | select(.type == "blob") | .path' \
             2>/dev/null
         )
-
-        set --local repository_paths
-
-        if test -n "$repository_default_branch"
-          set repository_paths (
-            command gh api \
-              "repos/$repository/git/trees/$repository_default_branch?recursive=1" \
-              --jq \
-              '.tree[]? | select(
-                .type == "blob"
-                and (.path | test("(^|/)node_modules/") | not)
-                and (.path | test("(^|/)\\.[^/]+") | not)
-              ) | .path' \
-              2>/dev/null
-          )
-        end
 
         if test $status -ne 0
           echo "Notice: Could not inspect theme images for $library_entry"
@@ -3459,6 +3452,19 @@
         for repository_path in $repository_paths
           set --local repository_image_name \
             (basename "$repository_path")
+
+          if string match -rq \
+              '(^|/)\.[^/]+' \
+              "$repository_path"; or \
+              string match -rq \
+              '(^|/)node_modules/' \
+              "$repository_path"; or \
+              string match -rq \
+              '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
+              "$repository_image_name"
+
+            continue
+          end
 
           set --local is_root_image 0
           set --local has_image_keyword 0
@@ -3480,7 +3486,7 @@
           end
 
           if string match -rq \
-              '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots|images|image|assets)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+              '(?i)(^|/)[^/]*(asset|assets|gallery|galleries|img|imgs|image|images|preview|previews|screenshot|screenshots)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
               "$repository_path"
 
             set is_image_folder_image 1
@@ -3602,6 +3608,14 @@
           echo "Notice: Could not restore files for $library_entry; repository URL is invalid."
           return 1
         end
+
+        # Fetch repository file paths using the same mechanism as gitdll.
+        set --local repository_paths (
+          command gh api \
+            "repos/$repository/git/trees/HEAD?recursive=1" \
+            --jq '.tree[]? | select(.type == "blob") | .path' \
+            2>/dev/null
+        )
 
         set --local use_repository_subfolder 0
 
@@ -3734,76 +3748,7 @@
               "$expected_file"
           end
 
-          # Restore data.json from the GitHub release when provided.
-          for release_asset in $release_assets
-            set --local release_parts \
-              (string split \t "$release_asset")
-
-            if test (count $release_parts) -lt 2
-              continue
-            end
-
-            if test "$release_parts[1]" != data.json
-              continue
-            end
-
-            __obsidian_missing_download_url \
-              "$library_entry/data.json" \
-              "$release_parts[2]" \
-              "data.json"
-
-            break
-          end
         else
-          # Restore additional theme release assets that gitdll preserves.
-          for release_asset in $release_assets
-            set --local release_parts \
-              (string split \t "$release_asset")
-
-            if test (count $release_parts) -lt 2
-              continue
-            end
-
-            set --local release_asset_name "$release_parts[1]"
-            set --local release_asset_url "$release_parts[2]"
-
-            switch "$release_asset_name"
-              case manifest.json theme.css obsidian.css main.js
-                continue
-
-              case '*.css' '*.js' fonts.zip data.json
-                __obsidian_missing_download_url \
-                  "$library_entry/$release_asset_name" \
-                  "$release_asset_url" \
-                  "$release_asset_name"
-            end
-          end
-
-
-          if not test -s "$library_entry/main.js"
-            for release_asset in $release_assets
-              set --local release_parts \
-                (string split \t "$release_asset")
-
-              if test (count $release_parts) -lt 2
-                continue
-              end
-
-              if test "$release_parts[1]" != main.js
-                continue
-              end
-
-              __obsidian_missing_download_url \
-                "$library_entry/main.js" \
-                "$release_parts[2]" \
-                "main.js"
-
-              break
-            end
-          end
-
-
-          
           # Themes: restore manifest.json from release before repository.
           if not test -s "$library_entry/manifest.json"
             set --local manifest_release_url
@@ -3921,6 +3866,20 @@
           set --local auxiliary_path_supported 0
           set --local auxiliary_name \
             (basename "$auxiliary_path")
+
+          # Ignore hidden folders, dependencies, and blocked filenames.
+          if string match -rq \
+              '(^|/)\.[^/]+' \
+              "$auxiliary_path"; or \
+              string match -rq \
+              '(^|/)node_modules/' \
+              "$auxiliary_path"; or \
+              string match -rq \
+              '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
+              "$auxiliary_name"
+
+            continue
+          end
 
           # Preserve every file inside documentation folders.
           if string match -rq \
