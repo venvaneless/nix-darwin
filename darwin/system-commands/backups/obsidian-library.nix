@@ -78,9 +78,21 @@ let
           "privacy",
       }
 
+      BLOCKED_DOWNLOAD_FILES = {
+          "agents.md",
+          "readme-zh_cn.md",
+          "readme-zh_tw.md",
+          "readme-zh.md",
+          "readme-cn.md",
+          "readme-tw.md",
+      }
+
 
       def is_blocked_download_name(value: str) -> bool:
           filename = Path(value).name.casefold()
+
+          if filename in BLOCKED_DOWNLOAD_FILES:
+              return True
 
           return any(
               filename == blocked_name

@@ -23,9 +23,10 @@
     description = "Check whether an Obsidian download filename is blocked";
 
     body = ''
-      # ---- BLOCKED FILE NAMES ---- #
+      # ---- BLOCKED BASE NAMES ---- #
       #
-      # Add or remove names here to change the shared blacklist.
+      # These names are blocked case-insensitively, with or without any
+      # extension.
       set --local blocked_names \
           license \
           changelog \
@@ -33,17 +34,33 @@
           security \
           privacy
 
+      # ---- BLOCKED EXACT FILE NAMES ---- #
+      #
+      # These specific filenames are blocked case-insensitively.
+      set --local blocked_files \
+          agents.md \
+          readme-zh_cn.md \
+          readme-zh_tw.md \
+          readme-zh.md \
+          readme-cn.md \
+          readme-tw.md
+
       # ---- FILE NAME ---- #
       set --local filename \
           (string lower -- (basename "$argv[1]"))
 
-      # ---- MATCH BLOCKED NAMES ---- #
+      # ---- MATCH BLOCKED BASE NAMES ---- #
       for blocked_name in $blocked_names
         if test "$filename" = "$blocked_name"; or \
             string match -q "$blocked_name.*" "$filename"
 
           return 0
         end
+      end
+
+      # ---- MATCH BLOCKED EXACT FILE NAMES ---- #
+      if contains "$filename" $blocked_files
+        return 0
       end
 
       return 1
@@ -1895,17 +1912,6 @@
           end
 
           for auxiliary_path in $repository_auxiliary_paths
-              set auxiliary_url (
-                  command gh api \
-                      "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
-                      --jq .download_url \
-                      2>/dev/null
-              )
-
-              if test -z "$auxiliary_url"
-                  continue
-              end
-
               set auxiliary_destination \
                   "$plugin_stage/"(basename "$auxiliary_path")
 
@@ -1914,25 +1920,27 @@
                       "$plugin_stage/repo/$auxiliary_path"
               end
 
-              if test -e "$auxiliary_destination"
+              if test -s "$auxiliary_destination"
                   continue
               end
 
               command mkdir -p \
                   (dirname "$auxiliary_destination")
 
-              if command curl \
-                      --fail \
-                      --location \
-                      --silent \
-                      --show-error \
-                      --output "$auxiliary_destination" \
-                      "$auxiliary_url"
+              if command gh api \
+                      -H "Accept: application/vnd.github.raw+json" \
+                      "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
+                      >"$auxiliary_destination" \
+                      2>/dev/null; and \
+                      test -s "$auxiliary_destination"
 
                   set saved_files \
                       $saved_files \
                       (string replace "$plugin_stage/" "" -- "$auxiliary_destination")
               else
+                  command rm -f \
+                      "$auxiliary_destination"
+
                   echo \
                       "Notice: Could not download plugin repository file: $auxiliary_path"
               end
@@ -3067,17 +3075,6 @@
                   continue
               end
 
-              set auxiliary_url (
-                  command gh api \
-                      "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
-                      --jq .download_url \
-                      2>/dev/null
-              )
-
-              if test -z "$auxiliary_url"
-                  continue
-              end
-
               set auxiliary_destination \
                   "$repository_asset_root/$auxiliary_path"
 
@@ -3088,18 +3085,20 @@
               command mkdir -p \
                   (dirname "$auxiliary_destination")
 
-              if command curl \
-                      --fail \
-                      --location \
-                      --silent \
-                      --show-error \
-                      --output "$auxiliary_destination" \
-                      "$auxiliary_url"
+              if command gh api \
+                      -H "Accept: application/vnd.github.raw+json" \
+                      "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
+                      >"$auxiliary_destination" \
+                      2>/dev/null; and \
+                      test -s "$auxiliary_destination"
 
                   set saved_files \
                       $saved_files \
                       "repo/$auxiliary_path"
               else
+                  command rm -f \
+                      "$auxiliary_destination"
+
                   echo \
                       "Notice: Could not download theme repository file: $auxiliary_path"
               end
@@ -4183,30 +4182,17 @@
         end
 
         for auxiliary_path in $repository_auxiliary_paths
-          set --local auxiliary_metadata (
+          set --local auxiliary_size (
             command gh api \
               "repos/$repository/contents/$auxiliary_path" \
-              --jq '[.size, .download_url] | @tsv' \
+              --jq .size \
               2>/dev/null
           )
 
-          if test -z "$auxiliary_metadata"
+          if test -z "$auxiliary_size"
             echo "Notice: Could not resolve repository file: $auxiliary_path"
             continue
           end
-
-          set --local auxiliary_parts \
-            (string split \t "$auxiliary_metadata")
-
-          if test (count $auxiliary_parts) -ne 2
-            continue
-          end
-
-          set --local auxiliary_size \
-            "$auxiliary_parts[1]"
-
-          set --local auxiliary_url \
-            "$auxiliary_parts[2]"
 
           set --local auxiliary_destination \
             "$library_entry/"(basename "$auxiliary_path")
@@ -4216,9 +4202,14 @@
               "$library_entry/repo/$auxiliary_path"
           end
 
-          if test -e "$auxiliary_destination"; or \
-              test -L "$auxiliary_destination"
+          if test -f "$auxiliary_destination"; and \
+              test -s "$auxiliary_destination"
 
+            continue
+          end
+
+          if test -L "$auxiliary_destination"
+            echo "Notice: Refusing to replace symlinked file: $auxiliary_destination"
             continue
           end
 
@@ -4246,10 +4237,29 @@
             continue
           end
 
-          __obsidian_missing_download_url \
-            "$auxiliary_destination" \
-            "$auxiliary_url" \
-            "$auxiliary_path"
+          command mkdir -p \
+            (dirname "$auxiliary_destination")
+
+          set --local auxiliary_staging \
+            "$auxiliary_destination.obsidian-missing-new"
+
+          if command gh api \
+              -H "Accept: application/vnd.github.raw+json" \
+              "repos/$repository/contents/$auxiliary_path" \
+              >"$auxiliary_staging" \
+              2>/dev/null; and \
+              test -s "$auxiliary_staging"
+
+            command mv \
+              "$auxiliary_staging" \
+              "$auxiliary_destination"
+          else
+            command rm -f \
+              "$auxiliary_staging"
+
+            echo \
+              "Notice: Could not download repository file: $auxiliary_path"
+          end
         end
 
         __obsidian_missing_restore_readme \
