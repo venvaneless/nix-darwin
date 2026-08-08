@@ -581,7 +581,7 @@ let
           )
 
 
-          def download_repository_documentation(
+      def download_repository_documentation(
               repository: str,
               directory: Path,
               existing_root: Path | None = None,
@@ -598,7 +598,14 @@ let
                   ".markdown",
                   ".org",
               }
-    
+
+              documentation_folders = {
+                  "doc",
+                  "docs",
+                  "documentation",
+                  "wiki",
+              }
+
               image_suffixes = {
                   ".gif",
                   ".jpeg",
@@ -660,12 +667,35 @@ let
                       part.casefold()
                       for part in path.parts
                   )
-    
+
+                  # Ignore hidden repository folders such as .github.
+                  if any(
+                      part.startswith(".")
+                      for part in path.parts[:-1]
+                  ):
+                      continue
+
+                  is_root_readme = (
+                      len(path.parts) == 1
+                      and path.name.casefold() in readme_names
+                  )
+
+                  # Markdown and OrgMode files qualify regardless of location.
                   is_documentation = (
                       suffix in documentation_suffixes
-                      and path.name.casefold() not in readme_names
+                      and not is_root_readme
                   )
-    
+
+                  # Every file inside recognized documentation folders is
+                  # preserved, including helper scripts such as Lua filters.
+                  is_documentation_folder_file = (
+                      not is_root_readme
+                      and any(
+                          part in documentation_folders
+                          for part in path_parts[:-1]
+                      )
+                  )
+
                   is_image = (
                       suffix in image_suffixes
                       and (
@@ -683,6 +713,7 @@ let
     
                   if not (
                       is_documentation
+                      or is_documentation_folder_file
                       or is_image
                   ):
                       continue
@@ -762,6 +793,21 @@ let
                       )
     
                   if existing_file is not None:
+                      destination.parent.mkdir(
+                          parents=True,
+                          exist_ok=True,
+                      )
+
+                      if existing_file != destination:
+                          shutil.copyfile(
+                              existing_file,
+                              destination,
+                          )
+
+                      downloaded.append(
+                          destination_name
+                      )
+
                       continue
     
                   destination.parent.mkdir(
@@ -949,39 +995,6 @@ let
                   else None
               ),
               tuple(files),
-          )release: dict[str, Any]) -> ThemeSource | None:
-          assets = release_assets(release)
-          if "theme.css" not in assets and "obsidian.css" not in assets:
-              return None
-
-          files: list[ThemeRemoteFile] = []
-          if "theme.css" in assets:
-              files.append(ThemeRemoteFile("theme.css", "theme.css", release_asset=assets["theme.css"]))
-          if "obsidian.css" in assets:
-              destination_name = "obsidian.css" if "theme.css" in assets else "theme.css"
-              files.append(ThemeRemoteFile("obsidian.css", destination_name, release_asset=assets["obsidian.css"]))
-          if MANIFEST_FILE in assets:
-              files.append(ThemeRemoteFile(MANIFEST_FILE, MANIFEST_FILE, release_asset=assets[MANIFEST_FILE]))
-          if README_FILE in assets:
-              files.append(ThemeRemoteFile(README_FILE, README_FILE, release_asset=assets[README_FILE]))
-
-          for image_name in image_names(list(assets)):
-              files.append(ThemeRemoteFile(image_name, image_name, release_asset=assets[image_name]))
-
-          if "data.json" in assets:
-              files.append(
-                  ThemeRemoteFile(
-                      "data.json",
-                      "data.json",
-                      release_asset=assets["data.json"],
-                  )
-              )
-
-          tag_name = release.get("tag_name")
-          return ThemeSource(
-              "latest release",
-              tag_name if isinstance(tag_name, str) and tag_name else None,
-              tuple(files),
           )
 
 
@@ -1006,6 +1019,14 @@ let
                       if isinstance(item, dict)
                       and item.get("type") == "blob"
                       and isinstance(item.get("path"), str)
+                      and "node_modules" not in {
+                          part.casefold()
+                          for part in Path(item["path"]).parts[:-1]
+                      }
+                      and not any(
+                          part.startswith(".")
+                          for part in Path(item["path"]).parts[:-1]
+                      )
                   ]
               except RuntimeError as error:
                   repository_contents_cache[repository] = error
@@ -1827,10 +1848,23 @@ let
                       )
                   )
 
+                  release_readme_exists = any(
+                      filename.casefold()
+                      in {
+                          "readme",
+                          "readme.md",
+                          "readme.markdown",
+                          "readme.org",
+                          "readme.txt",
+                      }
+                      for filename in assets
+                  )
+
                   move_readme_to_repo_when_needed(
                       temporary_path,
                       downloaded,
                       use_repository_subfolder,
+                      keep_readme_at_root=release_readme_exists,
                   )
 
                   set_manifest_repository(temporary_path / MANIFEST_FILE, entry.library_type, entry.repository)
@@ -2093,10 +2127,23 @@ let
                           )
                       )
 
+                      release_readme_exists = any(
+                          filename.casefold()
+                          in {
+                              "readme",
+                              "readme.md",
+                              "readme.markdown",
+                              "readme.org",
+                              "readme.txt",
+                          }
+                          for filename in assets
+                      )
+
                       move_readme_to_repo_when_needed(
                           staging,
                           downloaded,
                           use_repository_subfolder,
+                          keep_readme_at_root=release_readme_exists,
                       )
 
                       set_manifest_repository(staging / MANIFEST_FILE, entry.library_type, entry.repository)
@@ -2283,10 +2330,23 @@ let
                       )
                   )
 
+                  release_readme_exists = any(
+                      filename.casefold()
+                      in {
+                          "readme",
+                          "readme.md",
+                          "readme.markdown",
+                          "readme.org",
+                          "readme.txt",
+                      }
+                      for filename in assets
+                  )
+
                   move_readme_to_repo_when_needed(
                       staging,
                       downloaded,
                       use_repository_subfolder,
+                      keep_readme_at_root=release_readme_exists,
                   )
 
                   set_manifest_repository(staging / MANIFEST_FILE, library_type, repository)

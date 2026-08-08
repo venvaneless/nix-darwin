@@ -1268,7 +1268,11 @@
               command gh api \
                   "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
                   --jq \
-                  '.tree[]? | select(.type == "blob" and (.path | test("(^|/)node_modules/") | not)) | .path' \
+                  '.tree[]? | select(
+                    .type == "blob"
+                    and (.path | test("(^|/)node_modules/") | not)
+                    and (.path | test("(^|/)\\.[^/]+") | not)
+                  ) | .path' \
                   2>/dev/null
           )
 
@@ -1651,7 +1655,16 @@
               set auxiliary_name \
                   (basename "$auxiliary_path")
 
+              # Preserve every file inside documentation folders because
+              # supporting scripts and other files may be required by docs.
               if string match -rq \
+                      '(?i)(^|/)(doc|docs|documentation|wiki)/' \
+                      "$auxiliary_path"
+
+                  set auxiliary_path_supported 1
+
+              # Preserve Markdown and OrgMode files regardless of folder name.
+              else if string match -rq \
                       '(?i)\.(md|markdown|org)$' \
                       "$auxiliary_path"; and \
                       not string match -rq \
@@ -2124,7 +2137,11 @@
               command gh api \
                   "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
                   --jq \
-                  '.tree[]? | select(.type == "blob" and (.path | test("(^|/)node_modules/") | not)) | .path' \
+                  '.tree[]? | select(
+                    .type == "blob"
+                    and (.path | test("(^|/)node_modules/") | not)
+                    and (.path | test("(^|/)\\.[^/]+") | not)
+                  ) | .path' \
                   2>/dev/null
           )
 
@@ -2570,6 +2587,18 @@
                   (basename "$repository_path")
 
               if string match -rq \
+                      '(?i)(^|/)(doc|docs|documentation|wiki)/' \
+                      "$repository_path"
+
+                  if not contains \
+                          "$repository_path" \
+                          $repository_auxiliary_paths
+
+                      set --append repository_auxiliary_paths \
+                          "$repository_path"
+                  end
+
+              else if string match -rq \
                       '(?i)\.(md|markdown|org)$' \
                       "$repository_path"; and \
                       not string match -rq \
@@ -2786,8 +2815,16 @@
               set auxiliary_name \
                   (basename "$auxiliary_path")
 
-              # Preserve Markdown and OrgMode files regardless of folder name.
+              # Preserve every file inside documentation folders because
+              # supporting scripts and other files may be required by docs.
               if string match -rq \
+                      '(?i)(^|/)(doc|docs|documentation|wiki)/' \
+                      "$auxiliary_path"
+
+                  set auxiliary_path_supported 1
+
+              # Preserve Markdown and OrgMode files regardless of folder name.
+              else if string match -rq \
                       '(?i)\.(md|markdown|org)$' \
                       "$auxiliary_path"; and \
                       not string match -rq \
@@ -3251,78 +3288,30 @@
         set --local readme_url \
           "$readme_parts[3]"
 
-        set --local repository_paths (
-          command gh api \
-            "repos/$repository/git/trees/HEAD?recursive=1" \
-            --jq '.tree[]? | select(.type == "blob") | .path' \
-            2>/dev/null
-        )
-
+        # Repository auxiliary files have already been normalized before this
+        # helper runs. README only needs to follow the resulting local layout.
         set --local use_repository_subfolder 0
-        set --local qualifying_image_count 0
 
-        # An already-populated repo/ means auxiliary mode is already active.
-        if test -d "$library_entry/repo"; and \
-            command find "$library_entry/repo" \
-            -mindepth 1 \
-            -print \
-            -quit | read --local existing_repo_content
-
-          set use_repository_subfolder 1
-        end
-
-        for repository_path in $repository_paths
-          set --local repository_name \
-            (basename "$repository_path")
-
-          # Any non-README Markdown or OrgMode content activates repo/.
-          if string match -rq \
-              '(?i)\.(md|markdown|org)$' \
-              "$repository_path"; and \
-              not string match -rq \
-              '(?i)^README(?:\.(md|markdown|org|txt))?$' \
-              "$repository_name"
+        if test -d "$library_entry/repo"
+          if command find "$library_entry/repo" \
+              -mindepth 1 \
+              -type d \
+              -print \
+              -quit | read --local existing_repo_directory
 
             set use_repository_subfolder 1
+          else
+            set --local existing_repo_files (
+              command find "$library_entry/repo" \
+                -mindepth 1 \
+                -type f \
+                -print
+            )
+
+            if test (count $existing_repo_files) -gt 1
+              set use_repository_subfolder 1
+            end
           end
-
-          # Snippet folders are auxiliary content.
-          if string match -rq \
-              '(?i)^snippets/.+\.css$' \
-              "$repository_path"
-
-            set use_repository_subfolder 1
-          end
-
-          # Screenshot/image folders are auxiliary content.
-          if string match -rq \
-              '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
-              "$repository_path"
-
-            set use_repository_subfolder 1
-            set qualifying_image_count \
-              (math "$qualifying_image_count + 1")
-            continue
-          end
-
-          # Root/screenshot-style image filenames count toward the image rule.
-          if string match -rq \
-              '(?i)(screen|screencap|screenshot|image|preview).*?\.(png|jpe?g|gif|webp)$' \
-              "$repository_name"; or \
-              begin
-                not string match -q '*/*' "$repository_path"
-                and string match -rq \
-                  '(?i)\.(png|jpe?g|gif|webp)$' \
-                  "$repository_name"
-              end
-
-            set qualifying_image_count \
-              (math "$qualifying_image_count + 1")
-          end
-        end
-
-        if test "$qualifying_image_count" -gt 1
-          set use_repository_subfolder 1
         end
 
         set --local readme_root \
@@ -3396,7 +3385,12 @@
         set --local repository_paths (
           command gh api \
             "repos/$repository/git/trees/HEAD?recursive=1" \
-            --jq '.tree[]? | select(.type == "blob") | .path' \
+            --jq \
+            '.tree[]? | select(
+              .type == "blob"
+              and (.path | test("(^|/)node_modules/") | not)
+              and (.path | test("(^|/)\\.[^/]+") | not)
+            ) | .path' \
             2>/dev/null
         )
 
@@ -3867,7 +3861,15 @@
           set --local auxiliary_name \
             (basename "$auxiliary_path")
 
+          # Preserve every file inside documentation folders.
           if string match -rq \
+              '(?i)(^|/)(doc|docs|documentation|wiki)/' \
+              "$auxiliary_path"
+
+            set auxiliary_path_supported 1
+
+          # Preserve Markdown and OrgMode files regardless of folder name.
+          else if string match -rq \
               '(?i)\.(md|markdown|org)$' \
               "$auxiliary_path"; and \
               not string match -rq \
@@ -4014,7 +4016,7 @@
               (dirname "$auxiliary_destination")
 
             if test "$existing_auxiliary" != "$auxiliary_destination"
-              command mv \
+              command cp \
                 "$existing_auxiliary" \
                 "$auxiliary_destination"
             end
