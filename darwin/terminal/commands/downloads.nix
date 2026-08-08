@@ -332,7 +332,10 @@
           end
         end
 
-        functions "$downloader_function" \
+        functions \
+          __obsidian_download_name_blocked \
+          __obsidian_repository_fallback_name \
+          "$downloader_function" \
           >"$function_file"
 
         if not test -s "$function_file"
