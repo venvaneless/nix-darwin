@@ -1580,12 +1580,10 @@
                           end
 
                       case '*'
-                          # GitHub's source archives are not listed in .assets.
-                          command mkdir -p \
-                              "$plugin_stage/release-assets"
-
-                          if test -f \
-                                  "$plugin_stage/release-assets/$release_asset_name"
+                          # Every actual GitHub release asset stays at the
+                          # plugin root. GitHub's generated source archives are
+                          # not included in the release assets API.
+                          if test -e "$plugin_stage/$release_asset_name"
                               continue
                           end
 
@@ -1594,12 +1592,12 @@
                                   --location \
                                   --silent \
                                   --show-error \
-                                  --output "$plugin_stage/release-assets/$release_asset_name" \
+                                  --output "$plugin_stage/$release_asset_name" \
                                   "$release_asset_url"
 
                               set saved_files \
                                   $saved_files \
-                                  "release-assets/$release_asset_name"
+                                  "$release_asset_name"
                           else
                               echo \
                                   "Notice: Could not download release asset: $release_asset_name"
@@ -1644,29 +1642,100 @@
               end
           end
 
-          # Preserve supported repository documentation and assets under repo/
-          # while keeping their complete repository-relative paths.
+          # Collect repository auxiliary files first so root/repo placement can
+          # be decided before anything is written.
+          set repository_auxiliary_paths
+
           for auxiliary_path in $repository_paths
               set auxiliary_path_supported 0
+              set auxiliary_name \
+                  (basename "$auxiliary_path")
 
               if string match -rq \
-                      '(?i)(^|/)(docs?|documentation|documentaion)/.*\.(md|markdown|org)$' \
-                      "$auxiliary_path"
+                      '(?i)\.(md|markdown|org)$' \
+                      "$auxiliary_path"; and \
+                      not string match -rq \
+                      '(?i)^README(?:\.(md|markdown|org|txt))?$' \
+                      "$auxiliary_name"
+
                   set auxiliary_path_supported 1
+
               else if string match -rq \
-                      '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|svg|avif|md|markdown|org)$' \
+                      '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
                       "$auxiliary_path"
+
                   set auxiliary_path_supported 1
+
               else if string match -rq \
-                      '(?i)^[^/]+\.org$' \
-                      "$auxiliary_path"
+                      '(?i)(screen|screencap|screenshot|image|preview).*?\.(png|jpe?g|gif|webp)$' \
+                      "$auxiliary_name"
+
                   set auxiliary_path_supported 1
               end
 
-              if test "$auxiliary_path_supported" -eq 0
-                  continue
+              if test "$auxiliary_path_supported" -eq 1
+                  set --append repository_auxiliary_paths \
+                      "$auxiliary_path"
               end
+          end
 
+          set use_repository_subfolder 0
+
+          # Multiple repository auxiliary files use repo/.
+          if test (count $repository_auxiliary_paths) -gt 1
+              set use_repository_subfolder 1
+          end
+
+          # A remote subfolder must be preserved exactly beneath repo/.
+          for auxiliary_path in $repository_auxiliary_paths
+              if string match -q '*/*' "$auxiliary_path"
+                  set use_repository_subfolder 1
+                  break
+              end
+          end
+
+          # Existing repo/ remains active when it already represents a grouped
+          # auxiliary layout.
+          if test -d "$plugin_stage/repo"
+              if command find "$plugin_stage/repo" \
+                      -mindepth 1 \
+                      -type d \
+                      -print \
+                      -quit | read --local existing_repo_directory
+
+                  set use_repository_subfolder 1
+              else
+                  set existing_repo_files (
+                      command find "$plugin_stage/repo" \
+                          -mindepth 1 \
+                          -type f \
+                          -print
+                  )
+
+                  if test (count $existing_repo_files) -gt 1
+                      set use_repository_subfolder 1
+                  else if test (count $existing_repo_files) -eq 1; and \
+                          test "$use_repository_subfolder" -eq 0
+
+                      set existing_repo_file \
+                          "$existing_repo_files[1]"
+
+                      set existing_repo_destination \
+                          "$plugin_stage/"(basename "$existing_repo_file")
+
+                      if not test -e "$existing_repo_destination"
+                          command mv \
+                              "$existing_repo_file" \
+                              "$existing_repo_destination"
+                      end
+
+                      command rm -rf \
+                          "$plugin_stage/repo"
+                  end
+              end
+          end
+
+          for auxiliary_path in $repository_auxiliary_paths
               set auxiliary_url (
                   command gh api \
                       "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
@@ -1679,9 +1748,14 @@
               end
 
               set auxiliary_destination \
-                  "$plugin_stage/repo/$auxiliary_path"
+                  "$plugin_stage/"(basename "$auxiliary_path")
 
-              if test -s "$auxiliary_destination"
+              if test "$use_repository_subfolder" -eq 1
+                  set auxiliary_destination \
+                      "$plugin_stage/repo/$auxiliary_path"
+              end
+
+              if test -e "$auxiliary_destination"
                   continue
               end
 
@@ -1698,7 +1772,7 @@
 
                   set saved_files \
                       $saved_files \
-                      "repo/$auxiliary_path"
+                      (string replace "$plugin_stage/" "" -- "$auxiliary_destination")
               else
                   echo \
                       "Notice: Could not download plugin repository file: $auxiliary_path"
@@ -1755,16 +1829,48 @@
                       "README$readme_extension"
               end
 
-              if not test -s "$plugin_stage/$readme_output"; or \
+              set readme_destination_root \
+                  "$plugin_stage"
+
+              # Any auxiliary repository content activates repo/.
+              if test -d "$plugin_stage/repo"; and \
+                      command find "$plugin_stage/repo" \
+                      -mindepth 1 \
+                      -print \
+                      -quit | read --local existing_repo_content
+
+                  set readme_destination_root \
+                      "$plugin_stage/repo"
+              end
+
+              # Move an existing root README into repo/ when auxiliary mode
+              # becomes active.
+              if test "$readme_destination_root" = "$plugin_stage/repo"; and \
+                      test -e "$plugin_stage/$readme_output"; and \
+                      not test -e "$readme_destination_root/$readme_output"
+
+                  command mkdir -p \
+                      "$readme_destination_root"
+
+                  command mv \
+                      "$plugin_stage/$readme_output" \
+                      "$readme_destination_root/$readme_output"
+              end
+
+              if not test -e "$readme_destination_root/$readme_output"; or \
                       test "$refresh_plugin_manifest" -eq 1
+
+                  command mkdir -p \
+                      "$readme_destination_root"
+
                   command cp -f \
                       "$readme" \
-                      "$plugin_stage/$readme_output"
+                      "$readme_destination_root/$readme_output"
               end
 
               set saved_files \
                   $saved_files \
-                  "$readme_output"
+                  (string replace "$plugin_stage/" "" -- "$readme_destination_root/$readme_output")
           else
               echo "Notice: No README file was found."
           end
@@ -2203,10 +2309,10 @@
                                   "Notice: Could not download release asset: $release_asset_name"
                           end
 
-                      case '*.css' '*.js' fonts.zip data.json
-                          # Download only explicitly supported release assets.
-                          # GitHub source archives are not release assets and
-                          # are never downloaded by this command.
+                      case '*'
+                          # Every other actual GitHub release asset is retained.
+                          # GitHub's generated source archives are not members of
+                          # the release assets API.
                           command mkdir -p \
                               "$extracted/release-assets"
 
@@ -2437,7 +2543,7 @@
               end
 
               if string match -rq \
-                      '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots|images|assets)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+                      '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
                       "$repository_path"
                   set is_preview_folder_image 1
               end
@@ -2454,8 +2560,54 @@
                   set use_repository_subfolder 1
               end
           end
-          if test (count $repository_image_paths) -gt 1
+          # Documentation and snippets participate in the same auxiliary
+          # layout decision as repository images.
+          set repository_auxiliary_paths \
+              $repository_image_paths
+
+          for repository_path in $repository_paths
+              set repository_name \
+                  (basename "$repository_path")
+
+              if string match -rq \
+                      '(?i)\.(md|markdown|org)$' \
+                      "$repository_path"; and \
+                      not string match -rq \
+                      '(?i)^README(?:\.(md|markdown|org|txt))?$' \
+                      "$repository_name"
+
+                  if not contains \
+                          "$repository_path" \
+                          $repository_auxiliary_paths
+
+                      set --append repository_auxiliary_paths \
+                          "$repository_path"
+                  end
+              end
+
+              if string match -rq \
+                      '(?i)^snippets/.+\.css$' \
+                      "$repository_path"
+
+                  if not contains \
+                          "$repository_path" \
+                          $repository_auxiliary_paths
+
+                      set --append repository_auxiliary_paths \
+                          "$repository_path"
+                  end
+              end
+          end
+
+          if test (count $repository_auxiliary_paths) -gt 1
               set use_repository_subfolder 1
+          end
+
+          for repository_path in $repository_auxiliary_paths
+              if string match -q '*/*' "$repository_path"
+                  set use_repository_subfolder 1
+                  break
+              end
           end
 
           set repository_asset_root "$theme_stage"
@@ -2465,18 +2617,20 @@
 
           if test -d "$extracted/release-assets"
               for release_asset in "$extracted/release-assets"/*
-                  set release_asset_name (basename "$release_asset")
+                  set release_asset_name \
+                      (basename "$release_asset")
 
-                  if test -e "$theme_stage/repo/$release_asset_name"
+                  if test -e "$theme_stage/$release_asset_name"
                       continue
                   end
 
-                  command mkdir -p "$theme_stage/repo"
                   command cp -f \
                       "$release_asset" \
-                      "$theme_stage/repo/$release_asset_name"
+                      "$theme_stage/$release_asset_name"
 
-                  set saved_files $saved_files "repo/$release_asset_name"
+                  set saved_files \
+                      $saved_files \
+                      "$release_asset_name"
               end
           end
 
@@ -2595,7 +2749,7 @@
               end
 
               set snippet_destination \
-                  "$theme_stage/repo/$snippet_path"
+                  "$repository_asset_root/$snippet_path"
 
               if test -s "$snippet_destination"
                   continue
@@ -2621,19 +2775,41 @@
           # Preserve supported repository documentation and assets under repo/
           # while keeping their complete repository-relative paths.
           for auxiliary_path in $repository_paths
+              # Repository images were already handled by the dedicated image
+              # loop above.
+              if contains "$auxiliary_path" $repository_image_paths
+                  continue
+              end
+
               set auxiliary_path_supported 0
 
+              set auxiliary_name \
+                  (basename "$auxiliary_path")
+
+              # Preserve Markdown and OrgMode files regardless of folder name.
               if string match -rq \
-                      '(?i)(^|/)(docs?|documentation|documentaion)/.*\.(md|markdown|org)$' \
-                      "$auxiliary_path"
+                      '(?i)\.(md|markdown|org)$' \
+                      "$auxiliary_path"; and \
+                      not string match -rq \
+                      '(?i)^README(?:\.(md|markdown|org|txt))?$' \
+                      "$auxiliary_name"
+
                   set auxiliary_path_supported 1
+
+              # Preserve repository image folders such as screenshots/,
+              # images/, previews/, and assets/.
               else if string match -rq \
-                      '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|svg|avif|md|markdown|org)$' \
+                      '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
                       "$auxiliary_path"
+
                   set auxiliary_path_supported 1
+
+              # Preserve screenshot/preview-style images even when their
+              # containing folder has an unrelated name.
               else if string match -rq \
-                      '(?i)^[^/]+\.org$' \
-                      "$auxiliary_path"
+                      '(?i)(screen|screencap|screenshot|image|preview).*?\.(png|jpe?g|gif|webp)$' \
+                      "$auxiliary_name"
+
                   set auxiliary_path_supported 1
               end
 
@@ -2653,7 +2829,7 @@
               end
 
               set auxiliary_destination \
-                  "$theme_stage/repo/$auxiliary_path"
+                  "$repository_asset_root/$auxiliary_path"
 
               if test -s "$auxiliary_destination"
                   continue
@@ -2679,6 +2855,18 @@
               end
           end
 
+          # Once anything auxiliary has been saved under repo/, README and
+          # repository assets belong there as well.
+          if test -d "$theme_stage/repo"; and \
+                  command find "$theme_stage/repo" \
+                  -mindepth 1 \
+                  -print \
+                  -quit | read --local existing_repo_content
+
+              set repository_asset_root \
+                  "$theme_stage/repo"
+          end
+
           if test -n "$readme"; and test -f "$readme"
               set readme_extension (
                   string match -r \
@@ -2693,8 +2881,23 @@
                       "README$readme_extension"
               end
 
-              if not test -s "$repository_asset_root/$readme_output"
-                  command mkdir -p "$repository_asset_root"
+              # Migrate a root README when auxiliary content activates repo/.
+              if test "$repository_asset_root" = "$theme_stage/repo"; and \
+                      test -e "$theme_stage/$readme_output"; and \
+                      not test -e "$repository_asset_root/$readme_output"
+
+                  command mkdir -p \
+                      "$repository_asset_root"
+
+                  command mv \
+                      "$theme_stage/$readme_output" \
+                      "$repository_asset_root/$readme_output"
+              end
+
+              if not test -e "$repository_asset_root/$readme_output"
+                  command mkdir -p \
+                      "$repository_asset_root"
+
                   command cp -f \
                       "$readme" \
                       "$repository_asset_root/$readme_output"
@@ -3001,28 +3204,10 @@
         echo "Saved $destination"
       end
 
-      # Keep an existing non-empty README untouched. Themes use the same
-      # root/repo placement rules as gitdll --themes.
+      # Restore or migrate README according to the entry's auxiliary-content
+      # layout. Core Obsidian files remain at root; auxiliary content uses repo/.
       function __obsidian_missing_restore_readme \
           --argument-names library_entry repository_url
-
-        for readme_root in \
-            "$library_entry" \
-            "$library_entry/repo"
-
-          for readme_name in \
-              README \
-              README.md \
-              README.markdown \
-              README.txt
-
-            if test -e "$readme_root/$readme_name"; or \
-                test -L "$readme_root/$readme_name"
-
-              return 0
-            end
-          end
-        end
 
         set --local repository (
           string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
@@ -3040,7 +3225,7 @@
         set --local readme_metadata (
           command gh api \
             "repos/$repository/readme" \
-            --jq '[.name, .download_url] | @tsv' \
+            --jq '[.name, .size, .download_url] | @tsv' \
             2>/dev/null
         )
 
@@ -3052,7 +3237,7 @@
         set --local readme_parts \
           (string split \t "$readme_metadata")
 
-        if test (count $readme_parts) -ne 2
+        if test (count $readme_parts) -ne 3
           echo "Notice: Could not read repository README metadata: $repository"
           return 1
         end
@@ -3060,8 +3245,11 @@
         set --local readme_name \
           "$readme_parts[1]"
 
-        set --local readme_url \
+        set --local readme_size \
           "$readme_parts[2]"
+
+        set --local readme_url \
+          "$readme_parts[3]"
 
         set --local repository_paths (
           command gh api \
@@ -3070,55 +3258,70 @@
             2>/dev/null
         )
 
-        set --local repository_image_paths
         set --local use_repository_subfolder 0
+        set --local qualifying_image_count 0
+
+        # An already-populated repo/ means auxiliary mode is already active.
+        if test -d "$library_entry/repo"; and \
+            command find "$library_entry/repo" \
+            -mindepth 1 \
+            -print \
+            -quit | read --local existing_repo_content
+
+          set use_repository_subfolder 1
+        end
 
         for repository_path in $repository_paths
-          set --local repository_image_name \
+          set --local repository_name \
             (basename "$repository_path")
 
-          set --local is_root_image 0
-          set --local has_image_keyword 0
-          set --local is_image_folder_image 0
+          # Any non-README Markdown or OrgMode content activates repo/.
+          if string match -rq \
+              '(?i)\.(md|markdown|org)$' \
+              "$repository_path"; and \
+              not string match -rq \
+              '(?i)^README(?:\.(md|markdown|org|txt))?$' \
+              "$repository_name"
 
-          if not string match -q '*/*' "$repository_path"; and \
-              string match -rq \
-              '(?i)\.(png|jpe?g|gif|webp)$' \
-              "$repository_image_name"
-
-            set is_root_image 1
+            set use_repository_subfolder 1
           end
 
+          # Snippet folders are auxiliary content.
           if string match -rq \
-              '(?i)(screen|screencap|screenshot|image|preview|previews).*?\.(png|jpe?g|gif|webp)$' \
-              "$repository_image_name"
-
-            set has_image_keyword 1
-          end
-
-          if string match -rq \
-              '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots|images|assets)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+              '(?i)^snippets/.+\.css$' \
               "$repository_path"
 
-            set is_image_folder_image 1
+            set use_repository_subfolder 1
           end
 
-          if test "$is_root_image" -eq 0; and \
-              test "$has_image_keyword" -eq 0; and \
-              test "$is_image_folder_image" -eq 0
+          # Screenshot/image folders are auxiliary content.
+          if string match -rq \
+              '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+              "$repository_path"
 
+            set use_repository_subfolder 1
+            set qualifying_image_count \
+              (math "$qualifying_image_count + 1")
             continue
           end
 
-          set --append repository_image_paths \
-            "$repository_path"
+          # Root/screenshot-style image filenames count toward the image rule.
+          if string match -rq \
+              '(?i)(screen|screencap|screenshot|image|preview).*?\.(png|jpe?g|gif|webp)$' \
+              "$repository_name"; or \
+              begin
+                not string match -q '*/*' "$repository_path"
+                and string match -rq \
+                  '(?i)\.(png|jpe?g|gif|webp)$' \
+                  "$repository_name"
+              end
 
-          if string match -q '*/*' "$repository_path"
-            set use_repository_subfolder 1
+            set qualifying_image_count \
+              (math "$qualifying_image_count + 1")
           end
         end
 
-        if test (count $repository_image_paths) -gt 1
+        if test "$qualifying_image_count" -gt 1
           set use_repository_subfolder 1
         end
 
@@ -3130,8 +3333,45 @@
             "$library_entry/repo"
         end
 
+        set --local readme_destination \
+          "$readme_root/$readme_name"
+
+        set --local existing_readme (
+          command find "$library_entry" \
+            -type f \
+            \( \
+              -iname README \
+              -o -iname README.md \
+              -o -iname README.markdown \
+              -o -iname README.org \
+              -o -iname README.txt \
+            \) \
+            -size "$readme_size"c \
+            -print \
+            -quit \
+            2>/dev/null
+        )
+
+        if test -n "$existing_readme"
+          # README already exists, but auxiliary mode may require relocating it.
+          if test "$readme_root" = "$library_entry/repo"; and \
+              not string match -q "$library_entry/repo/*" "$existing_readme"
+
+            command mkdir -p \
+              "$library_entry/repo"
+
+            if not test -e "$readme_destination"
+              command mv \
+                "$existing_readme" \
+                "$readme_destination"
+            end
+          end
+
+          return 0
+        end
+
         __obsidian_missing_download_url \
-          "$readme_root/$readme_name" \
+          "$readme_destination" \
           "$readme_url" \
           "$readme_name"
       end
@@ -3192,7 +3432,7 @@
           end
 
           if string match -rq \
-              '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots|images|assets)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+              '(?i)(^|/)[^/]*(preview|previews|screenshot|screenshots|images|image|assets)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
               "$repository_path"
 
             set is_image_folder_image 1
@@ -3253,15 +3493,43 @@
             continue
           end
 
-          set --local image_url (
+          set --local image_metadata (
             command gh api \
               "repos/$repository/contents/$repository_image_path" \
-              --jq .download_url \
+              --jq '[.size, .download_url] | @tsv' \
               2>/dev/null
           )
 
-          if test -z "$image_url"
+          if test -z "$image_metadata"
             echo "Notice: Could not resolve theme image: $repository_image_path"
+            continue
+          end
+
+          set --local image_parts \
+            (string split \t "$image_metadata")
+
+          if test (count $image_parts) -ne 2
+            echo "Notice: Could not read theme image metadata: $repository_image_path"
+            continue
+          end
+
+          set --local image_size \
+            "$image_parts[1]"
+
+          set --local image_url \
+            "$image_parts[2]"
+
+          set --local image_name \
+            (basename "$repository_image_path")
+
+          if command find "$library_entry" \
+              -type f \
+              -iname "$image_name" \
+              -size "$image_size"c \
+              -print \
+              -quit \
+              2>/dev/null | read --local existing_image
+
             continue
           end
 
@@ -3287,17 +3555,28 @@
           return 1
         end
 
-        set --local repository_paths (
-          command gh api \
-            "repos/$repository/git/trees/HEAD?recursive=1" \
-            --jq \
-            '.tree[]? | select(.type == "blob" and (.path | test("(^|/)node_modules/") | not)) | .path' \
-            2>/dev/null
-        )
+        set --local use_repository_subfolder 0
 
-        if test $status -ne 0
-          echo "Notice: Could not inspect repository files for $library_entry"
-          return 1
+        if test -d "$library_entry/repo"
+          if command find "$library_entry/repo" \
+              -mindepth 1 \
+              -type d \
+              -print \
+              -quit | read --local existing_repo_directory
+
+            set use_repository_subfolder 1
+          else
+            set --local existing_repo_files (
+              command find "$library_entry/repo" \
+                -mindepth 1 \
+                -type f \
+                -print
+            )
+
+            if test (count $existing_repo_files) -gt 1
+              set use_repository_subfolder 1
+            end
+          end
         end
 
         set --local release_assets
@@ -3315,7 +3594,8 @@
           )
         end
 
-        # Restore supported image assets from the latest release.
+        # Every actual GitHub release asset belongs at the entry root.
+        # GitHub's generated source archives are not members of .assets[].
         for release_asset in $release_assets
           set --local release_parts \
             (string split \t "$release_asset")
@@ -3324,14 +3604,11 @@
             continue
           end
 
-          set --local release_asset_name "$release_parts[1]"
-          set --local release_asset_url "$release_parts[2]"
+          set --local release_asset_name \
+            "$release_parts[1]"
 
-          if not string match -rq \
-              '(?i)\\.(png|jpe?g|gif|webp|svg|avif)$' \
-              "$release_asset_name"
-            continue
-          end
+          set --local release_asset_url \
+            "$release_parts[2]"
 
           __obsidian_missing_download_url \
             "$library_entry/$release_asset_name" \
@@ -3416,9 +3693,9 @@
             end
 
             __obsidian_missing_download_url \
-              "$library_entry/release-assets/data.json" \
+              "$library_entry/data.json" \
               "$release_parts[2]" \
-              "release-assets/data.json"
+              "data.json"
 
             break
           end
@@ -3441,9 +3718,9 @@
 
               case '*.css' '*.js' fonts.zip data.json
                 __obsidian_missing_download_url \
-                  "$library_entry/repo/$release_asset_name" \
+                  "$library_entry/$release_asset_name" \
                   "$release_asset_url" \
-                  "repo/$release_asset_name"
+                  "$release_asset_name"
             end
           end
 
@@ -3582,31 +3859,138 @@
           end
         end
 
-        # Restore supported repository documentation and assets under repo/
-        # while keeping their complete repository-relative paths.
+        # Build the same repository auxiliary-file set used by gitdll.
+        set --local repository_auxiliary_paths
+
         for auxiliary_path in $repository_paths
           set --local auxiliary_path_supported 0
+          set --local auxiliary_name \
+            (basename "$auxiliary_path")
 
           if string match -rq \
-              '(?i)(^|/)(docs?|documentation|documentaion)/.*\.(md|markdown|org)$' \
-              "$auxiliary_path"
+              '(?i)\.(md|markdown|org)$' \
+              "$auxiliary_path"; and \
+              not string match -rq \
+              '(?i)^README(?:\.(md|markdown|org|txt))?$' \
+              "$auxiliary_name"
+
             set auxiliary_path_supported 1
+
           else if string match -rq \
-              '(?i)(^|/)assets/.*\.(png|jpe?g|gif|webp|svg|avif|md|markdown|org)$' \
+              '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
               "$auxiliary_path"
+
             set auxiliary_path_supported 1
+
           else if string match -rq \
-              '(?i)^[^/]+\.org$' \
-              "$auxiliary_path"
+              '(?i)(screen|screencap|screenshot|image|preview).*?\.(png|jpe?g|gif|webp)$' \
+              "$auxiliary_name"
+
             set auxiliary_path_supported 1
           end
 
-          if test "$auxiliary_path_supported" -eq 0
+          # Themes additionally preserve CSS snippets.
+          if test "$requires_plugin_payload" -eq 0; and \
+              string match -rq \
+              '(?i)^snippets/.+\.css$' \
+              "$auxiliary_path"
+
+            set auxiliary_path_supported 1
+          end
+
+          if test "$auxiliary_path_supported" -eq 1
+            set --append repository_auxiliary_paths \
+              "$auxiliary_path"
+          end
+        end
+
+        set --local use_repository_subfolder 0
+
+        if test (count $repository_auxiliary_paths) -gt 1
+          set use_repository_subfolder 1
+        end
+
+        for auxiliary_path in $repository_auxiliary_paths
+          if string match -q '*/*' "$auxiliary_path"
+            set use_repository_subfolder 1
+            break
+          end
+        end
+
+        # Existing local repo/ also participates in normalization.
+        if test -d "$library_entry/repo"
+          if command find "$library_entry/repo" \
+              -mindepth 1 \
+              -type d \
+              -print \
+              -quit | read --local existing_repo_directory
+
+            set use_repository_subfolder 1
+          else
+            set --local existing_repo_files (
+              command find "$library_entry/repo" \
+                -mindepth 1 \
+                -type f \
+                -print
+            )
+
+            if test (count $existing_repo_files) -gt 1
+              set use_repository_subfolder 1
+
+            else if test (count $existing_repo_files) -eq 1; and \
+                test "$use_repository_subfolder" -eq 0
+
+              set --local existing_repo_file \
+                "$existing_repo_files[1]"
+
+              set --local existing_repo_destination \
+                "$library_entry/"(basename "$existing_repo_file")
+
+              if not test -e "$existing_repo_destination"
+                command mv \
+                  "$existing_repo_file" \
+                  "$existing_repo_destination"
+              end
+
+              command rm -rf \
+                "$library_entry/repo"
+            end
+          end
+        end
+
+        for auxiliary_path in $repository_auxiliary_paths
+          set --local auxiliary_metadata (
+            command gh api \
+              "repos/$repository/contents/$auxiliary_path" \
+              --jq '[.size, .download_url] | @tsv' \
+              2>/dev/null
+          )
+
+          if test -z "$auxiliary_metadata"
+            echo "Notice: Could not resolve repository file: $auxiliary_path"
             continue
           end
 
+          set --local auxiliary_parts \
+            (string split \t "$auxiliary_metadata")
+
+          if test (count $auxiliary_parts) -ne 2
+            continue
+          end
+
+          set --local auxiliary_size \
+            "$auxiliary_parts[1]"
+
+          set --local auxiliary_url \
+            "$auxiliary_parts[2]"
+
           set --local auxiliary_destination \
-            "$library_entry/repo/$auxiliary_path"
+            "$library_entry/"(basename "$auxiliary_path")
+
+          if test "$use_repository_subfolder" -eq 1
+            set auxiliary_destination \
+              "$library_entry/repo/$auxiliary_path"
+          end
 
           if test -e "$auxiliary_destination"; or \
               test -L "$auxiliary_destination"
@@ -3614,15 +3998,27 @@
             continue
           end
 
-          set --local auxiliary_url (
-            command gh api \
-              "repos/$repository/contents/$auxiliary_path" \
-              --jq .download_url \
+          # Reuse an identical existing file instead of downloading it again.
+          set --local existing_auxiliary (
+            command find "$library_entry" \
+              -type f \
+              -iname (basename "$auxiliary_path") \
+              -size "$auxiliary_size"c \
+              -print \
+              -quit \
               2>/dev/null
           )
 
-          if test -z "$auxiliary_url"
-            echo "Notice: Could not resolve repository file: $auxiliary_path"
+          if test -n "$existing_auxiliary"
+            command mkdir -p \
+              (dirname "$auxiliary_destination")
+
+            if test "$existing_auxiliary" != "$auxiliary_destination"
+              command mv \
+                "$existing_auxiliary" \
+                "$auxiliary_destination"
+            end
+
             continue
           end
 
@@ -3636,11 +4032,7 @@
           "$library_entry" \
           "$repository_url"
 
-        if test "$requires_plugin_payload" -eq 0
-          __obsidian_missing_restore_theme_screenshots \
-            "$library_entry" \
-            "$repository_url"
-        end
+
       end
 
       set --local missing_entries

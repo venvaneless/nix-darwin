@@ -44,6 +44,9 @@
 
     # Direnv integration
     	direnv hook fish | source
+
+    # Docker completion
+    	source ${pkgs.docker_29}/share/fish/vendor_completions.d/docker.fish
     '';
 
     interactiveShellInit = ''

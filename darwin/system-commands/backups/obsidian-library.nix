@@ -470,132 +470,384 @@ let
               )
 
 
-      def download_repository_readme(repository: str, destination: Path) -> bool:
-          # GitHub resolves README, README.md, and supported case variants.
-          completed = run(
-              [
-                  GH_BIN,
-                  "api",
-                  "-H",
-                  "Accept: application/vnd.github.raw+json",
-                  f"repos/{repository}/readme",
-              ],
-              text=False,
+      def find_matching_file(
+          root: Path,
+          filename: str,
+          size: int,
+      ) -> Path | None:
+          if not root.is_dir():
+              return None
+
+          for candidate in root.rglob("*"):
+              try:
+                  if not candidate.is_file():
+                      continue
+
+                  if candidate.name.casefold() != filename.casefold():
+                      continue
+
+                  if candidate.stat().st_size != size:
+                      continue
+
+                  return candidate
+              except OSError:
+                  continue
+
+          return None
+
+
+      def download_repository_readme(
+          repository: str,
+          destination: Path,
+          existing_root: Path | None = None,
+      ) -> bool:
+          metadata = gh_json(
+              f"repos/{repository}/readme"
           )
-          if completed.returncode != 0 or not completed.stdout:
+
+          readme_name = metadata.get("name")
+          readme_size = metadata.get("size")
+          download_url = metadata.get("download_url")
+
+          if not isinstance(readme_name, str):
               return False
 
-          destination.write_bytes(completed.stdout)
-          return destination.is_file() and destination.stat().st_size > 0
+          if not isinstance(readme_size, int):
+              return False
 
+          if not isinstance(download_url, str) or not download_url:
+              return False
 
-      def download_repository_documentation(
-          repository: str,
-          directory: Path,
-      ) -> list[str]:
-          tree = gh_json(
-              f"repos/{repository}/git/trees/HEAD?recursive=1"
-          ).get("tree")
-
-          if not isinstance(tree, list):
-              return []
-
-          documentation_folders = {
-              "doc",
-              "docs",
-              "documentation",
-              "documentaion",
+          readme_names = {
+              "readme",
+              "readme.md",
+              "readme.markdown",
+              "readme.org",
+              "readme.txt",
           }
 
-          documentation_suffixes = {
-              ".md",
-              ".markdown",
-              ".org",
-          }
+          search_roots = [
+              destination.parent,
+          ]
 
-          asset_suffixes = {
-              ".avif",
-              ".gif",
-              ".jpeg",
-              ".jpg",
-              ".md",
-              ".markdown",
-              ".org",
-              ".png",
-              ".svg",
-              ".webp",
-          }
-
-          repository_paths: list[str] = []
-
-          for item in tree:
-              if not isinstance(item, dict):
-                  continue
-
-              if item.get("type") != "blob":
-                  continue
-
-              repository_path = item.get("path")
-              if not isinstance(repository_path, str):
-                  continue
-
-              path = Path(repository_path)
-              path_parts = tuple(
-                  part.casefold()
-                  for part in path.parts
+          if existing_root is not None:
+              search_roots.append(
+                  existing_root
               )
-              suffix = path.suffix.casefold()
 
-              is_documentation_file = (
-                  suffix in documentation_suffixes
-                  and any(
-                      part in documentation_folders
-                      for part in path_parts[:-1]
+          for search_root in search_roots:
+              if not search_root.is_dir():
+                  continue
+
+              for candidate in search_root.rglob("*"):
+                  try:
+                      if not candidate.is_file():
+                          continue
+
+                      if candidate.name.casefold() not in readme_names:
+                          continue
+
+                      if candidate.stat().st_size != readme_size:
+                          continue
+
+                      return False
+
+                  except OSError:
+                      continue
+
+          destination.parent.mkdir(
+              parents=True,
+              exist_ok=True,
+          )
+
+          completed = run(
+              [
+                  CURL_BIN,
+                  "--fail",
+                  "--location",
+                  "--silent",
+                  "--show-error",
+                  "--output",
+                  str(destination),
+                  download_url,
+              ],
+          )
+
+          if completed.returncode != 0:
+              return False
+
+          return is_nonempty_file(
+              destination
+          )
+
+
+          def download_repository_documentation(
+              repository: str,
+              directory: Path,
+              existing_root: Path | None = None,
+          ) -> tuple[list[str], bool]:
+              tree = gh_json(
+                  f"repos/{repository}/git/trees/HEAD?recursive=1"
+              ).get("tree")
+    
+              if not isinstance(tree, list):
+                  return [], False
+    
+              documentation_suffixes = {
+                  ".md",
+                  ".markdown",
+                  ".org",
+              }
+    
+              image_suffixes = {
+                  ".gif",
+                  ".jpeg",
+                  ".jpg",
+                  ".png",
+                  ".webp",
+              }
+    
+              image_folders = {
+                  "asset",
+                  "assets",
+                  "gallery",
+                  "galleries",
+                  "image",
+                  "images",
+                  "preview",
+                  "previews",
+                  "screenshot",
+                  "screenshots",
+              }
+    
+              image_keywords = (
+                  "image",
+                  "preview",
+                  "screencap",
+                  "screen",
+                  "screenshot",
+              )
+    
+              readme_names = {
+                  "readme",
+                  "readme.md",
+                  "readme.markdown",
+                  "readme.org",
+                  "readme.txt",
+              }
+    
+              repository_files: list[tuple[str, int]] = []
+    
+              for item in tree:
+                  if not isinstance(item, dict):
+                      continue
+    
+                  if item.get("type") != "blob":
+                      continue
+    
+                  repository_path = item.get("path")
+                  remote_size = item.get("size")
+    
+                  if not isinstance(repository_path, str):
+                      continue
+    
+                  if not isinstance(remote_size, int):
+                      continue
+    
+                  path = Path(repository_path)
+                  suffix = path.suffix.casefold()
+                  path_parts = tuple(
+                      part.casefold()
+                      for part in path.parts
+                  )
+    
+                  is_documentation = (
+                      suffix in documentation_suffixes
+                      and path.name.casefold() not in readme_names
+                  )
+    
+                  is_image = (
+                      suffix in image_suffixes
+                      and (
+                          any(
+                              keyword in part
+                              for part in path_parts[:-1]
+                              for keyword in image_folders
+                          )
+                          or any(
+                              keyword in path.name.casefold()
+                              for keyword in image_keywords
+                          )
+                      )
+                  )
+    
+                  if not (
+                      is_documentation
+                      or is_image
+                  ):
+                      continue
+    
+                  repository_files.append(
+                      (
+                          repository_path,
+                          remote_size,
+                      )
+                  )
+    
+              use_repository_subfolder = (
+                  len(repository_files) > 1
+                  or any(
+                      "/" in repository_path
+                      for repository_path, _ in repository_files
                   )
               )
-
-              is_asset_file = (
-                  suffix in asset_suffixes
-                  and "assets" in path_parts[:-1]
-              )
-
-              is_root_org_file = (
-                  len(path.parts) == 1
-                  and suffix == ".org"
-              )
-
-              if not (
-                  is_documentation_file
-                  or is_asset_file
-                  or is_root_org_file
+    
+              if existing_root is not None:
+                  existing_repo = existing_root / "repo"
+    
+                  if existing_repo.is_dir():
+                      try:
+                          has_directory = any(
+                              candidate.is_dir()
+                              for candidate in existing_repo.iterdir()
+                          )
+    
+                          existing_files = [
+                              candidate
+                              for candidate in existing_repo.rglob("*")
+                              if candidate.is_file()
+                          ]
+    
+                          if has_directory or len(existing_files) > 1:
+                              use_repository_subfolder = True
+                      except OSError:
+                          pass
+    
+              downloaded: list[str] = []
+    
+              for repository_path, remote_size in sorted(
+                  repository_files
               ):
-                  continue
-
-              repository_paths.append(repository_path)
-
-          downloaded: list[str] = []
-
-          for repository_path in sorted(repository_paths):
-              destination_name = f"repo/{repository_path}"
-              destination = directory / destination_name
-
-              if is_nonempty_file(destination):
-                  continue
-
-              destination.parent.mkdir(
-                  parents=True,
-                  exist_ok=True,
+                  if use_repository_subfolder:
+                      destination_name = (
+                          f"repo/{repository_path}"
+                      )
+                  else:
+                      destination_name = (
+                          Path(repository_path).name
+                      )
+    
+                  destination = (
+                      directory / destination_name
+                  )
+    
+                  if is_nonempty_file(destination):
+                      continue
+    
+                  filename = Path(
+                      repository_path
+                  ).name
+    
+                  existing_file = find_matching_file(
+                      directory,
+                      filename,
+                      remote_size,
+                  )
+    
+                  if existing_file is None and existing_root is not None:
+                      existing_file = find_matching_file(
+                          existing_root,
+                          filename,
+                          remote_size,
+                      )
+    
+                  if existing_file is not None:
+                      continue
+    
+                  destination.parent.mkdir(
+                      parents=True,
+                      exist_ok=True,
+                  )
+    
+                  download_repository_file(
+                      repository,
+                      repository_path,
+                      destination,
+                  )
+    
+                  downloaded.append(
+                      destination_name
+                  )
+    
+              return (
+                  downloaded,
+                  use_repository_subfolder,
               )
 
-              download_repository_file(
-                  repository,
-                  repository_path,
-                  destination,
+
+      def move_readme_to_repo_when_needed(
+          directory: Path,
+          downloaded: list[str],
+          use_repository_subfolder: bool,
+          keep_readme_at_root: bool = False,
+      ) -> None:
+          if keep_readme_at_root:
+              return
+
+          root_readme = directory / README_FILE
+          repo_readme = directory / "repo" / README_FILE
+
+          if use_repository_subfolder:
+              if root_readme.is_file():
+                  repo_readme.parent.mkdir(
+                      parents=True,
+                      exist_ok=True,
+                  )
+
+                  if not repo_readme.exists():
+                      shutil.move(
+                          root_readme,
+                          repo_readme,
+                      )
+
+              if README_FILE in downloaded:
+                  downloaded.remove(
+                      README_FILE
+                  )
+
+              repo_name = f"repo/{README_FILE}"
+
+              if repo_readme.is_file() and repo_name not in downloaded:
+                  downloaded.append(
+                      repo_name
+                  )
+
+              return
+
+          if repo_readme.is_file() and not root_readme.exists():
+              shutil.move(
+                  repo_readme,
+                  root_readme,
               )
 
-              downloaded.append(destination_name)
+          repo_name = f"repo/{README_FILE}"
 
-          return downloaded
+          if repo_name in downloaded:
+              downloaded.remove(
+                  repo_name
+              )
+
+          if root_readme.is_file() and README_FILE not in downloaded:
+              downloaded.append(
+                  README_FILE
+              )
+
+          repo_directory = directory / "repo"
+
+          try:
+              repo_directory.rmdir()
+          except OSError:
+              pass
 
 
       def download_plugin_release_data(
@@ -607,7 +859,7 @@ let
           if data_asset is None:
               return []
 
-          destination_name = "release-assets/data.json"
+          destination_name = "data.json"
           destination = directory / destination_name
 
           if is_nonempty_file(destination):
@@ -646,11 +898,58 @@ let
 
 
       def image_names(filenames: list[str]) -> list[str]:
-          image_suffixes = {".avif", ".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
+          image_suffixes = {".gif", ".jpeg", ".jpg", ".png", ".webp"}
           return sorted(filename for filename in filenames if Path(filename).suffix.casefold() in image_suffixes)
 
 
-      def theme_release_source(release: dict[str, Any]) -> ThemeSource | None:
+      def theme_release_source(
+          release: dict[str, Any],
+      ) -> ThemeSource | None:
+          assets = release_assets(
+              release
+          )
+
+          if (
+              "theme.css" not in assets
+              and "obsidian.css" not in assets
+          ):
+              return None
+
+          files: list[ThemeRemoteFile] = []
+
+          for asset_name, asset in assets.items():
+              destination_name = asset_name
+
+              # Obsidian requires theme.css. Fall back to obsidian.css when
+              # the release does not provide theme.css itself.
+              if (
+                  asset_name == "obsidian.css"
+                  and "theme.css" not in assets
+              ):
+                  destination_name = "theme.css"
+
+              files.append(
+                  ThemeRemoteFile(
+                      asset_name,
+                      destination_name,
+                      release_asset=asset,
+                  )
+              )
+
+          tag_name = release.get(
+              "tag_name"
+          )
+
+          return ThemeSource(
+              "latest release",
+              (
+                  tag_name
+                  if isinstance(tag_name, str)
+                  and tag_name
+                  else None
+              ),
+              tuple(files),
+          )release: dict[str, Any]) -> ThemeSource | None:
           assets = release_assets(release)
           if "theme.css" not in assets and "obsidian.css" not in assets:
               return None
@@ -673,7 +972,7 @@ let
               files.append(
                   ThemeRemoteFile(
                       "data.json",
-                      "repo/data.json",
+                      "data.json",
                       release_asset=assets["data.json"],
                   )
               )
@@ -775,6 +1074,12 @@ let
 
           # Preview/screenshot folder names may contain additional words.
           folder_keywords = (
+              "asset",
+              "assets",
+              "gallery",
+              "galleries",
+              "image",
+              "images",
               "preview",
               "previews",
               "screenshot",
@@ -994,14 +1299,89 @@ let
           return theme_repository_source(repository, repository_contents_cache)
 
 
-      def download_theme_file(repository: str, remote_file: ThemeRemoteFile, destination: Path) -> None:
+      def download_theme_file(
+          repository: str,
+          remote_file: ThemeRemoteFile,
+          destination: Path,
+          search_roots: tuple[Path, ...] = (),
+      ) -> bool:
+          filename = Path(
+              remote_file.destination_name
+          ).name
+
+          suffix = Path(filename).suffix.casefold()
+
+          image_suffixes = {
+              ".gif",
+              ".jpeg",
+              ".jpg",
+              ".png",
+              ".webp",
+          }
+
+          readme_names = {
+              "readme",
+              "readme.md",
+              "readme.markdown",
+              "readme.org",
+              "readme.txt",
+          }
+
+          remote_size: int | None = None
+
           if remote_file.release_asset is not None:
-              download_asset(repository, remote_file.release_asset, destination)
-              return
+              asset_size = remote_file.release_asset.get("size")
+
+              if isinstance(asset_size, int):
+                  remote_size = asset_size
+
+          elif remote_file.repository_path is not None:
+              metadata = gh_json(
+                  f"repos/{repository}/contents/{remote_file.repository_path}"
+              )
+
+              repository_size = metadata.get("size")
+
+              if isinstance(repository_size, int):
+                  remote_size = repository_size
+
+          should_deduplicate = (
+              suffix in image_suffixes
+              or filename.casefold() in readme_names
+          )
+
+          if should_deduplicate and remote_size is not None:
+              for search_root in search_roots:
+                  existing_file = find_matching_file(
+                      search_root,
+                      filename,
+                      remote_size,
+                  )
+
+                  if existing_file is not None:
+                      return False
+
+          if remote_file.release_asset is not None:
+              download_asset(
+                  repository,
+                  remote_file.release_asset,
+                  destination,
+              )
+
+              return True
+
           if remote_file.repository_path is not None:
-              download_repository_file(repository, remote_file.repository_path, destination)
-              return
-          raise RuntimeError(f"theme source file {remote_file.source_name} is incomplete")
+              download_repository_file(
+                  repository,
+                  remote_file.repository_path,
+                  destination,
+              )
+
+              return True
+
+          raise RuntimeError(
+              f"theme source file {remote_file.source_name} is incomplete"
+          )
 
 
       def release_manifest(
@@ -1404,7 +1784,7 @@ let
                   print(f"[SKIP] {entry.label}: manifest repair was not confirmed")
                   return
 
-          allowed_files = required_files + entry.library_type.optional_files + tuple(image_names(list(assets)))
+          allowed_files = tuple(assets)
           with tempfile.TemporaryDirectory(prefix="obsidian-library-update-") as temporary_directory:
               temporary_path = Path(temporary_directory)
               downloaded: list[str] = []
@@ -1418,14 +1798,25 @@ let
                       downloaded.append(filename)
 
                   readme_path = temporary_path / README_FILE
-                  if not is_nonempty_file(readme_path) and download_repository_readme(entry.repository, readme_path):
+
+                  if not is_nonempty_file(readme_path) and \
+                      download_repository_readme(
+                          entry.repository,
+                          readme_path,
+                          entry.path,
+                      ):
+
                       downloaded.append(README_FILE)
 
-                  downloaded.extend(
+                  repository_downloaded, use_repository_subfolder = \
                       download_repository_documentation(
                           entry.repository,
                           temporary_path,
+                          entry.path,
                       )
+
+                  downloaded.extend(
+                      repository_downloaded
                   )
 
                   downloaded.extend(
@@ -1434,6 +1825,12 @@ let
                           assets,
                           temporary_path,
                       )
+                  )
+
+                  move_readme_to_repo_when_needed(
+                      temporary_path,
+                      downloaded,
+                      use_repository_subfolder,
                   )
 
                   set_manifest_repository(temporary_path / MANIFEST_FILE, entry.library_type, entry.repository)
@@ -1463,23 +1860,76 @@ let
           library_type: LibraryType,
           repository: str,
           source: ThemeSource,
+          existing_root: Path | None = None,
       ) -> list[str]:
           downloaded: list[str] = []
+
+          search_roots = (
+              directory,
+          )
+
+          if existing_root is not None:
+              search_roots = (
+                  directory,
+                  existing_root,
+              )
+
           for remote_file in source.files:
               destination = directory / remote_file.destination_name
               destination.parent.mkdir(parents=True, exist_ok=True)
-              download_theme_file(repository, remote_file, destination)
-              downloaded.append(remote_file.destination_name)
+
+              if download_theme_file(
+                  repository,
+                  remote_file,
+                  destination,
+                  search_roots,
+              ):
+                  downloaded.append(
+                      remote_file.destination_name
+                  )
 
           readme_path = directory / README_FILE
-          if not is_nonempty_file(readme_path) and download_repository_readme(repository, readme_path):
-              downloaded.append(README_FILE)
 
-          downloaded.extend(
+          if not is_nonempty_file(readme_path) and \
+              download_repository_readme(
+                  repository,
+                  readme_path,
+                  existing_root,
+              ):
+
+              downloaded.append(
+                  README_FILE
+              )
+
+          repository_downloaded, use_repository_subfolder = \
               download_repository_documentation(
                   repository,
                   directory,
+                  existing_root,
               )
+
+          downloaded.extend(
+              repository_downloaded
+          )
+
+          release_readme_exists = any(
+              remote_file.release_asset is not None
+              and remote_file.source_name.casefold()
+              in {
+                  "readme",
+                  "readme.md",
+                  "readme.markdown",
+                  "readme.org",
+                  "readme.txt",
+              }
+              for remote_file in source.files
+          )
+
+          move_readme_to_repo_when_needed(
+              directory,
+              downloaded,
+              use_repository_subfolder,
+              keep_readme_at_root=release_readme_exists,
           )
 
           manifest_path = directory / MANIFEST_FILE
@@ -1510,7 +1960,13 @@ let
           try:
               with tempfile.TemporaryDirectory(prefix="obsidian-library-theme-update-") as temporary_directory:
                   temporary_path = Path(temporary_directory)
-                  downloaded = write_theme_source(temporary_path, entry.library_type, entry.repository, result.theme_source)
+                  downloaded = write_theme_source(
+                      temporary_path,
+                      entry.library_type,
+                      entry.repository,
+                      result.theme_source,
+                      entry.path,
+                  )
                   for filename in downloaded:
                       source = temporary_path / filename
                       destination = manifest_file(entry.path) if filename == MANIFEST_FILE else entry.path / filename
@@ -1611,7 +2067,7 @@ let
                       if missing:
                           raise RuntimeError(f"release {tag} is missing {', '.join(missing)}")
                       downloaded = []
-                      for name in required + entry.library_type.optional_files + tuple(image_names(list(assets))):
+                      for name in assets:
                           if name in assets:
                               download_asset(entry.repository, assets[name], staging / name)
                               downloaded.append(name)
@@ -1619,11 +2075,14 @@ let
                       if not is_nonempty_file(readme) and download_repository_readme(entry.repository, readme):
                           downloaded.append(README_FILE)
 
-                      downloaded.extend(
+                      repository_downloaded, use_repository_subfolder = \
                           download_repository_documentation(
                               entry.repository,
                               staging,
                           )
+
+                      downloaded.extend(
+                          repository_downloaded
                       )
 
                       downloaded.extend(
@@ -1632,6 +2091,12 @@ let
                               assets,
                               staging,
                           )
+                      )
+
+                      move_readme_to_repo_when_needed(
+                          staging,
+                          downloaded,
+                          use_repository_subfolder,
                       )
 
                       set_manifest_repository(staging / MANIFEST_FILE, entry.library_type, entry.repository)
@@ -1747,7 +2212,7 @@ let
               report_error(f"[FAILED] Plugin: library directory does not exist: {library_type.root}")
               return
 
-          allowed_files = required_files + library_type.optional_files + tuple(image_names(list(assets)))
+          allowed_files = tuple(assets)
           try:
               with tempfile.TemporaryDirectory(prefix=".obsidian-library-plugin-", dir=library_type.root) as temporary_directory:
                   staging_parent = Path(temporary_directory)
@@ -1783,14 +2248,31 @@ let
                       download_asset(repository, assets[filename], staging / filename)
                       downloaded.append(filename)
                   readme_path = staging / README_FILE
-                  if not is_nonempty_file(readme_path) and download_repository_readme(repository, readme_path):
+
+                  existing_root = (
+                      destination
+                      if refresh_existing_plugin
+                      else None
+                  )
+
+                  if not is_nonempty_file(readme_path) and \
+                      download_repository_readme(
+                          repository,
+                          readme_path,
+                          existing_root,
+                      ):
+
                       downloaded.append(README_FILE)
 
-                  downloaded.extend(
+                  repository_downloaded, use_repository_subfolder = \
                       download_repository_documentation(
                           repository,
                           staging,
+                          existing_root,
                       )
+
+                  downloaded.extend(
+                      repository_downloaded
                   )
 
                   downloaded.extend(
@@ -1799,6 +2281,12 @@ let
                           assets,
                           staging,
                       )
+                  )
+
+                  move_readme_to_repo_when_needed(
+                      staging,
+                      downloaded,
+                      use_repository_subfolder,
                   )
 
                   set_manifest_repository(staging / MANIFEST_FILE, library_type, repository)
