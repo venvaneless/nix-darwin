@@ -1275,7 +1275,7 @@
           set filtered_repository_paths
 
           for repository_path in $repository_paths
-              set repository_name \
+              set repository_file_name \
                   (basename "$repository_path")
 
               if string match -rq \
@@ -1286,7 +1286,7 @@
                       "$repository_path"; or \
                       string match -rq \
                       '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
-                      "$repository_name"
+                      "$repository_file_name"
 
                   continue
               end
@@ -2173,7 +2173,7 @@
           set filtered_repository_paths
 
           for repository_path in $repository_paths
-              set repository_name \
+              set repository_file_name \
                   (basename "$repository_path")
 
               if string match -rq \
@@ -2184,7 +2184,7 @@
                       "$repository_path"; or \
                       string match -rq \
                       '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
-                      "$repository_name"
+                      "$repository_file_name"
 
                   continue
               end
@@ -2634,7 +2634,7 @@
               $repository_image_paths
 
           for repository_path in $repository_paths
-              set repository_name \
+              set repository_file_name \
                   (basename "$repository_path")
 
               if string match -rq \
@@ -2654,7 +2654,7 @@
                       "$repository_path"; and \
                       not string match -rq \
                       '(?i)^README(?:\.(md|markdown|org|txt))?$' \
-                      "$repository_name"
+                      "$repository_file_name"
 
                   if not contains \
                           "$repository_path" \
