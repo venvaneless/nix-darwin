@@ -43,6 +43,9 @@ let
     # Nix language server
     nil
 
+    # Reproductible installation of packages from Github
+    npins
+
     # Nix shell environment manager
     nix-direnv
 
