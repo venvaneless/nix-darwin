@@ -70,6 +70,22 @@ let
       FZF_BIN = os.environ["OBSIDIAN_LIBRARY_FZF"]
       CURL_BIN = os.environ["OBSIDIAN_LIBRARY_CURL"]
 
+      BLOCKED_DOWNLOAD_NAMES = {
+          "license",
+          "changelog",
+          "contributing",
+      }
+
+
+      def is_blocked_download_name(value: str) -> bool:
+          filename = Path(value).name.casefold()
+
+          return any(
+              filename == blocked_name
+              or filename.startswith(f"{blocked_name}.")
+              for blocked_name in BLOCKED_DOWNLOAD_NAMES
+          )
+
 
       @dataclass(frozen=True)
       class LibraryType:
@@ -410,6 +426,7 @@ let
               if isinstance(asset, dict)
               and isinstance(asset.get("name"), str)
               and isinstance(asset.get("id"), int)
+              and not is_blocked_download_name(asset["name"])
           }
 
 
@@ -586,8 +603,19 @@ let
               directory: Path,
               existing_root: Path | None = None,
           ) -> tuple[list[str], bool]:
+              repository_metadata = gh_json(
+                  f"repos/{repository}"
+              )
+
+              default_branch = repository_metadata.get(
+                  "default_branch"
+              )
+
+              if not isinstance(default_branch, str) or not default_branch:
+                  return [], False
+
               tree = gh_json(
-                  f"repos/{repository}/git/trees/HEAD?recursive=1"
+                  f"repos/{repository}/git/trees/{default_branch}?recursive=1"
               ).get("tree")
     
               if not isinstance(tree, list):
@@ -619,6 +647,8 @@ let
                   "assets",
                   "gallery",
                   "galleries",
+                  "img",
+                  "imgs",
                   "image",
                   "images",
                   "preview",
@@ -668,11 +698,14 @@ let
                       for part in path.parts
                   )
 
-                  # Ignore hidden repository folders such as .github.
+                  # Ignore hidden repository folders and dependencies.
                   if any(
                       part.startswith(".")
                       for part in path.parts[:-1]
                   ):
+                      continue
+
+                  if "node_modules" in path_parts[:-1]:
                       continue
 
                   is_root_readme = (
@@ -1019,6 +1052,7 @@ let
                       if isinstance(item, dict)
                       and item.get("type") == "blob"
                       and isinstance(item.get("path"), str)
+                      and not is_blocked_download_name(item["path"])
                       and "node_modules" not in {
                           part.casefold()
                           for part in Path(item["path"]).parts[:-1]
@@ -1099,6 +1133,8 @@ let
               "assets",
               "gallery",
               "galleries",
+              "img",
+              "imgs",
               "image",
               "images",
               "preview",

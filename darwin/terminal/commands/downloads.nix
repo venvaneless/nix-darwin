@@ -1263,18 +1263,36 @@
 
           command mkdir -p -- "$repository_extract"
 
-          # Fetch only files needed to rebuild the plugin, never an archive.
-          set repository_paths (
+          # Resolve the repository's default branch before inspecting files.
+          set repository_default_branch (
               command gh api \
-                  "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
-                  --jq \
-                  '.tree[]? | select(
-                    .type == "blob"
-                    and (.path | test("(^|/)node_modules/") | not)
-                    and (.path | test("(^|/)\\.[^/]+") | not)
-                  ) | .path' \
+                  "repos/$repository_owner/$repository_name" \
+                  --jq .default_branch \
                   2>/dev/null
           )
+
+          set repository_paths
+
+          if test -n "$repository_default_branch"
+              set repository_paths (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/git/trees/$repository_default_branch?recursive=1" \
+                      --jq \
+                      '.tree[]? | select(
+                        .type == "blob"
+                        and (.path | test("(^|/)node_modules/") | not)
+                        and (.path | test("(^|/)\\.[^/]+") | not)
+                        and (
+                          .path
+                          | split("/")
+                          | last
+                          | test("^(LICENSE|CHANGELOG|CONTRIBUTING)(\\..*)?$"; "i")
+                          | not
+                        )
+                      ) | .path' \
+                      2>/dev/null
+              )
+          end
 
           # Prefer standard files from the newest release before repository fallback.
           set release_theme_css 0
@@ -1303,6 +1321,13 @@
 
                   set release_asset_name "$release_asset_parts[1]"
                   set release_asset_url "$release_asset_parts[2]"
+
+                  if string match -rq \
+                          '(?i)^(LICENSE|CHANGELOG|CONTRIBUTING)(\..*)?$' \
+                          "$release_asset_name"
+
+                      continue
+                  end
 
                   switch "$release_asset_name"
                       case manifest.json main.js styles.css
@@ -1674,7 +1699,7 @@
                   set auxiliary_path_supported 1
 
               else if string match -rq \
-                      '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+                      '(?i)(^|/)[^/]*(assets|gallery|galleries|img|imgs|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
                       "$auxiliary_path"
 
                   set auxiliary_path_supported 1
@@ -2132,18 +2157,36 @@
 
           command mkdir -p "$extracted"
 
-          # Fetch only theme files, never an entire repository archive.
-          set repository_paths (
+          # Resolve the repository's default branch before inspecting files.
+          set repository_default_branch (
               command gh api \
-                  "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
-                  --jq \
-                  '.tree[]? | select(
-                    .type == "blob"
-                    and (.path | test("(^|/)node_modules/") | not)
-                    and (.path | test("(^|/)\\.[^/]+") | not)
-                  ) | .path' \
+                  "repos/$repository_owner/$repository_name" \
+                  --jq .default_branch \
                   2>/dev/null
           )
+
+          set repository_paths
+
+          if test -n "$repository_default_branch"
+              set repository_paths (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/git/trees/$repository_default_branch?recursive=1" \
+                      --jq \
+                      '.tree[]? | select(
+                        .type == "blob"
+                        and (.path | test("(^|/)node_modules/") | not)
+                        and (.path | test("(^|/)\\.[^/]+") | not)
+                        and (
+                          .path
+                          | split("/")
+                          | last
+                          | test("^(LICENSE|CHANGELOG|CONTRIBUTING)(\\..*)?$"; "i")
+                          | not
+                        )
+                      ) | .path' \
+                      2>/dev/null
+              )
+          end
 
           # Prefer standard files from the newest release before repository fallback.
           set release_theme_css 0
@@ -2560,7 +2603,7 @@
               end
 
               if string match -rq \
-                      '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+                      '(?i)(^|/)[^/]*(assets|gallery|galleries|img|imgs|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
                       "$repository_path"
                   set is_preview_folder_image 1
               end
@@ -2836,7 +2879,7 @@
               # Preserve repository image folders such as screenshots/,
               # images/, previews/, and assets/.
               else if string match -rq \
-                      '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+                      '(?i)(^|/)[^/]*(assets|gallery|galleries|img|imgs|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
                       "$auxiliary_path"
 
                   set auxiliary_path_supported 1
@@ -3382,17 +3425,28 @@
           return 1
         end
 
-        set --local repository_paths (
+        set --local repository_default_branch (
           command gh api \
-            "repos/$repository/git/trees/HEAD?recursive=1" \
-            --jq \
-            '.tree[]? | select(
-              .type == "blob"
-              and (.path | test("(^|/)node_modules/") | not)
-              and (.path | test("(^|/)\\.[^/]+") | not)
-            ) | .path' \
+            "repos/$repository" \
+            --jq .default_branch \
             2>/dev/null
         )
+
+        set --local repository_paths
+
+        if test -n "$repository_default_branch"
+          set repository_paths (
+            command gh api \
+              "repos/$repository/git/trees/$repository_default_branch?recursive=1" \
+              --jq \
+              '.tree[]? | select(
+                .type == "blob"
+                and (.path | test("(^|/)node_modules/") | not)
+                and (.path | test("(^|/)\\.[^/]+") | not)
+              ) | .path' \
+              2>/dev/null
+          )
+        end
 
         if test $status -ne 0
           echo "Notice: Could not inspect theme images for $library_entry"
@@ -3584,7 +3638,14 @@
           set release_assets (
             printf '%s' "$release_json" |
             command jq -r \
-              '.assets[]? | [.name, .browser_download_url] | @tsv'
+              '.assets[]?
+              | select(
+                  .name
+                  | test("^(LICENSE|CHANGELOG|CONTRIBUTING)(\\..*)?$"; "i")
+                  | not
+                )
+              | [.name, .browser_download_url]
+              | @tsv'
           )
         end
 
@@ -3879,7 +3940,7 @@
             set auxiliary_path_supported 1
 
           else if string match -rq \
-              '(?i)(^|/)[^/]*(assets|gallery|galleries|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
+              '(?i)(^|/)[^/]*(assets|gallery|galleries|img|imgs|images|image|screenshots|screenshot|previews|preview)[^/]*/.*\.(png|jpe?g|gif|webp)$' \
               "$auxiliary_path"
 
             set auxiliary_path_supported 1
