@@ -133,8 +133,108 @@ let
       ) profiles}
     '';
   };
+
+
+  # UPDATE
+  # =========================
+  # Update Caveman source metadata and rebuild nix-darwin
+
+  updateCaveman = pkgs.writeShellApplication {
+    name = "update-codex-caveman";
+
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.curl
+      pkgs.gawk
+      pkgs.git
+      pkgs.jq
+      pkgs.nix
+      pkgs.nix-prefetch-github
+    ];
+
+    text = ''
+      set -Eeuo pipefail
+
+      flake_root="/Users/ven/.config/nix/nix-config"
+      source_file="$flake_root/darwin/packages/codex/extensions/caveman-source.json"
+
+      echo "Checking Caveman..."
+
+      latest_json="$(
+        curl -fsSL \
+          "https://api.github.com/repos/JuliusBrussee/caveman/releases/latest"
+      )"
+
+      latest_version="$(
+        printf '%s' "$latest_json" \
+          | jq -r '.tag_name'
+      )"
+
+      latest_rev="$(
+        git ls-remote \
+          "https://github.com/JuliusBrussee/caveman.git" \
+          "refs/tags/$latest_version^{}" \
+          | awk 'NR == 1 { print $1 }'
+      )"
+
+      if test -z "$latest_rev"; then
+        latest_rev="$(
+          git ls-remote \
+            "https://github.com/JuliusBrussee/caveman.git" \
+            "refs/tags/$latest_version" \
+            | awk 'NR == 1 { print $1 }'
+        )"
+      fi
+
+      current_rev="$(
+        jq -r '.rev' "$source_file"
+      )"
+
+      if test "$current_rev" = "$latest_rev"; then
+        echo "Caveman is already current."
+        exit 0
+      fi
+
+      prefetch="$(
+        nix-prefetch-github \
+          JuliusBrussee \
+          caveman \
+          --rev "$latest_rev"
+      )"
+
+      new_hash="$(
+        printf '%s' "$prefetch" \
+          | jq -r '.hash // .sha256'
+      )"
+
+      jq \
+        --arg version "''${latest_version#v}" \
+        --arg rev "$latest_rev" \
+        --arg hash "$new_hash" \
+        '
+          .version = $version
+          | .rev = $rev
+          | .hash = $hash
+        ' \
+        "$source_file" \
+        > "$source_file.tmp"
+
+      mv \
+        "$source_file.tmp" \
+        "$source_file"
+
+      echo "Caveman updated to: $latest_version"
+    '';
+  };
+
+
 in
 {
+	# UPDATE COMMAND
+	environment.systemPackages = [
+    updateCaveman
+  ];
+
   # CODEX: CAVEMAN PLUGIN
   # =========================
   # Make the plugin source visible through the shared plugin directory
@@ -164,84 +264,5 @@ in
       ${syncCaveman}/bin/codex-sync-caveman
   '';
 
-
-  # CODEX: EXTENSION UPDATE
-  # =========================
-  # Plugin-specific updater consumed by update.nix
-
-  codex.extensionUpdaters = [
-    ''
-      echo "Checking Caveman..."
-
-      repo="JuliusBrussee/caveman"
-      source_file="$flake_root/darwin/packages/codex/extensions/caveman-source.json"
-
-      latest_json="$(
-        ${pkgs.curl}/bin/curl \
-          -fsSL \
-          "https://api.github.com/repos/$repo/releases/latest"
-      )"
-
-      latest_version="$(
-        printf '%s' "$latest_json" \
-          | ${pkgs.jq}/bin/jq -r '.tag_name'
-      )"
-
-      latest_rev="$(
-        ${pkgs.git}/bin/git \
-          ls-remote \
-          "https://github.com/$repo.git" \
-          "refs/tags/$latest_version^{}" \
-          | ${pkgs.gawk}/bin/awk 'NR == 1 { print $1 }'
-      )"
-
-      if test -z "$latest_rev"; then
-        latest_rev="$(
-          ${pkgs.git}/bin/git \
-            ls-remote \
-            "https://github.com/$repo.git" \
-            "refs/tags/$latest_version" \
-            | ${pkgs.gawk}/bin/awk 'NR == 1 { print $1 }'
-        )"
-      fi
-
-      current_rev="$(
-        ${pkgs.jq}/bin/jq -r '.rev' "$source_file"
-      )"
-
-      if test "$current_rev" = "$latest_rev"; then
-        echo "Caveman is already current."
-      else
-        prefetch="$(
-          ${pkgs.nix-prefetch-github}/bin/nix-prefetch-github \
-            JuliusBrussee \
-            caveman \
-            --rev "$latest_rev"
-        )"
-
-        new_hash="$(
-          printf '%s' "$prefetch" \
-            | ${pkgs.jq}/bin/jq -r '.hash // .sha256'
-        )"
-
-        ${pkgs.jq}/bin/jq \
-          --arg version "''${latest_version#v}" \
-          --arg rev "$latest_rev" \
-          --arg hash "$new_hash" \
-          '
-            .version = $version
-            | .rev = $rev
-            | .hash = $hash
-          ' \
-          "$source_file" \
-          > "$source_file.tmp"
-
-        ${pkgs.coreutils}/bin/mv \
-          "$source_file.tmp" \
-          "$source_file"
-
-        echo "Caveman updated: $latest_version"
-      fi
-    ''
-  ];
+  
 }

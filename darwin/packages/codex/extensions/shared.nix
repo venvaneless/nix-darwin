@@ -1,14 +1,11 @@
 # CODEX: SHARED EXTENSIONS
 # =========================
-# Shared Codex plugin infrastructure
+# Share Codex skills and plugins between all configured profiles
 
 { lib, ... }:
 
 let
-  userName = "ven";
-  homeDir = "/Users/${userName}";
-
-  codexRoot = "${homeDir}/.config/codex";
+  codexRoot = "/Users/ven/.config/codex";
   sharedRoot = "${codexRoot}/shared";
 
   profiles = [
@@ -17,23 +14,8 @@ let
   ];
 in
 {
-  # CODEX: EXTENSION OPTIONS
-  # =========================
-  # Individual extension files append their update logic here
-
-  options.codex.extensionUpdaters = lib.mkOption {
-    type = lib.types.listOf lib.types.lines;
-    default = [ ];
-    internal = true;
-  };
-
-
-  # CODEX: SHARED DIRECTORIES
-  # =========================
-  # Both profiles use the same skills and plugin directories
-
   system.activationScripts.codexSharedExtensions.text = lib.mkBefore ''
-    echo "[nix-darwin][codex] Configuring shared extensions..."
+    echo "[nix-darwin][codex] Configuring shared skills and plugins..."
 
     mkdir -p \
       "${sharedRoot}/skills" \
@@ -56,8 +38,6 @@ in
         "$profile_root/plugins"
     '') profiles}
 
-    chown -R \
-      ${userName}:staff \
-      "${sharedRoot}"
+    chown -R ven:staff "${sharedRoot}"
   '';
 }
