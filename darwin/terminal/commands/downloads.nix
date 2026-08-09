@@ -39,6 +39,7 @@
       # These specific filenames are blocked case-insensitively.
       set --local blocked_files \
           agents.md \
+          claude.md \
           readme-zh_cn.md \
           readme-zh_tw.md \
           readme-zh.md \
@@ -146,8 +147,8 @@
   #
   # In the Obsidian modes, source directories are checked one level deep.
   # A saved manifest URL is reused immediately. When it is absent, gitdll
-  # resolves only the matching repository metadata and saves the URL before
-  # handing the actual files to the downloader functions.
+  # resolves only matching repository metadata; the downloaded manifest is
+  # the sole place where the resolved URL is retained.
   # -----------------------------------------------------------------
   gitdll = {
     description = "Download Git repositories, Obsidian plugins, or Obsidian themes";
@@ -246,7 +247,8 @@
 
         for source_input in $source_inputs
           if not test -d "$source_input"; and not test -f "$source_input"; and \
-              not string match -rq '(?i)^(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?/?$' "$source_input"
+              not string match -rq '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' "$source_input"; and \
+              not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$source_input"
             echo "Error: Repository URL, source directory, or link file does not exist:"
             echo "  $source_input"
             return 1
@@ -616,9 +618,18 @@
         end
 
         for source_input in $source_inputs
-          if string match -rq '(?i)^(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?/?$' "$source_input"
+          set --local inline_repository_url (
+            string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' "$source_input"
+          )
+
+          if test -z "$inline_repository_url"; and \
+              string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$source_input"
+            set inline_repository_url "https://$source_input"
+          end
+
+          if test -n "$inline_repository_url"
             set --local repository_url (
-              string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' "$source_input"
+              string trim -- "$inline_repository_url"
             )
 
             if not string match -rq '^https?://' "$repository_url"
@@ -770,13 +781,6 @@
             set repository_url (
               __gitdll_resolve_repository "$source_folder" "$library_type"
             )
-
-            if test -n "$repository_url"
-              # Cache only a verified match. The next run then requires no
-              # GitHub lookup and no interactive choice.
-              printf '%s\n' "$repository_url" \
-                >"$source_folder/repository-url.txt" 2>/dev/null
-            end
           end
 
           set repository_url (
@@ -1261,8 +1265,95 @@
           return 1
       end
 
+      if not command -q node
+          echo "Error: node is not installed."
+          return 1
+      end
+
+      function __gitdll_plugin_stylesheet_is_healthy --argument-names stylesheet_file
+          if not test -f "$stylesheet_file"; or not test -s "$stylesheet_file"
+              return 1
+          end
+          command node -e '
+            const source = require("node:fs").readFileSync(process.argv[1], "utf8");
+            let depth = 0, quote = "", escaped = false, comment = false;
+            for (let index = 0; index < source.length; index += 1) {
+              const character = source[index], next = source[index + 1] || "";
+              if (comment) { if (character === "*" && next === "/") { comment = false; index += 1; } continue; }
+              if (quote) { if (escaped) escaped = false; else if (character === "\\\\") escaped = true; else if (character === quote) quote = ""; continue; }
+              if (character === "/" && next === "*") { comment = true; index += 1; }
+              else if (character === "\"") quote = character;
+              else if (character === "{") depth += 1;
+              else if (character === "}") { depth -= 1; if (depth < 0) process.exit(1); }
+            }
+            if (comment || quote || depth !== 0) process.exit(1);
+          ' "$stylesheet_file" >/dev/null 2>&1
+      end
+
       if not command -q jq
           echo "Error: jq is not installed."
+          return 1
+      end
+
+      if not command -q node
+          echo "Error: node is not installed."
+          return 1
+      end
+
+      function __gitdll_plugin_core_is_healthy --argument-names plugin_directory
+          if not test -r "$plugin_directory/manifest.json"; or \
+              not test -s "$plugin_directory/manifest.json"; or \
+              not command jq -e 'type == "object"' "$plugin_directory/manifest.json" >/dev/null 2>&1; or \
+              not test -r "$plugin_directory/main.js"; or \
+              not test -s "$plugin_directory/main.js"; or \
+              not command node --check "$plugin_directory/main.js" >/dev/null 2>&1
+              return 1
+          end
+
+          if test -e "$plugin_directory/styles.css"
+              if not test -s "$plugin_directory/styles.css"; or \
+                  not command node -e '
+                    const source = require("node:fs").readFileSync(process.argv[1], "utf8");
+                    let depth = 0, quote = "", escaped = false, comment = false;
+                    for (let index = 0; index < source.length; index += 1) {
+                      const character = source[index], next = source[index + 1] || "";
+                      if (comment) { if (character === "*" && next === "/") { comment = false; index += 1; } continue; }
+                      if (quote) { if (escaped) escaped = false; else if (character === "\\\\") escaped = true; else if (character === quote) quote = ""; continue; }
+                      if (character === "/" && next === "*") { comment = true; index += 1; }
+                      else if (character === "\"") quote = character;
+                      else if (character === "{") depth += 1;
+                      else if (character === "}") { depth -= 1; if (depth < 0) process.exit(1); }
+                    }
+                    if (comment || quote || depth !== 0) process.exit(1);
+                  ' "$plugin_directory/styles.css" >/dev/null 2>&1
+                  return 1
+              end
+          end
+
+          return 0
+      end
+
+      function __gitdll_replace_plugin_core_from_url --argument-names destination_file download_url
+          set --local staging_file "$destination_file.gitdll-new"
+          command rm -f -- "$staging_file"
+          if command curl --fail --location --silent --show-error \
+                  --output "$staging_file" "$download_url"; and \
+              test -s "$staging_file"
+              command mv -- "$staging_file" "$destination_file"
+              return $status
+          end
+          command rm -f -- "$staging_file"
+          return 1
+      end
+
+      function __gitdll_replace_plugin_core_from_file --argument-names source_file destination_file
+          set --local staging_file "$destination_file.gitdll-new"
+          command rm -f -- "$staging_file"
+          if command cp -- "$source_file" "$staging_file"; and test -s "$staging_file"
+              command mv -- "$staging_file" "$destination_file"
+              return $status
+          end
+          command rm -f -- "$staging_file"
           return 1
       end
 
@@ -1547,9 +1638,69 @@
           )
 
           if test -z "$manifest"
-              echo "Error: manifest.json was not found."
-              command rm -rf -- "$temporary_directory"
-              continue
+              # A compiled plugin can still be installed when its repository
+              # omitted manifest.json. Prefer package metadata, then use the
+              # repository folder as the stable Obsidian plugin identity.
+              set generated_plugin_id (
+                  __obsidian_repository_fallback_name "$repository_name"
+              )
+              set generated_plugin_name "$generated_plugin_id"
+              set generated_plugin_version "0.0.0"
+              set generated_plugin_author "$repository_owner"
+              set package_url (
+                  command gh api \
+                      "repos/$repository_owner/$repository_name/contents/package.json" \
+                      --jq .download_url \
+                      2>/dev/null
+              )
+
+              if test -n "$package_url"; and command curl \
+                      --fail --location --silent --show-error \
+                      --output "$repository_extract/package.json" \
+                      "$package_url"
+                  set package_id (
+                      command jq -r 'if (.id | type) == "string" then .id elif (.name | type) == "string" then .name else empty end' \
+                          "$repository_extract/package.json" | string trim
+                  )
+                  set package_name (
+                      command jq -r 'if (.name | type) == "string" then .name else empty end' \
+                          "$repository_extract/package.json" | string trim
+                  )
+                  set package_version (
+                      command jq -r 'if (.version | type) == "string" then .version else empty end' \
+                          "$repository_extract/package.json" | string trim
+                  )
+                  set package_author (
+                      command jq -r 'if (.author | type) == "string" then .author else empty end' \
+                          "$repository_extract/package.json" | string trim
+                  )
+
+                  if test -n "$package_id"; and not string match -rq '[/\\x00]' "$package_id"
+                      set generated_plugin_id "$package_id"
+                  end
+                  if test -n "$package_name"; and not string match -rq '[/\\x00]' "$package_name"
+                      set generated_plugin_name "$package_name"
+                  end
+                  if test -n "$package_version"
+                      set generated_plugin_version "$package_version"
+                  end
+                  if test -n "$package_author"
+                      set generated_plugin_author "$package_author"
+                  end
+              end
+
+              set manifest "$repository_extract/manifest.json"
+              if not command jq -n \
+                      --arg id "$generated_plugin_id" \
+                      --arg name "$generated_plugin_name" \
+                      --arg version "$generated_plugin_version" \
+                      --arg author "$generated_plugin_author" \
+                      '{ id: $id, name: $name, version: $version, minAppVersion: "0.0.0", author: $author, generatedManifest: true }' \
+                      >"$manifest"
+                  echo "Error: Could not generate plugin manifest.json."
+                  command rm -rf -- "$temporary_directory"
+                  continue
+              end
           end
 
           if not command jq -e . "$manifest" >/dev/null
@@ -1638,13 +1789,7 @@
                   set plugin_readme_ok 1
               end
 
-              if test -r "$plugin_directory/manifest.json"; and \
-                      test -s "$plugin_directory/manifest.json"; and \
-                      command jq -e . \
-                          "$plugin_directory/manifest.json" \
-                          >/dev/null 2>&1; and \
-                      test -r "$plugin_directory/main.js"; and \
-                      test -s "$plugin_directory/main.js"; and \
+              if __gitdll_plugin_core_is_healthy "$plugin_directory"; and \
                       command jq -e \
                           --arg url "$canonical_repository_url" \
                           '.pluginUrl == $url' \
@@ -1663,6 +1808,7 @@
               echo "Resuming incomplete plugin:"
               echo "  $plugin_folder_name"
               set plugin_directory_exists 1
+              set refresh_plugin_manifest 1
           end
 
           set plugin_stage "$temporary_directory/plugin"
@@ -1679,7 +1825,7 @@
                   not command jq -e . \
                       "$plugin_stage/manifest.json" \
                       >/dev/null 2>&1
-              command cp -f \
+              __gitdll_replace_plugin_core_from_file \
                   "$manifest" \
                   "$plugin_stage/manifest.json"
           end
@@ -1725,12 +1871,8 @@
                               continue
                           end
 
-                          if command curl \
-                                  --fail \
-                                  --location \
-                                  --silent \
-                                  --show-error \
-                                  --output "$plugin_stage/$release_asset_name" \
+                          if __gitdll_replace_plugin_core_from_url \
+                                  "$plugin_stage/$release_asset_name" \
                                   "$release_asset_url"
 
                               if not contains \
@@ -1797,7 +1939,7 @@
               end
 
               if test -n "$repository_file"
-                  command cp -f \
+                  __gitdll_replace_plugin_core_from_file \
                       "$repository_file" \
                       "$plugin_stage/$expected_file"
 
@@ -2168,6 +2310,42 @@
 
       if not command -q gh
           echo "Error: gh is not installed."
+          return 1
+      end
+
+      if not command -q node
+          echo "Error: node is not installed."
+          return 1
+      end
+
+      function __gitdll_theme_stylesheet_is_healthy --argument-names stylesheet_file
+          if not test -f "$stylesheet_file"; or not test -s "$stylesheet_file"
+              return 1
+          end
+          command node -e '
+            const source = require("node:fs").readFileSync(process.argv[1], "utf8");
+            let depth = 0, quote = "", escaped = false, comment = false;
+            for (let index = 0; index < source.length; index += 1) {
+              const character = source[index], next = source[index + 1] || "";
+              if (comment) { if (character === "*" && next === "/") { comment = false; index += 1; } continue; }
+              if (quote) { if (escaped) escaped = false; else if (character === "\\\\") escaped = true; else if (character === quote) quote = ""; continue; }
+              if (character === "/" && next === "*") { comment = true; index += 1; }
+              else if (character === "\"") quote = character;
+              else if (character === "{") depth += 1;
+              else if (character === "}") { depth -= 1; if (depth < 0) process.exit(1); }
+            }
+            if (comment || quote || depth !== 0) process.exit(1);
+          ' "$stylesheet_file" >/dev/null 2>&1
+      end
+
+      function __gitdll_replace_theme_core_from_file --argument-names source_file destination_file
+          set --local staging_file "$destination_file.gitdll-new"
+          command rm -f -- "$staging_file"
+          if command cp -- "$source_file" "$staging_file"; and test -s "$staging_file"
+              command mv -- "$staging_file" "$destination_file"
+              return $status
+          end
+          command rm -f -- "$staging_file"
           return 1
       end
 
@@ -2683,6 +2861,7 @@
           set theme_directory \
               "$destination/$theme_folder_name"
           set theme_directory_exists 0
+          set refresh_theme_core 0
 
           if test -d "$theme_directory"
               set theme_manifest_ok 1
@@ -2707,6 +2886,11 @@
                           "$theme_directory/manifest.json" \
                           >/dev/null 2>&1
                   set theme_manifest_ok 0
+              end
+
+              if test "$theme_manifest_ok" -eq 0; or \
+                  not __gitdll_theme_stylesheet_is_healthy "$theme_directory/theme.css"
+                  set refresh_theme_core 1
               end
 
               # Existing themes are refreshed so newly supported repository
@@ -2889,8 +3073,9 @@
                       not test -s "$theme_stage/manifest.json"; or \
                       not command jq -e . \
                           "$theme_stage/manifest.json" \
-                          >/dev/null 2>&1
-                  command cp -f \
+                          >/dev/null 2>&1; or \
+                      test "$refresh_theme_core" -eq 1
+                  __gitdll_replace_theme_core_from_file \
                       "$manifest" \
                       "$theme_stage/manifest.json"
               end
@@ -2900,8 +3085,9 @@
 
           if test -f "$source_theme_css"
               if not test -r "$theme_stage/theme.css"; or \
-                      not test -s "$theme_stage/theme.css"
-                  command cp -f \
+                      not test -s "$theme_stage/theme.css"; or \
+                      test "$refresh_theme_core" -eq 1
+                  __gitdll_replace_theme_core_from_file \
                       "$source_theme_css" \
                       "$theme_stage/theme.css"
               end
@@ -2909,8 +3095,9 @@
               set saved_files $saved_files theme.css
           else
               if not test -r "$theme_stage/theme.css"; or \
-                      not test -s "$theme_stage/theme.css"
-                  command cp -f \
+                      not test -s "$theme_stage/theme.css"; or \
+                      test "$refresh_theme_core" -eq 1
+                  __gitdll_replace_theme_core_from_file \
                       "$source_obsidian_css" \
                       "$theme_stage/theme.css"
               end
@@ -3249,7 +3436,8 @@
               echo "Notice: No README file was found."
           end
 
-          if not test -s "$theme_stage/manifest.json"
+          if not test -s "$theme_stage/manifest.json"; or \
+              not command jq -e 'type == "object"' "$theme_stage/manifest.json" >/dev/null 2>&1
               if not command jq -n \
                       --arg name "$theme_folder_name" \
                       --arg author "$repository_owner" \
@@ -3356,6 +3544,11 @@
         return 1
       end
 
+      if not command -q node
+        echo "Error: node is not installed."
+        return 1
+      end
+
       # Normalize GitHub URLs before they are stored in a manifest field.
       function __obsidian_missing_canonical_repository_url --argument-names repository_url
         set --local repository (
@@ -3418,20 +3611,93 @@
         end
       end
 
+      # Check whether a manifest remains usable by Obsidian before trusting it.
+      function __obsidian_missing_manifest_is_healthy --argument-names manifest_file
+        test -f "$manifest_file"; and \
+          test -s "$manifest_file"; and \
+          not test -L "$manifest_file"; and \
+          command jq -e 'type == "object"' "$manifest_file" >/dev/null 2>&1
+      end
+
+      # JavaScript syntax must be valid before a plugin payload is reused.
+      function __obsidian_missing_javascript_is_healthy --argument-names script_file
+        test -f "$script_file"; and \
+          test -s "$script_file"; and \
+          not test -L "$script_file"; and \
+          command node --check "$script_file" >/dev/null 2>&1
+      end
+
+      # CSS has no standalone parser in this command's dependency set. Check
+      # the structural errors that would otherwise leave Obsidian with a
+      # broken stylesheet: unclosed strings/comments and unbalanced braces.
+      function __obsidian_missing_stylesheet_is_healthy --argument-names stylesheet_file
+        if not test -f "$stylesheet_file"; or \
+            not test -s "$stylesheet_file"; or \
+            test -L "$stylesheet_file"
+          return 1
+        end
+
+        command node -e '
+          const fs = require("node:fs");
+          const source = fs.readFileSync(process.argv[1], "utf8");
+          let depth = 0;
+          let quote = "";
+          let escaped = false;
+          let comment = false;
+          for (let index = 0; index < source.length; index += 1) {
+            const character = source[index];
+            const next = source[index + 1] || "";
+            if (comment) {
+              if (character === "*" && next === "/") {
+                comment = false;
+                index += 1;
+              }
+              continue;
+            }
+            if (quote) {
+              if (escaped) {
+                escaped = false;
+              } else if (character.charCodeAt(0) === 92) {
+                escaped = true;
+              } else if (character === quote) {
+                quote = "";
+              }
+              continue;
+            }
+            if (character === "/" && next === "*") {
+              comment = true;
+              index += 1;
+            } else if (character.charCodeAt(0) === 34 || character.charCodeAt(0) === 39) {
+              quote = character;
+            } else if (character === "{") {
+              depth += 1;
+            } else if (character === "}") {
+              depth -= 1;
+              if (depth < 0) process.exit(1);
+            }
+          }
+          if (comment || quote || depth !== 0) process.exit(1);
+        ' "$stylesheet_file" >/dev/null 2>&1
+      end
+
       # Download a file only when a healthy destination does not already exist.
       function __obsidian_missing_download_url \
-          --argument-names destination download_url description
+          --argument-names destination download_url description replace_existing
 
         if test -L "$destination"
           echo "Notice: Refusing to replace symlinked file: $destination"
           return 1
         end
 
-        if test -f "$destination"; and test -s "$destination"
+        if test -f "$destination"; and \
+            test -s "$destination"; and \
+            test "$replace_existing" != yes
           return 0
         end
 
-        if test -e "$destination"
+        # Empty files can be removed before download. Healthy files requested
+        # for replacement stay intact until the staged download is complete.
+        if test -e "$destination"; and test "$replace_existing" != yes
           command rm -f -- "$destination"
         end
 
@@ -3514,26 +3780,15 @@
         # helper runs. README only needs to follow the resulting local layout.
         set --local use_repository_subfolder 0
 
-        if test -d "$library_entry/repo"
-          if command find "$library_entry/repo" \
+        if test -d "$library_entry/repo"; and \
+            command find "$library_entry/repo" \
               -mindepth 1 \
-              -type d \
               -print \
-              -quit | read --local existing_repo_directory
+              -quit | read --local existing_repo_content
 
-            set use_repository_subfolder 1
-          else
-            set --local existing_repo_files (
-              command find "$library_entry/repo" \
-                -mindepth 1 \
-                -type f \
-                -print
-            )
-
-            if test (count $existing_repo_files) -gt 1
-              set use_repository_subfolder 1
-            end
-          end
+          # An existing repo/ is deliberate layout state. Keeping it active
+          # prevents a later repair from flattening and re-downloading it.
+          set use_repository_subfolder 1
         end
 
         set --local readme_root \
@@ -3546,6 +3801,50 @@
 
         set --local readme_destination \
           "$readme_root/$readme_name"
+
+        if test -f "$readme_destination"; and test -s "$readme_destination"
+          set --local destination_size (command stat -f %z -- "$readme_destination")
+
+          if test "$destination_size" = "$readme_size"
+            return 0
+          end
+
+          if test "$readme_root" = "$library_entry/repo"
+            echo "README differs from the repository version: $readme_destination"
+            echo "  local size: $destination_size bytes"
+            echo "  remote size: $readme_size bytes"
+            read --prompt-str "Replace repo README (r) or keep both (b)? " readme_choice
+
+            if test "$readme_choice" = r; or test "$readme_choice" = R
+              __obsidian_missing_download_url \
+                "$readme_destination" \
+                "$readme_url" \
+                "$readme_name" \
+                yes
+              return $status
+            end
+
+            if test "$readme_choice" = b; or test "$readme_choice" = B
+              set --local root_readme_destination \
+                "$library_entry/$readme_name"
+
+              if test -f "$root_readme_destination"; and \
+                  test -s "$root_readme_destination"
+                echo "Keeping the existing root and repo READMEs."
+                return 0
+              end
+
+              __obsidian_missing_download_url \
+                "$root_readme_destination" \
+                "$readme_url" \
+                "$readme_name"
+              return $status
+            end
+
+            echo "Leaving the existing repo README unchanged."
+            return 0
+          end
+        end
 
         set --local existing_readme (
           command find "$library_entry" \
@@ -3788,26 +4087,14 @@
 
         set --local use_repository_subfolder 0
 
-        if test -d "$library_entry/repo"
-          if command find "$library_entry/repo" \
+        if test -d "$library_entry/repo"; and \
+            command find "$library_entry/repo" \
               -mindepth 1 \
-              -type d \
               -print \
-              -quit | read --local existing_repo_directory
+              -quit | read --local existing_repo_content
 
-            set use_repository_subfolder 1
-          else
-            set --local existing_repo_files (
-              command find "$library_entry/repo" \
-                -mindepth 1 \
-                -type f \
-                -print
-            )
-
-            if test (count $existing_repo_files) -gt 1
-              set use_repository_subfolder 1
-            end
-          end
+          # Keep an already-grouped repository layout stable during repair.
+          set use_repository_subfolder 1
         end
 
         set --local release_assets
@@ -3825,6 +4112,34 @@
               | [.name, .browser_download_url]
               | @tsv'
           )
+        end
+
+        # A missing, empty, or malformed manifest—or missing main.js—means
+        # Obsidian cannot load a plugin. Refresh every available core file as
+        # one payload instead of preserving a stale mix of old and new files.
+        set --local refresh_core_payload 0
+
+        if test "$requires_plugin_payload" -eq 1
+          set --local plugin_stylesheet_is_healthy 1
+
+          if test -e "$library_entry/styles.css"; and \
+              not __obsidian_missing_stylesheet_is_healthy \
+                "$library_entry/styles.css"
+            set plugin_stylesheet_is_healthy 0
+          end
+
+          if not __obsidian_missing_manifest_is_healthy \
+              "$library_entry/manifest.json"; or \
+              not __obsidian_missing_javascript_is_healthy \
+                "$library_entry/main.js"; or \
+              test "$plugin_stylesheet_is_healthy" -eq 0
+            set refresh_core_payload 1
+          end
+        else if not __obsidian_missing_manifest_is_healthy \
+            "$library_entry/manifest.json"; or \
+            not __obsidian_missing_stylesheet_is_healthy \
+              "$library_entry/theme.css"
+          set refresh_core_payload 1
         end
 
         # Every actual GitHub release asset belongs at the entry root.
@@ -3856,12 +4171,14 @@
         end
 
         if test "$requires_plugin_payload" -eq 1
-          # Plugins: manifest.json, main.js, and optional styles.css.
-          for expected_file in manifest.json main.js styles.css
+          # Plugins keep all load-bearing files at their root. data.json and
+          # styles.css remain optional upstream, but refresh when supplied.
+          for expected_file in manifest.json main.js styles.css data.json
             set --local destination \
               "$library_entry/$expected_file"
 
-            if test -s "$destination"
+            if test -s "$destination"; and \
+                test "$refresh_core_payload" -eq 0
               continue
             end
 
@@ -3885,7 +4202,8 @@
               if __obsidian_missing_download_url \
                   "$destination" \
                   "$release_url" \
-                  "$expected_file"
+                  "$expected_file" \
+                  yes
                 continue
               end
             end
@@ -3915,12 +4233,15 @@
             __obsidian_missing_download_url \
               "$destination" \
               "$repository_file_url" \
-              "$expected_file"
+              "$expected_file" \
+              yes
           end
 
         else
           # Themes: restore manifest.json from release before repository.
-          if not test -s "$library_entry/manifest.json"
+          if not __obsidian_missing_manifest_is_healthy \
+              "$library_entry/manifest.json"; or \
+              test "$refresh_core_payload" -eq 1
             set --local manifest_release_url
 
             for release_asset in $release_assets
@@ -3941,7 +4262,8 @@
               __obsidian_missing_download_url \
                 "$library_entry/manifest.json" \
                 "$manifest_release_url" \
-                "manifest.json"
+                "manifest.json" \
+                yes
             else
               set --local manifest_repository_path (
                 printf '%s\n' $repository_paths |
@@ -3961,14 +4283,16 @@
                   __obsidian_missing_download_url \
                     "$library_entry/manifest.json" \
                     "$manifest_repository_url" \
-                    "manifest.json"
+                    "manifest.json" \
+                    yes
                 end
               end
             end
           end
 
           # Themes always store the active stylesheet locally as theme.css.
-          if not test -s "$library_entry/theme.css"
+          if not test -s "$library_entry/theme.css"; or \
+              test "$refresh_core_payload" -eq 1
             set --local theme_css_url
             set --local theme_css_source
 
@@ -4024,7 +4348,8 @@
               __obsidian_missing_download_url \
                 "$library_entry/theme.css" \
                 "$theme_css_url" \
-                "$theme_css_source"
+                "$theme_css_source" \
+                yes
             end
           end
         end
@@ -4140,59 +4465,44 @@
           end
         end
 
-        # Existing local repo/ also participates in normalization.
-        if test -d "$library_entry/repo"
-          if command find "$library_entry/repo" \
+        # Existing repo/ content is already a deliberate grouped layout.
+        # Never flatten it during repair, even when it currently holds one
+        # auxiliary file, because that would cause a needless re-download.
+        if test -d "$library_entry/repo"; and \
+            command find "$library_entry/repo" \
               -mindepth 1 \
-              -type d \
               -print \
-              -quit | read --local existing_repo_directory
+              -quit | read --local existing_repo_content
 
-            set use_repository_subfolder 1
-          else
-            set --local existing_repo_files (
-              command find "$library_entry/repo" \
-                -mindepth 1 \
-                -type f \
-                -print
-            )
-
-            if test (count $existing_repo_files) -gt 1
-              set use_repository_subfolder 1
-
-            else if test (count $existing_repo_files) -eq 1; and \
-                test "$use_repository_subfolder" -eq 0
-
-              set --local existing_repo_file \
-                "$existing_repo_files[1]"
-
-              set --local existing_repo_destination \
-                "$library_entry/"(basename "$existing_repo_file")
-
-              if not test -e "$existing_repo_destination"
-                command mv \
-                  "$existing_repo_file" \
-                  "$existing_repo_destination"
-              end
-
-              command rm -rf \
-                "$library_entry/repo"
-            end
-          end
+          set use_repository_subfolder 1
         end
 
         for auxiliary_path in $repository_auxiliary_paths
-          set --local auxiliary_size (
+          set --local auxiliary_metadata (
             command gh api \
               "repos/$repository/contents/$auxiliary_path" \
-              --jq .size \
+              --jq '[.size, .download_url] | @tsv' \
               2>/dev/null
           )
 
-          if test -z "$auxiliary_size"
+          if test -z "$auxiliary_metadata"
             echo "Notice: Could not resolve repository file: $auxiliary_path"
             continue
           end
+
+          set --local auxiliary_parts \
+            (string split \t "$auxiliary_metadata")
+
+          if test (count $auxiliary_parts) -ne 2
+            echo "Notice: Could not read repository file metadata: $auxiliary_path"
+            continue
+          end
+
+          set --local auxiliary_size \
+            "$auxiliary_parts[1]"
+
+          set --local auxiliary_url \
+            "$auxiliary_parts[2]"
 
           set --local auxiliary_destination \
             "$library_entry/"(basename "$auxiliary_path")
@@ -4237,34 +4547,103 @@
             continue
           end
 
-          command mkdir -p \
-            (dirname "$auxiliary_destination")
-
-          set --local auxiliary_staging \
-            "$auxiliary_destination.obsidian-missing-new"
-
-          if command gh api \
-              -H "Accept: application/vnd.github.raw+json" \
-              "repos/$repository/contents/$auxiliary_path" \
-              >"$auxiliary_staging" \
-              2>/dev/null; and \
-              test -s "$auxiliary_staging"
-
-            command mv \
-              "$auxiliary_staging" \
-              "$auxiliary_destination"
-          else
-            command rm -f \
-              "$auxiliary_staging"
-
-            echo \
-              "Notice: Could not download repository file: $auxiliary_path"
-          end
+          __obsidian_missing_download_url \
+            "$auxiliary_destination" \
+            "$auxiliary_url" \
+            "$auxiliary_path"
         end
 
         __obsidian_missing_restore_readme \
           "$library_entry" \
           "$repository_url"
+
+        set --local manifest_url_field themeUrl
+
+        if test "$requires_plugin_payload" -eq 1
+          set manifest_url_field pluginUrl
+        end
+
+        # A repository may ship a compiled payload without a manifest. Build
+        # the minimum valid Obsidian manifest only after every upstream source
+        # has been tried, so an upstream manifest always wins.
+        if not __obsidian_missing_manifest_is_healthy "$library_entry/manifest.json"
+          set --local repository_owner (string split / "$repository")[1]
+          set --local generated_name (basename "$library_entry")
+          set --local generated_id "$generated_name"
+          set --local generated_version "0.0.0"
+          set --local generated_author "$repository_owner"
+
+          if test "$requires_plugin_payload" -eq 1
+            set --local package_content (
+              command gh api "repos/$repository/contents/package.json" --jq .content 2>/dev/null | \
+                command tr -d '\n' | command base64 -D 2>/dev/null
+            )
+            if test -n "$package_content"
+              set --local package_id (
+                printf '%s' "$package_content" | command jq -r \
+                  'if (.id | type) == "string" then .id elif (.name | type) == "string" then .name else empty end' | string trim
+              )
+              set --local package_name (
+                printf '%s' "$package_content" | command jq -r \
+                  'if (.name | type) == "string" then .name else empty end' | string trim
+              )
+              set --local package_version (
+                printf '%s' "$package_content" | command jq -r \
+                  'if (.version | type) == "string" then .version else empty end' | string trim
+              )
+              set --local package_author (
+                printf '%s' "$package_content" | command jq -r \
+                  'if (.author | type) == "string" then .author else empty end' | string trim
+              )
+              if test -n "$package_id"; and not string match -rq '[/\\x00]' "$package_id"
+                set generated_id "$package_id"
+              end
+              if test -n "$package_name"; and not string match -rq '[/\\x00]' "$package_name"
+                set generated_name "$package_name"
+              end
+              if test -n "$package_version"
+                set generated_version "$package_version"
+              end
+              if test -n "$package_author"
+                set generated_author "$package_author"
+              end
+            end
+          end
+
+          set --local generated_manifest "$library_entry/.manifest.json.obsidian-missing-new"
+          if test "$requires_plugin_payload" -eq 1
+            command jq -n \
+              --arg id "$generated_id" --arg name "$generated_name" \
+              --arg version "$generated_version" --arg author "$generated_author" \
+              --arg url "$repository_url" \
+              '{ id: $id, name: $name, version: $version, minAppVersion: "0.0.0", author: $author, pluginUrl: $url, generatedManifest: true }' \
+              >"$generated_manifest"
+          else
+            command jq -n \
+              --arg name "$generated_name" --arg author "$generated_author" \
+              --arg url "$repository_url" \
+              '{ name: $name, author: $author, version: "0.0.0", minAppVersion: "0.0.0", themeUrl: $url, generatedManifest: true }' \
+              >"$generated_manifest"
+          end
+
+          if test -s "$generated_manifest"
+            command mv -- "$generated_manifest" "$library_entry/manifest.json"
+          else
+            command rm -f -- "$generated_manifest"
+          end
+        end
+
+        if __obsidian_missing_manifest_is_healthy \
+            "$library_entry/manifest.json"
+          if not __obsidian_missing_save_repository_url \
+              "$library_entry/manifest.json" \
+              "$manifest_url_field" \
+              "$repository_url"
+            echo "Notice: Could not save $manifest_url_field in $library_entry/manifest.json"
+          end
+        else
+          echo "Notice: The restored manifest remains invalid: $library_entry/manifest.json"
+        end
 
 
       end
@@ -4416,6 +4795,21 @@
         )
         if test -n "$manifest_repository_url"
           set manifest_repository_url (__obsidian_missing_canonical_repository_url "$manifest_repository_url")
+        end
+
+        # A broken manifest can still retain its GitHub URL as plain text.
+        # Recover it before replacing the manifest during a core repair.
+        if test -z "$manifest_repository_url"
+          set manifest_repository_url (
+            string match -r -m 1 \
+              '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' \
+              <"$manifest_file"
+          )
+
+          if test -n "$manifest_repository_url"
+            set manifest_repository_url \
+              (__obsidian_missing_canonical_repository_url "$manifest_repository_url")
+          end
         end
         set --local legacy_repository_file
         set --local legacy_repository_url

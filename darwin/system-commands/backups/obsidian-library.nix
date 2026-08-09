@@ -18,6 +18,7 @@ let
     name = "obsidian-library";
 
     runtimeInputs = [
+      pkgs.nodejs
       pkgs.python3
     ];
 
@@ -25,6 +26,7 @@ let
       export OBSIDIAN_LIBRARY_GH="${pkgs.gh}/bin/gh"
       export OBSIDIAN_LIBRARY_FZF="${pkgs.fzf}/bin/fzf"
       export OBSIDIAN_LIBRARY_CURL="${pkgs.curl}/bin/curl"
+      export OBSIDIAN_LIBRARY_NODE="${pkgs.nodejs}/bin/node"
 
       # Keep standard input attached to the terminal for the interactive
       # menus; feeding Python through stdin makes every input() raise EOF.
@@ -39,6 +41,7 @@ let
       from __future__ import annotations
 
       import argparse
+      import base64
       import hashlib
       import json
       import os
@@ -69,8 +72,11 @@ let
       GH_BIN = os.environ["OBSIDIAN_LIBRARY_GH"]
       FZF_BIN = os.environ["OBSIDIAN_LIBRARY_FZF"]
       CURL_BIN = os.environ["OBSIDIAN_LIBRARY_CURL"]
+      NODE_BIN = os.environ["OBSIDIAN_LIBRARY_NODE"]
 
       BLOCKED_DOWNLOAD_NAMES = {
+          "agents",
+          "claude",
           "license",
           "changelog",
           "contributing",
@@ -80,12 +86,17 @@ let
 
       BLOCKED_DOWNLOAD_FILES = {
           "agents.md",
+          "changelog.md",
+		  "contributing.md",
+		  "claude.md",
           "readme-zh_cn.md",
           "readme-zh_tw.md",
           "readme-zh.md",
           "readme-cn.md",
           "readme-tw.md",
       }
+
+      BATCH_FAILURES: list[str] = []
 
 
       def is_blocked_download_name(value: str) -> bool:
@@ -187,6 +198,7 @@ let
 
 
       def report_error(message: str) -> None:
+          BATCH_FAILURES.append(message)
           fail(message)
           try:
               error_log_path().parent.mkdir(parents=True, exist_ok=True)
@@ -194,6 +206,22 @@ let
                   error_log.write(f"Error: {message}\n")
           except OSError as error:
               fail(f"could not save the error log: {error}")
+
+
+      def write_batch_failure_report(library_type: LibraryType) -> None:
+          if not BATCH_FAILURES:
+              return
+          stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+          report = Path(
+              os.environ.get("OBSIDIAN_LIBRARY_DOWNLOADS_DIR", DEFAULT_DOWNLOADS_DIR)
+          ) / f"obsidian-library-{library_type.label.casefold()}-download-failures-{stamp}.txt"
+          try:
+              report.parent.mkdir(parents=True, exist_ok=True)
+              report.write_text("\n".join(BATCH_FAILURES) + "\n", encoding="utf-8")
+          except OSError as error:
+              fail(f"could not save the batch failure report: {error}")
+              return
+          print(f"Batch failure report: {report}")
 
 
       def run(command: list[str], *, text: bool = True) -> subprocess.CompletedProcess[Any]:
@@ -301,6 +329,73 @@ let
               json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
               encoding="utf-8",
           )
+
+
+      def repository_package_metadata(repository: str) -> dict[str, Any]:
+          # A missing package manifest is normal for many Obsidian projects.
+          # Only use it when it is valid JSON and contains string metadata.
+          try:
+              package_file = gh_json(f"repos/{repository}/contents/package.json")
+          except RuntimeError:
+              return {}
+
+          encoded = package_file.get("content")
+          if not isinstance(encoded, str):
+              return {}
+
+          try:
+              decoded = base64.b64decode(encoded).decode("utf-8")
+              metadata = json.loads(decoded)
+          except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
+              return {}
+
+          return metadata if isinstance(metadata, dict) else {}
+
+
+      def create_plugin_manifest(manifest_path: Path, repository: str, folder_name: str) -> None:
+          metadata = repository_package_metadata(repository)
+          identifier = metadata.get("id")
+          if not isinstance(identifier, str) or not identifier.strip():
+              identifier = metadata.get("name")
+          if not isinstance(identifier, str) or not identifier.strip():
+              identifier = folder_name
+
+          display_name = metadata.get("name")
+          if not isinstance(display_name, str) or not display_name.strip():
+              display_name = identifier
+
+          version = metadata.get("version")
+          if not isinstance(version, str) or not version.strip():
+              version = "0.0.0"
+
+          min_app_version = metadata.get("minAppVersion")
+          if not isinstance(min_app_version, str) or not min_app_version.strip():
+              min_app_version = "0.0.0"
+
+          author = metadata.get("author")
+          if not isinstance(author, str) or not author.strip():
+              author = repository.split("/", 1)[0]
+
+          manifest = {
+              "id": identifier.strip(),
+              "name": display_name.strip(),
+              "version": version.strip(),
+              "minAppVersion": min_app_version.strip(),
+              "author": author.strip(),
+              PLUGIN_URL_FIELD: f"https://github.com/{repository}",
+              "generatedManifest": True,
+          }
+
+          if manifest_path.is_symlink():
+              raise RuntimeError(f"refusing to replace symlinked {MANIFEST_FILE}: {manifest_path}")
+
+          staging = manifest_path.with_name(f".{manifest_path.name}.obsidian-library-new")
+          try:
+              staging.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+              os.replace(staging, manifest_path)
+          except OSError:
+              staging.unlink(missing_ok=True)
+              raise
 
 
       def set_manifest_repository(manifest_path: Path, library_type: LibraryType, repository: str) -> None:
@@ -991,6 +1086,51 @@ let
           return isinstance(manifest, dict)
 
 
+      def javascript_is_valid(script_file: Path) -> bool:
+          if not is_nonempty_file(script_file) or script_file.is_symlink():
+              return False
+          return run([NODE_BIN, "--check", str(script_file)]).returncode == 0
+
+
+      def stylesheet_is_valid(stylesheet_file: Path) -> bool:
+          # CSS has no built-in parser in Python. This rejects the structural
+          # errors which leave Obsidian unable to read a stylesheet.
+          if not is_nonempty_file(stylesheet_file) or stylesheet_file.is_symlink():
+              return False
+
+          checker = """
+      const source = require('node:fs').readFileSync(process.argv[1], 'utf8');
+      let depth = 0, quote = String(), escaped = false, comment = false;
+      for (let index = 0; index < source.length; index += 1) {
+        const character = source[index], next = source[index + 1] || String();
+        if (comment) { if (character === '*' && next === '/') { comment = false; index += 1; } continue; }
+        if (quote) { if (escaped) escaped = false; else if (character === '\\\\') escaped = true; else if (character === quote) quote = String(); continue; }
+        if (character === '/' && next === '*') { comment = true; index += 1; }
+        else if (character === '\"' || character === "'") quote = character;
+        else if (character === '{') depth += 1;
+        else if (character === '}') { depth -= 1; if (depth < 0) process.exit(1); }
+      }
+      if (comment || quote || depth !== 0) process.exit(1);
+          """
+          return run([NODE_BIN, "-e", checker, str(stylesheet_file)]).returncode == 0
+
+
+      def plugin_core_is_healthy(directory: Path) -> bool:
+          stylesheet = directory / "styles.css"
+          return (
+              manifest_is_valid(directory / MANIFEST_FILE)
+              and javascript_is_valid(directory / "main.js")
+              and (not stylesheet.exists() or stylesheet_is_valid(stylesheet))
+          )
+
+
+      def theme_core_is_healthy(directory: Path) -> bool:
+          return (
+              manifest_is_valid(directory / MANIFEST_FILE)
+              and stylesheet_is_valid(directory / "theme.css")
+          )
+
+
       def image_names(filenames: list[str]) -> list[str]:
           image_suffixes = {".gif", ".jpeg", ".jpg", ".png", ".webp"}
           return sorted(filename for filename in filenames if Path(filename).suffix.casefold() in image_suffixes)
@@ -1098,6 +1238,21 @@ let
               )
               if "/" not in item["path"]
           }
+
+
+      def repository_file_path(
+          repository: str,
+          filename: str,
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> str | None:
+          matches = sorted(
+              item["path"]
+              for item in repository_files(repository, repository_contents_cache)
+              if Path(item["path"]).name == filename
+          )
+          if not matches:
+              return None
+          return next((path for path in matches if "/" not in path), matches[0])
 
 
       def normalized_image_match_name(value: str) -> str:
@@ -2373,15 +2528,46 @@ let
           library_type: LibraryType,
           repository_value: str,
           release_cache: dict[str, dict[str, Any] | Exception],
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> None:
           try:
               repository = github_repository_from_value(repository_value)
-              release = latest_release(repository, release_cache)
-              assets = release_assets(release)
-              required_files = (MANIFEST_FILE, library_type.payload_file)
-              missing_files = [filename for filename in required_files if filename not in assets]
-              if missing_files:
-                  raise RuntimeError(f"latest release is missing {', '.join(missing_files)}")
+              try:
+                  release = latest_release(repository, release_cache)
+                  assets = release_assets(release)
+              except RuntimeError:
+                  release = None
+                  assets = {}
+
+              # Releases remain preferred, but a repository can supply a
+              # complete plugin when its newest release is absent or partial.
+              use_repository_core = any(
+                  filename not in assets
+                  for filename in (MANIFEST_FILE, library_type.payload_file)
+              )
+              repository_core_paths: dict[str, str | None] = {}
+              if use_repository_core:
+                  repository_core_paths = {
+                      filename: repository_file_path(
+                          repository,
+                          filename,
+                          repository_contents_cache,
+                      )
+                      for filename in (MANIFEST_FILE, library_type.payload_file, "styles.css")
+                  }
+              elif "styles.css" not in assets:
+                  try:
+                      repository_core_paths["styles.css"] = repository_file_path(
+                          repository,
+                          "styles.css",
+                          repository_contents_cache,
+                      )
+                  except RuntimeError:
+                      repository_core_paths["styles.css"] = None
+              if use_repository_core and repository_core_paths[library_type.payload_file] is None:
+                  raise RuntimeError(
+                      "latest release is incomplete and repository has no usable main.js"
+                  )
           except RuntimeError as error:
               report_error(f"[FAILED] Plugin: {error}")
               return
@@ -2395,7 +2581,21 @@ let
               with tempfile.TemporaryDirectory(prefix=".obsidian-library-plugin-", dir=library_type.root) as temporary_directory:
                   staging_parent = Path(temporary_directory)
                   manifest_path = staging_parent / MANIFEST_FILE
-                  download_asset(repository, assets[MANIFEST_FILE], manifest_path)
+                  if use_repository_core and repository_core_paths[MANIFEST_FILE] is not None:
+                      download_repository_file(
+                          repository,
+                          repository_core_paths[MANIFEST_FILE],
+                          manifest_path,
+                      )
+                  elif MANIFEST_FILE in assets:
+                      download_asset(repository, assets[MANIFEST_FILE], manifest_path)
+                  else:
+                      create_plugin_manifest(
+                          manifest_path,
+                          repository,
+                          repository_fallback_name(repository),
+                      )
+
                   folder_name = plugin_folder_name(
                       manifest_path,
                       repository,
@@ -2406,15 +2606,7 @@ let
                       if not destination.is_dir():
                           print(f"[SKIP] Plugin: {destination} exists but is not a directory")
                           return
-                      manifest_healthy = manifest_is_valid(
-                          manifest_file(destination)
-                      )
-
-                      main_healthy = is_nonempty_file(
-                          destination / "main.js"
-                      )
-
-                      if manifest_healthy and main_healthy:
+                      if plugin_core_is_healthy(destination):
                           print(
                               f"[SKIP] Plugin: {destination} already exists; "
                               "use Plugins > Check for updates to recover it"
@@ -2422,9 +2614,8 @@ let
                           return
 
                       answer = input(
-                          f"{folder_name}: manifest.json or main.js is "
-                          "missing, empty, or invalid. "
-                          "Re-download both from the latest release now? [y/N]: "
+                          f"{folder_name}: plugin core files are missing, empty, or invalid. "
+                          "Replace manifest.json and main.js now? [y/N]: "
                       ).strip().casefold()
                       if answer not in {"y", "yes"}:
                           print(f"[SKIP] Plugin: manifest repair was not confirmed for {folder_name}")
@@ -2435,11 +2626,29 @@ let
                   staging.mkdir()
                   shutil.move(str(manifest_path), staging / MANIFEST_FILE)
                   downloaded = [MANIFEST_FILE]
+
+                  for filename in (library_type.payload_file, "styles.css"):
+                      source_path = repository_core_paths.get(filename)
+                      asset = assets.get(filename)
+                      destination_file = staging / filename
+                      if use_repository_core and source_path is not None:
+                          download_repository_file(repository, source_path, destination_file)
+                      elif asset is not None:
+                          download_asset(repository, asset, destination_file)
+                      else:
+                          continue
+                      downloaded.append(filename)
+
                   for filename in allowed_files:
-                      if filename == MANIFEST_FILE or filename not in assets:
+                      if filename in {MANIFEST_FILE, library_type.payload_file, "styles.css"}:
                           continue
                       download_asset(repository, assets[filename], staging / filename)
                       downloaded.append(filename)
+
+                  if not javascript_is_valid(staging / library_type.payload_file):
+                      raise RuntimeError("downloaded main.js is empty or has invalid JavaScript syntax")
+                  if (staging / "styles.css").exists() and not stylesheet_is_valid(staging / "styles.css"):
+                      raise RuntimeError("downloaded styles.css is empty or malformed")
                   readme_path = staging / README_FILE
 
                   existing_root = (
@@ -2530,9 +2739,22 @@ let
               return
 
           destination = library_type.root / folder_name
+          refresh_existing_theme = False
           if destination.exists():
-              print(f"[SKIP] Theme: {destination} already exists")
-              return
+              if not destination.is_dir():
+                  print(f"[SKIP] Theme: {destination} exists but is not a directory")
+                  return
+              if theme_core_is_healthy(destination):
+                  print(f"[SKIP] Theme: {destination} already exists")
+                  return
+              answer = input(
+                  f"{folder_name}: theme core files are missing, empty, or invalid. "
+                  "Replace manifest.json and theme.css now? [y/N]: "
+              ).strip().casefold()
+              if answer not in {"y", "yes"}:
+                  print(f"[SKIP] Theme: repair was not confirmed for {folder_name}")
+                  return
+              refresh_existing_theme = True
           if not library_type.root.is_dir():
               report_error(f"[FAILED] Theme: library directory does not exist: {library_type.root}")
               return
@@ -2541,13 +2763,120 @@ let
               with tempfile.TemporaryDirectory(prefix=".obsidian-library-theme-", dir=library_type.root) as temporary_directory:
                   staging = Path(temporary_directory) / folder_name
                   staging.mkdir()
-                  downloaded = write_theme_source(staging, library_type, repository, source)
-                  os.replace(staging, destination)
+                  existing_root = destination if destination.exists() else None
+                  downloaded = write_theme_source(staging, library_type, repository, source, existing_root)
+                  if not theme_core_is_healthy(staging):
+                      raise RuntimeError("downloaded theme core is empty or malformed")
+                  if existing_root is None:
+                      os.replace(staging, destination)
+                  else:
+                      for filename in downloaded:
+                          source_file = staging / filename
+                          target = destination / filename
+                          target.parent.mkdir(parents=True, exist_ok=True)
+                          staged = target.with_name(f".{target.name}.obsidian-library-new")
+                          shutil.copyfile(source_file, staged)
+                          os.replace(staged, target)
           except (OSError, RuntimeError) as error:
               report_error(f"[FAILED] Theme: {error}")
               return
 
-          print(f"[DOWNLOADED] Theme: {folder_name} ({source.location}; {', '.join(downloaded)})")
+          action = "REDOWNLOADED" if refresh_existing_theme else "DOWNLOADED"
+          print(f"[{action}] Theme: {folder_name} ({source.location}; {', '.join(downloaded)})")
+
+
+      def repositories_from_list_file(path: Path, library_type: LibraryType) -> list[str]:
+          repositories: list[str] = []
+          active_section = "all"
+          heading_pattern = re.compile(r"^##+\s*(?:Obsidian\s+)?(Plugins|Themes)\s*$", re.IGNORECASE)
+          url_pattern = re.compile(
+              r"(?i)(?:https?://)?(?:www[.])?github[.]com/[A-Za-z0-9-]+/[A-Za-z0-9_.-]+(?:[.]git)?"
+          )
+
+          for line in path.read_text(encoding="utf-8").splitlines():
+              heading = heading_pattern.fullmatch(line.strip())
+              if heading is not None:
+                  active_section = heading.group(1).casefold()
+                  continue
+              if line.lstrip().startswith("#"):
+                  active_section = "none"
+                  continue
+              if active_section not in {"all", library_type.label.casefold()}:
+                  continue
+              for value in url_pattern.findall(line):
+                  repository = github_repository_from_value(value)
+                  if repository not in repositories:
+                      repositories.append(repository)
+
+          return repositories
+
+
+      def repository_from_source_folder(path: Path, library_type: LibraryType) -> str:
+          source_manifest = manifest_file(path)
+          repository = manifest_repository(path, library_type)
+          if repository is not None:
+              return repository
+
+          try:
+              manifest = json.loads(source_manifest.read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError) as error:
+              raise RuntimeError(f"{path}: missing a usable manifest repository URL") from error
+          if not isinstance(manifest, dict):
+              raise RuntimeError(f"{path}: manifest.json does not contain an object")
+
+          identifier = manifest.get("id")
+          author = manifest.get("author")
+          if isinstance(identifier, str) and re.fullmatch(r"[A-Za-z0-9._-]+", identifier) and \
+                  isinstance(author, str) and re.fullmatch(r"[A-Za-z0-9-]+", author):
+              return f"{author}/{identifier}"
+
+          raise RuntimeError(f"{path}: could not resolve a GitHub repository from manifest metadata")
+
+
+      def repositories_from_value(value: str, library_type: LibraryType) -> list[str]:
+          path = Path(value).expanduser()
+          if path.is_file():
+              return repositories_from_list_file(path, library_type)
+          if path.is_dir():
+              if manifest_file(path).is_file():
+                  return [repository_from_source_folder(path, library_type)]
+              repositories: list[str] = []
+              for child in sorted(path.iterdir(), key=lambda candidate: candidate.name.casefold()):
+                  if not child.is_dir() or child.is_symlink() or not manifest_file(child).is_file():
+                      continue
+                  repository = repository_from_source_folder(child, library_type)
+                  if repository not in repositories:
+                      repositories.append(repository)
+              if repositories:
+                  return repositories
+              raise RuntimeError(f"{path}: contains no usable plugin or theme source folders")
+          return [github_repository_from_value(value)]
+
+
+      def download_values(
+          library_type: LibraryType,
+          values: list[str],
+          release_cache: dict[str, dict[str, Any] | Exception],
+          repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+      ) -> None:
+          BATCH_FAILURES.clear()
+          repositories: list[str] = []
+          for value in values:
+              try:
+                  for repository in repositories_from_value(value, library_type):
+                      if repository not in repositories:
+                          repositories.append(repository)
+              except (OSError, RuntimeError) as error:
+                  report_error(f"[FAILED] {library_type.label}: {error}")
+
+          for repository in repositories:
+              if library_type.is_theme:
+                  download_theme(library_type, repository, release_cache, repository_contents_cache)
+              else:
+                  download_plugin(library_type, repository, release_cache, repository_contents_cache)
+
+          if len(values) > 1 or any(Path(value).is_file() or Path(value).is_dir() for value in values):
+              write_batch_failure_report(library_type)
 
 
       def remove_entry(entry: LibraryEntry) -> None:
@@ -2765,8 +3094,8 @@ let
           parser = argparse.ArgumentParser(description="Manage the local Obsidian plugin and theme library.")
           parser.add_argument("--check-all", action="store_true", help="Check every recoverable plugin and theme without opening fzf.")
           parser.add_argument("--audit", choices=("local", "remote"), help="Write a dated local or remote library audit report.")
-          parser.add_argument("--download-plugin", metavar="REPOSITORY", help="Download a plugin release from a GitHub repository into the plugin library.")
-          parser.add_argument("--download-theme", metavar="REPOSITORY", help="Download a theme from a GitHub repository into the theme library.")
+          parser.add_argument("--download-plugin", metavar="SOURCE", action="append", help="Download plugin sources: repositories, link lists, or existing folders.")
+          parser.add_argument("--download-theme", metavar="SOURCE", action="append", help="Download theme sources: repositories, link lists, or existing folders.")
           arguments = parser.parse_args()
 
           library_types = (
@@ -2790,11 +3119,11 @@ let
 
           try:
               if arguments.download_plugin:
-                  download_plugin(library_types[0], arguments.download_plugin, release_cache)
+                  download_values(library_types[0], arguments.download_plugin, release_cache, repository_contents_cache)
                   return 0
 
               if arguments.download_theme:
-                  download_theme(library_types[1], arguments.download_theme, release_cache, repository_contents_cache)
+                  download_values(library_types[1], arguments.download_theme, release_cache, repository_contents_cache)
                   return 0
 
               if arguments.check_all:
@@ -2821,13 +3150,13 @@ let
                   elif choice == "Download a plugin":
                       repository = input("GitHub repository URL, owner/repository, or text containing a GitHub link: ").strip()
                       if repository:
-                          download_plugin(library_types[0], repository, release_cache)
+                          download_values(library_types[0], [repository], release_cache, repository_contents_cache)
                       else:
                           print("[SKIP] Plugin: no repository was provided")
                   elif choice == "Download a theme":
                       repository = input("GitHub repository URL or owner/repository: ").strip()
                       if repository:
-                          download_theme(library_types[1], repository, release_cache, repository_contents_cache)
+                          download_values(library_types[1], [repository], release_cache, repository_contents_cache)
                       else:
                           print("[SKIP] Theme: no repository was provided")
                   elif choice == "Check for updates":
