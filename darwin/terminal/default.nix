@@ -23,7 +23,7 @@
     # ---- PLUGINS ---- #
     plugins = [
       {
-      	# Plugin that allows for automatic pairing of brackets, quotes, etc.
+        # Plugin that allows for automatic pairing of brackets, quotes, etc.
         name = "autopair.fish";
         src = pkgs.fetchFromGitHub {
           owner = "jorgebucaran";
@@ -36,14 +36,14 @@
 
     # ---- CONFIGURATION ---- #
     shellInit = ''
-      # Hide default greeting
-      set fish_greeting
+        # Hide default greeting
+        set fish_greeting
 
-      # Use a named Fish history file
-      set -g fish_history ven
+        # Use a named Fish history file
+        set -g fish_history ven
 
-    # Direnv integration
-    	direnv hook fish | source
+      # Direnv integration
+      direnv hook fish | source
     '';
 
     interactiveShellInit = ''
@@ -62,12 +62,10 @@
   xdg.configFile."fish/completions/docker.fish".source =
     "${pkgs.docker_29}/share/fish/vendor_completions.d/docker.fish";
 
-
   # ---- THEMES ---- #
   # Set the default Fish theme
   terminal.fish.theme = "gruvbox";
 
-  
   # ---- ENVIRONMENT ---- #
   home = {
     sessionPath = [
@@ -79,7 +77,6 @@
       # Docker PATH
       "/Applications/Programming/Docker.app/Contents/Resources/bin"
     ];
-    
 
     # ---- ENVIRONMENT VARIABLES ---- #
     sessionVariables = {
@@ -90,7 +87,6 @@
       CHATGPT_APP = "/Applications/ChatGPT.app";
     };
   };
-  
 
   # -------------------------------------------- #
   # MODULES
@@ -112,7 +108,5 @@
     # ---- Fish themes ---- #
     ./fish-themes.nix
 
-    # ---- CLI/TUI tools ---- #
-    ./cli-tuis
   ];
 }

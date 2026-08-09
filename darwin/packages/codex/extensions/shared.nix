@@ -14,7 +14,7 @@ let
   ];
 in
 {
-  system.activationScripts.codexSharedExtensions.text = lib.mkBefore ''
+  system.activationScripts.extraActivation.text = lib.mkBefore ''
     echo "[nix-darwin][codex] Configuring shared skills and plugins..."
 
     mkdir -p \

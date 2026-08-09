@@ -161,7 +161,7 @@ let
   };
 in
 {
-  system.activationScripts.codexCaveman.text = lib.mkAfter ''
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
     echo "[nix-darwin][codex] Installing Caveman..."
 
     mkdir -p "${sharedPlugins}"

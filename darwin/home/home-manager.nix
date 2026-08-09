@@ -2,7 +2,7 @@
 #
 # =====================================================================
 # DARWIN: HOME MANAGER (INTEGRATED)
-# 
+#
 # This module enables Home Manager as part of nix-darwin.
 # It applies your user config whenever you run:
 #   drs / drb / drn  → darwin-rebuild
@@ -20,14 +20,14 @@
 
 {
   home-manager = {
-    useGlobalPkgs   = true;
+    useGlobalPkgs = true;
     useUserPackages = true;
     extraSpecialArgs = { inherit inputs; };
 
     users.ven = {
-      home.username      = "ven";
+      home.username = "ven";
       home.homeDirectory = "/Users/ven";
-      home.stateVersion  = "25.11";
+      home.stateVersion = "26.05";
 
       # --- Reserved for future user packages ---
       home.packages = [
@@ -39,10 +39,17 @@
 
       # --- User modules ---
       imports = [
-      	../terminal
-        ../terminal/nvim.nix
+        ../terminal
+        ../../shared/terminal/nvim
+        ../../shared/terminal/cli-tuis
         ./hm-options.nix
       ];
+
+      # --- Shared terminal features ---
+      ven.features.terminal.nvim = {
+        enable = true;
+        neovide.enable = true;
+      };
     };
   };
 }

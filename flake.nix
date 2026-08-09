@@ -70,6 +70,7 @@
       imports = [
         ./flake-modules/packages.nix
         ./flake-modules/macbook.nix
+        ./flake-modules/hosts.nix
       ];
     };
 

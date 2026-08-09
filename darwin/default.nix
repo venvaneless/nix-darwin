@@ -196,7 +196,6 @@
     ./packages/agents-pkgs.nix
     ./packages/tools-pkgs.nix
     ./packages/cli-tools.nix
-    ./packages/development-pkgs.nix
     ./packages/media-pkgs.nix
     
     # Shared host configuration and packages
