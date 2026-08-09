@@ -10,9 +10,6 @@
 
 {
   imports = [
-    # macOS Obsidian library recovery helpers
-    ./downloads.nix
-
     # iCloud folder navigation and ditto-backed copying
     ./files-darwin.nix
 
