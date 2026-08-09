@@ -10,14 +10,11 @@
 
 {
   imports = [
-    # Make script files executable
-    ./chmod.nix
-    
-    # Download content from the web
+    # macOS Obsidian library recovery helpers
     ./downloads.nix
 
-    # Quick actions for managing files and folders
-    ./files-folders.nix
+    # iCloud folder navigation and ditto-backed copying
+    ./files-darwin.nix
 
     # macOS commands
     ./macos.nix

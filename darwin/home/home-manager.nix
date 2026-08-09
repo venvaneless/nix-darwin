@@ -39,6 +39,7 @@
 
       # --- User modules ---
       imports = [
+        ../../shared/terminal
         ../terminal
         ../../shared/terminal/nvim
         ../../shared/terminal/cli-tuis

@@ -64,13 +64,16 @@
 
     }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      # Build flake package outputs for the current Darwin platform.
+      # Governs current per-system Darwin package outputs. Linux and NixOS
+      # host outputs and modules are defined separately in flake-modules/.
       systems = [ "aarch64-darwin" ];
 
       imports = [
         ./flake-modules/packages.nix
         ./flake-modules/macbook.nix
         ./flake-modules/hosts.nix
+        ./flake-modules/linux.nix
+        ./flake-modules/nixos.nix
       ];
     };
 

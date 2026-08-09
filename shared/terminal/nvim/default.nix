@@ -25,10 +25,15 @@ in
 
   imports = [
     ./core.nix
+
+    # Keeps the inherited AstroNvim starter files under Home Manager ownership.
+    ./starter-plugin-specs.nix
+
     ./keyboard.nix
     ./explorer.nix
     ./theme.nix
     ./completion.nix
+    ./lualine.nix
     ./telescope.nix
     ./lsp.nix
     ./lint.nix

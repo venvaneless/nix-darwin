@@ -3,7 +3,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/fastfetch-cli/fastfetch/dev/doc/json_schema.json",
   "logo": {
-    "source": "/Users/ven/.config/fastfetch/ascii.txt",
+    "source": "__FASTFETCH_ASCII__",
     "padding": {
       "top": 1,
       "left": 1,

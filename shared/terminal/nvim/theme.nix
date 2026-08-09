@@ -20,7 +20,7 @@
           opts = {
             terminal_colors = true,
 
-            contrast = "hard",
+            contrast = "soft",
 
             transparent_mode = false,
           },

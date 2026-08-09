@@ -21,6 +21,7 @@
     # Future host modules import this and choose terminal features locally.
     homeModules.sharedTerminal = {
       imports = [
+        ../shared/terminal
         ../shared/terminal/nvim
         ../shared/terminal/cli-tuis
       ];

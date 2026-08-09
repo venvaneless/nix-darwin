@@ -15,9 +15,7 @@ let
   # Keeps the source configuration intact while resolving the logo through
   # the current host's XDG configuration directory.
   fastfetchConfig =
-    builtins.replaceStrings
-      [ "/Users/ven/.config/fastfetch/ascii.txt" ]
-      [ "${config.xdg.configHome}/fastfetch/ascii.txt" ]
+    builtins.replaceStrings [ "__FASTFETCH_ASCII__" ] [ "${config.xdg.configHome}/fastfetch/ascii.txt" ]
       (builtins.readFile ./fastfetch.jsonc);
 in
 {
