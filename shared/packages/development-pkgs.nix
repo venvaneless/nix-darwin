@@ -279,6 +279,29 @@ let
       package = pkgs.delta;
     };
 
+    # GPU-accelerated terminal emulator and multiplexer
+    #
+    # Darwin installs WezTerm through darwinDevelopmentApplications
+    # below, so that its bundle is linked into
+    # /Applications/Programming. Only the Linux toggle lives here.
+    # GPU-accelerated terminal emulator and multiplexer
+    wezterm = {
+      enable = true;
+    
+      installOn = {
+        darwin = true;
+        linux = true;
+      };
+    
+      package = pkgs.wezterm;
+    
+      darwinLink = {
+        enable = true;
+        appName = "WezTerm.app";
+        targetDirectory = "/Applications/Programming";
+      };
+    };
+
     # Container engine
     docker = {
       enable = true;
@@ -545,7 +568,27 @@ let
       link = true;
       appName = "iTermBrowserPlugin.app";
     };
-  };
+
+    # ---- WezTerm
+    # Replaces the former Homebrew cask. Installing it as a system
+    # package puts the bundle in /Applications/Nix Apps, which the
+    # link helper then links into /Applications/Programming.
+    wezterm = {
+      enable = true;
+    
+      installOn = {
+        darwin = true;
+        linux = true;
+      };
+    
+      package = pkgs.wezterm;
+    
+      darwinLink = {
+        enable = true;
+        appName = "WezTerm.app";
+        targetDirectory = "/Applications/Programming";
+      };
+    };
 
   enabledDarwinDevelopmentApplications =
     lib.mapAttrs
@@ -559,10 +602,178 @@ let
     (lib.filter enabledForCurrentSystem (lib.attrValues darwinDevelopmentApplications));
 
   # ------------------------------------------------------------
+  # ------ DARWIN APPLICATION LINK MANAGER ------ #
+  #
+  # Creates and removes only symbolic links managed by this
+  # module.
+  #
+  # Existing application bundles, unrelated symbolic links,
+  # scripts, extensions, and other files are never replaced.
+  # ------------------------------------------------------------
+
+  manageDarwinDevelopmentPackageLinks =
+    pkgs.writeShellScriptBin "manage-shared-development-application-links" ''
+      set -euo pipefail
+
+      manage_application_link() {
+        local app_name="$1"
+        local source_path="$2"
+        local target_path="$3"
+        local should_exist="$4"
+        local target_directory
+        local existing_target
+
+        target_directory="$(
+          ${pkgs.coreutils}/bin/dirname -- "$target_path"
+        )"
+
+        # Validate the source path
+        # ------------------------------------------------------------
+
+        case "$source_path" in
+          "/Applications/Nix Apps/"*.app)
+            ;;
+          *)
+            echo "[$app_name] ERROR: Unsupported source path." >&2
+            echo "[$app_name] Refusing source: $source_path" >&2
+            return 1
+            ;;
+        esac
+
+        # Validate the target path
+        # ------------------------------------------------------------
+
+        case "$target_path" in
+          /Applications/*.app)
+            ;;
+          *)
+            echo "[$app_name] ERROR: Unsupported target path." >&2
+            echo "[$app_name] Refusing target: $target_path" >&2
+            return 1
+            ;;
+        esac
+
+        # Create or verify the application link
+        # ------------------------------------------------------------
+
+        if [ "$should_exist" = "true" ]; then
+          if [ ! -d "$source_path" ]; then
+            echo "[$app_name] ERROR: Nix-managed application was not found." >&2
+            echo "[$app_name] Expected: $source_path" >&2
+            return 1
+          fi
+
+          if [ ! -d "$target_directory" ]; then
+            ${pkgs.coreutils}/bin/mkdir \
+              -p \
+              -- \
+              "$target_directory"
+
+            if [ ! -d "$target_directory" ]; then
+              echo "[$app_name] ERROR: Target directory was not created." >&2
+              return 1
+            fi
+
+            echo "[$app_name] SUCCESS: Target directory created."
+          fi
+
+          if [ -L "$target_path" ]; then
+            existing_target="$(
+              ${pkgs.coreutils}/bin/readlink \
+                -- \
+                "$target_path"
+            )"
+
+            if [ "$existing_target" = "$source_path" ]; then
+              return 0
+            fi
+
+            echo "[$app_name] ERROR: An unrelated symbolic link already exists." >&2
+            echo "[$app_name] Existing target: $existing_target" >&2
+            return 1
+          fi
+
+          if [ -e "$target_path" ]; then
+            echo "[$app_name] ERROR: An existing item occupies the target path." >&2
+            echo "[$app_name] Existing item: $target_path" >&2
+            echo "[$app_name] Refusing to replace it." >&2
+            return 1
+          fi
+
+          echo "[$app_name] Creating application link."
+
+          ${pkgs.coreutils}/bin/ln \
+            -s \
+            -- \
+            "$source_path" \
+            "$target_path"
+
+          if [ ! -L "$target_path" ]; then
+            echo "[$app_name] ERROR: Application link was not created." >&2
+            return 1
+          fi
+
+          existing_target="$(
+            ${pkgs.coreutils}/bin/readlink \
+              -- \
+              "$target_path"
+          )"
+
+          if [ "$existing_target" != "$source_path" ]; then
+            echo "[$app_name] ERROR: Application link has the wrong target." >&2
+            echo "[$app_name] Actual target: $existing_target" >&2
+            return 1
+          fi
+
+          echo "[$app_name] SUCCESS: Application link created and verified."
+          return 0
+        fi
+
+        # Remove only a link owned by this module
+        # ------------------------------------------------------------
+
+        if [ -L "$target_path" ]; then
+          existing_target="$(
+            ${pkgs.coreutils}/bin/readlink \
+              -- \
+              "$target_path"
+          )"
+
+          if [ "$existing_target" = "$source_path" ]; then
+            echo "[$app_name] Removing managed application link."
+
+            ${pkgs.coreutils}/bin/rm \
+              -f \
+              -- \
+              "$target_path"
+
+            if [ -e "$target_path" ] || [ -L "$target_path" ]; then
+              echo "[$app_name] ERROR: Managed link was not removed." >&2
+              return 1
+            fi
+
+            echo "[$app_name] SUCCESS: Managed application link removed."
+            return 0
+          fi
+
+          echo "[$app_name] WARNING: Existing link is not owned by this module; preserving: $target_path" >&2
+          return 0
+        fi
+
+        if [ -e "$target_path" ]; then
+          echo "[$app_name] WARNING: Existing item is not owned by this module; preserving: $target_path" >&2
+          return 0
+        fi
+      }
+
+      ${managedDarwinApplicationLinkCommands}
+    '';
+
+  # ------------------------------------------------------------
   # ------ DARWIN APPLICATION LINKS ------ #
   #
-  # Uses the existing guarded link helper. Disabled applications only
-  # remove links that point to their expected Nix-managed source.
+  # Uses the existing guarded link helper for the legacy Darwin-only
+  # development applications.
   # ------------------------------------------------------------
 
   applicationLinkHelper = import ../../darwin/packages/helper.nix {
@@ -600,6 +811,7 @@ in
 
       system.activationScripts.postActivation.text = lib.mkAfter ''
         ${developmentApplicationLinks.linkManager}/bin/manage-darwin-development-application-links
+        ${manageDarwinDevelopmentPackageLinks}/bin/manage-shared-development-application-links
       '';
     })
   ];

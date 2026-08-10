@@ -24,19 +24,32 @@ in
   };
 
   imports = [
-    ./core.nix
-
+    
     # Keeps the inherited AstroNvim starter files under Home Manager ownership.
     ./starter-plugin-specs.nix
 
+    # ---- CORE CONFIGURATION ---- #
+    ./core.nix
     ./keyboard.nix
+
+    # ---- VIEW AND NAVIGATION ---- #
+    # View and Search
     ./explorer.nix
-    ./theme.nix
-    ./completion.nix
-    ./lualine.nix
     ./telescope.nix
-    ./lsp.nix
+
+    # ---- UI ---- #
+    ./theme.nix
+    ./icons.nix
+
+    # ---- ADDITIONAL COMPONENTS ---- #
+    # Additional UI components
+    ./dropbar.nix
+    ./heirline.nix
+    
+    # ---- COMPLETIONS / LSP / LINTING ---- #
+    ./completion.nix
     ./lint.nix
+    ./lsp.nix
   ];
 
   config = lib.mkIf cfg.enable {

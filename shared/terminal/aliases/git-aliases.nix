@@ -87,6 +87,35 @@ in
 
     programs.fish.functions = {
       # ---------- Git Functions ---------- #
+  
+      # ---------------------------------------------------------
+      # ---- gm -> Stage all repo changes with drs ---- #
+      # Create a git commit using the provided message
+      # Run darwin-rebuild switch afterwards
+      #
+      # Example:
+      # gm "Adding fzf trash and iCloud functions"
+      # ---------------------------------------------------------
+      gm = ''
+        set message (string join " " $argv)
+  
+        if test -z "$message"
+          echo "Usage: gm <commit-message>"
+          return 1
+        end
+  
+        git add -A
+  
+        if git diff --cached --quiet
+          echo "Nothing to commit."
+          return 0
+        end
+  
+        git commit -m "$message"
+        and drs
+      '';
+      # ---------------------------------------------------------
+      
 
       # ---------------------------------------------------------
       # ---- gaa -> Stage all repo changes ---- #
@@ -96,6 +125,27 @@ in
       gaa = ''
         git add -A
         and git commit -m "$argv"
+      '';
+      # ---------------------------------------------------------
+  
+  
+      # ---------------------------------------------------------
+      # ---- gsd -> Git commit with timestamp + drs ---- #
+      # Stage all repository changes
+      # Create commit with appended timestamp:
+      # yyyy-mm-dd hh:mm
+      # Run darwin-rebuild switch afterwards
+      #
+      # Example:
+      # gsd "Fixing nginx"
+      # -> "Fixing nginx 2026-05-23 19:42"
+      # ---------------------------------------------------------
+      gsd = ''
+        set timestamp (date "+%Y-%m-%d %H:%M")
+        set message (string join " " $argv)
+  
+        gaa "$message $timestamp"
+        and drs
       '';
       # ---------------------------------------------------------
 

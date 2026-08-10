@@ -201,7 +201,11 @@
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs",
         "nixpkgs-unstable": "nixpkgs-unstable",
-        "simple-english": "simple-english"
+        "simple-english": "simple-english",
+        "wezterm-resurrect": "wezterm-resurrect",
+        "wezterm-sessions": "wezterm-sessions",
+        "wezterm-smart-workspace-switcher": "wezterm-smart-workspace-switcher",
+        "wezterm-tabline": "wezterm-tabline"
       }
     },
     "simple-english": {
@@ -217,6 +221,70 @@
       "original": {
         "owner": "AminBlg",
         "repo": "SimpleEnglish",
+        "type": "github"
+      }
+    },
+    "wezterm-resurrect": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779642337,
+        "narHash": "sha256-xjwOSRnwZ69x9NAumc6GovlzJ0iUPI3/t9wXPlD4nEs=",
+        "owner": "MLFlexer",
+        "repo": "resurrect.wezterm",
+        "rev": "65cbbbf6d2c76f3e36af7610a356fc190fcb6147",
+        "type": "github"
+      },
+      "original": {
+        "owner": "MLFlexer",
+        "repo": "resurrect.wezterm",
+        "type": "github"
+      }
+    },
+    "wezterm-sessions": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1774687495,
+        "narHash": "sha256-39JG8ljPFu9qSwq6lRYoO7rxpklG8nEsz0GSBvef3qo=",
+        "owner": "abidibo",
+        "repo": "wezterm-sessions",
+        "rev": "3ffa5c9748b7a9c2641c618912af9ce09a16cc64",
+        "type": "github"
+      },
+      "original": {
+        "owner": "abidibo",
+        "repo": "wezterm-sessions",
+        "type": "github"
+      }
+    },
+    "wezterm-smart-workspace-switcher": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1751290036,
+        "narHash": "sha256-LekKmTjKLGBBexsdYeRDo2fZVpYNZ5ISyHoz4UNTmsA=",
+        "owner": "MLFlexer",
+        "repo": "smart_workspace_switcher.wezterm",
+        "rev": "40228a08e7bffb93b63b131df7f605278b5d8187",
+        "type": "github"
+      },
+      "original": {
+        "owner": "MLFlexer",
+        "repo": "smart_workspace_switcher.wezterm",
+        "type": "github"
+      }
+    },
+    "wezterm-tabline": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1771026031,
+        "narHash": "sha256-G5sFPIJ2SDLKjeiuauJfzu3JgvViwoe9RLhYAScaHbs=",
+        "owner": "michaelbrusegard",
+        "repo": "tabline.wez",
+        "rev": "5e148f08f134e317bbfe75b26f8a23b0102cb621",
+        "type": "github"
+      },
+      "original": {
+        "owner": "michaelbrusegard",
+        "repo": "tabline.wez",
         "type": "github"
       }
     }

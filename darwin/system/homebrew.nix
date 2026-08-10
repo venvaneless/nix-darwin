@@ -146,8 +146,8 @@
           "librewolf"
           "ungoogled-chromium"
 
-          # Discord client
-          "vesktop"
+          # Vesktop is installed through Nix instead of Homebrew.
+          # See shared/packages/productivity-pkgs.nix
 
           # System utilities
 
@@ -190,8 +190,8 @@
           # Open-source code editor
           "visual-studio-code"
 
-          # GPU-accelerated cross-platform terminal emulator and multiplexer
-          "wezterm"
+          # WezTerm is installed through Nix instead of Homebrew.
+          # See shared/packages/development-pkgs.nix
         ]
         ++ casksFor "/Applications/System" [
           # Open-source Chromium-based web browser

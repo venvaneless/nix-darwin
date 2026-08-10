@@ -202,6 +202,7 @@
     ../shared/hosts.nix
     ../shared/packages/media-pkgs.nix
     ../shared/packages/development-pkgs.nix
+    ../shared/packages/productivity-pkgs.nix
 
     # Homebrew
     ./system/homebrew.nix

@@ -44,6 +44,14 @@ let
       };
     };
 
+    bat = {
+      enable = true;
+      installOn = {
+        darwin = true;
+        linux = true;
+      };
+    };
+
     btop = {
       enable = true;
       installOn = {
@@ -139,9 +147,21 @@ in
 {
   imports = [
     ./atuin.nix
-    ./btop.nix
+
+    # Bat settings and its separately toggled themes
+    ./bat/bat.nix
+    ./bat/bat-gruvbox.nix
+    ./bat/bat-rose-pine.nix
+
+    # Btop settings and its separately toggled Gruvbox theme
+    ./btop/btop.nix
+    ./btop/btop-gruvbox.nix
+
     ./delta.nix
-    ./eza.nix
+
+    # Eza settings; its themes are imported from eza.nix
+    ./eza/eza.nix
+
     ./fastfetch.nix
     ./fzf.nix
     ./ripgrep.nix

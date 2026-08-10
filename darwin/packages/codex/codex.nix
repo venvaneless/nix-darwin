@@ -6,7 +6,7 @@
 # the configuration for the GPT and API profiles.
 # =====================================================================
 
-{...}:
+{ lib, ... }:
 
 let
   # Set the user name and home directory
@@ -23,12 +23,31 @@ in
 
   # Env variables
   environment.variables = {
+    CODEX_HOME = "${codexRoot}/chatgpt";
+    
     CODEX_PROFILE_HOME_ROOT = codexRoot;
     CODEX_PROFILE_CONFIG_HOME = "${homeDir}/.config/codex-profile";
 
     CHATGPT_APP = "/Applications/ChatGPT.app";
     CODEX_CLI = "/run/current-system/sw/bin/codex";
   };
+
+
+  # CODEX: GUI SESSION ENVIRONMENT
+    # =================================================================
+    # environment.variables only reaches /etc/zshenv and /etc/bashrc.
+    # Apps launched from the Dock, Spotlight, or Finder never source
+    # those, so they are seeded into ven's launchd domain here.
+  
+    system.activationScripts.postActivation.text = lib.mkAfter ''
+      ven_uid="$(/usr/bin/id -u ${userName})"
+  
+      /bin/launchctl asuser "$ven_uid" \
+        /bin/launchctl setenv CODEX_HOME "${codexRoot}/chatgpt"
+  
+      /bin/launchctl asuser "$ven_uid" \
+        /bin/launchctl setenv CODEX_PROFILE_HOME_ROOT "${codexRoot}"
+    '';
 
   # CODEX: HOME MANAGER CONFIGURATION
   # =================================================================

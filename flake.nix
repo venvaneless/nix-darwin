@@ -55,6 +55,29 @@
       url = "github:DeusData/codebase-memory-mcp";
       flake = false;
     };
+
+    # WezTerm plugins are pinned in flake.lock and deployed by
+    # shared/terminal/wezterm/wez-plugins.nix, so `nix flake update`
+    # updates them together with every other input.
+    wezterm-resurrect = {
+      url = "github:MLFlexer/resurrect.wezterm";
+      flake = false;
+    };
+
+    wezterm-tabline = {
+      url = "github:michaelbrusegard/tabline.wez";
+      flake = false;
+    };
+
+    wezterm-sessions = {
+      url = "github:abidibo/wezterm-sessions";
+      flake = false;
+    };
+
+    wezterm-smart-workspace-switcher = {
+      url = "github:MLFlexer/smart_workspace_switcher.wezterm";
+      flake = false;
+    };
   };
 
   outputs =

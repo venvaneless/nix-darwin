@@ -31,7 +31,7 @@
 
       # --- Reserved for future user packages ---
       home.packages = [
-        pkgs.bat
+        # bat is installed by shared/terminal/cli-tuis/bat/bat.nix
         pkgs.bottom
         pkgs.micro
         pkgs.python312Packages.internetarchive
@@ -43,6 +43,7 @@
         ../terminal
         ../../shared/terminal/nvim
         ../../shared/terminal/cli-tuis
+        ../../shared/terminal/wezterm
         ./hm-options.nix
       ];
 
@@ -51,6 +52,8 @@
         enable = true;
         neovide.enable = true;
       };
+
+      ven.features.terminal.wezterm.enable = true;
     };
   };
 }
