@@ -151,9 +151,7 @@ let
       (mediaPackage: mediaPackage ? darwinLink)
       (lib.attrValues mediaPackages);
 
-  renderDarwinApplicationLink =
-    mediaPackage:
-
+  renderDarwinApplicationLink = mediaPackage:
     let
       sourcePath =
         "/Applications/Nix Apps/${mediaPackage.darwinLink.appName}";
@@ -166,7 +164,6 @@ let
         && mediaPackage.installOn.darwin
         && mediaPackage.darwinLink.enable;
     in
-
     ''
       manage_application_link \
         ${lib.escapeShellArg mediaPackage.darwinLink.appName} \

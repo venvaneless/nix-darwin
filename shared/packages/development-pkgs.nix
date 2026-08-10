@@ -279,29 +279,6 @@ let
       package = pkgs.delta;
     };
 
-    # GPU-accelerated terminal emulator and multiplexer
-    #
-    # Darwin installs WezTerm through darwinDevelopmentApplications
-    # below, so that its bundle is linked into
-    # /Applications/Programming. Only the Linux toggle lives here.
-    # GPU-accelerated terminal emulator and multiplexer
-    wezterm = {
-      enable = true;
-    
-      installOn = {
-        darwin = true;
-        linux = true;
-      };
-    
-      package = pkgs.wezterm;
-    
-      darwinLink = {
-        enable = true;
-        appName = "WezTerm.app";
-        targetDirectory = "/Applications/Programming";
-      };
-    };
-
     # Container engine
     docker = {
       enable = true;
@@ -497,6 +474,7 @@ let
     };
   };
 
+
   # ------------------------------------------------------------
   # ------ PACKAGE FILTERING ------ #
   #
@@ -505,16 +483,22 @@ let
   # ------------------------------------------------------------
 
   enabledForCurrentSystem =
-    developmentPackage:
-      developmentPackage.enable
+    item:
+      item.enable
       && (
-        (isDarwin && developmentPackage.installOn.darwin)
-        || (isLinux && developmentPackage.installOn.linux)
+        (isDarwin && item.installOn.darwin)
+        || (isLinux && item.installOn.linux)
       );
 
-  enabledDevelopmentPackages = map
-    (developmentPackage: developmentPackage.package)
-    (lib.filter enabledForCurrentSystem (lib.attrValues developmentPackages));
+  enabledDevelopmentPackages =
+    map
+      (developmentPackage: developmentPackage.package)
+      (
+        lib.filter
+          enabledForCurrentSystem
+          (lib.attrValues developmentPackages)
+      );
+
 
   # ------------------------------------------------------------
   # ------ DARWIN DEVELOPMENT APPLICATIONS ------ #
@@ -568,27 +552,7 @@ let
       link = true;
       appName = "iTermBrowserPlugin.app";
     };
-
-    # ---- WezTerm
-    # Replaces the former Homebrew cask. Installing it as a system
-    # package puts the bundle in /Applications/Nix Apps, which the
-    # link helper then links into /Applications/Programming.
-    wezterm = {
-      enable = true;
-    
-      installOn = {
-        darwin = true;
-        linux = true;
-      };
-    
-      package = pkgs.wezterm;
-    
-      darwinLink = {
-        enable = true;
-        appName = "WezTerm.app";
-        targetDirectory = "/Applications/Programming";
-      };
-    };
+  };
 
   enabledDarwinDevelopmentApplications =
     lib.mapAttrs
@@ -597,9 +561,107 @@ let
       })
       darwinDevelopmentApplications;
 
-  enabledDarwinDevelopmentApplicationPackages = map
-    (application: application.package)
-    (lib.filter enabledForCurrentSystem (lib.attrValues darwinDevelopmentApplications));
+  enabledDarwinDevelopmentApplicationPackages =
+    map
+      (application: application.package)
+      (
+        lib.filter
+          enabledForCurrentSystem
+          (lib.attrValues darwinDevelopmentApplications)
+      );
+
+  # ------------------------------------------------------------
+  # ------ SHARED DEVELOPMENT APPLICATIONS ------ #
+  #
+  # GUI applications installed from normal Nix packages.
+  #
+  # On Darwin, application bundles installed into
+  # /Applications/Nix Apps can additionally be linked into a
+  # categorized /Applications directory.
+  # ------------------------------------------------------------
+
+  developmentApplications = {
+    # ---- WezTerm
+    wezterm = {
+      enable = true;
+
+      installOn = {
+        darwin = true;
+        linux = true;
+      };
+
+      package = pkgs.wezterm;
+
+      darwinLink = {
+        enable = true;
+        appName = "WezTerm.app";
+        targetDirectory = "/Applications/Programming";
+      };
+    };
+  };
+
+  # ------------------------------------------------------------
+  # ------ SHARED DEVELOPMENT APPLICATION FILTERING ------ #
+  #
+  # Installs enabled GUI applications on the current platform.
+  # ------------------------------------------------------------
+
+  enabledDevelopmentApplicationPackages =
+    map
+      (application: application.package)
+      (
+        lib.filter
+          enabledForCurrentSystem
+          (lib.attrValues developmentApplications)
+      );
+
+  # ------------------------------------------------------------
+  # ------ DARWIN APPLICATION LINKS ------ #
+  #
+  # Keeps applications with a darwinLink definition in the
+  # management list, including disabled links so previously
+  # created managed links can be removed.
+  # ------------------------------------------------------------
+
+  managedDarwinApplicationLinks =
+    lib.filter
+      (application: application ? darwinLink)
+      (lib.attrValues developmentApplications);
+
+  renderDarwinApplicationLink =
+    application:
+
+    let
+      sourcePath =
+        "/Applications/Nix Apps/${application.darwinLink.appName}";
+
+      targetPath =
+        "${application.darwinLink.targetDirectory}/${application.darwinLink.appName}";
+
+      shouldExist =
+        application.enable
+        && application.installOn.darwin
+        && application.darwinLink.enable;
+    in
+
+    ''
+      manage_application_link \
+        ${lib.escapeShellArg application.darwinLink.appName} \
+        ${lib.escapeShellArg sourcePath} \
+        ${lib.escapeShellArg targetPath} \
+        ${lib.escapeShellArg (
+          if shouldExist then
+            "true"
+          else
+            "false"
+        )}
+    '';
+
+  managedDarwinApplicationLinkCommands =
+    lib.concatMapStringsSep
+      "\n"
+      renderDarwinApplicationLink
+      managedDarwinApplicationLinks;
 
   # ------------------------------------------------------------
   # ------ DARWIN APPLICATION LINK MANAGER ------ #
@@ -772,8 +834,8 @@ let
   # ------------------------------------------------------------
   # ------ DARWIN APPLICATION LINKS ------ #
   #
-  # Uses the existing guarded link helper for the legacy Darwin-only
-  # development applications.
+  # Uses the existing guarded link helper for self-packaged
+  # Darwin-only development applications.
   # ------------------------------------------------------------
 
   applicationLinkHelper = import ../../darwin/packages/helper.nix {
@@ -796,7 +858,9 @@ in
       # system.
       # ------------------------------------------------------------
 
-      environment.systemPackages = enabledDevelopmentPackages;
+      environment.systemPackages =
+        enabledDevelopmentPackages
+        ++ enabledDevelopmentApplicationPackages;
     }
 
     (lib.mkIf isDarwin {
