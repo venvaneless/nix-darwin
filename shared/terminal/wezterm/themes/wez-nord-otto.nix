@@ -55,12 +55,11 @@ let
             "#ECEFF4", -- bright white
         }
 
-        config.window_frame = {
-            active_titlebar_bg = "#434C5E",
-            inactive_titlebar_bg = "#3B4252",
-            active_titlebar_fg = "#E5E9F0",
-            inactive_titlebar_fg = "#D8DEE9",
-        }
+        config.window_frame = config.window_frame or {}
+        config.window_frame.active_titlebar_bg = "#434C5E"
+        config.window_frame.inactive_titlebar_bg = "#3B4252"
+        config.window_frame.active_titlebar_fg = "#E5E9F0"
+        config.window_frame.inactive_titlebar_fg = "#D8DEE9"
 
         config.colors.tab_bar = {
             background = "#3B4252",

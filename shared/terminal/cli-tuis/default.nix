@@ -163,7 +163,7 @@ in
     ./eza/eza.nix
 
     ./fastfetch.nix
-    ./fzf.nix
+    ./fzf/fzf.nix
     ./ripgrep.nix
     ./starship.nix
     ./tmux.nix

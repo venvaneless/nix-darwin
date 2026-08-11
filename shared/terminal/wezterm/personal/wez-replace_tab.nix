@@ -84,6 +84,11 @@ let
   '';
 in
 {
+  # replace_tab.lua loads platform.lua at runtime.
+  imports = [
+    ./wez-platform.nix
+  ];
+
   config = lib.mkIf cfg.enable {
     home.file.".config/wezterm/personal/replace_tab.lua".source = luaConfig;
   };

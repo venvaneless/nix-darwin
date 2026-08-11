@@ -16,7 +16,7 @@
 # Bindings added at runtime live elsewhere and are listed here for
 # reference only:
 #
-#   personal/context_palette.lua    super + Shift + P
+#   personal/command_palette.lua    super + Shift + O
 #   personal/save_scrollback.lua    super + Shift + S
 #   personal/replace_tab.lua        super + Shift + T
 #   plugins/resurrect.lua           Alt + w / W / T / S / R
@@ -25,9 +25,10 @@
 #   smart_workspace_switcher        LEADER + s / S
 # =====================================================================
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
+  cfg = config.ven.features.terminal.wezterm;
   isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
 
   # ---- PLATFORM MODIFIERS ---- #
@@ -42,46 +43,78 @@ let
 
 in
 {
-  # ---- LEADER KEY ---- #
-  #
-  # What a leader is
-  # ------------------------------------------------------------
-  # A leader is a prefix key rather than part of a chord. Press it,
-  # release it, then press the next key within the timeout below.
-  # LEADER+s therefore means two separate presses, not one combination.
-  # It gives a whole namespace of shortcuts without consuming further
-  # modifier combinations.
-  #
-  # Why F14 and not Caps Lock
-  # ------------------------------------------------------------
-  # Caps Lock cannot be bound directly on either platform, because the
-  # operating system consumes it as a lock toggle and never delivers a
-  # key press to the application. The working approach is to remap it
-  # at the OS level to a key nothing else claims, and bind that:
-  #
-  #   macOS  Karabiner-Elements, Caps Lock -> F14
-  #   Linux  keyd, Caps Lock -> F14
-  #
-  # keyd works at the kernel level, so it applies under Wayland as
-  # well as X11.
-  #
-  # F14 rather than F13, because F13 is used for screenshots.
-  #
-  # Shift cannot be used as a leader: modifiers do not generate key
-  # presses of their own, and if it could bind, every capital letter
-  # would trigger it.
-  #
-  # Until the remap is in place the leader is simply unreachable, and
-  # only the workspace switcher bindings are affected.
-  leader = {
-    key = "F14";
-    timeout_milliseconds = 1000;
-  };
+  # keybindings.lua loaded command_palette.lua, so the Nix equivalent
+  # imports the module that generates its runtime dependency.
+  imports = [
+    ./personal/wez-command_palette.nix
+  ];
 
-  keys = [
+  config = lib.mkIf cfg.enable {
+    programs.wezterm.settings = {
+      # ---- LEADER KEY ---- #
+      #
+      # What a leader is
+      # ------------------------------------------------------------
+      # A leader is a prefix key rather than part of a chord. Press it,
+      # release it, then press the next key within the timeout below.
+      # LEADER+s therefore means two separate presses, not one combination.
+      # It gives a whole namespace of shortcuts without consuming further
+      # modifier combinations.
+      #
+      # Why F14 and not Caps Lock
+      # ------------------------------------------------------------
+      # Caps Lock cannot be bound directly on either platform, because the
+      # operating system consumes it as a lock toggle and never delivers a
+      # key press to the application. The working approach is to remap it
+      # at the OS level to a key nothing else claims, and bind that:
+      #
+      #   macOS  Karabiner-Elements, Caps Lock -> F14
+      #   Linux  keyd, Caps Lock -> F14
+      #
+      # keyd works at the kernel level, so it applies under Wayland as
+      # well as X11.
+      #
+      # F14 rather than F13, because F13 is used for screenshots.
+      #
+      # Shift cannot be used as a leader: modifiers do not generate key
+      # presses of their own, and if it could bind, every capital letter
+      # would trigger it.
+      #
+      # Until the remap is in place the leader is simply unreachable, and
+      # only the workspace switcher bindings are affected.
+      leader = {
+        key = "F14";
+        timeout_milliseconds = 1000;
+      };
+
+      keys = [
     # =================================================================
     # STANDARD KEYS
     # =================================================================
+
+    {
+      # Personal command palette
+      # Opens the multi-step command and path picker from
+      # personal/command_palette.lua.
+      key = "phys:O";
+      mods = "${super}|SHIFT";
+
+      action = lib.generators.mkLuaInline ''
+        dofile(wezterm.config_dir .. "/personal/command_palette.lua").action
+      '';
+    }
+
+    {
+      # Native command palette
+      # Keep WezTerm's own palette on Command + Shift + P. It contains
+      # WezTerm's built-in actions and has no custom picker dependency.
+      key = "phys:P";
+      mods = "${super}|SHIFT";
+
+      action = lib.generators.mkLuaInline ''
+        wezterm.action.ActivateCommandPalette
+      '';
+    }
 
     {
       # Open command palette
@@ -411,5 +444,7 @@ in
         wezterm.action.ResetFontSize
       '';
     }
-  ];
+      ];
+    };
+  };
 }

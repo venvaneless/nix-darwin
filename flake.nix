@@ -56,6 +56,11 @@
       flake = false;
     };
 
+    scholarbrain = {
+      url = "github:SHzzzAyys/scholarbrain/feat/deepseek-pubmed-arxiv";
+      flake = false;
+    };
+
     # WezTerm plugins are pinned in flake.lock and deployed by
     # shared/terminal/wezterm/wez-plugins.nix, so `nix flake update`
     # updates them together with every other input.

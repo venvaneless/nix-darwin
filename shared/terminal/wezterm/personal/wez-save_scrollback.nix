@@ -88,6 +88,11 @@ let
   '';
 in
 {
+  # save_scrollback.lua loads platform.lua at runtime.
+  imports = [
+    ./wez-platform.nix
+  ];
+
   config = lib.mkIf cfg.enable {
     home.file.".config/wezterm/personal/save_scrollback.lua".source = luaConfig;
   };

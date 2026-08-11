@@ -52,12 +52,11 @@ let
             "#FEFEFE", -- bright white
         }
 
-        config.window_frame = {
-            active_titlebar_bg = "#344153",
-            inactive_titlebar_bg = "#1E2129",
-            active_titlebar_fg = "#FEFEFE",
-            inactive_titlebar_fg = "#D8DEE3",
-        }
+        config.window_frame = config.window_frame or {}
+        config.window_frame.active_titlebar_bg = "#344153"
+        config.window_frame.inactive_titlebar_bg = "#1E2129"
+        config.window_frame.active_titlebar_fg = "#FEFEFE"
+        config.window_frame.inactive_titlebar_fg = "#D8DEE3"
 
         config.colors.tab_bar = {
             background = "#344153",
@@ -87,11 +86,6 @@ let
                 fg_color = "#28333F",
             },
         }
-
-        -- window translucency: whole window/background
-        config.window_background_opacity = 0.90
-        -- cell backgrounds (selection, colored blocks, etc.)
-        config.text_background_opacity = 1.0
     end
 
     return M

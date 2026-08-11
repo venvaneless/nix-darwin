@@ -201,11 +201,29 @@
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs",
         "nixpkgs-unstable": "nixpkgs-unstable",
+        "scholarbrain": "scholarbrain",
         "simple-english": "simple-english",
         "wezterm-resurrect": "wezterm-resurrect",
         "wezterm-sessions": "wezterm-sessions",
         "wezterm-smart-workspace-switcher": "wezterm-smart-workspace-switcher",
         "wezterm-tabline": "wezterm-tabline"
+      }
+    },
+    "scholarbrain": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779893466,
+        "narHash": "sha256-hzWWDJ/ey4BbIdLsi+dadLu6nAgMLcFWnK0N/JjHmE0=",
+        "owner": "SHzzzAyys",
+        "repo": "scholarbrain",
+        "rev": "552ba9a531d240b1abecfb4010d4ffef79346f9f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "SHzzzAyys",
+        "ref": "feat/deepseek-pubmed-arxiv",
+        "repo": "scholarbrain",
+        "type": "github"
       }
     },
     "simple-english": {

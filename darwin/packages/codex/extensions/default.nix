@@ -83,9 +83,11 @@ in
     ./shared.nix
 
     ./caveman.nix
-    # ./simple-english.nix
-    # ./codebase-memory-mcp.nix
-    # ./scholarbrain.nix
+    ./simple-english.nix
+    ./codebase-memory-mcp.nix
+
+    # ScholarBrain is shared by the api and chatgpt Codex profiles.
+    ./scholarbrain.nix
   ];
 
   environment.systemPackages = [

@@ -39,10 +39,6 @@ let
     inherit lib;
   };
 
-  keybindings = import ./wez-keybindings.nix {
-    inherit lib pkgs;
-  };
-
   mouse = import ./wez-mouse.nix {
     inherit lib;
   };
@@ -61,12 +57,10 @@ in
   imports = [
     ./wez-plugins.nix
     ./wez-themes.nix
+    ./wez-keybindings.nix
 
     # ---- Embedded Lua modules
     ./plugins/wez-plugins.nix
-    ./overlays/wez-overlays.nix
-    ./personal/wez-platform.nix
-    ./personal/wez-context_palette.nix
     ./personal/wez-replace_tab.nix
     ./personal/wez-save_scrollback.nix
   ];
@@ -95,7 +89,6 @@ in
 
       settings =
         appearance
-        // keybindings
         // mouse
         // ssh
         // {
@@ -121,8 +114,16 @@ in
       # ------------------------------------------------------------
 
       extraConfig = ''
-        -- Appearance themes
-        -- At most one optional theme is enabled by wez-themes.nix.
+        -- Appearance theme
+        -- Exactly one theme is enabled by wez-themes.nix.
+
+        ${lib.optionalString cfg.themes.gruvbox.enable ''
+          local gruvbox = dofile(
+              wezterm.config_dir .. "/themes/gruvbox.lua"
+          )
+
+          gruvbox.apply(config)
+        ''}
 
         ${lib.optionalString cfg.themes.nord.enable ''
           local nord = dofile(
@@ -156,10 +157,6 @@ in
 
         plugins.apply(config)
 
-        -- Overlays
-        -- Registers the quick commands entry in the command palette.
-        dofile(wezterm.config_dir .. "/overlays/overlays.lua")
-
         -- Personal modules
         local save_scrollback = dofile(
             wezterm.config_dir .. "/personal/save_scrollback.lua"
@@ -173,11 +170,6 @@ in
 
         replace_tab.apply(config)
 
-        local context_palette = dofile(
-            wezterm.config_dir .. "/personal/context_palette.lua"
-        )
-
-        context_palette.apply(config)
       '';
     };
   };

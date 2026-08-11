@@ -874,6 +874,11 @@ let
   '';
 in
 {
+  # context_palette.lua loads platform.lua at runtime.
+  imports = [
+    ./wez-platform.nix
+  ];
+
   config = lib.mkIf cfg.enable {
     home.file.".config/wezterm/personal/context_palette.lua".source = luaConfig;
   };

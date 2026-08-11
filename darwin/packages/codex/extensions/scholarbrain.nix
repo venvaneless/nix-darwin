@@ -1,104 +1,190 @@
 # CODEX: SCHOLARBRAIN
 # =========================
-# Install and update ScholarBrain for an Obsidian vault
+# Package, install, and register the ScholarBrain Codex plugin
 
-{ lib, pkgs, ... }:
+{
+  inputs,
+  lib,
+  pkgs,
+  unstablePkgs,
+  ...
+}:
 
 let
-  installScholarBrain = pkgs.writeShellApplication {
-    name = "install-scholarbrain";
+  userName = "ven";
+  homeDir = "/Users/${userName}";
+
+  codexRoot = "${homeDir}/.config/codex";
+  sharedPlugins = "${codexRoot}/shared/plugins";
+
+  profiles = [
+    "api"
+    "chatgpt"
+  ];
+
+
+  # PACKAGE
+  # =========================
+  # Wrap ScholarBrain's portable agent skill as a valid Codex plugin.
+
+  scholarBrainManifest = pkgs.writeText "scholarbrain-plugin.json" ''
+    {
+      "name": "scholarbrain",
+      "version": "0.1.0",
+      "description": "Operate an Obsidian vault as a living second brain.",
+      "author": { "name": "SHzzzAyys" },
+      "repository": "https://github.com/SHzzzAyys/scholarbrain",
+      "license": "MIT",
+      "skills": "./skills/",
+      "interface": {
+        "displayName": "ScholarBrain",
+        "shortDescription": "Operate an Obsidian vault as a second brain.",
+        "longDescription": "Codex skill for operating and maintaining an Obsidian second brain.",
+        "developerName": "SHzzzAyys",
+        "category": "Productivity",
+        "capabilities": ["Write"],
+        "websiteURL": "https://github.com/SHzzzAyys/scholarbrain",
+        "defaultPrompt": [
+          "Use ScholarBrain to organize my Obsidian vault."
+        ],
+        "brandColor": "#7C3AED"
+      }
+    }
+  '';
+
+  scholarBrain = pkgs.runCommand "codex-scholarbrain" { } ''
+    mkdir -p "$out/skills/scholarbrain"
+
+    cp -R \
+      ${inputs.scholarbrain}/. \
+      "$out/skills/scholarbrain/"
+
+    install -Dm444 \
+      ${scholarBrainManifest} \
+      "$out/.codex-plugin/plugin.json"
+  '';
+
+
+  # MARKETPLACE
+  # =========================
+  # Local marketplace exposing the packaged ScholarBrain plugin.
+
+  marketplaceMetadata = pkgs.writeText "scholarbrain-marketplace.json" ''
+    {
+      "name": "ven-scholarbrain",
+      "interface": {
+        "displayName": "ScholarBrain"
+      },
+      "plugins": [
+        {
+          "name": "scholarbrain",
+          "source": {
+            "source": "local",
+            "path": "./plugins/scholarbrain"
+          },
+          "policy": {
+            "installation": "AVAILABLE",
+            "authentication": "ON_INSTALL"
+          },
+          "category": "Productivity"
+        }
+      ]
+    }
+  '';
+
+  scholarBrainMarketplace = pkgs.runCommand "codex-scholarbrain-marketplace" { } ''
+    mkdir -p \
+      "$out/.agents/plugins" \
+      "$out/plugins"
+
+    ln -s \
+      ${scholarBrain} \
+      "$out/plugins/scholarbrain"
+
+    install -Dm444 \
+      ${marketplaceMetadata} \
+      "$out/.agents/plugins/marketplace.json"
+  '';
+
+
+  # SYNC
+  # =========================
+  # Register the plugin with both shared Codex profiles.
+
+  syncScholarBrain = pkgs.writeShellApplication {
+    name = "codex-sync-scholarbrain";
 
     runtimeInputs = [
       pkgs.coreutils
-      pkgs.git
-      pkgs.python3
+      pkgs.gawk
     ];
 
     text = ''
       set -Eeuo pipefail
 
+      codex_profile="${pkgs.codex-profile}/bin/codex-profile"
+      codex_cli="${unstablePkgs.codex}/bin/codex"
 
-      # PATHS
-      # =========================
-      # ScholarBrain source shared by both Codex profiles
-      source_root="/Users/ven/.config/codex/shared/scholarbrain"
+      marketplace_name="ven-scholarbrain"
+      marketplace_root="${scholarBrainMarketplace}"
 
-      # Change this if the vault is stored somewhere else
-      vault_root="/Users/ven/Library/Mobile Documents/iCloud~md~obsidian/Documents/My Hub"
+      sync_profile() {
+        profile="$1"
 
+        configured_root="$(
+          CODEX_CLI="$codex_cli" \
+            "$codex_profile" cli "$profile" \
+            plugin marketplace list \
+            | ${pkgs.gawk}/bin/awk \
+                -v name="$marketplace_name" \
+                '$1 == name { print $2; exit }'
+        )"
 
-      # SOURCE
-      # =========================
-      # Clone ScholarBrain or update the existing checkout
-      if test -d "$source_root/.git"; then
-        printf 'Updating ScholarBrain...\n'
+        if test "$configured_root" != "$marketplace_root"; then
+          if test -n "$configured_root"; then
+            CODEX_CLI="$codex_cli" \
+              "$codex_profile" cli "$profile" \
+              plugin marketplace remove "$marketplace_name"
+          fi
 
-        ${pkgs.git}/bin/git \
-          -C "$source_root" \
-          fetch \
-          --prune \
-          origin
+          CODEX_CLI="$codex_cli" \
+            "$codex_profile" cli "$profile" \
+            plugin marketplace add "$marketplace_root"
+        fi
 
-        ${pkgs.git}/bin/git \
-          -C "$source_root" \
-          reset \
-          --hard \
-          origin/feat/deepseek-pubmed-arxiv
-      else
-        printf 'Downloading ScholarBrain...\n'
+        CODEX_CLI="$codex_cli" \
+          "$codex_profile" cli "$profile" \
+          plugin add "scholarbrain@$marketplace_name"
+      }
 
-        rm -rf -- "$source_root"
-
-        ${pkgs.git}/bin/git \
-          clone \
-          --branch feat/deepseek-pubmed-arxiv \
-          --single-branch \
-          https://github.com/SHzzzAyys/scholarbrain.git \
-          "$source_root"
-      fi
-
-
-      # BUILD
-      # =========================
-      # Build ScholarBrain's official Codex CLI adapter
-      cd -- "$source_root"
-
-      ${pkgs.bash}/bin/bash \
-        scripts/build.sh \
-        --platform codex-cli
-
-
-      # VAULT
-      # =========================
-      # Install the generated Codex files into the Obsidian vault
-      if ! test -d "$vault_root"; then
-        printf 'Obsidian vault does not exist: %s\n' "$vault_root" >&2
-        exit 1
-      fi
-
-      ${pkgs.coreutils}/bin/cp \
-        -R \
-        dist/codex-cli/. \
-        "$vault_root"/
-
-      printf \
-        'ScholarBrain installed into: %s\n' \
-        "$vault_root"
+      ${lib.concatMapStringsSep "\n" (
+        profile: "sync_profile ${lib.escapeShellArg profile}"
+      ) profiles}
     '';
   };
 in
 {
-  environment.systemPackages = [
-    installScholarBrain
-  ];
+  system.activationScripts.extraActivation.text = lib.mkAfter ''
+    echo "[nix-darwin][codex] Installing ScholarBrain..."
 
-  system.activationScripts.codexScholarBrain.text = lib.mkAfter ''
-    echo "[nix-darwin][codex] Installing/updating ScholarBrain..."
+    mkdir -p "${sharedPlugins}"
+
+    rm -rf "${sharedPlugins}/scholarbrain"
+
+    ln -s \
+      "${scholarBrain}" \
+      "${sharedPlugins}/scholarbrain"
+
+    chown -h \
+      ${userName}:staff \
+      "${sharedPlugins}/scholarbrain"
 
     /usr/bin/sudo \
-      -u ven \
+      -u ${userName} \
       /usr/bin/env \
-      HOME=/Users/ven \
-      ${installScholarBrain}/bin/install-scholarbrain
+      HOME=${homeDir} \
+      CODEX_PROFILE_HOME_ROOT=${codexRoot} \
+      CODEX_PROFILE_CONFIG_HOME=${homeDir}/.config/codex-profile \
+      ${syncScholarBrain}/bin/codex-sync-scholarbrain
   '';
 }
