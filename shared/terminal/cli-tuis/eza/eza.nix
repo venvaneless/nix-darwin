@@ -10,10 +10,26 @@
 # directly below; eza imports and enables only that one module.
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.cliTuis.eza;
+
+  # ---- PLATFORM TOGGLES ---- #
+  # Change these values to set Eza's default per platform. Hosts can
+  # still override ven.features.terminal.cliTuis.eza.enable directly.
+  eza = {
+    enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  };
+
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  enabledForCurrentSystem =
+    eza.enable && ((isDarwin && eza.installOn.darwin) || (isLinux && eza.installOn.linux));
 
   # ---- THEME SELECTION ---- #
   # Select the active theme here. Change this value to one of the keys in
@@ -56,7 +72,11 @@ in
 {
   options.ven.features.terminal.cliTuis.eza.enable = lib.mkEnableOption "Eza file listing";
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkMerge [
+    {
+      ven.features.terminal.cliTuis.eza.enable = lib.mkDefault enabledForCurrentSystem;
+    }
+    (lib.mkIf cfg.enable {
     # ---- ACTIVE THEME ---- #
     # The selected module exposes this internal switch. Because it is the
     # only imported theme module, a second eza palette cannot be enabled.
@@ -89,7 +109,8 @@ in
 
     # Tell eza where Home Manager writes the selected theme.yml file.
     home.sessionVariables.EZA_CONFIG_DIR = "${config.xdg.configHome}/eza";
-  };
+    })
+  ];
 
   imports = [
     # ---- THEMES ---- #

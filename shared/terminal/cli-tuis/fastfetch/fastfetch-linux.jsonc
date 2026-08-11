@@ -1,0 +1,218 @@
+// Linux Fastfetch palette profile
+
+{
+  "$schema": "https://raw.githubusercontent.com/fastfetch-cli/fastfetch/dev/doc/json_schema.json",
+  "logo": {
+    "source": "/Users/ven/.config/fastfetch/ascii.txt",
+    "padding": {
+      "top": 1,
+      "left": 1,
+    },
+  },
+  "display": {
+    "separator": "",
+  },
+  "modules": [
+    {
+      "type": "title",
+      "color": {
+        "user": "cyan",
+        "at": "white",
+        "host": "cyan",
+      },
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[36m╭───────── 󰣇 SYSTEM ─────────────────────────────────────────────╮\u001b[0m",
+    },
+    {
+      "type": "os",
+      "key": "\u001b[36m│ 󰣇 OS\u001b[38;2;102;255;255m : \u001b[0m",
+      "outputColor": "cyan",
+    },
+    {
+      "type": "host",
+      "key": "\u001b[36m│ 󰌢 Host\u001b[38;2;102;255;255m : \u001b[0m",
+      "outputColor": "cyan",
+    },
+    {
+      "type": "kernel",
+      "key": "\u001b[36m│  Kernel\u001b[38;2;102;255;255m : \u001b[0m",
+      "outputColor": "cyan",
+    },
+    {
+      "type": "uptime",
+      "key": "\u001b[36m│ 󰅐 Uptime\u001b[38;2;102;255;255m : \u001b[0m",
+      "outputColor": "cyan",
+    },
+    {
+      "type": "packages",
+      "key": "\u001b[36m│ 󰏖 Packages\u001b[38;2;102;255;255m : \u001b[0m",
+      "outputColor": "cyan",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[36m╰────────────────────────────────────────────────────────────────╯\u001b[0m",
+    },
+
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;247;192;104m╭─────────  HARDWARE ───────────────────────────────────────────╮\u001b[0m",
+    },
+    {
+      "type": "cpu",
+      "key": "\u001b[38;2;247;192;104m│  CPU\u001b[38;2;255;216;138m : \u001b[0m",
+      "outputColor": "38;2;247;192;104",
+      "showPeCoreCount": true,
+      "temp": true,
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;247;192;104m│ 󰢮 GPU\u001b[38;2;255;216;138m:\u001b[0m",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;247;192;104m│ 󰢮 NVIDIA GeForce RTX 2070 / Max-Q Design (2304)\u001b[0m",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;247;192;104m│ 󰢮 2.10 GHz - 5\u001b[0m",
+    },
+    {
+      "type": "memory",
+      "key": "\u001b[38;2;247;192;104m│ 󰍛 RAM\u001b[38;2;255;216;138m : \u001b[0m",
+      "outputColor": "38;2;247;192;104",
+      "format": "{used} / {total}",
+    },
+    {
+      "type": "swap",
+      "key": "\u001b[38;2;247;192;104m│ 󰓡 Swap\u001b[38;2;255;216;138m : \u001b[0m",
+      "outputColor": "38;2;247;192;104",
+    },
+    {
+      "type": "disk",
+      "key": "\u001b[38;2;247;192;104m│  Disk\u001b[38;2;255;216;138m : \u001b[0m",
+      "outputColor": "38;2;247;192;104",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;247;192;104m╰────────────────────────────────────────────────────────────────╯\u001b[0m",
+    },
+
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;145;156;171m╭───────── 󰉼 PLASMA / THEME ─────────────────────────────────────╮\u001b[0m",
+    },
+    {
+      "type": "de",
+      "key": "\u001b[38;2;145;156;171m│  DE\u001b[38;2;177;187;200m : \u001b[0m",
+      "outputColor": "38;2;145;156;171",
+    },
+    {
+      "type": "theme",
+      "key": "\u001b[38;2;145;156;171m│ 󰉼 Theme\u001b[38;2;177;187;200m : \u001b[0m",
+      "outputColor": "38;2;145;156;171",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;145;156;171m│ 󰀻 Icons\u001b[38;2;177;187;200m:\u001b[0m",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;145;156;171m│ 󰀻 buuf-icons-for-plasma [Qt]\u001b[0m",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;145;156;171m│ 󰀻 buuf-icons-for-plasma [GTK2/3/4]\u001b[0m",
+    },
+    {
+      "type": "font",
+      "key": "\u001b[38;2;145;156;171m│  Font\u001b[38;2;177;187;200m : \u001b[0m",
+      "outputColor": "38;2;145;156;171",
+    },
+    {
+      "type": "cursor",
+      "key": "\u001b[38;2;145;156;171m│ 󰇀 Cursor\u001b[38;2;177;187;200m : \u001b[0m",
+      "outputColor": "38;2;145;156;171",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;145;156;171m╰────────────────────────────────────────────────────────────────╯\u001b[0m",
+    },
+
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;247;112;103m╭─────────  TERMINAL / SHELL ───────────────────────────────────╮\u001b[0m",
+    },
+    {
+      "type": "shell",
+      "key": "\u001b[38;2;247;112;103m│  Shell\u001b[38;2;255;146;138m : \u001b[0m",
+      "outputColor": "38;2;247;112;103",
+    },
+    {
+      "type": "editor",
+      "key": "\u001b[38;2;247;112;103m│  Editor\u001b[38;2;255;146;138m : \u001b[0m",
+      "outputColor": "38;2;247;112;103",
+    },
+    {
+      "type": "terminal",
+      "key": "\u001b[38;2;247;112;103m│  Terminal\u001b[38;2;255;146;138m : \u001b[0m",
+      "outputColor": "38;2;247;112;103",
+    },
+    {
+      "type": "terminalfont",
+      "key": "\u001b[38;2;247;112;103m│  Term Font\u001b[38;2;255;146;138m : \u001b[0m",
+      "outputColor": "38;2;247;112;103",
+    },
+    {
+      "type": "terminalsize",
+      "key": "\u001b[38;2;247;112;103m│  Term Size\u001b[38;2;255;146;138m : \u001b[0m",
+      "outputColor": "38;2;247;112;103",
+    },
+    {
+      "type": "command",
+      "key": "\u001b[38;2;247;112;103m│  Cwd\u001b[38;2;255;146;138m : \u001b[0m",
+      "outputColor": "38;2;247;112;103",
+      "text": "{1}",
+      "shell": "/bin/sh",
+      "param": "-c",
+      "cmd": "pwd",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;247;112;103m╰────────────────────────────────────────────────────────────────╯\u001b[0m",
+    },
+
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;195;129;220m╭─────────  STATE ──────────────────────────────────────────────╮\u001b[0m",
+    },
+    {
+      "type": "loadavg",
+      "key": "\u001b[38;2;195;129;220m│ 󰓅 Load Avg\u001b[38;2;214;161;237m : \u001b[0m",
+      "outputColor": "38;2;195;129;220",
+    },
+    {
+      "type": "processes",
+      "key": "\u001b[38;2;195;129;220m│  Processes\u001b[38;2;214;161;237m : \u001b[0m",
+      "outputColor": "38;2;195;129;220",
+    },
+    {
+      "type": "datetime",
+      "key": "\u001b[38;2;195;129;220m│ 󰃰 Date\u001b[38;2;214;161;237m : \u001b[0m",
+      "outputColor": "38;2;195;129;220",
+    },
+    {
+      "type": "locale",
+      "key": "\u001b[38;2;195;129;220m│ 󰗊 Locale\u001b[38;2;214;161;237m : \u001b[0m",
+      "outputColor": "38;2;195;129;220",
+    },
+    {
+      "type": "custom",
+      "format": "\u001b[38;2;195;129;220m╰────────────────────────────────────────────────────────────────╯\u001b[0m",
+    },
+
+    "break",
+    "colors",
+  ],
+}

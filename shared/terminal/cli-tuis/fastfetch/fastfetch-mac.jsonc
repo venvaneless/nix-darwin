@@ -1,4 +1,4 @@
-// Shared Fastfetch configuration
+// macOS Gruvbox Fastfetch profile
 
 {
   "$schema": "https://raw.githubusercontent.com/fastfetch-cli/fastfetch/dev/doc/json_schema.json",

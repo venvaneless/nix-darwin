@@ -23,10 +23,26 @@
 # Ctrl-L
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.cliTuis.atuin;
+
+  # ---- PLATFORM TOGGLES ---- #
+  # Change these values to set Atuin's default per platform. Hosts can
+  # still override ven.features.terminal.cliTuis.atuin.enable directly.
+  atuin = {
+    enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  };
+
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  enabledForCurrentSystem =
+    atuin.enable && ((isDarwin && atuin.installOn.darwin) || (isLinux && atuin.installOn.linux));
 
   # ---- ACTIVE THEMES ---- #
   # Atuin reads one theme name from config.toml, so its theme toggles are
@@ -36,7 +52,11 @@ in
 {
   options.ven.features.terminal.cliTuis.atuin.enable = lib.mkEnableOption "Atuin shell history";
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkMerge [
+    {
+      ven.features.terminal.cliTuis.atuin.enable = lib.mkDefault enabledForCurrentSystem;
+    }
+    (lib.mkIf cfg.enable {
     # ---- CONFLICTING THEMES ---- #
     assertions = [
       {
@@ -79,7 +99,8 @@ in
       # Bind Ctrl-R to Atuin search.
       bind \cr _atuin_search
     '';
-  };
+    })
+  ];
 
   imports = [
     # ---- THEMES ---- #

@@ -12,10 +12,26 @@
 # and enables only that one module.
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.cliTuis.bat;
+
+  # ---- PLATFORM TOGGLES ---- #
+  # Change these values to set Bat's default per platform. Hosts can
+  # still override ven.features.terminal.cliTuis.bat.enable directly.
+  bat = {
+    enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  };
+
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  enabledForCurrentSystem =
+    bat.enable && ((isDarwin && bat.installOn.darwin) || (isLinux && bat.installOn.linux));
 
   # ---- THEME SELECTION ---- #
   # Change this value to select a different saved bat theme.
@@ -51,6 +67,9 @@ in
   options.ven.features.terminal.cliTuis.bat.enable = lib.mkEnableOption "Bat file viewer";
 
   config = lib.mkMerge [
+    {
+      ven.features.terminal.cliTuis.bat.enable = lib.mkDefault enabledForCurrentSystem;
+    }
     (lib.mkIf cfg.enable {
       programs.bat = {
       enable = true;

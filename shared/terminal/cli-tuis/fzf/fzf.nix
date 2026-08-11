@@ -13,15 +13,35 @@
 # Ctrl-L: history picker
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.cliTuis.fzf;
+
+  # ---- PLATFORM TOGGLES ---- #
+  # Change these values to set Fzf's default per platform. Hosts can
+  # still override ven.features.terminal.cliTuis.fzf.enable directly.
+  fzf = {
+    enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  };
+
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  enabledForCurrentSystem =
+    fzf.enable && ((isDarwin && fzf.installOn.darwin) || (isLinux && fzf.installOn.linux));
 in
 {
   options.ven.features.terminal.cliTuis.fzf.enable = lib.mkEnableOption "Fzf fuzzy finder";
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkMerge [
+    {
+      ven.features.terminal.cliTuis.fzf.enable = lib.mkDefault enabledForCurrentSystem;
+    }
+    (lib.mkIf cfg.enable {
     programs.fzf = {
       # Install and enable fzf and integrate it with Fish shell.
       enable = true;
@@ -75,7 +95,8 @@ in
       bind \cf __ven_fzf_command_picker
       bind \cl __ven_fzf_history
     '';
-  };
+    })
+  ];
 
   imports = [
     ./fzf-themes.nix

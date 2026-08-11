@@ -3830,6 +3830,22 @@ in
             echo "Saved $destination"
           end
 
+          # Omit localized README variants and non-ASCII repository paths. The
+          # GitHub contents endpoint requires encoded paths, while these files
+          # are intentionally outside the permanent Obsidian library scope.
+          function __obsidian_missing_path_is_unsupported --argument-names repository_path
+            if not string match -rq '^[\x00-\x7F]+$' "$repository_path"
+              return 0
+            end
+
+            set --local filename \
+              (string lower -- (basename "$repository_path"))
+
+            string match -rq \
+              '(?i)^readme(?:[-_.][a-z]{2,3}(?:[-_][a-z0-9]+)*)+(?:\.(md|markdown|org|txt))?$' \
+              "$filename"
+          end
+
           # Restore or migrate README according to the entry's auxiliary-content
           # layout. Core Obsidian files remain at root; auxiliary content uses repo/.
           function __obsidian_missing_restore_readme \
@@ -3870,6 +3886,10 @@ in
 
             set --local readme_name \
               "$readme_parts[1]"
+
+            if __obsidian_missing_path_is_unsupported "$readme_name"
+              return 0
+            end
 
             set --local readme_size \
               "$readme_parts[2]"
@@ -4029,6 +4049,8 @@ in
                   string match -rq \
                   '(^|/)node_modules/' \
                   "$repository_path"; or \
+                  __obsidian_missing_path_is_unsupported \
+                      "$repository_path"; or \
                   __obsidian_download_name_blocked \
                       "$repository_image_name"
 
@@ -4259,7 +4281,9 @@ in
               set --local release_asset_url \
                 "$release_parts[2]"
 
-                if __obsidian_download_name_blocked \
+                if __obsidian_missing_path_is_unsupported \
+                    "$release_asset_name"; or \
+                    __obsidian_download_name_blocked \
                     "$release_asset_name"
 
                   continue
@@ -4478,6 +4502,8 @@ in
                   string match -rq \
                   '(^|/)node_modules/' \
                   "$auxiliary_path"; or \
+                  __obsidian_missing_path_is_unsupported \
+                      "$auxiliary_path"; or \
                   __obsidian_download_name_blocked \
                       "$auxiliary_name"
 

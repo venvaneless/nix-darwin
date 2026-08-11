@@ -6,15 +6,35 @@
 # Terminal multiplexer with a user-scoped Home Manager configuration
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.cliTuis.tmux;
+
+  # ---- PLATFORM TOGGLES ---- #
+  # Change these values to set Tmux's default per platform. Hosts can
+  # still override ven.features.terminal.cliTuis.tmux.enable directly.
+  tmux = {
+    enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  };
+
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  enabledForCurrentSystem =
+    tmux.enable && ((isDarwin && tmux.installOn.darwin) || (isLinux && tmux.installOn.linux));
 in
 {
   options.ven.features.terminal.cliTuis.tmux.enable = lib.mkEnableOption "Tmux terminal multiplexer";
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkMerge [
+    {
+      ven.features.terminal.cliTuis.tmux.enable = lib.mkDefault enabledForCurrentSystem;
+    }
+    (lib.mkIf cfg.enable {
     programs.tmux = {
       # Install tmux and enable it
       enable = true;
@@ -34,5 +54,6 @@ in
       # Set the default terminal to 256-color
       terminal = "screen-256color";
     };
-  };
+    })
+  ];
 }

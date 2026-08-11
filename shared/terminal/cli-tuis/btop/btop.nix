@@ -24,7 +24,22 @@
 
 let
   cfg = config.ven.features.terminal.cliTuis.btop;
+
+  # ---- PLATFORM TOGGLES ---- #
+  # Change these values to set Btop's default per platform. Hosts can
+  # still override ven.features.terminal.cliTuis.btop.enable directly.
+  btop = {
+    enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  };
+
   isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  enabledForCurrentSystem =
+    btop.enable && ((isDarwin && btop.installOn.darwin) || (isLinux && btop.installOn.linux));
 
   # ---- THEME SELECTION ---- #
   # Change this value to select a different saved btop theme.
@@ -56,6 +71,9 @@ in
   options.ven.features.terminal.cliTuis.btop.enable = lib.mkEnableOption "Btop resource monitor";
 
   config = lib.mkMerge [
+    {
+      ven.features.terminal.cliTuis.btop.enable = lib.mkDefault enabledForCurrentSystem;
+    }
     (lib.mkIf cfg.enable {
       programs.btop = {
       enable = true;

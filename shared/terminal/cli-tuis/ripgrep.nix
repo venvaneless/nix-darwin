@@ -6,16 +6,36 @@
 # Fast recursive search
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.cliTuis.ripgrep;
+
+  # ---- PLATFORM TOGGLES ---- #
+  # Change these values to set Ripgrep's default per platform. Hosts can
+  # still override ven.features.terminal.cliTuis.ripgrep.enable directly.
+  ripgrep = {
+    enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  };
+
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  enabledForCurrentSystem =
+    ripgrep.enable && ((isDarwin && ripgrep.installOn.darwin) || (isLinux && ripgrep.installOn.linux));
 in
 {
   options.ven.features.terminal.cliTuis.ripgrep.enable =
     lib.mkEnableOption "Ripgrep recursive search";
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkMerge [
+    {
+      ven.features.terminal.cliTuis.ripgrep.enable = lib.mkDefault enabledForCurrentSystem;
+    }
+    (lib.mkIf cfg.enable {
     # Install and enable ripgrep w/o config file generated
     programs.ripgrep.enable = true;
 
@@ -44,5 +64,6 @@ in
       # Fixed-string search compatibility alias.
       fgrep = "rg -F --color=auto";
     };
-  };
+    })
+  ];
 }

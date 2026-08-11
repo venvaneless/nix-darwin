@@ -6,15 +6,35 @@
 # Cross-shell prompt for astronauts
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.cliTuis.starship;
+
+  # ---- PLATFORM TOGGLES ---- #
+  # Change these values to set Starship's default per platform. Hosts can
+  # still override ven.features.terminal.cliTuis.starship.enable directly.
+  starship = {
+    enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  };
+
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  enabledForCurrentSystem =
+    starship.enable && ((isDarwin && starship.installOn.darwin) || (isLinux && starship.installOn.linux));
 in
 {
   options.ven.features.terminal.cliTuis.starship.enable = lib.mkEnableOption "Starship shell prompt";
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkMerge [
+    {
+      ven.features.terminal.cliTuis.starship.enable = lib.mkDefault enabledForCurrentSystem;
+    }
+    (lib.mkIf cfg.enable {
     programs.starship = {
 
       # Install and enable Starship and integrate it with fish shell
@@ -28,5 +48,6 @@ in
       set -gx STARSHIP_CONFIG "${config.home.homeDirectory}/.config/starship.toml"
       set -gx STARSHIP_CACHE "${config.home.homeDirectory}/.config/.cache/"
     '';
-  };
+    })
+  ];
 }
