@@ -3,9 +3,9 @@
 # =====================================================================
 # BTOP: GRUVBOX DARK THEME
 #
-# - Ships the `ven-gruvbox` theme file and selects it in btop
-# - Toggle with ven.features.terminal.cliTuis.btop.gruvbox.enable
-# - Turning it off leaves btop on its built-in Default theme
+# - Ships the `btop-gruvbox` theme file and selects it in btop
+# - Selected directly in btop.nix with selectedTheme = "gruvbox"
+# - Enabled only when btop.nix imports this theme module
 # =====================================================================
 
 { config, lib, ... }:
@@ -17,8 +17,8 @@ in
 {
   options.ven.features.terminal.cliTuis.btop.gruvbox.enable = lib.mkOption {
     type = lib.types.bool;
-    default = true;
-    description = "Use the declarative Gruvbox Dark theme for btop.";
+    default = false;
+    description = "Internal switch for the Gruvbox Dark theme selected in btop.nix.";
   };
 
   # Only applies when btop itself is enabled.

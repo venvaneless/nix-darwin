@@ -95,7 +95,7 @@ let
   '';
 in
 {
-  config = lib.mkIf cfg.themes.nordOtto.enable {
+  config = lib.mkIf (cfg.enable && cfg.appearance.theme == "nord-otto") {
     home.file.".config/wezterm/themes/nord-otto.lua".source = luaConfig;
   };
 }

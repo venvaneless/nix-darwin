@@ -11,7 +11,8 @@
 # - Network traffic
 #
 # Installation and settings are managed through Home Manager.
-# The Gruvbox theme lives in btop-gruvbox.nix and has its own toggle.
+# Themes live in their own files. Select one directly below; btop imports
+# and enables only that one module.
 # =====================================================================
 
 {
@@ -24,12 +25,39 @@
 let
   cfg = config.ven.features.terminal.cliTuis.btop;
   isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+
+  # ---- THEME SELECTION ---- #
+  # Change this value to select a different saved btop theme.
+  selectedTheme = "gruvbox";
+
+  # ---- AVAILABLE THEMES ---- #
+  # The Default selection leaves btop on its built-in palette.
+  themeModules = {
+    default = {
+      module = null;
+      option = null;
+    };
+    gruvbox = {
+      module = ./btop-gruvbox.nix;
+      option = "gruvbox";
+    };
+  };
+
+  selectedThemeConfig =
+    if lib.hasAttr selectedTheme themeModules then
+      themeModules.${selectedTheme}
+    else
+      throw ''
+        btop: unknown selectedTheme "${selectedTheme}".
+        Choose one of: ${lib.concatStringsSep ", " (lib.attrNames themeModules)}
+      '';
 in
 {
   options.ven.features.terminal.cliTuis.btop.enable = lib.mkEnableOption "Btop resource monitor";
 
-  config = lib.mkIf cfg.enable {
-    programs.btop = {
+  config = lib.mkMerge [
+    (lib.mkIf cfg.enable {
+      programs.btop = {
       enable = true;
 
       settings = {
@@ -37,7 +65,7 @@ in
         # GENERAL
         # ---------------------------------------------------------------
 
-        # Theme selection is set by btop-gruvbox.nix when its toggle is on.
+        # The selected theme module overrides this built-in fallback.
         color_theme = lib.mkDefault "Default";
 
         # Use the terminal or btop background
@@ -213,5 +241,12 @@ in
         use_fstab = false;
       };
     };
-  };
+    })
+    (lib.mkIf (cfg.enable && selectedThemeConfig.option != null) {
+      # Only the selected theme module is imported and enabled.
+      ven.features.terminal.cliTuis.btop.${selectedThemeConfig.option}.enable = true;
+    })
+  ];
+
+  imports = lib.optional (selectedThemeConfig.module != null) selectedThemeConfig.module;
 }

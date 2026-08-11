@@ -10,7 +10,7 @@
 {
   config =
     lib.mkIf
-      (config.ven.features.terminal.fish.themes.enable && config.terminal.fish.theme == "gruvbox")
+      (config.terminal.fish.theme == "gruvbox")
       {
         programs.fish.plugins = [
           {

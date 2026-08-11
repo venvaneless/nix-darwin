@@ -148,14 +148,11 @@ in
   imports = [
     ./atuin.nix
 
-    # Bat settings and its separately toggled themes
+    # Bat settings and the theme selected in bat.nix
     ./bat/bat.nix
-    ./bat/bat-gruvbox.nix
-    ./bat/bat-rose-pine.nix
 
-    # Btop settings and its separately toggled Gruvbox theme
+    # Btop settings and the theme selected in btop.nix
     ./btop/btop.nix
-    ./btop/btop-gruvbox.nix
 
     ./delta.nix
 

@@ -1,6 +1,7 @@
-# WEZTERM: THEMES
-# =========================
-# Generates and symlinks the Catppuccin theme loader
+# WEZTERM: SAVED CATPPUCCIN THEME LOADER
+# =======================================
+# Kept for a possible return to Catppuccin. This module is deliberately
+# not imported by the active WezTerm configuration.
 
 { pkgs, ... }:
 

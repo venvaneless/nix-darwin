@@ -4,13 +4,23 @@
 # FISH FUNCTIONS: FILES AND FOLDERS
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.fish.commands;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+
+  # Provides the zz zoxide folder picker.
+  installOn = {
+    darwin = true;
+    linux = true;
+  };
+
+  enabledForCurrentSystem =
+    (isDarwin && installOn.darwin) || (isLinux && installOn.linux);
 in
 {
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf enabledForCurrentSystem {
     programs.fish.functions.zz = ''
       # ---- zz -> Pick zoxide path with fzf and cd into it ---- #
       # Shows zoxide tracked paths in fzf.

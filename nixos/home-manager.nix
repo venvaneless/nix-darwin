@@ -35,6 +35,9 @@
         enable = true;
         neovide.enable = false;
       };
+
+      # ---- NIX ALIAS HOST ---- #
+      ven.features.terminal.fish.nixProfile.flakeHost = "ven";
     };
   };
 }

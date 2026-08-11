@@ -4,8 +4,8 @@
 # EZA: GRUVBOX DARK THEME
 #
 # - Declares the Gruvbox Dark theme entirely in Nix
-# - Toggle with ven.features.terminal.cliTuis.eza.themes.gruvboxDark.enable
-# - Enabled by default; this is the active eza theme
+# - Selected directly in ../eza.nix with selectedTheme = "gruvboxDark"
+# - Enabled only when eza.nix imports this theme module
 #
 # Home Manager renders this attribute set to
 # $XDG_CONFIG_HOME/eza/theme.yml. Only one eza theme may be enabled.
@@ -22,8 +22,8 @@ in
 {
   options.ven.features.terminal.cliTuis.eza.themes.gruvboxDark.enable = lib.mkOption {
     type = lib.types.bool;
-    default = true;
-    description = "Use the Gruvbox Dark theme for eza.";
+    default = false;
+    description = "Internal switch for the Gruvbox Dark theme selected in eza.nix.";
   };
 
   # Only applies when eza itself is enabled.

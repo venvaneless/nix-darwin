@@ -8,9 +8,11 @@
 #
 # The configuration is split in two halves:
 #
-# - Static configuration (appearance, keys, mouse, ssh) is expressed
-#   as Nix attribute sets and rendered into wezterm.lua by Home
-#   Manager through `settings`.
+# - Static configuration (mouse, ssh, keys) is expressed as Nix
+#   attribute sets and rendered into wezterm.lua by Home Manager
+#   through `settings`.
+#
+# - Appearance owns both window styling and one `theme` selector.
 #
 # - Runtime Lua that relies on closures, callbacks or the WezTerm
 #   event API is embedded in matching Nix modules. Home Manager
@@ -35,10 +37,6 @@ let
   # must not define overlapping top-level keys.
   # ------------------------------------------------------------
 
-  appearance = import ./wez-appearance.nix {
-    inherit lib;
-  };
-
   mouse = import ./wez-mouse.nix {
     inherit lib;
   };
@@ -56,7 +54,7 @@ in
 
   imports = [
     ./wez-plugins.nix
-    ./wez-themes.nix
+    ./wez-appearance.nix
     ./wez-keybindings.nix
 
     # ---- Embedded Lua modules
@@ -88,8 +86,7 @@ in
       # ------------------------------------------------------------
 
       settings =
-        appearance
-        // mouse
+        mouse
         // ssh
         // {
           # Scrollback
@@ -115,9 +112,9 @@ in
 
       extraConfig = ''
         -- Appearance theme
-        -- Exactly one theme is enabled by wez-themes.nix.
+        -- Select one theme with wezterm.appearance.theme.
 
-        ${lib.optionalString cfg.themes.gruvbox.enable ''
+        ${lib.optionalString (cfg.appearance.theme == "gruvbox") ''
           local gruvbox = dofile(
               wezterm.config_dir .. "/themes/gruvbox.lua"
           )
@@ -125,7 +122,7 @@ in
           gruvbox.apply(config)
         ''}
 
-        ${lib.optionalString cfg.themes.nord.enable ''
+        ${lib.optionalString (cfg.appearance.theme == "nord") ''
           local nord = dofile(
               wezterm.config_dir .. "/themes/nord.lua"
           )
@@ -133,7 +130,7 @@ in
           nord.apply(config)
         ''}
 
-        ${lib.optionalString cfg.themes.nordOtto.enable ''
+        ${lib.optionalString (cfg.appearance.theme == "nord-otto") ''
           local nord_otto = dofile(
               wezterm.config_dir .. "/themes/nord-otto.lua"
           )
@@ -141,7 +138,7 @@ in
           nord_otto.apply(config)
         ''}
 
-        ${lib.optionalString cfg.themes.otto.enable ''
+        ${lib.optionalString (cfg.appearance.theme == "otto") ''
           local otto = dofile(
               wezterm.config_dir .. "/themes/otto.lua"
           )

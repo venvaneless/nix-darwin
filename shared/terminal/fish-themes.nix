@@ -4,15 +4,10 @@
 # FISH: SHARED THEMES
 # =====================================================================
 
-{ config, lib, ... }:
+{ lib, ... }:
 
-let
-  cfg = config.ven.features.terminal.fish.themes;
-in
 {
   options = {
-    ven.features.terminal.fish.themes.enable = lib.mkEnableOption "shared Fish themes";
-
     terminal.fish.theme = lib.mkOption {
       type = lib.types.enum [
         "none"

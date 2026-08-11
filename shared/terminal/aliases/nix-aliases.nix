@@ -11,21 +11,31 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.fish.nixProfile;
+  nixCfg = config.ven.features.terminal.fish.nixProfile;
 
   # NIX PATHS
   # =========================
   # Each host can override these paths when its Nix checkout differs.
 
-  flakePath = cfg.flakePath;
-  flakeHost = cfg.flakeHost;
-  scriptsPath = cfg.scriptsPath;
+  flakePath = nixCfg.flakePath;
+  flakeHost = nixCfg.flakeHost;
+  scriptsPath = nixCfg.scriptsPath;
 
   # PLATFORM
   # =========================
   # Selects the appropriate system commands and flake output automatically.
 
   isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+
+  # Nix aliases use nix-darwin on macOS and nixos-rebuild on Linux.
+  installOn = {
+    darwin = true;
+    linux = true;
+  };
+
+  enabledForCurrentSystem =
+    (isDarwin && installOn.darwin) || (isLinux && installOn.linux);
 
   rebuildCommand =
     if isDarwin then
@@ -47,8 +57,6 @@ let
 in
 {
   options.ven.features.terminal.fish.nixProfile = {
-    enable = lib.mkEnableOption "shared Nix aliases and functions";
-
     flakeHost = lib.mkOption {
       type = lib.types.str;
       description = "Flake configuration name for this machine, such as macbook.";
@@ -67,7 +75,7 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf enabledForCurrentSystem {
     programs.fish.shellAliases = {
 
     # ---- Open the Nix configuration repository

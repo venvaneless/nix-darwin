@@ -4,13 +4,13 @@
 # BAT: ROSÉ PINE MOON THEME
 #
 # - Declares the Rosé Pine Moon tmTheme entirely in Nix
-# - Toggle with ven.features.terminal.cliTuis.bat.rosePine.enable
-# - Disabled by default; Gruvbox is the active theme
+# - Selected directly in bat.nix with selectedTheme = "rosePine"
+# - Enabled only when bat.nix imports this theme module
 #
 # Home Manager writes the generated theme into bat's config directory
 # and runs `bat cache --build` during activation.
 #
-# Only one bat theme module may be enabled at a time.
+# bat.nix imports only one selected theme module at a time.
 # =====================================================================
 
 {
@@ -230,19 +230,6 @@ in
 
   # Only applies when bat itself is enabled.
   config = lib.mkIf (batCfg.enable && cfg.enable) {
-    # ---- CONFLICTING THEMES ---- #
-    # Both modules set programs.bat.config.theme, so only one may win.
-    assertions = [
-      {
-        assertion = !batCfg.gruvbox.enable;
-        message = ''
-          bat: the Gruvbox and Rosé Pine themes cannot both be enabled.
-          Set ven.features.terminal.cliTuis.bat.gruvbox.enable = false;
-          when enabling ven.features.terminal.cliTuis.bat.rosePine.enable.
-        '';
-      }
-    ];
-
     programs.bat = {
       # ---- THEME SELECTION ---- #
       config.theme = themeName;

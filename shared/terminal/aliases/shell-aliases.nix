@@ -3,15 +3,23 @@
 # =====================================================================
 # SHELL: ALIASES
 # =====================================================================
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.fish.aliases;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+
+  # Core shell aliases shared by the two platforms.
+  installOn = {
+    darwin = true;
+    linux = true;
+  };
+
+  enabledForCurrentSystem =
+    (isDarwin && installOn.darwin) || (isLinux && installOn.linux);
 in
 {
-  options.ven.features.terminal.fish.aliases.enable = lib.mkEnableOption "portable Fish aliases";
-
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf enabledForCurrentSystem {
     programs.fish.shellAliases = {
       # ---------- Core ---------- #
 

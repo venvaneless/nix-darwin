@@ -35,9 +35,9 @@ let
             return home
         end
 
-        if type(uri) == "userdata" and uri.file_path then
-            return uri:file_path()
-        end
+    if type(uri) == "userdata" and uri.file_path then
+        return uri.file_path
+    end
 
         return tostring(uri)
             :gsub("^file://[^/]*", "")

@@ -7,13 +7,23 @@
 # Makes one script executable, or all scripts in a folder
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.fish.commands;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+
+  # Makes selected scripts executable.
+  installOn = {
+    darwin = true;
+    linux = true;
+  };
+
+  enabledForCurrentSystem =
+    (isDarwin && installOn.darwin) || (isLinux && installOn.linux);
 in
 {
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf enabledForCurrentSystem {
     programs.fish.functions.xscript = ''
       if test (count $argv) -eq 0
         echo "Usage: xscript <file> [file ...]"

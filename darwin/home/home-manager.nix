@@ -53,7 +53,10 @@
         neovide.enable = true;
       };
 
-      ven.features.terminal.wezterm.enable = true;
+      ven.features.terminal.wezterm = {
+        enable = true;
+        appearance.theme = "gruvbox";
+      };
 
       # ---- Nix alias host
       # The flake host name differs from macOS's networking host name.

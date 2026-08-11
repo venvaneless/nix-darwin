@@ -10,7 +10,7 @@
 {
   config =
     lib.mkIf
-      (config.ven.features.terminal.fish.themes.enable && config.terminal.fish.theme == "rose-pine")
+      (config.terminal.fish.theme == "rose-pine")
       {
         programs.fish.plugins = [
           {

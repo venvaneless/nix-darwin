@@ -4,16 +4,23 @@
 # GIT: ALIASES
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.fish.git;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+
+  # Git aliases and functions shared by the two platforms.
+  installOn = {
+    darwin = true;
+    linux = true;
+  };
+
+  enabledForCurrentSystem =
+    (isDarwin && installOn.darwin) || (isLinux && installOn.linux);
 in
 {
-  options.ven.features.terminal.fish.git.enable =
-    lib.mkEnableOption "portable Fish Git aliases and functions";
-
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf enabledForCurrentSystem {
     programs.fish.shellAliases = {
       # ---------- Git Aliases ---------- #
 

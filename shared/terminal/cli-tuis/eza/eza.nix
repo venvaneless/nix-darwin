@@ -6,8 +6,8 @@
 # Modern, maintained replacement for ls
 #
 # Installation and settings are managed through Home Manager.
-# Each theme lives in its own eza-<name>.nix file with its own toggle,
-# imported at the bottom of this file. Only one may be enabled.
+# Each theme lives in its own eza-<name>.nix file. Select one theme
+# directly below; eza imports and enables only that one module.
 # =====================================================================
 
 { config, lib, ... }:
@@ -15,27 +15,52 @@
 let
   cfg = config.ven.features.terminal.cliTuis.eza;
 
-  # ---- ACTIVE THEMES ---- #
-  # eza reads a single theme.yml, so the toggles are mutually exclusive.
-  enabledThemes = lib.attrNames (lib.filterAttrs (_: theme: theme.enable) cfg.themes);
+  # ---- THEME SELECTION ---- #
+  # Select the active theme here. Change this value to one of the keys in
+  # themeModules below; only that theme module generates theme.yml.
+  selectedTheme = "gruvboxDark";
+
+  # ---- AVAILABLE THEMES ---- #
+  # Each palette remains separate, but only selectedTheme is imported.
+  themeModules = {
+    black = ./themes/black.nix;
+    catppuccinFrappe = ./themes/catppuccin-frappe.nix;
+    catppuccinLatte = ./themes/catppuccin-latte.nix;
+    catppuccinMacchiato = ./themes/catppuccin-macchiato.nix;
+    catppuccinMine = ./themes/catppuccin-mine.nix;
+    catppuccinMocha = ./themes/catppuccin-mocha.nix;
+    default = ./themes/default-theme.nix;
+    dracula = ./themes/dracula.nix;
+    frosty = ./themes/frosty.nix;
+    gruvboxDark = ./themes/gruvbox-dark.nix;
+    gruvboxLight = ./themes/gruvbox-light.nix;
+    oneDark = ./themes/one-dark.nix;
+    rosePine = ./themes/rose-pine.nix;
+    rosePineDawn = ./themes/rose-pine-dawn.nix;
+    rosePineMoon = ./themes/rose-pine-moon.nix;
+    solarizedDark = ./themes/solarized-dark.nix;
+    tokyonight = ./themes/tokyonight.nix;
+    white = ./themes/white.nix;
+    yahddyypCatppuccin = ./themes/yahddyyp-catppuccin.nix;
+  };
+
+  selectedThemeModule =
+    if lib.hasAttr selectedTheme themeModules then
+      themeModules.${selectedTheme}
+    else
+      throw ''
+        eza: unknown selectedTheme "${selectedTheme}".
+        Choose one of: ${lib.concatStringsSep ", " (lib.attrNames themeModules)}
+      '';
 in
 {
   options.ven.features.terminal.cliTuis.eza.enable = lib.mkEnableOption "Eza file listing";
 
   config = lib.mkIf cfg.enable {
-    # ---- CONFLICTING THEMES ---- #
-    assertions = [
-      {
-        assertion = lib.length enabledThemes <= 1;
-        message = ''
-          eza: only one theme may be enabled at a time, but these are on:
-          ${lib.concatStringsSep ", " enabledThemes}
-
-          Disable the others under
-          ven.features.terminal.cliTuis.eza.themes.<name>.enable.
-        '';
-      }
-    ];
+    # ---- ACTIVE THEME ---- #
+    # The selected module exposes this internal switch. Because it is the
+    # only imported theme module, a second eza palette cannot be enabled.
+    ven.features.terminal.cliTuis.eza.themes.${selectedTheme}.enable = true;
 
     programs.eza = {
       # Install and enable eza
@@ -62,33 +87,13 @@ in
       extraOptions = [ ];
     };
 
-    # Keep existing user-owned theme and supporting files in place
+    # Tell eza where Home Manager writes the selected theme.yml file.
     home.sessionVariables.EZA_CONFIG_DIR = "${config.xdg.configHome}/eza";
   };
 
   imports = [
     # ---- THEMES ---- #
-    # Exactly one of these should be enabled.
-    # `default-theme.nix` is eza's own default palette; it is named that
-    # way so it is not mistaken for a folder aggregator.
-    ./themes/black.nix
-    ./themes/catppuccin-frappe.nix
-    ./themes/catppuccin-latte.nix
-    ./themes/catppuccin-macchiato.nix
-    ./themes/catppuccin-mine.nix
-    ./themes/catppuccin-mocha.nix
-    ./themes/default-theme.nix
-    ./themes/dracula.nix
-    ./themes/frosty.nix
-    ./themes/gruvbox-dark.nix
-    ./themes/gruvbox-light.nix
-    ./themes/one-dark.nix
-    ./themes/rose-pine.nix
-    ./themes/rose-pine-dawn.nix
-    ./themes/rose-pine-moon.nix
-    ./themes/solarized-dark.nix
-    ./themes/tokyonight.nix
-    ./themes/white.nix
-    ./themes/yahddyyp-catppuccin.nix
+    # Imports only the module selected in the THEME SELECTION section.
+    selectedThemeModule
   ];
 }

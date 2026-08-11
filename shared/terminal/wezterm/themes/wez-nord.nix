@@ -95,7 +95,7 @@ let
   '';
 in
 {
-  config = lib.mkIf cfg.themes.nord.enable {
+  config = lib.mkIf (cfg.enable && cfg.appearance.theme == "nord") {
     home.file.".config/wezterm/themes/nord.lua".source = luaConfig;
   };
 }

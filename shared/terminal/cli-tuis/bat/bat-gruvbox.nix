@@ -5,8 +5,8 @@
 #
 # - Selects bat's built-in `gruvbox-dark` syntax theme
 # - Matches the theme Delta already uses for Git output
-# - Toggle with ven.features.terminal.cliTuis.bat.gruvbox.enable
-# - Turning it off falls back to bat's built-in default theme
+# - Selected directly in bat.nix with selectedTheme = "gruvboxDark"
+# - Enabled only when bat.nix imports this theme module
 #
 # The theme ships with bat, so no `bat cache --build` step is needed.
 # =====================================================================
@@ -20,8 +20,8 @@ in
 {
   options.ven.features.terminal.cliTuis.bat.gruvbox.enable = lib.mkOption {
     type = lib.types.bool;
-    default = true;
-    description = "Use the Gruvbox Dark syntax theme for bat.";
+    default = false;
+    description = "Internal switch for the Gruvbox Dark theme selected in bat.nix.";
   };
 
   # Only applies when bat itself is enabled.

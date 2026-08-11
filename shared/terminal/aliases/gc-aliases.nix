@@ -4,13 +4,23 @@
 # NIX GARBAGE COLLECTION & GENERATION HELPERS
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.fish.nixProfile;
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+
+  # Nix profile and garbage collection helpers.
+  installOn = {
+    darwin = true;
+    linux = true;
+  };
+
+  enabledForCurrentSystem =
+    (isDarwin && installOn.darwin) || (isLinux && installOn.linux);
 in
 {
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf enabledForCurrentSystem {
     programs.fish.shellAliases = {
       # List all generations of the system profile
       drg = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
