@@ -13,8 +13,8 @@
 #   Manager through `settings`.
 #
 # - Runtime Lua that relies on closures, callbacks or the WezTerm
-#   event API is embedded in Nix modules through `extraConfig`.
-#   Home Manager writes the combined result into wezterm.lua.
+#   event API is embedded in matching Nix modules. Home Manager
+#   generates and symlinks the resulting Lua files for WezTerm.
 # =====================================================================
 
 {
@@ -55,7 +55,7 @@ in
   # ------------------------------------------------------------
   # ------ SUBMODULES ------ #
   #
-  # Modules that add options or embedded runtime configuration.
+  # Modules that add options or generate runtime Lua files.
   # ------------------------------------------------------------
 
   imports = [
@@ -121,8 +121,63 @@ in
       # ------------------------------------------------------------
 
       extraConfig = ''
-        -- Dynamic WezTerm configuration is embedded by the imported
-        -- Nix modules through programs.wezterm.extraConfig.
+        -- Appearance themes
+        -- At most one optional theme is enabled by wez-themes.nix.
+
+        ${lib.optionalString cfg.themes.nord.enable ''
+          local nord = dofile(
+              wezterm.config_dir .. "/themes/nord.lua"
+          )
+
+          nord.apply(config)
+        ''}
+
+        ${lib.optionalString cfg.themes.nordOtto.enable ''
+          local nord_otto = dofile(
+              wezterm.config_dir .. "/themes/nord-otto.lua"
+          )
+
+          nord_otto.apply(config)
+        ''}
+
+        ${lib.optionalString cfg.themes.otto.enable ''
+          local otto = dofile(
+              wezterm.config_dir .. "/themes/otto.lua"
+          )
+
+          otto.apply(config)
+        ''}
+
+        -- Plugins
+        -- Loads the generated plugin wrappers in plugins/.
+        local plugins = dofile(
+            wezterm.config_dir .. "/plugins/plugins.lua"
+        )
+
+        plugins.apply(config)
+
+        -- Overlays
+        -- Registers the quick commands entry in the command palette.
+        dofile(wezterm.config_dir .. "/overlays/overlays.lua")
+
+        -- Personal modules
+        local save_scrollback = dofile(
+            wezterm.config_dir .. "/personal/save_scrollback.lua"
+        )
+
+        save_scrollback.apply(config)
+
+        local replace_tab = dofile(
+            wezterm.config_dir .. "/personal/replace_tab.lua"
+        )
+
+        replace_tab.apply(config)
+
+        local context_palette = dofile(
+            wezterm.config_dir .. "/personal/context_palette.lua"
+        )
+
+        context_palette.apply(config)
       '';
     };
   };

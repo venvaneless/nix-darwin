@@ -1,43 +1,40 @@
 # shared/terminal/wezterm/personal/wez-platform.nix
 #
-# Embedded Lua configuration for WezTerm.
+# Embedded Lua source generated into .config/wezterm/personal/platform.lua.
 
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.wezterm;
+
+  luaConfig = pkgs.writeText "platform.lua" /* lua */ ''
+    -- shared/terminal/wezterm/personal/platform.lua
+    --
+    -- Runtime platform detection for the Lua modules.
+    --
+    -- The key bindings generated from Nix resolve the platform at build
+    -- time in wez-keybindings.nix, so they do not need this module. The
+    -- runtime modules below still do, because they build their bindings
+    -- while WezTerm is starting.
+
+    local wezterm = require("wezterm")
+
+    local M = {}
+
+    M.is_macos = wezterm.target_triple:find("darwin") ~= nil
+    M.is_linux = wezterm.target_triple:find("linux") ~= nil
+
+    -- Command on macOS, Super/Windows key on Linux.
+    M.super = M.is_macos and "CMD" or "SUPER"
+
+    -- Shared terminal modifier.
+    M.terminal_mod = "CTRL|SHIFT"
+
+    return M
+  '';
 in
 {
   config = lib.mkIf cfg.enable {
-    programs.wezterm.extraConfig = lib.mkAfter /* lua */ ''
-      do
-        package.preload["ven.wezterm.personal.platform"] = function()
-          -- shared/terminal/wezterm/personal/platform.lua
-          --
-          -- Runtime platform detection for the Lua modules.
-          --
-          -- The key bindings generated from Nix resolve the platform at build
-          -- time in wez-keybindings.nix, so they do not need this module. The
-          -- runtime modules below still do, because they build their bindings
-          -- while WezTerm is starting.
-          
-          local wezterm = require("wezterm")
-          
-          local M = {}
-          
-          M.is_macos = wezterm.target_triple:find("darwin") ~= nil
-          M.is_linux = wezterm.target_triple:find("linux") ~= nil
-          
-          -- Command on macOS, Super/Windows key on Linux.
-          M.super = M.is_macos and "CMD" or "SUPER"
-          
-          -- Shared terminal modifier.
-          M.terminal_mod = "CTRL|SHIFT"
-          
-          return M
-        end
-      end
-    '';
+    home.file.".config/wezterm/personal/platform.lua".source = luaConfig;
   };
 }
-
