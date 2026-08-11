@@ -54,6 +54,10 @@
       };
 
       ven.features.terminal.wezterm.enable = true;
+
+      # ---- Nix alias host
+      # The flake host name differs from macOS's networking host name.
+      ven.features.terminal.fish.nixProfile.flakeHost = "macbook";
     };
   };
 }

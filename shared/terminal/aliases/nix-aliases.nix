@@ -15,10 +15,11 @@ let
 
   # NIX PATHS
   # =========================
-  # Uses the current user's home directory on both macOS and Linux.
+  # Each host can override these paths when its Nix checkout differs.
 
-  flakePath = "${config.home.homeDirectory}/.config/nix/nix-config";
-  scriptsPath = "${config.home.homeDirectory}/.config/nix/nix-scripts";
+  flakePath = cfg.flakePath;
+  flakeHost = cfg.flakeHost;
+  scriptsPath = cfg.scriptsPath;
 
   # PLATFORM
   # =========================
@@ -37,10 +38,34 @@ let
       "darwinConfigurations"
     else
       "nixosConfigurations";
+
+  systemBuildTarget =
+    if isDarwin then
+      "${systemConfigurations}.${flakeHost}.system"
+    else
+      "${systemConfigurations}.${flakeHost}.config.system.build.toplevel";
 in
 {
-  options.ven.features.terminal.fish.nixProfile.enable =
-    lib.mkEnableOption "shared Nix aliases and functions";
+  options.ven.features.terminal.fish.nixProfile = {
+    enable = lib.mkEnableOption "shared Nix aliases and functions";
+
+    flakeHost = lib.mkOption {
+      type = lib.types.str;
+      description = "Flake configuration name for this machine, such as macbook.";
+    };
+
+    flakePath = lib.mkOption {
+      type = lib.types.str;
+      default = "${config.home.homeDirectory}/.config/nix/nix-config";
+      description = "Path to this machine's Nix flake checkout.";
+    };
+
+    scriptsPath = lib.mkOption {
+      type = lib.types.str;
+      default = "${config.home.homeDirectory}/.config/nix/nix-scripts";
+      description = "Path to this machine's Nix helper scripts.";
+    };
+  };
 
   config = lib.mkIf cfg.enable {
     programs.fish.shellAliases = {
@@ -57,24 +82,25 @@ in
     # ---------------------------------------------------------
     # ---- REBUILD COMMANDS ---- #
     # Uses darwin-rebuild on macOS and nixos-rebuild on Linux.
-    # The current machine hostname is used as the flake configuration name.
+    # The host-specific flake name is configured explicitly, because
+    # it is not necessarily the operating system hostname.
     # ---------------------------------------------------------
 
     # ---- Build and activate the system configuration
     ## Creates a new system generation, switches to it, and runs activation
-    drs = "sudo -H ${rebuildCommand} switch --flake ${flakePath}#(hostname -s)";
+    drs = "sudo -H ${rebuildCommand} switch --flake ${flakePath}#${flakeHost}";
 
     # ---- Build the system configuration without activating it
     ## Builds the system without switching generations
-    drb = "sudo -H ${rebuildCommand} build --flake ${flakePath}#(hostname -s)";
+    drb = "sudo -H ${rebuildCommand} build --flake ${flakePath}#${flakeHost}";
 
     # ---- Build + check-mode activation
     ## Tests the configuration without permanently switching generations
     rcheck =
       if isDarwin then
-        "sudo -H darwin-rebuild check --flake ${flakePath}#(hostname -s)"
+        "sudo -H darwin-rebuild check --flake ${flakePath}#${flakeHost}"
       else
-        "sudo -H nixos-rebuild test --flake ${flakePath}#(hostname -s)";
+        "sudo -H nixos-rebuild test --flake ${flakePath}#${flakeHost}";
 
 
     # ---------------------------------------------------------
@@ -92,12 +118,12 @@ in
     # ---- Evaluate the current system configuration without building it
     ## Prints the system derivation path without building or activating
     neval =
-      "nix eval ${flakePath}#${systemConfigurations}.(hostname -s).config.system.build.toplevel.drvPath";
+      "nix eval ${flakePath}#${systemConfigurations}.${flakeHost}.config.system.build.toplevel.drvPath";
 
     # ---- Build the current system configuration without activation
     ## Builds the full system without creating a result link or switching generations
     rsafe =
-      "sudo -H nix build ${flakePath}#${systemConfigurations}.(hostname -s).config.system.build.toplevel --no-link";
+      "sudo -H nix build ${flakePath}#${systemBuildTarget} --no-link";
 
 
     # ---------------------------------------------------------
@@ -135,7 +161,7 @@ in
 
         # Current system configuration
         set -l flake_path "${flakePath}"
-        set -l flake_host (hostname -s)
+        set -l flake_host "${flakeHost}"
 
         # Output locations
         set -l downloads_dir "$HOME/Downloads"
@@ -153,8 +179,10 @@ in
         # Select the current platform configuration
         if test (uname -s) = "Darwin"
           set -l configuration_type "darwinConfigurations"
+          set -l build_target "$configuration_type.$flake_host.system"
         else
           set -l configuration_type "nixosConfigurations"
+          set -l build_target "$configuration_type.$flake_host.config.system.build.toplevel"
         end
 
 
@@ -181,7 +209,7 @@ in
             echo "=== Building the system configuration without activation ==="
 
             sudo -H nix build \
-              "$flake_path#$configuration_type.$flake_host.config.system.build.toplevel" \
+              "$flake_path#$build_target" \
               --no-link
           end
 
