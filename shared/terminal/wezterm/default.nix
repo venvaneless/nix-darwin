@@ -12,9 +12,9 @@
 #   as Nix attribute sets and rendered into wezterm.lua by Home
 #   Manager through `settings`.
 #
-# - Runtime Lua modules that rely on closures, callbacks or the
-#   WezTerm event API stay as plain .lua files. They are deployed
-#   unchanged by wez-lua.nix and loaded from `extraConfig`.
+# - Runtime Lua that relies on closures, callbacks or the WezTerm
+#   event API is embedded in Nix modules through `extraConfig`.
+#   Home Manager writes the combined result into wezterm.lua.
 # =====================================================================
 
 {
@@ -55,15 +55,20 @@ in
   # ------------------------------------------------------------
   # ------ SUBMODULES ------ #
   #
-  # Modules that deploy files or add options rather than contribute
-  # settings.
+  # Modules that add options or embedded runtime configuration.
   # ------------------------------------------------------------
 
   imports = [
-    ./wez-lua.nix
     ./wez-plugins.nix
-    ./wez-catppuccin.nix
     ./wez-themes.nix
+
+    # ---- Embedded Lua modules
+    ./plugins/wez-plugins.nix
+    ./overlays/wez-overlays.nix
+    ./personal/wez-platform.nix
+    ./personal/wez-context_palette.nix
+    ./personal/wez-replace_tab.nix
+    ./personal/wez-save_scrollback.nix
   ];
 
   # ------------------------------------------------------------
@@ -116,103 +121,8 @@ in
       # ------------------------------------------------------------
 
       extraConfig = ''
-        -- Runtime Lua modules
-        -- Deployed by wez-lua.nix.
-
-        -- Appearance themes
-        -- At most one of these is ever enabled; wez-themes.nix fails
-        -- the build if more than one toggle is on. With all of them
-        -- off the Gruvbox colours from wez-appearance.nix stand.
-
-        ${lib.optionalString cfg.catppuccin.appearance.enable ''
-          -- Catppuccin appearance
-          local catppuccin_appearance = dofile(
-              wezterm.config_dir .. "/catppuccin-config/appearance.lua"
-          )
-
-          catppuccin_appearance.apply(config)
-        ''}
-
-        ${lib.optionalString cfg.themes.nord.enable ''
-          -- Nord appearance
-          local nord = dofile(
-              wezterm.config_dir .. "/themes/nord.lua"
-          )
-
-          nord.apply(config)
-        ''}
-
-        ${lib.optionalString cfg.themes.nordOtto.enable ''
-          -- Nord Otto appearance
-          local nord_otto = dofile(
-              wezterm.config_dir .. "/themes/nord-otto.lua"
-          )
-
-          nord_otto.apply(config)
-        ''}
-
-        ${lib.optionalString cfg.themes.otto.enable ''
-          -- Otto appearance
-          local otto = dofile(
-              wezterm.config_dir .. "/themes/otto.lua"
-          )
-
-          otto.apply(config)
-        ''}
-
-        -- Plugins
-        -- Loads the wrappers in plugins/, which in turn require the
-        -- upstream plugins pinned by wez-plugins.nix.
-        local plugins = dofile(
-            wezterm.config_dir .. "/plugins/plugins.lua"
-        )
-
-        plugins.apply(config)
-
-        ${lib.optionalString cfg.catppuccin.tabline.enable ''
-          -- Catppuccin tabline
-          -- Runs after plugins.apply so that it replaces the Gruvbox
-          -- tabline styling from plugins/tabline.lua.
-          local catppuccin_tabline = dofile(
-              wezterm.config_dir .. "/catppuccin-config/tabline.lua"
-          )
-
-          catppuccin_tabline.apply(config)
-        ''}
-
-        -- Overlays
-        -- Registers the quick commands entry in the command palette.
-        -- This module only installs an event handler, so it takes no
-        -- config argument.
-        dofile(wezterm.config_dir .. "/overlays/overlays.lua")
-
-        -- Personal modules
-        -- Each one appends its own key bindings to the list that was
-        -- generated from wez-keybindings.nix.
-        local save_scrollback = dofile(
-            wezterm.config_dir .. "/personal/save_scrollback.lua"
-        )
-
-        save_scrollback.apply(config)
-
-        local replace_tab = dofile(
-            wezterm.config_dir .. "/personal/replace_tab.lua"
-        )
-
-        replace_tab.apply(config)
-
-        -- Context palette
-        -- Binds Command/Super + Shift + P to the built in command
-        -- palette and sets its row count.
-        local context_palette = dofile(
-            wezterm.config_dir .. "/personal/context_palette.lua"
-        )
-
-        context_palette.apply(config)
-
-        -- Deliberately dropped:
-        --
-        --   personal/command_palette.lua
+        -- Dynamic WezTerm configuration is embedded by the imported
+        -- Nix modules through programs.wezterm.extraConfig.
       '';
     };
   };

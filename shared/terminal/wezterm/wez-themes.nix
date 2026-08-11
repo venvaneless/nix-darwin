@@ -13,9 +13,6 @@
 # configuration that enables more than one, rather than letting load
 # order decide silently.
 #
-# The Catppuccin toggles live in wez-catppuccin.nix and are included
-# in the same exclusivity check.
-#
 # All toggles default to false, because the active theme is Gruvbox.
 # =====================================================================
 
@@ -31,13 +28,10 @@ let
   # ------------------------------------------------------------
   # ------ MUTUALLY EXCLUSIVE APPEARANCE THEMES ------ #
   #
-  # Every entry here fully replaces the colour scheme. The Catppuccin
-  # tabline toggle is deliberately not listed, because it only styles
-  # the tab bar and composes with any of these.
+  # Every entry here fully replaces the colour scheme.
   # ------------------------------------------------------------
 
   appearanceThemes = {
-    "catppuccin" = cfg.catppuccin.appearance.enable;
     "nord" = cfg.themes.nord.enable;
     "nord-otto" = cfg.themes.nordOtto.enable;
     "otto" = cfg.themes.otto.enable;
@@ -49,6 +43,12 @@ let
 in
 
 {
+  imports = [
+    ./themes/wez-nord.nix
+    ./themes/wez-nord-otto.nix
+    ./themes/wez-otto.nix
+  ];
+
   options.ven.features.terminal.wezterm.themes = {
     # ---- Nord
     # Cool blue palette based on the Nord colour scheme.
@@ -84,7 +84,6 @@ in
           Currently enabled: ${lib.concatStringsSep ", " enabledThemeNames}
 
           Disable all but one of:
-            ven.features.terminal.wezterm.catppuccin.appearance.enable
             ven.features.terminal.wezterm.themes.nord.enable
             ven.features.terminal.wezterm.themes.nordOtto.enable
             ven.features.terminal.wezterm.themes.otto.enable

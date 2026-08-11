@@ -5,9 +5,9 @@
 #
 # WezTerm normally clones every plugin from GitHub the first time
 # wezterm.plugin.require() runs, which needs network access and is not
-# reproducible. This module takes the sources from the flake inputs
-# instead and places them where WezTerm expects to find its clones, so
-# the runtime never reaches the network.
+# reproducible. This module turns the flake inputs into read-only Git
+# checkouts and places them where WezTerm expects to find its clones,
+# so the runtime never reaches the network.
 #
 # Because the plugins are flake inputs, they are pinned in flake.lock
 # and updated by the normal workflow:
@@ -128,16 +128,45 @@ let
       (_: weztermPlugin: weztermPlugin.enable)
       weztermPlugins;
 
+  # ------------------------------------------------------------
+  # ------ GIT-COMPATIBLE PLUGIN SOURCE ------ #
+  #
+  # wezterm.plugin.require() recognises its cache entries as Git
+  # repositories. Flake inputs are source trees without `.git`, so
+  # create a deterministic, read-only checkout for each pinned input.
+  # ------------------------------------------------------------
+
+  gitPluginSource =
+    name: weztermPlugin:
+    pkgs.runCommand "wezterm-plugin-${name}" {
+      nativeBuildInputs = [ pkgs.git ];
+    } ''
+      mkdir -p "$out"
+      cp -R "${weztermPlugin.source}/." "$out"
+
+      export GIT_AUTHOR_NAME="Nix WezTerm Plugin"
+      export GIT_AUTHOR_EMAIL="nix-wezterm-plugin@localhost"
+      export GIT_AUTHOR_DATE="1970-01-01T00:00:01Z"
+      export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+      export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+      export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"
+
+      git -C "$out" init --initial-branch=main --quiet
+      git -C "$out" add --all
+      git -C "$out" commit --message "Pinned ${name} plugin" --quiet
+      git -C "$out" remote add origin "${weztermPlugin.url}"
+    '';
+
   pluginFileEntry =
-    weztermPlugin:
+    name: weztermPlugin:
 
     lib.nameValuePair
       "${pluginRoot}/${mangleUrl weztermPlugin.url}"
-      { source = weztermPlugin.source; };
+      { source = gitPluginSource name weztermPlugin; };
 
   pluginFiles =
     lib.mapAttrs'
-      (_: pluginFileEntry)
+      pluginFileEntry
       enabledPlugins;
 in
 

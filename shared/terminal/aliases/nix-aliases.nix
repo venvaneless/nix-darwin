@@ -8,9 +8,11 @@
 # rebuild commands selected automatically for nix-darwin or NixOS.
 # =====================================================================
 
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
+  cfg = config.ven.features.terminal.fish.nixProfile;
+
   # NIX PATHS
   # =========================
   # Uses the current user's home directory on both macOS and Linux.
@@ -37,7 +39,11 @@ let
       "nixosConfigurations";
 in
 {
-  programs.fish.shellAliases = {
+  options.ven.features.terminal.fish.nixProfile.enable =
+    lib.mkEnableOption "shared Nix aliases and functions";
+
+  config = lib.mkIf cfg.enable {
+    programs.fish.shellAliases = {
 
     # ---- Open the Nix configuration repository
     ## Changes the current terminal to the flake's root directory
@@ -341,5 +347,6 @@ in
     '';
 
     # ---------------------------------------------------------
+    };
   };
 }
