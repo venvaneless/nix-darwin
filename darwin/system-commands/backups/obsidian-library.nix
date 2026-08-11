@@ -30,7 +30,8 @@ let
 
       # Keep standard input attached to the terminal for the interactive
       # menus; feeding Python through stdin makes every input() raise EOF.
-      exec python3 <(${pkgs.coreutils}/bin/cat <<'PY'
+      exec python3 <(
+        ${pkgs.coreutils}/bin/cat <<'PY' | ${pkgs.gnused}/bin/sed 's/^      //'
       #!/usr/bin/env python3
       #
       # Obsidian plugin and theme library manager.

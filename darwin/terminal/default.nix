@@ -43,9 +43,6 @@
     # Darwin-only Fish aliases and abbreviations
     ./fish-aliases.nix
 
-    # iCloud folder navigation and ditto-backed copying
-    ./commands/files-darwin.nix
-
     # macOS commands
     ./commands/macos.nix
 
