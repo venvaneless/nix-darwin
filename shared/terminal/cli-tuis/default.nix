@@ -25,6 +25,10 @@
 
     ./fastfetch/fastfetch.nix
     ./fzf/fzf.nix
+
+    # Micro settings and the theme selected in micro.nix
+    ./micro/micro.nix
+
     ./ripgrep.nix
     ./starship.nix
     ./tmux.nix

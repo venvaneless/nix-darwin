@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/shared/packages/media-pkgs.nix
+# shared/packages/media-pkgs.nix
 #
 # =====================================================================
 # PACKAGES: SHARED MEDIA TOOLS

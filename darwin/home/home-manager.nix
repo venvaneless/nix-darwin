@@ -33,7 +33,6 @@
       home.packages = [
         # bat is installed by shared/terminal/cli-tuis/bat/bat.nix
         pkgs.bottom
-        pkgs.micro
         pkgs.python312Packages.internetarchive
       ];
 

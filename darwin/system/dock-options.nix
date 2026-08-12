@@ -176,7 +176,7 @@
     # ------------------------------------------------------
     persistent-apps = [
     "/Applications/Multimedia/Cider.app"
-    "/Applications/Programming/WezTerm.app"
+    "/Applications/Nix Apps/WezTerm.app"
     "/Applications/Helium.app"
     "/Applications/Productivity/Zed.app"
     "/Applications/Programming/SnippetsLab.app"
