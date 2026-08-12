@@ -74,10 +74,10 @@ let
               shouldLink = shouldInstall && (package.${category.flag} or false);
             in
             ''
-              manage_application_link \\
-                ${lib.escapeShellArg package.appName} \\
-                ${lib.escapeShellArg sourcePath} \\
-                ${lib.escapeShellArg "${category.targetDirectory}/${package.appName}"} \\
+              manage_application_link \
+                ${lib.escapeShellArg package.appName} \
+                ${lib.escapeShellArg sourcePath} \
+                ${lib.escapeShellArg "${category.targetDirectory}/${package.appName}"} \
                 ${lib.escapeShellArg (if shouldLink then "true" else "false")}
             '')
           linkCategories;

@@ -7,9 +7,16 @@
 # the shared Darwin application-link manager when entries request it.
 # =====================================================================
 
-{ lib, platforms, symlinks }:
+{ lib, options, platforms, symlinks }:
 
 let
+  # ------------------------------------------------------------
+  # ------ PACKAGE DESTINATION ------ #
+  # ------------------------------------------------------------
+
+  hasSystemPackages = lib.hasAttrByPath [ "environment" "systemPackages" ] options;
+  hasHomePackages = lib.hasAttrByPath [ "home" "packages" ] options;
+
   # ------------------------------------------------------------
   # ------------------------------------------------------------
   # ------ PACKAGE FILTERING ------ #
@@ -65,15 +72,17 @@ in
           lib.any (flag: package.${flag} or false) symlinkFlags
           && !(package ? appName))
         (lib.attrValues packages);
-      applicationLinkManager =
-        if platforms.isDarwin && hasApplications then
-          symlinks.mkApplicationLinkManager { inherit name packages; }
-        else
-          null;
-
-      packageConfig = {
-        environment.systemPackages = installedPackages;
+      applicationLinkManager = symlinks.mkApplicationLinkManager {
+        inherit name packages;
       };
+
+      packageConfig =
+        if hasSystemPackages then
+          { environment.systemPackages = installedPackages; }
+        else if hasHomePackages then
+          { home.packages = installedPackages; }
+        else
+          throw "${name}: this package module requires environment.systemPackages or home.packages";
     in
     if invalidLinkEntries != [] then
       throw "${name}: every Darwin symlink flag requires appName"
@@ -81,12 +90,15 @@ in
       lib.mkMerge [
       packageConfig
 
-      (if applicationLinkManager != null then {
-        # Application bundles are available before postActivation runs.
-        system.activationScripts.postActivation.text = lib.mkAfter ''
-          ${applicationLinkManager}/bin/manage-${name}-application-links
-        '';
-      } else { })
+      (if hasSystemPackages then
+        lib.mkIf (platforms.isDarwin && hasApplications) {
+          # Application bundles are available before postActivation runs.
+          system.activationScripts.postActivation.text = lib.mkAfter ''
+            ${applicationLinkManager}/bin/manage-${name}-application-links
+          '';
+        }
+      else
+        { })
       ];
 
   inherit byPlatform enabledForCurrentPlatform selectedPackages;

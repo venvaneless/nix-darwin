@@ -7,14 +7,14 @@
 # It does not collect package declarations or create a global registry.
 # =====================================================================
 
-{ lib, pkgs, ... }:
+{ lib, options, pkgs, ... }:
 
 let
   paths = import ./paths.nix { };
   platforms = import ./platforms.nix { inherit pkgs; };
   symlinks = import ./symlinks.nix { inherit lib paths pkgs; };
   packageOptions = import ./package-options.nix {
-    inherit lib platforms symlinks;
+    inherit lib options platforms symlinks;
   };
 in
 {
