@@ -56,7 +56,7 @@ let
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.ytmdesktop;
-      appName = "YouTube Music.app";
+      appName = "YouTube Music Desktop App.app";
       symlinkMultimedia = true;
     };
   };
