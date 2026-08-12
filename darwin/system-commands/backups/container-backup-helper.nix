@@ -135,7 +135,7 @@ let
     archive ? true,
     stageInDownloads ? true,
     archiveFilenameTemplate ? "{timestamp}-{appSlug}.zip",
-    archiveTimestampFormat ? "%Y-%m-%d-%H%M%S",
+    archiveTimestampFormat ? "%Y-%m-%d--%H%M%S",
     archivePrefix ? appSlug,
     preserveSymlinks ? true,
   }:
@@ -597,6 +597,11 @@ in
   };
 
   config = lib.mkIf (backupCfg.enabled && cfg.enable) (lib.mkMerge [
+    {
+      # Makes the enabled container backup available for manual use.
+      environment.systemPackages = [ backupRunner ];
+    }
+
     (lib.mkIf (backupCfg.automaticEnabled && cfg.automatic) {
       launchd.user.agents."backup-${appSlug}" = {
         serviceConfig = {
