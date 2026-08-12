@@ -3,180 +3,94 @@
 # =====================================================================
 # PACKAGES: DARWIN TOOLS
 #
-# Installs macOS-only utility applications:
-# - Menu bar utilities
-# - General-purpose tools
-# - Developer-adjacent utilities
+# Declares macOS-only utility applications. Common helpers install the
+# selected entries and manage their guarded /Applications/Tools links.
 # =====================================================================
 
-{ lib, pkgs, ... }:
+{ lib, options, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
-  # ------ TOOL PACKAGE SETTINGS ------ #
-  # Important package-group paths and behavior
+  # ------ SHARED PACKAGE HELPERS ------ #
   # ------------------------------------------------------------
 
-  toolApplicationSourceDirectory = "/Applications/Nix Apps";
-
-  toolApplicationTargetDirectory = "/Applications/Tools";
-
-  toolLinkManagerName = "manage-darwin-tool-application-links";
+  helpers = import ../../options { inherit lib options pkgs; };
 
   # ------------------------------------------------------------
-  # ------ CUSTOM PACKAGES ------ #
+  # ------ TOOL PACKAGE DEFINITIONS ------ #
   # ------------------------------------------------------------
 
-  assetsnapPackage = pkgs.callPackage ./assetsnap.nix { };
-
-  betterFinderAttributesPackage = pkgs.callPackage ./better-finder-attributes.nix { };
-
-  betterFinderRenamePackage = pkgs.callPackage ./better-finder-rename.nix { };
-
-  floePackage = pkgs.callPackage ./floe.nix { };
-
-  hammerspoonPackage = pkgs.callPackage ./hammerspoon.nix { };
-
-  hammerspoonUpdater = pkgs.callPackage ./hammerspoon-update.nix { };
-
-  theUnarchiverPackage = pkgs.callPackage ./unarchiver { };
-
-  theUnarchiverUpdater = pkgs.callPackage ./unarchiver/unarchiver-update.nix { };
-
-  # ------------------------------------------------------------
-  # ------ TOOL DEFINITIONS ------ #
-  #
-  # enable:
-  #   Installs or removes the package.
-  #
-  # link:
-  #   Creates or removes its categorized application link.
-  #
-  # appName:
-  #   Application bundle name inside /Applications/Nix Apps.
-  #
-  # Non-GUI packages can omit link and appName.
-  # ------------------------------------------------------------
-
-  toolApplications = {
+  toolPackages = {
     # ---- A Better Finder Attributes
     # Changes Finder metadata, timestamps, labels, and photo attributes.
     betterFinderAttributes = {
-      displayName = "A Better Finder Attributes";
       enable = true;
-      package = betterFinderAttributesPackage;
-
-      link = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ./better-finder-attributes.nix { };
       appName = "A Better Finder Attributes 7.app";
+      symlinkTools = true;
     };
 
     # ---- A Better Finder Rename
     # Provides advanced batch file and folder renaming.
     betterFinderRename = {
-      displayName = "A Better Finder Rename";
       enable = true;
-      package = betterFinderRenamePackage;
-
-      link = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ./better-finder-rename.nix { };
       appName = "A Better Finder Rename 12.app";
+      symlinkTools = true;
     };
 
     # ---- AssetSnap
     # Provides developer assets from the macOS menu bar.
     assetsnap = {
-      displayName = "AssetSnap";
       enable = true;
-      package = assetsnapPackage;
-
-      link = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ./assetsnap.nix { };
       appName = "AssetSnap.app";
+      symlinkTools = true;
     };
 
     # ---- Floe
     # Hides and reveals menu bar applications using native macOS controls.
     floe = {
-      displayName = "Floe";
       enable = true;
-      package = floePackage;
-
-      link = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ./floe.nix { };
       appName = "Floe.app";
+      symlinkTools = true;
     };
 
     # ---- Hammerspoon
     # Automates macOS using Lua scripts and native system APIs.
     hammerspoon = {
-      displayName = "Hammerspoon";
       enable = true;
-      package = hammerspoonPackage;
-
-      link = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ./hammerspoon.nix { };
+      extraPackages = [
+        # Keeps Hammerspoon's separate updater application installed.
+        (pkgs.callPackage ./hammerspoon-update.nix { })
+      ];
       appName = "Hammerspoon.app";
+      symlinkTools = true;
     };
 
     # ---- The Unarchiver
     # Extracts ZIP, RAR, 7z, TAR, and other archive formats.
     theUnarchiver = {
-      displayName = "The Unarchiver";
       enable = true;
-      package = theUnarchiverPackage;
-
-      link = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ./unarchiver { };
+      extraPackages = [
+        # Keeps The Unarchiver's separate updater application installed.
+        (pkgs.callPackage ./unarchiver/unarchiver-update.nix { })
+      ];
       appName = "The Unarchiver.app";
+      symlinkTools = true;
     };
   };
-
-  # ------------------------------------------------------------
-  # ------ ENABLED PACKAGES ------ #
-  # ------------------------------------------------------------
-
-  enabledToolPackages = map (application: application.package) (
-    lib.filter (application: application.enable or false) (lib.attrValues toolApplications)
-  );
-
-  # ------------------------------------------------------------
-  # ------ APPLICATION LINK HELPER ------ #
-  # Load the shared Darwin application-link helper
-  # ------------------------------------------------------------
-
-  applicationLinkHelper = import ./helper.nix {
-    inherit lib pkgs;
-  };
-
-  # ------------------------------------------------------------
-  # ------ TOOL APPLICATION LINKS ------ #
-  # Configure link management for this package group
-  # ------------------------------------------------------------
-
-  toolApplicationLinks = applicationLinkHelper {
-    applications = toolApplications;
-
-    sourceDirectory = toolApplicationSourceDirectory;
-
-    targetDirectory = toolApplicationTargetDirectory;
-
-    managerName = toolLinkManagerName;
-  };
 in
-{
-  # ------------------------------------------------------------
-  # ------ DARWIN TOOL PACKAGES ------ #
-  # Install all enabled packages
-  # ------------------------------------------------------------
-
-  environment.systemPackages =
-  enabledToolPackages
-  ++ [
-    hammerspoonUpdater
-    theUnarchiverUpdater
-  ];
-
-  # ------------------------------------------------------------
-  # ------ DARWIN TOOL LINKS ------ #
-  # Run categorized application-link management after activation
-  # ------------------------------------------------------------
-
-  system.activationScripts.postActivation.text = lib.mkAfter ''
-    ${toolApplicationLinks.linkManager}/bin/${toolLinkManagerName}
-  '';
+helpers.packageOptions.mkPackageModule {
+  name = "darwin-tools";
+  packages = toolPackages;
 }

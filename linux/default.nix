@@ -13,6 +13,13 @@
   imports = [
     # ---- SHARED TERMINAL CONFIGURATION ---- #
     inputs.self.homeModules.sharedTerminal
+
+    # ---- SHARED PACKAGE CATEGORIES ---- #
+    ../shared/packages/apps-pkgs.nix
+    ../shared/packages/media-pkgs.nix
+    ../shared/packages/development-pkgs.nix
+    ../shared/packages/productivity-pkgs.nix
+    ../shared/packages/tools-pkgs.nix
   ];
 
   # ---- HOME MANAGER IDENTITY ---- #

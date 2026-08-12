@@ -3,29 +3,34 @@
 # =====================================================================
 # PACKAGES: SHARED DEVELOPMENT TOOLS
 #
-# Installs development and document-building tools shared between
-# Darwin and Linux. Darwin-only application bundles stay guarded by
-# the Darwin platform check and keep their categorized application links.
+# Declares development packages for Darwin and Linux. Shared helpers
+# provide the common enable, platform-selection, and Darwin-link logic.
 # =====================================================================
 
-{ lib, pkgs, ... }:
+{ lib, options, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
-  # ------ PLATFORM DETECTION ------ #
-  #
-  # Determines which operating system is currently evaluating
-  # this shared package module.
+  # ------ SHARED PACKAGE HELPERS ------ #
   # ------------------------------------------------------------
 
-  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
-  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  helpers = import ../../options { inherit lib options pkgs; };
+
+  # Packages use these defaults unless an entry overrides a toggle.
+  sharedPackage = package: {
+    enable = true;
+    installOn = { darwin = true; linux = true; };
+    inherit package;
+  };
+
+  darwinPackage = package: {
+    enable = true;
+    installOn = { darwin = true; linux = false; };
+    inherit package;
+  };
 
   # ------------------------------------------------------------
   # ------ CUSTOM TEX LIVE ENVIRONMENT ------ #
-  #
-  # Combines a medium TeX Live scheme with the extra LaTeX package
-  # needed by Pandoc and PDF workflows on both supported platforms.
   # ------------------------------------------------------------
 
   myTex = pkgs.texlive.combine {
@@ -34,849 +39,134 @@ let
 
   # ------------------------------------------------------------
   # ------ DEVELOPMENT PACKAGE DEFINITIONS ------ #
-  #
-  # enable:
-  #   Controls whether the package exists at all.
-  #
-  # installOn.darwin:
-  #   Controls whether the package is installed on macOS.
-  #
-  # installOn.linux:
-  #   Controls whether the package is installed on Linux.
+  # Every entry can override enable or installOn locally.
   # ------------------------------------------------------------
 
   developmentPackages = {
-    # ------------------------------------------------
-    ## Nix tools
-
-    # Nixpkgs Rust linter
-    alejandra = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.alejandra;
-    };
-
-    # Nix Home Manager
-    homeManager = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.home-manager;
-    };
-
-    # Check unused Nix code
-    deadnix = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.deadnix;
-    };
-
-    # Better rebuild output
-    nh = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nh;
-    };
-
-    # Nix language server
-    nil = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nil;
-    };
-
-    # Reproducible installation of packages from GitHub
-    npins = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.npins;
-    };
-
-    # Nix shell environment manager
-    nixDirenv = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nix-direnv;
-    };
-
-    # Nix language server
-    nixd = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nixd;
-    };
-
-    # Nix formatter
-    nixfmt = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nixfmt;
-    };
-
-    # Check Nix style problems
-    statix = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.statix;
-    };
-
-    # Nix output monitor
-    nixOutputMonitor = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nix-output-monitor;
-    };
-
-    # Nix dependency tree viewer
-    nixTree = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nix-tree;
-    };
-
-    # Searches Nix packages by name and metadata.
-    nixSearch = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nix-search;
-    };
-
-    # Provides nix-locate for searching files inside Nix packages.
-    nixIndex = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nix-index;
-    };
-
-    # Runs a command from Nixpkgs without first installing its package.
-    comma = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.comma;
-    };
-
-    # Update locally packaged flake outputs
-    nixUpdate = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nix-update;
-    };
-
-    # ------------------------------------------------
-    ## Language servers and toolchains
-
-    # JavaScript and TypeScript compiler
-    typescript = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.typescript;
-    };
-
-    # JavaScript and TypeScript language server
-    typescriptLanguageServer = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.typescript-language-server;
-    };
-
-    # Vue language server
-    vueLanguageServer = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.vue-language-server;
-    };
-
-    # Go toolchain
-    go = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.go;
-    };
-
-    # Go language server
-    gopls = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.gopls;
-    };
-
-    # Rust compiler
-    rustc = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.rustc;
-    };
-
-    # Rust package manager and build tool
-    cargo = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.cargo;
-    };
-
-    # Rust language server
-    rustAnalyzer = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.rust-analyzer;
-    };
-
-    # Python language server
-    pyright = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.pyright;
-    };
-
-    # Python linter, code actions, and formatter
-    ruff = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.ruff;
-    };
-
-    # JSON language server
-    vscodeLanguageServers = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.vscode-langservers-extracted;
-    };
-
-    # YAML language server
-    yamlLanguageServer = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.yaml-language-server;
-    };
-
-    # TOML language server and formatter
-    taplo = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.taplo;
-    };
-
-    # Lua language server
-    luaLanguageServer = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.lua-language-server;
-    };
-
-    # ------------------------------------------------
-    ## Development and document tools
-
-    # Password manager CLI
-    bitwardenCli = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.bitwarden-cli;
-    };
-
-    # Git diff viewer
-    delta = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.delta;
-    };
-
-    # Container engine
-    docker = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.docker_29;
-    };
-
-    # Docker Compose
-    dockerCompose = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.docker-compose;
-    };
-
-    # Shell environment loader
-    direnv = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.direnv;
-    };
-
-    # Custom LaTeX environment
-    texLive = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = myTex;
-    };
-
-    # Security certificate tools
-    nssTools = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nssTools;
-    };
-
-    # Document converter
-    pandoc = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.pandoc;
-    };
-
-    # ------------------------------------------------
-    ## Git tools
-
-    # GitHub CLI for repositories, releases, pull requests, issues, and Actions
-    gh = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.gh;
-    };
-
-    # Git encrypted files
-    gitCrypt = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.git-crypt;
-    };
-
-    # Git history rewriting tools
-    gitFilterRepo = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.git-filter-repo;
-    };
-
-    # Git large file storage
-    gitLfs = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.git-lfs;
-    };
-
-    # Terminal Git UI
-    lazygit = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.lazygit;
-    };
-
-    # ------------------------------------------------
-    ## Code linters and formatters
-
-    # Code formatter
-    prettier = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.prettier;
-    };
-
-    # JavaScript, TypeScript, and Vue linter daemon
-    eslintD = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.eslint_d;
-    };
-
-    # Go linter runner
-    golangciLint = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.golangci-lint;
-    };
-
-    # Lua linter
-    selene = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.selene;
-    };
-
-    # YAML linter
-    yamllint = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.yamllint;
-    };
-
-    # Go formatter with stricter formatting rules
-    gofumpt = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.gofumpt;
-    };
-
-    # Rust formatter
-    rustfmt = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.rustfmt;
-    };
-
-    # CSS/SCSS linter
-    stylelint = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.stylelint;
-    };
-
-    # Lua formatter
-    stylua = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.stylua;
-    };
-
-    # ------------------------------------------------
-    ## JavaScript tools
-
-    # JavaScript runtime, bundler, transpiler and package manager
-    bun = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.bun;
-    };
-
-    # Event-driven I/O framework for JavaScript engine
-    nodejs = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nodejs;
-    };
-
-    # ------------------------------------------------
-    ## Python tools
-
-    # Python interpreter
-    python3 = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.python3;
-    };
-
-    # Python data analysis library
-    pandas = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.python3Packages.pandas;
-    };
-
-    # Python PDF generation library
-    reportlab = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.python3Packages.reportlab;
-    };
-
-    # Python package installer and resolver
-    uv = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.uv;
-    };
+    # ---- Nix tools
+    alejandra = sharedPackage pkgs.alejandra;
+    homeManager = sharedPackage pkgs.home-manager;
+    deadnix = sharedPackage pkgs.deadnix;
+    nh = sharedPackage pkgs.nh;
+    nil = sharedPackage pkgs.nil;
+    npins = sharedPackage pkgs.npins;
+    nixDirenv = sharedPackage pkgs.nix-direnv;
+    nixd = sharedPackage pkgs.nixd;
+    nixfmt = sharedPackage pkgs.nixfmt;
+    statix = sharedPackage pkgs.statix;
+    nixOutputMonitor = sharedPackage pkgs.nix-output-monitor;
+    nixTree = sharedPackage pkgs.nix-tree;
+    nixSearch = sharedPackage pkgs.nix-search;
+    nixIndex = sharedPackage pkgs.nix-index;
+    comma = sharedPackage pkgs.comma;
+    nixUpdate = sharedPackage pkgs.nix-update;
+
+    # ---- Language servers and toolchains
+    typescript = sharedPackage pkgs.typescript;
+    typescriptLanguageServer = sharedPackage pkgs.typescript-language-server;
+    vueLanguageServer = sharedPackage pkgs.vue-language-server;
+    go = sharedPackage pkgs.go;
+    gopls = sharedPackage pkgs.gopls;
+    rustc = sharedPackage pkgs.rustc;
+    cargo = sharedPackage pkgs.cargo;
+    rustAnalyzer = sharedPackage pkgs.rust-analyzer;
+    pyright = sharedPackage pkgs.pyright;
+    ruff = sharedPackage pkgs.ruff;
+    vscodeLanguageServers = sharedPackage pkgs.vscode-langservers-extracted;
+    yamlLanguageServer = sharedPackage pkgs.yaml-language-server;
+    taplo = sharedPackage pkgs.taplo;
+    luaLanguageServer = sharedPackage pkgs.lua-language-server;
+
+    # ---- Development and document tools
+    bitwardenCli = sharedPackage pkgs.bitwarden-cli;
+    delta = sharedPackage pkgs.delta;
+    docker = sharedPackage pkgs.docker_29;
+    dockerCompose = sharedPackage pkgs.docker-compose;
+    direnv = sharedPackage pkgs.direnv;
+    texLive = sharedPackage myTex;
+    nssTools = sharedPackage pkgs.nssTools;
+    pandoc = sharedPackage pkgs.pandoc;
+
+    # ---- Git tools
+    gh = sharedPackage pkgs.gh;
+    gitCrypt = sharedPackage pkgs.git-crypt;
+    gitFilterRepo = sharedPackage pkgs.git-filter-repo;
+    gitLfs = sharedPackage pkgs.git-lfs;
+    lazygit = sharedPackage pkgs.lazygit;
+
+    # ---- Linters and formatters
+    prettier = sharedPackage pkgs.prettier;
+    eslintD = sharedPackage pkgs.eslint_d;
+    golangciLint = sharedPackage pkgs.golangci-lint;
+    selene = sharedPackage pkgs.selene;
+    yamllint = sharedPackage pkgs.yamllint;
+    gofumpt = sharedPackage pkgs.gofumpt;
+    rustfmt = sharedPackage pkgs.rustfmt;
+    stylelint = sharedPackage pkgs.stylelint;
+    stylua = sharedPackage pkgs.stylua;
+
+    # ---- JavaScript and Python
+    bun = sharedPackage pkgs.bun;
+    nodejs = sharedPackage pkgs.nodejs;
+    python3 = sharedPackage pkgs.python3;
+    pandas = sharedPackage pkgs.python3Packages.pandas;
+    reportlab = sharedPackage pkgs.python3Packages.reportlab;
+    uv = sharedPackage pkgs.uv;
   };
 
-
   # ------------------------------------------------------------
-  # ------ PACKAGE FILTERING ------ #
-  #
-  # Selects only packages that are enabled for the system currently
-  # evaluating this module.
+  # ------ DARWIN-ONLY DEVELOPMENT APPLICATIONS ------ #
+  # Self-packaged applications stay beside the rest of development.
   # ------------------------------------------------------------
 
-  enabledForCurrentSystem =
-    item:
-      item.enable
-      && (
-        (isDarwin && item.installOn.darwin)
-        || (isLinux && item.installOn.linux)
-      );
-
-  enabledDevelopmentPackages =
-    map
-      (developmentPackage: developmentPackage.package)
-      (
-        lib.filter
-          enabledForCurrentSystem
-          (lib.attrValues developmentPackages)
-      );
-
-
-  # ------------------------------------------------------------
-  # ------ DARWIN DEVELOPMENT APPLICATIONS ------ #
-  #
-  # These application bundles are only available on macOS. They use
-  # the same enable and installOn toggles as the shared CLI packages.
-  # ------------------------------------------------------------
-
-  darwinDevelopmentApplications = lib.optionalAttrs isDarwin {
-    # ---- iTerm2
-    iterm2 = {
-      displayName = "iTerm2";
-      enable = true;
-
-      installOn = {
-        darwin = true;
-        linux = false;
-      };
-
-      package = pkgs.callPackage ../../darwin/packages/iterm2 { };
-      link = true;
+  darwinDevelopmentApplications = {
+    iterm2 = (darwinPackage (pkgs.callPackage ../../darwin/packages/iterm2 { })) // {
       appName = "iTerm.app";
+      symlinkProgramming = true;
     };
 
-    # ---- iTerm AI Plugin
-    itermAiPlugin = {
-      displayName = "iTerm AI Plugin";
-      enable = true;
-
-      installOn = {
-        darwin = true;
-        linux = false;
-      };
-
-      package = pkgs.callPackage ../../darwin/packages/iterm2/iterm-ai-plugin.nix { };
-      link = true;
+    itermAiPlugin = (darwinPackage (pkgs.callPackage ../../darwin/packages/iterm2/iterm-ai-plugin.nix { })) // {
       appName = "iTermAI.app";
+      symlinkProgramming = true;
     };
 
-    # ---- iTerm Browser Plugin
-    itermBrowserPlugin = {
-      displayName = "iTerm Browser Plugin";
-      enable = true;
-
-      installOn = {
-        darwin = true;
-        linux = false;
-      };
-
-      package = pkgs.callPackage ../../darwin/packages/iterm2/iterm-browser-plugin.nix { };
-      link = true;
+    itermBrowserPlugin = (darwinPackage (pkgs.callPackage ../../darwin/packages/iterm2/iterm-browser-plugin.nix { })) // {
       appName = "iTermBrowserPlugin.app";
+      symlinkProgramming = true;
     };
   };
-
-  enabledDarwinDevelopmentApplications =
-    lib.mapAttrs
-      (_: application: application // {
-        enable = enabledForCurrentSystem application;
-      })
-      darwinDevelopmentApplications;
-
-  enabledDarwinDevelopmentApplicationPackages =
-    map
-      (application: application.package)
-      (
-        lib.filter
-          enabledForCurrentSystem
-          (lib.attrValues darwinDevelopmentApplications)
-      );
 
   # ------------------------------------------------------------
   # ------ SHARED DEVELOPMENT APPLICATIONS ------ #
-  #
-  # GUI applications installed from normal Nix packages.
-  #
-  # On Darwin, application bundles installed into
-  # /Applications/Nix Apps can additionally be linked into a
-  # categorized /Applications directory.
   # ------------------------------------------------------------
 
   developmentApplications = {
     # ---- WezTerm
-    wezterm = {
+    wezterm = (sharedPackage pkgs.wezterm) // {
+      appName = "WezTerm.app";
+      symlinkProgramming = true;
+    };
+
+    # ---- Visual Studio Code
+    vscode = {
       enable = true;
+      package = pkgs.vscode;
+      installOn = { darwin = true; linux = true; };
+      appName = "Visual Studio Code.app";
+      symlinkProgramming = true;
+    };
 
-      installOn = {
-        darwin = true;
-        linux = true;
-      };
-
-      package = pkgs.wezterm;
-
-      darwinLink = {
-        enable = true;
-        appName = "WezTerm.app";
-        targetDirectory = "/Applications/Programming";
-      };
+    # ---- Zed
+    zed = {
+      enable = true;
+      package = pkgs.zed-editor;
+      installOn = { darwin = true; linux = true; };
+      appName = "Zed.app";
+      symlinkProgramming = true;
     };
   };
-
-  # ------------------------------------------------------------
-  # ------ SHARED DEVELOPMENT APPLICATION FILTERING ------ #
-  #
-  # Installs enabled GUI applications on the current platform.
-  # ------------------------------------------------------------
-
-  enabledDevelopmentApplicationPackages =
-    map
-      (application: application.package)
-      (
-        lib.filter
-          enabledForCurrentSystem
-          (lib.attrValues developmentApplications)
-      );
-
-  # ------------------------------------------------------------
-  # ------ DARWIN APPLICATION LINKS ------ #
-  #
-  # Keeps applications with a darwinLink definition in the
-  # management list, including disabled links so previously
-  # created managed links can be removed.
-  # ------------------------------------------------------------
-
-  managedDarwinApplicationLinks =
-    lib.filter
-      (application: application ? darwinLink)
-      (lib.attrValues developmentApplications);
-
-  renderDarwinApplicationLink =
-    application:
-
-    let
-      sourcePath =
-        "/Applications/Nix Apps/${application.darwinLink.appName}";
-
-      targetPath =
-        "${application.darwinLink.targetDirectory}/${application.darwinLink.appName}";
-
-      shouldExist =
-        application.enable
-        && application.installOn.darwin
-        && application.darwinLink.enable;
-    in
-
-    ''
-      manage_application_link \
-        ${lib.escapeShellArg application.darwinLink.appName} \
-        ${lib.escapeShellArg sourcePath} \
-        ${lib.escapeShellArg targetPath} \
-        ${lib.escapeShellArg (
-          if shouldExist then
-            "true"
-          else
-            "false"
-        )}
-    '';
-
-  managedDarwinApplicationLinkCommands =
-    lib.concatMapStringsSep
-      "\n"
-      renderDarwinApplicationLink
-      managedDarwinApplicationLinks;
-
-  # ------------------------------------------------------------
-  # ------ DARWIN APPLICATION LINK MANAGER ------ #
-  #
-  # Creates and removes only symbolic links managed by this
-  # module.
-  #
-  # Existing application bundles, unrelated symbolic links,
-  # scripts, extensions, and other files are never replaced.
-  # ------------------------------------------------------------
-
-  manageDarwinDevelopmentPackageLinks =
-    pkgs.writeShellScriptBin "manage-shared-development-application-links" ''
-      set -euo pipefail
-
-      manage_application_link() {
-        local app_name="$1"
-        local source_path="$2"
-        local target_path="$3"
-        local should_exist="$4"
-        local target_directory
-        local existing_target
-
-        target_directory="$(
-          ${pkgs.coreutils}/bin/dirname -- "$target_path"
-        )"
-
-        # Validate the source path
-        # ------------------------------------------------------------
-
-        case "$source_path" in
-          "/Applications/Nix Apps/"*.app)
-            ;;
-          *)
-            echo "[$app_name] ERROR: Unsupported source path." >&2
-            echo "[$app_name] Refusing source: $source_path" >&2
-            return 1
-            ;;
-        esac
-
-        # Validate the target path
-        # ------------------------------------------------------------
-
-        case "$target_path" in
-          /Applications/*.app)
-            ;;
-          *)
-            echo "[$app_name] ERROR: Unsupported target path." >&2
-            echo "[$app_name] Refusing target: $target_path" >&2
-            return 1
-            ;;
-        esac
-
-        # Create or verify the application link
-        # ------------------------------------------------------------
-
-        if [ "$should_exist" = "true" ]; then
-          if [ ! -d "$source_path" ]; then
-            echo "[$app_name] ERROR: Nix-managed application was not found." >&2
-            echo "[$app_name] Expected: $source_path" >&2
-            return 1
-          fi
-
-          if [ ! -d "$target_directory" ]; then
-            ${pkgs.coreutils}/bin/mkdir \
-              -p \
-              -- \
-              "$target_directory"
-
-            if [ ! -d "$target_directory" ]; then
-              echo "[$app_name] ERROR: Target directory was not created." >&2
-              return 1
-            fi
-
-            echo "[$app_name] SUCCESS: Target directory created."
-          fi
-
-          if [ -L "$target_path" ]; then
-            existing_target="$(
-              ${pkgs.coreutils}/bin/readlink \
-                -- \
-                "$target_path"
-            )"
-
-            if [ "$existing_target" = "$source_path" ]; then
-              return 0
-            fi
-
-            echo "[$app_name] ERROR: An unrelated symbolic link already exists." >&2
-            echo "[$app_name] Existing target: $existing_target" >&2
-            return 1
-          fi
-
-          if [ -e "$target_path" ]; then
-            echo "[$app_name] ERROR: An existing item occupies the target path." >&2
-            echo "[$app_name] Existing item: $target_path" >&2
-            echo "[$app_name] Refusing to replace it." >&2
-            return 1
-          fi
-
-          echo "[$app_name] Creating application link."
-
-          ${pkgs.coreutils}/bin/ln \
-            -s \
-            -- \
-            "$source_path" \
-            "$target_path"
-
-          if [ ! -L "$target_path" ]; then
-            echo "[$app_name] ERROR: Application link was not created." >&2
-            return 1
-          fi
-
-          existing_target="$(
-            ${pkgs.coreutils}/bin/readlink \
-              -- \
-              "$target_path"
-          )"
-
-          if [ "$existing_target" != "$source_path" ]; then
-            echo "[$app_name] ERROR: Application link has the wrong target." >&2
-            echo "[$app_name] Actual target: $existing_target" >&2
-            return 1
-          fi
-
-          echo "[$app_name] SUCCESS: Application link created and verified."
-          return 0
-        fi
-
-        # Remove only a link owned by this module
-        # ------------------------------------------------------------
-
-        if [ -L "$target_path" ]; then
-          existing_target="$(
-            ${pkgs.coreutils}/bin/readlink \
-              -- \
-              "$target_path"
-          )"
-
-          if [ "$existing_target" = "$source_path" ]; then
-            echo "[$app_name] Removing managed application link."
-
-            ${pkgs.coreutils}/bin/rm \
-              -f \
-              -- \
-              "$target_path"
-
-            if [ -e "$target_path" ] || [ -L "$target_path" ]; then
-              echo "[$app_name] ERROR: Managed link was not removed." >&2
-              return 1
-            fi
-
-            echo "[$app_name] SUCCESS: Managed application link removed."
-            return 0
-          fi
-
-          echo "[$app_name] WARNING: Existing link is not owned by this module; preserving: $target_path" >&2
-          return 0
-        fi
-
-        if [ -e "$target_path" ]; then
-          echo "[$app_name] WARNING: Existing item is not owned by this module; preserving: $target_path" >&2
-          return 0
-        fi
-      }
-
-      ${managedDarwinApplicationLinkCommands}
-    '';
-
-  # ------------------------------------------------------------
-  # ------ DARWIN APPLICATION LINKS ------ #
-  #
-  # Uses the existing guarded link helper for self-packaged
-  # Darwin-only development applications.
-  # ------------------------------------------------------------
-
-  applicationLinkHelper = import ../../darwin/packages/helper.nix {
-    inherit lib pkgs;
-  };
-
-  developmentApplicationLinks = applicationLinkHelper {
-    applications = enabledDarwinDevelopmentApplications;
-    targetDirectory = "/Applications/Programming";
-    managerName = "manage-darwin-development-application-links";
-  };
 in
-{
-  config = lib.mkMerge [
-    {
-      # ------------------------------------------------------------
-      # ------ SHARED DEVELOPMENT PACKAGES ------ #
-      #
-      # Installs every enabled package for the current Darwin or Linux
-      # system.
-      # ------------------------------------------------------------
-
-      environment.systemPackages =
-        enabledDevelopmentPackages
-        ++ enabledDevelopmentApplicationPackages;
-    }
-
-    (lib.mkIf isDarwin {
-      # ------------------------------------------------------------
-      # ------ DARWIN DEVELOPMENT APPLICATIONS ------ #
-      #
-      # Installs enabled Darwin-only application bundles and manages
-      # their categorized links after application linking completes.
-      # ------------------------------------------------------------
-
-      environment.systemPackages = enabledDarwinDevelopmentApplicationPackages;
-
-      system.activationScripts.postActivation.text = lib.mkAfter ''
-        ${developmentApplicationLinks.linkManager}/bin/manage-darwin-development-application-links
-        ${manageDarwinDevelopmentPackageLinks}/bin/manage-shared-development-application-links
-      '';
-    })
-  ];
+helpers.packageOptions.mkPackageModule {
+  name = "shared-development";
+  packages = developmentPackages // darwinDevelopmentApplications // developmentApplications;
 }

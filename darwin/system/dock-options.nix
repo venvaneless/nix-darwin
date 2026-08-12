@@ -178,7 +178,7 @@
     "/Applications/Multimedia/Cider.app"
     "/Applications/Nix Apps/WezTerm.app"
     "/Applications/Helium.app"
-    "/Applications/Productivity/Zed.app"
+    "/Applications/Programming/Zed.app"
     "/Applications/Programming/SnippetsLab.app"
     ];
     # ------------------------------------------------------

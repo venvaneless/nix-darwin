@@ -15,7 +15,9 @@
     system = "x86_64-linux";
 
     # Keeps shared modules able to reference flake inputs when needed.
-    extraSpecialArgs = { inherit inputs; };
+    extraSpecialArgs = {
+      inherit inputs;
+    };
 
     # Uses the same unfree policy as the existing shared host modules.
     nixpkgsConfig.allowUnfree = true;

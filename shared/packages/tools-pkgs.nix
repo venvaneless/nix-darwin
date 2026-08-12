@@ -1,10 +1,10 @@
-# darwin/packages/media-pkgs.nix
+# shared/packages/tools-pkgs.nix
 #
 # =====================================================================
-# PACKAGES: DARWIN MEDIA
+# PACKAGES: SHARED TOOLS
 #
-# Declares macOS-only media packages in the same shape as shared media
-# packages. Common helpers install the package and link its app bundle.
+# Declares general-purpose tools for Darwin and Linux. Common helpers
+# select packages by platform and create guarded Darwin app links.
 # =====================================================================
 
 { lib, options, pkgs, ... }:
@@ -17,22 +17,22 @@ let
   helpers = import ../../options { inherit lib options pkgs; };
 
   # ------------------------------------------------------------
-  # ------ MEDIA PACKAGE DEFINITIONS ------ #
+  # ------ TOOL PACKAGE DEFINITIONS ------ #
   # ------------------------------------------------------------
 
-  mediaPackages = {
-    # ---- VLC
-    # Plays video, audio, streams, discs, and many media formats.
-    vlc = {
+  toolPackages = {
+    # ---- Espanso
+    # Cross-platform text expander for keyboard-driven snippets.
+    espanso = {
       enable = true;
-      installOn = { darwin = true; linux = false; };
-      package = pkgs.vlc-bin;
-      appName = "VLC.app";
-      symlinkMultimedia = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.espanso;
+      appName = "Espanso.app";
+      symlinkTools = true;
     };
   };
 in
 helpers.packageOptions.mkPackageModule {
-  name = "darwin-media";
-  packages = mediaPackages;
+  name = "shared-tools";
+  packages = toolPackages;
 }

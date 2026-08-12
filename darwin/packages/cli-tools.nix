@@ -1,41 +1,47 @@
 # darwin/packages/cli-tools.nix
 #
 # =====================================================================
-# PACKAGES: CLI TOOLS
+# PACKAGES: DARWIN CLI TOOLS
 #
-# Installs everyday terminal utilities:
-# - Shells and terminal helpers
-# - File navigation and search tools
-# - Archive tools
-# - Core command-line workflow tools
+# Declares macOS-only command-line tools using the same enable and
+# platform toggles as every other package-list module.
 # =====================================================================
 
-{ pkgs, inputs, ... }:
+{ inputs, lib, options, pkgs, ... }:
 
-{
+let
   # ------------------------------------------------------------
-  # ------ CLI TOOLS ------ #
-  #
-  # Core terminal programs used for navigation, search, shell work,
-  # archives, system inspection, and everyday command-line tasks.
+  # ------ SHARED PACKAGE HELPERS ------ #
   # ------------------------------------------------------------
 
-  # ---- CLI packages
-  # Installs general-purpose command-line tools available system-wide.
-  environment.systemPackages = with pkgs; [
-    inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild
+  helpers = import ../../options { inherit lib options pkgs; };
 
-    bashInteractive
-    fd
-    ffmpegthumbnailer
-    fish
-    gawk
-    gum
-    imagemagick
-    p7zip
-    tree
-    unar
-    wget
-    zstd
-  ];
+  # ------------------------------------------------------------
+  # ------ CLI PACKAGE DEFINITIONS ------ #
+  # ------------------------------------------------------------
+
+  cliPackages = {
+    darwinRebuild = {
+      enable = true;
+      installOn = { darwin = true; linux = false; };
+      package = inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild;
+    };
+
+    bashInteractive = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.bashInteractive; };
+    fd = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.fd; };
+    ffmpegthumbnailer = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.ffmpegthumbnailer; };
+    fish = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.fish; };
+    gawk = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.gawk; };
+    gum = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.gum; };
+    imagemagick = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.imagemagick; };
+    p7zip = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.p7zip; };
+    tree = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.tree; };
+    unar = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.unar; };
+    wget = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.wget; };
+    zstd = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.zstd; };
+  };
+in
+helpers.packageOptions.mkPackageModule {
+  name = "darwin-cli";
+  packages = cliPackages;
 }

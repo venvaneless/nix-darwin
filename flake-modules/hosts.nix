@@ -43,13 +43,14 @@
             inherit system;
             config = nixpkgsConfig;
           };
+
+          # Lets imported Home Manager modules use the same package set
+          # without resolving it indirectly through the module fixpoint.
+          homeSpecialArgs = extraSpecialArgs // { inherit pkgs; };
         in
         inputs.home-manager.lib.homeManagerConfiguration {
-          inherit
-            extraSpecialArgs
-            modules
-            pkgs
-            ;
+          inherit modules pkgs;
+          extraSpecialArgs = homeSpecialArgs;
         };
 
       # Creates a NixOS system for a future host with only caller-supplied facts.

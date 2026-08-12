@@ -20,6 +20,14 @@ let
   macbookOverlays = import ../darwin/overlays;
 
   macbookOverlay = inputs.nixpkgs.lib.composeManyExtensions macbookOverlays;
+
+  # Provide the fully configured package set as a module special argument.
+  # This keeps shared package-list helpers independent of the module fixpoint.
+  macbookPkgs = import inputs.nixpkgs {
+    inherit system;
+    config.allowUnfree = true;
+    overlays = [ macbookOverlay ];
+  };
 in
 {
   # =====================================================================
@@ -38,8 +46,10 @@ in
 
         specialArgs = {
           inherit inputs;
+          pkgs = macbookPkgs;
           home-manager = inputs.home-manager;
           nix-homebrew = inputs.nix-homebrew;
+
         };
 
         modules = [

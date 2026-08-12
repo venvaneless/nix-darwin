@@ -10,6 +10,9 @@
   { config, lib, pkgs, nix-homebrew, ... }:
 
   let
+    # Shared macOS application locations.
+    paths = import ../../options/paths.nix { };
+
     casksFor = appdir: names:
       map (name: {
         inherit name;
@@ -108,7 +111,7 @@
     # ---- CASK INSTALL LOCATION
     # ---------------------------------------------------------
       caskArgs = {
-        appdir = "/Applications";
+        appdir = paths.darwin.applications.root;
       };
     # ---------------------------------------------------------
 
@@ -143,7 +146,6 @@
       casks =
         [
           # Browsers
-          "librewolf"
           "ungoogled-chromium"
 
           # Vesktop is installed through Nix instead of Homebrew.
@@ -157,7 +159,7 @@
           ## macOS statusbar tool for hiding and showing menu bar icons
           
         ]
-        ++ casksFor "/Applications/Multimedia" [
+        ++ casksFor paths.darwin.applications.multimedia [
           # Ebook management application
           "calibre"
 
@@ -167,43 +169,29 @@
           # macOS Media file tag editor
           "yate"
         ]
-        ++ casksFor "/Applications/Productivity" [
-          # Knowledge base and note-taking app with Markdown support
-          "obsidian"
-
+        ++ casksFor paths.darwin.applications.productivity [
           # Productivity tool and quick launcher for macOS
           "raycast"
 
           # Simple note-taking app written in React
           "simplenote"
 
-          # Multiplayer code editor written in Rust
-          "zed"
         ]
-        ++ casksFor "/Applications/Programming" [
+        ++ casksFor paths.darwin.applications.programming [
           # API documentation viewer
           "dteoh-devdocs"
 
           # Utilities designed to make common development tasks easier
           "devtoys"
-
-          # Open-source code editor
-          "visual-studio-code"
-
-          # WezTerm is installed through Nix instead of Homebrew.
-          # See shared/packages/development-pkgs.nix
         ]
-        ++ casksFor "/Applications/System" [
+        ++ casksFor paths.darwin.applications.system [
           # Open-source Chromium-based web browser
           "helium-browser"
 
           # Utility for uninstalling apps and removing leftover files
           "pearcleaner"
         ]
-        ++ casksFor "/Applications/Tools" [
-          # Cross-platform Text Expander written in Rust
-          "espanso"
-
+        ++ casksFor paths.darwin.applications.tools [
           # Download manager
           "jdownloader"
 
@@ -267,8 +255,8 @@
     # ---------------------------------------------------------
 
       # Set variables for the source and target locations for the application
-      snippetsLabSource="/Applications/SnippetsLab.app"
-      snippetsLabTargetDirectory="/Applications/Programming"
+      snippetsLabSource="${paths.darwin.applications.root}/SnippetsLab.app"
+      snippetsLabTargetDirectory="${paths.darwin.applications.programming}"
       snippetsLabTarget="$snippetsLabTargetDirectory/SnippetsLab.app"
 
       # Check if the source directory exists

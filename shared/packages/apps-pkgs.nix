@@ -1,10 +1,10 @@
-# darwin/packages/media-pkgs.nix
+# shared/packages/apps-pkgs.nix
 #
 # =====================================================================
-# PACKAGES: DARWIN MEDIA
+# PACKAGES: SHARED GENERAL APPS
 #
-# Declares macOS-only media packages in the same shape as shared media
-# packages. Common helpers install the package and link its app bundle.
+# Declares broad applications that do not belong in a more specific
+# package category. Platform and Darwin-link behavior stays shared.
 # =====================================================================
 
 { lib, options, pkgs, ... }:
@@ -17,22 +17,22 @@ let
   helpers = import ../../options { inherit lib options pkgs; };
 
   # ------------------------------------------------------------
-  # ------ MEDIA PACKAGE DEFINITIONS ------ #
+  # ------ GENERAL APPLICATION DEFINITIONS ------ #
   # ------------------------------------------------------------
 
-  mediaPackages = {
-    # ---- VLC
-    # Plays video, audio, streams, discs, and many media formats.
-    vlc = {
+  appPackages = {
+    # ---- LibreWolf
+    # Privacy-focused Firefox-derived web browser.
+    librewolf = {
       enable = true;
-      installOn = { darwin = true; linux = false; };
-      package = pkgs.vlc-bin;
-      appName = "VLC.app";
-      symlinkMultimedia = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.librewolf;
+      appName = "LibreWolf.app";
+      symlinkApplications = true;
     };
   };
 in
 helpers.packageOptions.mkPackageModule {
-  name = "darwin-media";
-  packages = mediaPackages;
+  name = "shared-apps";
+  packages = appPackages;
 }

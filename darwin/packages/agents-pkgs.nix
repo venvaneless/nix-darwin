@@ -1,7 +1,34 @@
 # darwin/packages/agents-pkgs.nix
 
-{ pkgs, unstablePkgs, ... }:
+{ lib, options, pkgs, unstablePkgs, ... }:
 
+let
+  # ------------------------------------------------------------
+  # ------ SHARED PACKAGE HELPERS ------ #
+  # ------------------------------------------------------------
+
+  helpers = import ../../options { inherit lib options pkgs; };
+
+  # ------------------------------------------------------------
+  # ------ AGENT PACKAGE DEFINITIONS ------ #
+  # ------------------------------------------------------------
+
+  agentPackages = {
+    # Official Codex CLI from unstable nixpkgs.
+    codex = {
+      enable = true;
+      installOn = { darwin = true; linux = false; };
+      package = unstablePkgs.codex;
+    };
+
+    # Patched codex-profile package provided by the local overlay.
+    codexProfile = {
+      enable = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.codex-profile;
+    };
+  };
+in
 {
   imports = [
     ./claude
@@ -16,11 +43,8 @@
     ./codex/codex-backup.nix
   ];
 
-  environment.systemPackages = [
-    # Official Codex CLI from unstable nixpkgs
-    unstablePkgs.codex
-
-    # Patched codex-profile package provided by the local overlay
-    pkgs.codex-profile
-  ];
+  config = helpers.packageOptions.mkPackageModule {
+    name = "darwin-agents";
+    packages = agentPackages;
+  };
 }
