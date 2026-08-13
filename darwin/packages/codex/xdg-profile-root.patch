@@ -61,3 +61,22 @@ diff --git a/bin/codex-profile b/bin/codex-profile
      discovered_profile_is_managed "$profile" "$dir" || continue
      printf '%s\n' "$profile"
    done
+
+@@ -845,9 +840,14 @@ run_desktop_app() {
+  note "Log: $log_file"
+  if [[ "$profile" == "default" ]]; then
+-    (umask 077 && open -n --env "CODEX_HOME=$codex_home" --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace") \\
++    (umask 077 && open -n \\
++      --env "CODEX_HOME=$codex_home" \\
++      --env "CODEX_SQLITE_HOME=$codex_home/sqlite" \\
++      --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace") \\
+       || die "Cannot launch $product app: $app"
+   else
+-    (umask 077 && open -n --env "CODEX_HOME=$codex_home" --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace" --args "--user-data-dir=$user_data_dir") \\
++    (umask 077 && open -n \\
++      --env "CODEX_HOME=$codex_home" \\
++      --env "CODEX_SQLITE_HOME=$codex_home/sqlite" \\
++      --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace" --args "--user-data-dir=$user_data_dir") \\
+       || die "Cannot launch $product app: $app"
+   fi
+ }
