@@ -40,7 +40,7 @@ let
       # -----------------------------------------------------------------
       external_backup_volume="${backupPaths.volume}"
       data_backups_root="${backupPaths.data}"
-      app_backups_root="${backupPaths.apps}"
+      app_backups_root="$data_backups_root/app-backups"
       backup_root="$app_backups_root/obsidian"
       extensions_dir="$backup_root/obsidian_extensions"
       themes_dir="$backup_root/obsidian_themes"
