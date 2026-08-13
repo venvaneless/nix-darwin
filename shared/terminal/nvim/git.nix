@@ -47,21 +47,14 @@
             opts.mappings.n = opts.mappings.n or {}
 
             -- Toggle the inline blame text when it gets noisy.
+            -- AstroNvim already owns <Leader>gl and <Leader>gL for one-off
+            -- and full blame, so only the toggle is added here.
             opts.mappings.n["<Leader>gb"] = {
               function()
                 require("gitsigns").toggle_current_line_blame()
               end,
 
               desc = "Toggle line blame",
-            }
-
-            -- Full blame for the current line, including the commit body.
-            opts.mappings.n["<Leader>gB"] = {
-              function()
-                require("gitsigns").blame_line({ full = true })
-              end,
-
-              desc = "Blame line (full)",
             }
 
             return opts

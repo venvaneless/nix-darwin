@@ -20,6 +20,9 @@
   services.karakeep.enable = true;
   services.browsertrix.enable = true;
 
+  # Enable the custom nginx reverse proxy (com.ven.nginx-custom)
+  ven.nginx.enable = true;
+
 
   imports = [
 

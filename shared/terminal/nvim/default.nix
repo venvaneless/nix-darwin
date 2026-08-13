@@ -37,6 +37,12 @@ in
     ./explorer.nix
     ./telescope.nix
 
+    # Project switching backed by snacks and resession sessions
+    ./projects.nix
+
+    # ---- VERSION CONTROL ---- #
+    ./git.nix
+
     # ---- UI ---- #
     ./theme.nix
     ./icons.nix
