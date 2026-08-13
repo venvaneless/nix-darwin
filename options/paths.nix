@@ -317,6 +317,61 @@ in
   };
 
   # ------------------------------------------------------------
+  # ------ CODING AGENTS ------ #
+  # ------------------------------------------------------------
+  # Configuration and plugin roots for the coding agents managed under
+  # darwin/packages. Each agent keeps its own configuration tree, but a
+  # plugin can be registered with more than one of them, so the roots
+  # are collected here rather than repeated per extension module.
+
+  darwin.agents = {
+    # ---- Codex
+    # codex-profile is patched to store each profile below .config
+    # instead of ~/.codex-<profile>, and both profiles share one skills
+    # and plugins tree through the symlinks made by extensions/shared.nix.
+    codex = rec {
+      root = "${darwinHomePaths.config}/codex";
+
+      shared = "${root}/shared";
+      sharedSkills = "${shared}/skills";
+      sharedPlugins = "${shared}/plugins";
+
+      # codex-profile's own configuration, kept beside the profile tree.
+      profileConfig = "${darwinHomePaths.config}/codex-profile";
+    };
+
+    # ---- Claude Code
+    # Read from CLAUDE_CONFIG_DIR, which the Claude package module
+    # exports. Claude Code uses ~/.claude when the variable is unset, so
+    # anything writing here must pass the variable explicitly.
+    claude = rec {
+      root = "${darwinHomePaths.config}/claude";
+
+      plugins = "${root}/plugins";
+    };
+
+    # ---- claude-mem
+    # Registered with both Codex profiles and Claude Code.
+    #
+    # ** root is the value of CLAUDE_MEM_DATA_DIR: the SQLite database,
+    # ** Chroma store, logs, and settings.json all derive from it.
+    #
+    # ** The plugin tree is deliberately not a Nix store symlink. The
+    # ** plugin needs a writable node_modules beside its bundled
+    # ** scripts, so the pinned store source is copied to plugin and
+    # ** `bun install` runs there. marker records which store path is
+    # ** currently materialized, so a rebuild that changes nothing does
+    # ** no work.
+    claudeMem = rec {
+      root = "${darwinHomePaths.config}/claude-mem";
+
+      marketplace = "${root}/marketplace";
+      plugin = "${marketplace}/plugin";
+      marker = "${marketplace}/.nix-version";
+    };
+  };
+
+  # ------------------------------------------------------------
   # ------ SYSTEM ------ #
   # ------------------------------------------------------------
   # Root-owned locations outside $HOME, used by LaunchDaemons and
