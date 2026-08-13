@@ -66,37 +66,13 @@ let
   # ------------------------------------------------------------
   # environment.variables reaches shells, and with them the `code` CLI,
   # but never an application started from the Dock, Spotlight, or
-  # Finder. Those launches go through LaunchServices, which reads
-  # LSEnvironment out of the bundle's own Info.plist.
+  # Finder. Changing the signed application bundle's Info.plist to pass
+  # these variables to LaunchServices invalidates the bundle signature,
+  # so Finder can no longer launch the application.
   #
-  # ** The upstream bundle already ships an LSEnvironment dictionary
-  # ** holding MallocNanoZone, so the variable is inserted beside it.
-  # ** The anchor is a single line and unique in the file, and
-  # ** --replace-fail turns a future upstream change into a build
-  # ** failure rather than a silently unset variable.
-  #
-  # ** Patching the bundle keeps this generation-scoped: a rollback
-  # ** restores the previous store path and takes the variable with it.
-  # ** launchctl setenv would instead persist in the user's launchd
-  # ** domain long after the configuration stopped setting it.
-
-  renderPlistEntry = name: value: "<key>${name}</key><string>${value}</string>";
-
-  plistEntries =
-    lib.concatStrings (lib.mapAttrsToList renderPlistEntry vscodeEnvironment);
-
-  vscodePackage =
-    if platforms.isDarwin then
-      pkgs.vscode.overrideAttrs (previous: {
-        postInstall = (previous.postInstall or "") + ''
-          substituteInPlace "$out/Applications/${appName}/Contents/Info.plist" \
-            --replace-fail \
-              '<key>MallocNanoZone</key>' \
-              '${plistEntries}<key>MallocNanoZone</key>'
-        '';
-      })
-    else
-      pkgs.vscode;
+  # ** Keep the upstream bundle unmodified. Finder launches use VS
+  # ** Code's standard state locations; terminal launches remain
+  # ** portable through environment.variables below.
 
   # ------------------------------------------------------------
   # ------ PACKAGE DEFINITION ------ #
@@ -108,7 +84,7 @@ let
   vscode = {
     enable = true;
     installOn = { darwin = true; linux = true; };
-    package = vscodePackage;
+    package = pkgs.vscode;
     inherit appName;
     symlinkProgramming = true;
   };

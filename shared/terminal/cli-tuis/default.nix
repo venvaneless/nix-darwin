@@ -35,8 +35,13 @@
     # Micro settings and the theme selected in micro.nix
     ./micro/micro.nix
 
+    ./pet.nix
     ./ripgrep.nix
     ./starship.nix
+
+    # Television settings and the theme selected in television.nix
+    ./television/television.nix
+
     ./tmux.nix
     ./yazi.nix
     ./zoxide.nix
