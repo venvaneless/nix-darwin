@@ -22,8 +22,11 @@ let
   cfg = config.ven.features.terminal.cliTuis.fastfetch;
 
   # ---- PLATFORM DETECTION ---- #
-  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
-  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  # ---- Variables from platforms.nix
+  # Platform detection is defined once in options/platforms.nix,
+  # so every module tests the current system the same way.
+  platforms = import ../../../../options/platforms.nix { inherit pkgs; };
+  inherit (platforms) isDarwin isLinux;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Fastfetch's default per platform. Hosts can

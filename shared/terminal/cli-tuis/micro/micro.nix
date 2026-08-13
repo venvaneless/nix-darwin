@@ -23,8 +23,11 @@ let
     };
   };
 
-  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
-  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  # ---- Variables from platforms.nix
+  # Platform detection is defined once in options/platforms.nix,
+  # so every module tests the current system the same way.
+  platforms = import ../../../../options/platforms.nix { inherit pkgs; };
+  inherit (platforms) isDarwin isLinux;
   enabledForCurrentSystem =
     micro.enable && ((isDarwin && micro.installOn.darwin) || (isLinux && micro.installOn.linux));
 

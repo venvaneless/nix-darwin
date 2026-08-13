@@ -29,8 +29,12 @@
 { lib, pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # The script directory comes from the centralized path definitions.
+  paths = import ../../options/paths.nix { };
+
   # Path for backup scripts
-  scriptDir = "/Users/ven/.config/nix/nix-scripts";
+  scriptDir = paths.darwin.home.nixScripts;
 
   # ---- TIMEOUTS
   # Total time allowed per script before SIGTERM, then SIGKILL.

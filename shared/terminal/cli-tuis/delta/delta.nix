@@ -26,8 +26,11 @@ let
     };
   };
 
-  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
-  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  # ---- Variables from platforms.nix
+  # Platform detection is defined once in options/platforms.nix,
+  # so every module tests the current system the same way.
+  platforms = import ../../../../options/platforms.nix { inherit pkgs; };
+  inherit (platforms) isDarwin isLinux;
   enabledForCurrentSystem =
     delta.enable && ((isDarwin && delta.installOn.darwin) || (isLinux && delta.installOn.linux));
 

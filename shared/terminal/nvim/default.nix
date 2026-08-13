@@ -47,6 +47,9 @@ in
     ./theme.nix
     ./icons.nix
 
+    # Snacks notifier styling
+    ./notify.nix
+
     # ---- ADDITIONAL COMPONENTS ---- #
     # Additional UI components
     ./dropbar.nix

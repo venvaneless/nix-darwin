@@ -16,21 +16,6 @@ let
 
   helpers = import ../../options { inherit lib options pkgs; };
 
-  # Defaults for the application entries further down, where the toggles
-  # are combined with appName and a symlink flag. The package entries
-  # below spell their toggles out so each one can be flipped in place.
-  sharedPackage = package: {
-    enable = true;
-    installOn = { darwin = true; linux = true; };
-    inherit package;
-  };
-
-  darwinPackage = package: {
-    enable = true;
-    installOn = { darwin = true; linux = false; };
-    inherit package;
-  };
-
   # ------------------------------------------------------------
   # ------ CUSTOM TEX LIVE ENVIRONMENT ------ #
   # ------------------------------------------------------------
@@ -456,17 +441,32 @@ let
   # ------------------------------------------------------------
 
   darwinDevelopmentApplications = {
-    iterm2 = (darwinPackage (pkgs.callPackage ../../darwin/packages/iterm2 { })) // {
+    # ---- iTerm2
+    # Terminal emulator built from the repository's own package.
+    iterm2 = {
+      enable = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ../../darwin/packages/iterm2 { };
       appName = "iTerm.app";
       symlinkProgramming = true;
     };
 
-    itermAiPlugin = (darwinPackage (pkgs.callPackage ../../darwin/packages/iterm2/iterm-ai-plugin.nix { })) // {
+    # ---- iTerm2 AI plugin
+    # Adds the AI features iTerm2 no longer bundles.
+    itermAiPlugin = {
+      enable = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ../../darwin/packages/iterm2/iterm-ai-plugin.nix { };
       appName = "iTermAI.app";
       symlinkProgramming = true;
     };
 
-    itermBrowserPlugin = (darwinPackage (pkgs.callPackage ../../darwin/packages/iterm2/iterm-browser-plugin.nix { })) // {
+    # ---- iTerm2 browser plugin
+    # Adds the embedded browser component.
+    itermBrowserPlugin = {
+      enable = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ../../darwin/packages/iterm2/iterm-browser-plugin.nix { };
       appName = "iTermBrowserPlugin.app";
       symlinkProgramming = true;
     };
@@ -478,19 +478,19 @@ let
 
   developmentApplications = {
     # ---- WezTerm
-    wezterm = (sharedPackage pkgs.wezterm) // {
+    # GPU-accelerated terminal emulator; its config lives in
+    # shared/terminal/wezterm.
+    wezterm = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.wezterm;
       appName = "WezTerm.app";
       symlinkProgramming = true;
     };
 
-    # ---- Visual Studio Code
-    vscode = {
-      enable = true;
-      package = pkgs.vscode;
-      installOn = { darwin = true; linux = true; };
-      appName = "Visual Studio Code.app";
-      symlinkProgramming = true;
-    };
+    # ** Visual Studio Code is not listed here. It owns ./vscode.nix,
+    # ** which keeps its package, its application link, and the
+    # ** relocation of its state in one place.
 
     # ---- Zed
     zed = {
@@ -502,7 +502,14 @@ let
     };
   };
 in
-helpers.packageOptions.mkPackageModule {
-  name = "shared-development";
-  packages = developmentPackages // darwinDevelopmentApplications // developmentApplications;
+{
+  # ---- Programs that own their own module
+  # VS Code keeps its package, its Darwin application link, and the
+  # relocation of its state together rather than split across files.
+  imports = [ ./vscode.nix ];
+
+  config = helpers.packageOptions.mkPackageModule {
+    name = "shared-development";
+    packages = developmentPackages // darwinDevelopmentApplications // developmentApplications;
+  };
 }

@@ -52,8 +52,29 @@ let
     # ---- Configuration
     config = "${home}/.config";
     nixConfig = "${home}/.config/nix/nix-config";
+    nixScripts = "${home}/.config/nix/nix-scripts";
     containers = "${home}/.config/containers";
     secrets = "${home}/.config/secrets";
+
+    # ---- Editors
+    # VS Code portable root. The same relative location on both
+    # platforms, so only the home prefix differs.
+    #
+    # ** VS Code resolves VSCODE_PORTABLE before VSCODE_APPDATA,
+    # ** --user-data-dir, and its platform default, and derives every
+    # ** subdirectory below from it. The names are fixed upstream, so
+    # ** they are written once here instead of in each caller.
+    vscode = rec {
+      root = "${home}/.config/vscode";
+
+      userData = "${root}/user-data";
+      extensions = "${root}/extensions";
+      sharedData = "${root}/shared-data";
+
+      settings = "${userData}/User/settings.json";
+      keybindings = "${userData}/User/keybindings.json";
+      snippets = "${userData}/User/snippets";
+    };
 
     # ---- Other
     downloads = "${home}/Downloads";
@@ -140,6 +161,24 @@ in
   forPlatform = isDarwin: if isDarwin then darwinHomePaths else linuxHomePaths;
 
   # ------------------------------------------------------------
+  # ------ NIX STORE AND PROFILES ------ #
+  # ------------------------------------------------------------
+  # Locations owned by the Nix daemon. Identical on macOS and Linux,
+  # because the store layout does not vary by platform.
+  #
+  # ** Never write into these. They are referenced so commands can read
+  # ** generation state, not so anything can modify the store directly.
+
+  nixPaths = rec {
+    store = "/nix/store";
+    var = "/nix/var/nix";
+    profiles = "${var}/profiles";
+
+    # Profile whose generations a system rebuild adds to.
+    systemProfile = "${profiles}/system";
+  };
+
+  # ------------------------------------------------------------
   # ------ HOME-RELATIVE FRAGMENTS ------ #
   # ------------------------------------------------------------
   # For cross-platform modules that must build a path from Home
@@ -207,6 +246,23 @@ in
       # ** service has always used.
       tartarusStartpage = "${root}/tartarus-startpage/";
     };
+  };
+
+  # ------------------------------------------------------------
+  # ------ HOME-RELATIVE FRAGMENTS ------ #
+  # ------------------------------------------------------------
+  # macOS locations expressed without a home prefix.
+  #
+  # ** For generated shell that must resolve against the running user's
+  # ** own $HOME rather than a fixed account: guard clauses in the
+  # ** user-facing file commands, and substring tests against a path.
+  # ** Interpolating an absolute value there would bake one username
+  # ** into a command meant to work for whoever runs it.
+
+  darwin.relative = rec {
+    library = "Library";
+    mobileDocuments = "${library}/Mobile Documents";
+    iCloudDrive = "${mobileDocuments}/com~apple~CloudDocs";
   };
 
   # ------------------------------------------------------------
@@ -300,6 +356,28 @@ in
       find = "/usr/bin/find";
       mv = "/bin/mv";
       mount = "/sbin/mount";
+      chmod = "/bin/chmod";
+      rm = "/bin/rm";
+
+      # Clears the immutable and system-immutable file flags.
+      chflags = "/bin/chflags";
+
+      # iCloud file-provider control. Used to force a placeholder to
+      # download before it is moved or archived, never to evict data.
+      brctl = "/usr/bin/brctl";
+
+      # Not part of macOS. The user-facing file commands probe for it
+      # and fall back when it is absent.
+      trash = "/usr/bin/trash";
+
+      # ** For a command that deliberately re-executes itself as root.
+      # ** Adding this here does not make sudo appropriate anywhere else.
+      sudo = "/usr/bin/sudo";
+
+      # ** Used only to nudge the iCloud daemons after a move or archive
+      # ** so Finder stops showing a stale entry. Never used to reset or
+      # ** evict iCloud data.
+      killall = "/usr/bin/killall";
     };
 
     # ---- Fallback PATH for generated runners

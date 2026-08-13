@@ -28,13 +28,13 @@
           "zbirenbaum/copilot.lua",
 
           cmd = "Copilot",
-          # Starts Copilot before typing, including in a new buffer.
+          -- Starts Copilot before typing, including in a new buffer.
           event = "InsertEnter",
           build = ":Copilot auth",
 
           opts = {
             suggestion = {
-              # Uses Copilot's inline virtual text instead of only its panel.
+              -- Uses Copilot's inline virtual text instead of only its panel.
               enabled = true,
               auto_trigger = true,
               hide_during_completion = false,

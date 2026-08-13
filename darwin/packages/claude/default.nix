@@ -70,9 +70,12 @@ let
   # Creates a shorter name for the evaluated Claude option set.
   cfg = config.ven.packages.claude;
 
-  # Platform detection
-  ## Evaluates to true when the current target system is macOS.
-  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  # ---- Variables from platforms.nix
+  # Platform detection is defined once in options/platforms.nix, so
+  # every module tests the current system the same way.
+  ## isDarwin evaluates to true when the current target system is macOS.
+  platforms = import ../../../options/platforms.nix { inherit pkgs; };
+  inherit (platforms) isDarwin;
 
   # ------ CLAUDE DESKTOP RELEASE
   # ------------------------------------------------------------

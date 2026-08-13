@@ -6,9 +6,9 @@
 # - Selected in fastfetch.nix with selectedLayout.<platform> = "macos"
 # - Writes fastfetch's config.jsonc when it is the selected layout
 #
-# Flat section rules. No graphics row: on Apple Silicon the GPU sits on
-# the same chip the CPU row already names. No desktop section either,
-# since macOS has no themeable icon, cursor, or widget packs to report.
+# Flat section rules. No desktop section, since macOS has no themeable
+# icon, cursor, or widget packs to report. The hardware rows otherwise
+# match the Linux layout, so both machines read the same way.
 #
 # Colours come from whichever palette fastfetch.nix selected, so this
 # layout is not tied to a palette or to a platform. Every escape
@@ -61,13 +61,38 @@ let
 
       # ---- HARDWARE ---- #
       (render.rule sections.hardware "───────────────────────────────  HARDWARE ─────────────────────────────────")
+      # GPU prints one row per detected adapter. The processor is split
+      # across named rows so no single value has to be truncated.
+      (render.entry sections.hardware {
+        type = "gpu";
+        icon = "󰢮";
+        text = "GPU";
+        extra.format = "{name} ({core-count})";
+      })
       (render.entry sections.hardware {
         type = "cpu";
         icon = "";
         text = "CPU";
+        extra.format = "{name}";
+      })
+      (render.entry sections.hardware {
+        type = "cpu";
+        icon = "";
+        text = "Cores";
         extra = {
+          # Groups performance and efficiency cores where the chip has both.
           showPeCoreCount = true;
+          format = "{cores-physical} physical / {cores-logical} logical @ {freq-max}";
+        };
+      })
+      (render.entry sections.hardware {
+        type = "cpu";
+        icon = "󰔏";
+        text = "Temperature";
+        extra = {
+          # The placeholder stays empty unless the sensor is actually read.
           temp = true;
+          format = "{temperature}";
         };
       })
       (render.entry sections.hardware {

@@ -14,6 +14,16 @@
 { pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # Home-relative Library fragments, the temporary working root, and the
+  # macOS base binaries come from the centralized path definitions.
+  #
+  # ** The guard clauses below stay anchored to the running user's own
+  # ** $HOME, so only the fragment below it is interpolated.
+  paths = import ../../options/paths.nix { };
+  relative = paths.darwin.relative;
+  bin = paths.darwin.system.bin;
+
   makeFtarCommand =
     {
       name,
@@ -237,15 +247,15 @@ USAGE
         request_icloud_downloads() {
           local source="$1"
 
-          if ! test -x /usr/bin/brctl; then
+          if ! test -x ${bin.brctl}; then
             return 0
           fi
 
-          /usr/bin/brctl download "$source" >/dev/null 2>&1 || true
+          ${bin.brctl} download "$source" >/dev/null 2>&1 || true
 
           if test -d "$source" && ! test -L "$source"; then
             while IFS= read -r -d "" item; do
-              /usr/bin/brctl download "$item" >/dev/null 2>&1 || true
+              ${bin.brctl} download "$item" >/dev/null 2>&1 || true
             done < <(
               find -P "$source" \
                 \( -type f -o -type l \) \
@@ -307,35 +317,35 @@ USAGE
             return 0
           fi
 
-          /bin/chflags -R nouchg,noschg "$target" 2>/dev/null || true
-          /bin/chmod -RN "$target" 2>/dev/null || true
+          ${bin.chflags} -R nouchg,noschg "$target" 2>/dev/null || true
+          ${bin.chmod} -RN "$target" 2>/dev/null || true
 
-          timeout 180 /bin/rm -rf -- "$target" 2>/dev/null || true
+          timeout 180 ${bin.rm} -rf -- "$target" 2>/dev/null || true
 
           if ! path_exists "$target"; then
             return 0
           fi
 
-          if string_match=$(printf "%s" "$target" | grep -F "/Library/Mobile Documents/" || true); test -n "$string_match"; then
-            /usr/bin/killall fileproviderd 2>/dev/null || true
-            /usr/bin/killall bird 2>/dev/null || true
-            /usr/bin/killall cloudd 2>/dev/null || true
+          if string_match=$(printf "%s" "$target" | grep -F "/${relative.mobileDocuments}/" || true); test -n "$string_match"; then
+            ${paths.darwin.system.bin.killall} fileproviderd 2>/dev/null || true
+            ${paths.darwin.system.bin.killall} bird 2>/dev/null || true
+            ${paths.darwin.system.bin.killall} cloudd 2>/dev/null || true
 
             sleep 2
 
-            timeout 180 /bin/rm -rf -- "$target" 2>/dev/null || true
+            timeout 180 ${bin.rm} -rf -- "$target" 2>/dev/null || true
           fi
 
           if ! path_exists "$target"; then
             return 0
           fi
 
-          /usr/bin/sudo /bin/chflags -R nouchg,noschg "$target" 2>/dev/null || true
-          /usr/bin/sudo /bin/chmod -RN "$target" 2>/dev/null || true
+          ${bin.sudo} ${bin.chflags} -R nouchg,noschg "$target" 2>/dev/null || true
+          ${bin.sudo} ${bin.chmod} -RN "$target" 2>/dev/null || true
 
           timeout 300 \
-            /usr/bin/sudo \
-            /bin/rm \
+            ${bin.sudo} \
+            ${bin.rm} \
             -rf \
             -- \
             "$target" 2>/dev/null || true
@@ -360,7 +370,7 @@ USAGE
 
           printf "Deleting original:\n%s\n" "$source"
 
-          if timeout 180 /bin/mv "$source" "$quarantine_path" 2>/dev/null; then
+          if timeout 180 ${bin.mv} "$source" "$quarantine_path" 2>/dev/null; then
             if force_remove_path "$quarantine_path"; then
               return 0
             fi
@@ -462,15 +472,15 @@ USAGE
               fail "Refusing to archive the entire home folder."
               ;;
 
-            "$HOME/Library")
+            "$HOME/${relative.library}")
               fail "Refusing to archive the entire Library folder."
               ;;
 
-            "$HOME/Library/Mobile Documents")
+            "$HOME/${relative.mobileDocuments}")
               fail "Refusing to archive the entire Mobile Documents folder."
               ;;
 
-            "$HOME/Library/Mobile Documents/com~apple~CloudDocs")
+            "$HOME/${relative.iCloudDrive}")
               fail "Refusing to archive the entire iCloud Drive."
               ;;
           esac
@@ -574,7 +584,7 @@ USAGE
         done
 
 
-        work_dir=$(mktemp -d "/private/tmp/ftar.XXXXXX") || \
+        work_dir=$(mktemp -d "${paths.darwin.system.privateTmp}/ftar.XXXXXX") || \
           fail "Could not create a temporary working directory."
 
         staging_dir="$work_dir/staging"

@@ -15,10 +15,15 @@
 
 let
   cfg = config.ven.features.terminal.fish.downloads;
-  isLinux = pkgs.stdenv.isLinux;
+
+  # ---- Variables from platforms.nix
+  # Platform detection is defined once in options/platforms.nix,
+  # so every module tests the current system the same way.
+  platforms = import ../../../options/platforms.nix { inherit pkgs; };
+  inherit (platforms) isDarwin isLinux;
 
   legacyTrashCommand =
-    if pkgs.stdenv.isDarwin then
+    if isDarwin then
       ''
         set --local apple_path (
           string replace -a '\\' '\\\\' -- "$legacy_file" |

@@ -60,17 +60,44 @@ let
 
       # ---- HARDWARE ---- #
       (render.rule sections.hardware "╭─────────  HARDWARE ───────────────────────────────────────────╮")
+      # GPU prints one row per detected adapter. The processor is split
+      # across named rows so no single value has to be truncated.
+      (render.entry sections.hardware {
+        type = "gpu";
+        icon = "󰢮";
+        text = "GPU";
+        prefix = "│ ";
+        extra.format = "{name} ({core-count})";
+      })
       (render.entry sections.hardware {
         type = "cpu";
         icon = "";
         text = "CPU";
         prefix = "│ ";
+        extra.format = "{name}";
+      })
+      (render.entry sections.hardware {
+        type = "cpu";
+        icon = "";
+        text = "Cores";
+        prefix = "│ ";
         extra = {
+          # Groups performance and efficiency cores where the chip has both.
           showPeCoreCount = true;
-          temp = true;
+          format = "{cores-physical} physical / {cores-logical} logical @ {freq-max}";
         };
       })
-      (render.entry sections.hardware { type = "gpu"; icon = "󰢮"; text = "GPU"; prefix = "│ "; })
+      (render.entry sections.hardware {
+        type = "cpu";
+        icon = "󰔏";
+        text = "Temperature";
+        prefix = "│ ";
+        extra = {
+          # The placeholder stays empty unless the sensor is actually read.
+          temp = true;
+          format = "{temperature}";
+        };
+      })
       (render.entry sections.hardware {
         type = "memory";
         icon = "󰍛";

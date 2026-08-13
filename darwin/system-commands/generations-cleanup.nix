@@ -17,13 +17,21 @@
 
 let
   # -----------------------------------------------------
+  # ------ SHARED PATHS ----- #
+  # The system profile and the sudo binary come from the centralized
+  # path definitions.
+  # -----------------------------------------------------
+
+  paths = import ../../options/paths.nix { };
+
+  # -----------------------------------------------------
   # ------ GENERATIONS CLEANUP: SETTINGS ----- #
   # Configure the retained system-generation count
   # -----------------------------------------------------
 
   # Check the number of generations to keep
   generationsToKeep = 5;
-  systemProfile = "/nix/var/nix/profiles/system";
+  systemProfile = paths.nixPaths.systemProfile;
 
 
   # -----------------------------------------------------
@@ -35,7 +43,7 @@ let
   cleanupScript = pkgs.writeShellScriptBin "cleanup-generations" ''
 
   if [[ $(id -u) -ne 0 ]]; then
-    exec /usr/bin/sudo -- "$0" "$@"
+    exec ${paths.darwin.system.bin.sudo} -- "$0" "$@"
   fi
   
     set -euo pipefail

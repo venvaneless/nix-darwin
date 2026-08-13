@@ -25,8 +25,11 @@ let
   # =========================
   # Selects the appropriate system commands and flake output automatically.
 
-  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
-  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  # ---- Variables from platforms.nix
+  # Platform detection is defined once in options/platforms.nix,
+  # so every module tests the current system the same way.
+  platforms = import ../../../options/platforms.nix { inherit pkgs; };
+  inherit (platforms) isDarwin isLinux;
 
   # Nix aliases use nix-darwin on macOS and nixos-rebuild on Linux.
   installOn = {

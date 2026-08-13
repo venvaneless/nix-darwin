@@ -26,6 +26,16 @@
 { pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # Home-relative Library fragments and the macOS base binaries come
+  # from the centralized path definitions.
+  #
+  # ** The guard clauses below stay anchored to the running user's own
+  # ** $HOME, so only the fragment below it is interpolated.
+  paths = import ../../options/paths.nix { };
+  relative = paths.darwin.relative;
+  bin = paths.darwin.system.bin;
+
   fmove = pkgs.writeShellApplication {
     name = "fmove";
 
@@ -524,15 +534,15 @@ USAGE
               fail "Refusing to move the entire home folder."
               ;;
 
-            "$HOME/Library")
+            "$HOME/${relative.library}")
               fail "Refusing to move the entire Library folder."
               ;;
 
-            "$HOME/Library/Mobile Documents")
+            "$HOME/${relative.mobileDocuments}")
               fail "Refusing to move the entire Mobile Documents folder."
               ;;
 
-            "$HOME/Library/Mobile Documents/com~apple~CloudDocs")
+            "$HOME/${relative.iCloudDrive}")
               fail "Refusing to move the entire iCloud Drive."
               ;;
           esac
@@ -581,15 +591,15 @@ USAGE
         local source="$1"
         local item
 
-        if ! test -x /usr/bin/brctl; then
+        if ! test -x ${bin.brctl}; then
           return 0
         fi
 
-        timeout 120 /usr/bin/brctl download "$source" >/dev/null 2>&1 || true
+        timeout 120 ${bin.brctl} download "$source" >/dev/null 2>&1 || true
 
         if test -d "$source" && ! test -L "$source"; then
           while IFS= read -r -d "" item; do
-            timeout 120 /usr/bin/brctl download "$item" >/dev/null 2>&1 || true
+            timeout 120 ${bin.brctl} download "$item" >/dev/null 2>&1 || true
           done < <(
             find -P "$source" \
               -type f \
@@ -601,7 +611,7 @@ USAGE
 
       is_icloud_path() {
         case "$1" in
-          "$HOME/Library/Mobile Documents"|"$HOME/Library/Mobile Documents"/*)
+          "$HOME/${relative.mobileDocuments}"|"$HOME/${relative.mobileDocuments}"/*)
             return 0
             ;;
         esac
@@ -681,7 +691,7 @@ USAGE
       send_source_to_trash() {
         local source="$1"
 
-        if /usr/bin/trash "$source"; then
+        if ${bin.trash} "$source"; then
           printf "Original moved to Trash:\n%s\n" "$source"
           return 0
         fi
@@ -729,7 +739,7 @@ USAGE
           fail "Destination item appeared while copying: $final_path"
         fi
 
-        /bin/mv "$temporary_path" "$final_path" || \
+        ${bin.mv} "$temporary_path" "$final_path" || \
           fail "Could not finalize the destination item: $final_path"
 
         if path_exists "$temporary_path"; then
