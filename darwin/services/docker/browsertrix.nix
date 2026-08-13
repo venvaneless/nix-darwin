@@ -14,6 +14,11 @@ let
 
   appName = "browsertrix";
 
+  # ---- SHARED PATHS ---- #
+  # The persistent crawl collection directory comes from the
+  # centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+
   dockerBin = "${pkgs.docker}/bin/docker";
 
   dockerWait = ''
@@ -63,7 +68,7 @@ in
 
     dataDir = lib.mkOption {
       type = lib.types.str;
-      default = "/Users/ven/.config/containers/browsertrix";
+      default = paths.darwin.docker.data.browsertrix;
       description = "Persistent directory for Browsertrix crawl collections and WACZ files.";
     };
 

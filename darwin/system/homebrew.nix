@@ -10,8 +10,12 @@
   { config, lib, pkgs, nix-homebrew, ... }:
 
   let
-    # Shared macOS application locations.
+    # Shared macOS application locations, the Homebrew prefix, the
+    # Homebrew owner, and the macOS base binaries used during activation.
     paths = import ../../options/paths.nix { };
+
+    # User that owns the Homebrew installation
+    userName = paths.user.name;
 
     casksFor = appdir: names:
       map (name: {
@@ -44,7 +48,7 @@
       enable = true;
 
       # Set the user for Homebrew installation and migration
-      user = "ven";
+      user = userName;
 
       # Disable Rosetta migration for Homebrew on Apple Silicon
       enableRosetta = false;
@@ -222,7 +226,7 @@
       echo "Homebrew cleanup..."
 
       # Check if Homebrew is installed by verifying the existence of the brew executable
-      if [ -x /opt/homebrew/bin/brew ]; then
+      if [ -x ${paths.darwin.homebrew.brew} ]; then
         generatedBrewfile=${lib.escapeShellArg config.environment.variables.HOMEBREW_BUNDLE_FILE}
 
         # Check if the generated Brewfile exists before proceeding with cleanup
@@ -232,15 +236,15 @@
         fi
 
         # Run Homebrew cleanup as the Homebrew owner
-        PATH="/opt/homebrew/bin:${pkgs.mas}/bin:$PATH" \
+        PATH="${paths.darwin.homebrew.binDir}:${pkgs.mas}/bin:$PATH" \
           sudo \
             --preserve-env=PATH \
-            --user=ven \
+            --user=${userName} \
             --set-home \
             env \
               HOMEBREW_NO_AUTO_UPDATE=1 \
               HOMEBREW_NO_ENV_HINTS=1 \
-              /opt/homebrew/bin/brew bundle cleanup \
+              ${paths.darwin.homebrew.brew} bundle cleanup \
                 --file="$generatedBrewfile" \
                 --force
       else
@@ -278,7 +282,7 @@
         fi
 
         # Move the SnippetsLab application from the source to the target location
-        /bin/mv \
+        ${paths.darwin.system.bin.mv} \
           "$snippetsLabSource" \
           "$snippetsLabTarget"
 
@@ -288,8 +292,8 @@
       else
         echo "[SnippetsLab] Application not found." >&2
 
-        # Search for any SnippetsLab application in the /Applications directory
-        /usr/bin/find /Applications \
+        # Search for any SnippetsLab application in the applications directory
+        ${paths.darwin.system.bin.find} ${paths.darwin.applications.root} \
           -maxdepth 2 \
           -type d \
           -iname '*snippet*.app' \

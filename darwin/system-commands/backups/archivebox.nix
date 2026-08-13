@@ -11,10 +11,23 @@
 }:
 
 let
-  # ---- EDITABLE BACKUP PATHS
+  # ---- SHARED PATHS ---- #
+  # The lock directory root comes from the centralized path definitions;
+  # the source and destination roots stay on the container backup options
+  # so a host can still override them.
+  paths = import ../../../options/paths.nix { };
+
+  appSlug = "archivebox";
+
+  # ---- BACKUP PATHS
+  # ** The source is the directory the ArchiveBox service itself
+  # ** declares, so the backup follows the service if that data
+  # ** directory moves.
+  #
+  # ** Destination and staging directories are registered under
+  # ** darwin.backups.perContainer in options/paths.nix and resolved by
+  # ** the helper from appSlug. Change them there, not here.
   archiveboxSourceDir = config.services.archivebox.dataDir;
-  backupDestinationDir = "/Volumes/SystemBackup/data-backups/container-backups/archivebox";
-  localStagingDir = "/Users/ven/Downloads/backup-staging/archivebox";
 
   # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
   automatic = false;
@@ -40,14 +53,12 @@ containerBackupHelper.mkContainerBackup {
   inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild extraExcludePatterns;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   sourceDir = archiveboxSourceDir;
-  destinationDir = backupDestinationDir;
-  inherit localStagingDir;
   scheduledHour = 1;
   scheduledMinute = 0;
 
   prepareArchive = ''
     staging_dir="$(
-      ${pkgs.coreutils}/bin/mktemp -d "/private/tmp/archivebox-backup.XXXXXX"
+      ${pkgs.coreutils}/bin/mktemp -d "${paths.darwin.backups.lockRoot}/${appSlug}-backup.XXXXXX"
     )"
     archive_source_parent="$staging_dir"
     archive_source_name="$source_name"

@@ -11,11 +11,23 @@
 }:
 
 let
-  # ---- EDITABLE BACKUP PATHS
-  backupPaths = config.services.containerBackups.paths;
-  vaultwardenSourceDir = "${backupPaths.containerDirectory}/vaultwarden";
-  backupDestinationDir = "${backupPaths.externalBackupVolume}/data-backups/container-backups/vaultwarden";
-  localStagingDir = "${backupPaths.downloadsDirectory}/backup-staging/vaultwarden";
+  # ---- SHARED PATHS ---- #
+  # The lock directory root comes from the centralized path definitions;
+  # the source and destination roots stay on the container backup options
+  # so a host can still override them.
+  paths = import ../../../options/paths.nix { };
+
+  appSlug = "vaultwarden";
+
+  # ---- BACKUP PATHS
+  # ** The source is the directory the Vaultwarden service itself
+  # ** declares, so the backup follows the service if that data
+  # ** directory moves.
+  #
+  # ** Destination and staging directories are registered under
+  # ** darwin.backups.perContainer in options/paths.nix and resolved by
+  # ** the helper from appSlug. Change them there, not here.
+  vaultwardenSourceDir = config.ven.vaultwarden.dataDir;
 
   # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
   automatic = false;
@@ -41,14 +53,12 @@ containerBackupHelper.mkContainerBackup {
   inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild extraExcludePatterns;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   sourceDir = vaultwardenSourceDir;
-  destinationDir = backupDestinationDir;
-  inherit localStagingDir;
   scheduledHour = 4;
   scheduledMinute = 0;
 
   prepareArchive = ''
     staging_dir="$(
-      ${pkgs.coreutils}/bin/mktemp -d "/private/tmp/vaultwarden-backup.XXXXXX"
+      ${pkgs.coreutils}/bin/mktemp -d "${paths.darwin.backups.lockRoot}/${appSlug}-backup.XXXXXX"
     )"
     archive_source_parent="$staging_dir"
     archive_source_name="$source_name"

@@ -4,19 +4,30 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # macOS Library roots come from the centralized path definitions.
+  #
+  # ** SnippetsLab is sandboxed, so its data lives inside an Apple-managed
+  # ** app container. These entries are read-only backup sources; nothing
+  # ** here writes into the container.
+  paths = import ../../../options/paths.nix { };
+
+  # Sandbox container root for SnippetsLab
+  containerData = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library";
+
   applicationSupportSources = [
     {
-      sourcePath = "/Users/ven/Library/Containers/com.renfei.SnippetsLab/Data/Library/Application Support/Markdown Themes";
+      sourcePath = "${containerData}/Application Support/Markdown Themes";
       destinationPath = "assets/markdown-themes";
     }
     {
-      sourcePath = "/Users/ven/Library/Containers/com.renfei.SnippetsLab/Data/Library/Application Support/Themes";
+      sourcePath = "${containerData}/Application Support/Themes";
       destinationPath = "assets/themes";
     }
   ];
   applicationPreferences = [
     {
-      sourcePath = "/Users/ven/Library/Containers/com.renfei.SnippetsLab/Data/Library/Preferences/com.renfei.SnippetsLab.plist";
+      sourcePath = "${containerData}/Preferences/com.renfei.SnippetsLab.plist";
       destinationPath = "com.renfei.SnippetsLab.plist";
     }
   ];

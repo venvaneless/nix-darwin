@@ -23,9 +23,8 @@
 { config, ... }:
 
 let
-  # User home directory
-  userName = "ven";
-  userHome = config.users.users.${userName}.home;
+  # Shared path roots
+  paths = import ../../../../options/paths.nix { };
 
   # Vaultwarden nginx app name
   appName = "vaultwarden";
@@ -34,7 +33,7 @@ let
   hostPort = config.ven.vaultwarden.hostPort or 8080;
 
   # Vaultwarden SSL certs directory
-  certDir = "${userHome}/.config/ssl/vaultwarden";
+  certDir = "${paths.darwin.home.ssl}/${appName}";
 
   # Vaultwarden SSL cert + key
   certPem = "${certDir}/${appName}.local.pem";

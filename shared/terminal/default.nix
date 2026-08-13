@@ -15,6 +15,11 @@
 }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # Only the home-relative fragments are used here; this module runs on
+  # Darwin and Linux, so the home prefix stays dynamic.
+  paths = import ../../options/paths.nix { };
+
   isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
   isLinux = pkgs.stdenv.hostPlatform.isLinux;
 
@@ -45,7 +50,7 @@ in
 
   options.ven.features.terminal.nixConfigDir = lib.mkOption {
     type = lib.types.str;
-    default = "${config.home.homeDirectory}/.config/nix/nix-config";
+    default = "${config.home.homeDirectory}/${paths.relative.nixConfig}";
     description = "Path to the host's Nix configuration repository.";
   };
 
@@ -89,7 +94,7 @@ in
     };
 
     home.sessionPath = [
-      "${config.home.homeDirectory}/.local/bin"
+      "${config.home.homeDirectory}/${paths.relative.localBin}"
     ];
   };
 }

@@ -10,18 +10,26 @@
 
 { pkgs, lib, ... }:
 
+let
+  # ---- SHARED PATHS ---- #
+  # Docker Desktop's install directory, bundle, and the macOS `open`
+  # helper all come from the centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+
+  appDir = paths.darwin.applications.programming;
+in
 {
-  # Activation script to ensure /Applications/Programming exists before Docker Desktop is installed
+  # Activation script to ensure the Docker Desktop app directory exists before Docker Desktop is installed
   system.activationScripts.ensureDockerAppDir.text = lib.mkAfter ''
-    echo ">>> [docker] Ensuring /Applications/Programming exists"
-    mkdir -p "/Applications/Programming"
+    echo ">>> [docker] Ensuring ${appDir} exists"
+    mkdir -p "${appDir}"
   '';
 
   # Install Docker Desktop via Homebrew cask with custom appdir
   homebrew.casks = [
     {
       name = "docker-desktop";
-      args = { appdir = "/Applications/Programming"; };
+      args = { appdir = appDir; };
     }
   ];
 
@@ -33,9 +41,9 @@
 
       # Path to the Docker Desktop application bundle
       ProgramArguments = [
-        "/usr/bin/open"
+        paths.darwin.system.bin.open
         "-a"
-        "/Applications/Programming/Docker.app"
+        paths.darwin.docker.app
       ];
       # Run the LaunchAgent at user login
       RunAtLoad = true;

@@ -14,6 +14,11 @@ let
 
   appName = "karakeep";
 
+  # ---- SHARED PATHS ---- #
+  # Persistent data directory, secrets file, and launchd log location
+  # come from the centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+
   dockerBin = "${pkgs.docker}/bin/docker";
   dockerComposeBin = "${pkgs.docker-compose}/bin/docker-compose";
 
@@ -117,13 +122,13 @@ in
 
     dataDir = lib.mkOption {
       type = lib.types.str;
-      default = "/Users/ven/.config/containers/karakeep";
+      default = paths.darwin.docker.data.karakeep;
       description = "Persistent Karakeep application and Meilisearch data directory.";
     };
 
     envFile = lib.mkOption {
       type = lib.types.str;
-      default = "/Users/ven/.config/secrets/karakeep.env";
+      default = paths.darwin.docker.env.karakeep;
       description = "User-owned Karakeep secrets file, kept outside the Nix store.";
     };
 
@@ -143,8 +148,8 @@ in
         ProgramArguments = [ "${runner}/bin/run-${appName}" ];
         RunAtLoad = true;
         KeepAlive = false;
-        StandardOutPath = "/tmp/com.ven.${appName}.out.log";
-        StandardErrorPath = "/tmp/com.ven.${appName}.err.log";
+        StandardOutPath = "${paths.darwin.system.tmp}/com.ven.${appName}.out.log";
+        StandardErrorPath = "${paths.darwin.system.tmp}/com.ven.${appName}.err.log";
       };
     };
   };

@@ -23,13 +23,17 @@
 { config, pkgs, lib, ... }:
 
 let
-  # User home directory
-  userName = "ven";
-  userHome = config.users.users.${userName}.home;
-  caroot   = "${userHome}/.config/mkcert";
-  
+  # ---- SHARED PATHS ---- #
+  # The CA root and the per-service certificate directory are shared
+  # with mkcert.nix and vaultwarden-nginx.nix.
+  paths = import ../../../../options/paths.nix { };
+
+  # User that must own the generated certificate files
+  userName = paths.user.name;
+  caroot   = paths.darwin.home.mkcert;
+
   # Vaultwarden certs directory
-  certDir = "${userHome}/.config/ssl/vaultwarden";
+  certDir = "${paths.darwin.home.ssl}/vaultwarden";
 
   # Server cert + key used by nginx
   certPem = "${certDir}/vaultwarden.local.pem";

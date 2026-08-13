@@ -15,12 +15,15 @@
 { config, pkgs, lib, ... }:
 
 let
-  # User home directory
-  userName = "ven";
-  userHome = config.users.users.${userName}.home;
+  # ---- SHARED PATHS ---- #
+  # Reads the CA root created by mkcert.nix; never writes rootCA.pem.
+  paths = import ../../../../options/paths.nix { };
+
+  # User that must own the exported certificate copies
+  userName = paths.user.name;
 
   # mkcert CAROOT
-  caroot        = "${userHome}/.config/mkcert";
+  caroot        = paths.darwin.home.mkcert;
 
   # Android export targets
   androidPemCrt = "${caroot}/rootCA-android.crt";

@@ -10,6 +10,12 @@
 
 { config, pkgs, ... }:
 
+let
+  # ---- SHARED PATHS ---- #
+  # Reuse the centralized macOS application, Library, and iCloud paths
+  # instead of repeating literal /Applications and $HOME locations.
+  paths = import ../../options/paths.nix { };
+in
 {
   # ---- MAN PAGE CACHE ---- #
   # macOS uses its built-in `man`; Home Manager's GNU man package is null.
@@ -18,7 +24,7 @@
 
   programs.fish.interactiveShellInit = ''
     # Common paths
-    set -gx ICLOUD_MOBILE "$HOME/Library/Mobile Documents"
+    set -gx ICLOUD_MOBILE "${paths.darwin.library.mobileDocuments}"
   '';
 
   # ---- COMPLETIONS ---- #
@@ -29,12 +35,12 @@
   home = {
     sessionPath = [
       # Docker PATH
-      "/Applications/Programming/Docker.app/Contents/Resources/bin"
+      paths.darwin.docker.binDir
     ];
 
     sessionVariables = {
-      ICLOUD = "$HOME/iCloudDocs";
-      CHATGPT_APP = "/Applications/ChatGPT.app";
+      ICLOUD = paths.darwin.icloud.docs;
+      CHATGPT_APP = paths.darwin.applications.bundles.chatgpt;
     };
   };
 

@@ -11,6 +11,16 @@
 { pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # The permanent plugin and theme library lives on the external backup
+  # volume, so its root comes from the centralized path definitions.
+  #
+  # ** Interpolated into the Python source below. The heredoc is quoted,
+  # ** which stops runtime shell expansion, but Nix still substitutes
+  # ** ${...} while the derivation is built.
+  paths = import ../../../options/paths.nix { };
+  backupPaths = paths.darwin.backups;
+
   # ---- Obsidian library manager
   # Python is included with this command. GitHub CLI and fzf are already
   # installed globally, so their existing store paths are used directly.
@@ -58,10 +68,10 @@ let
 
 
       DEFAULT_PLUGINS_DIR = Path(
-          "/Volumes/SystemBackup/data-backups/app-backups/obsidian/obsidian_extensions/"
+          "${backupPaths.obsidianExtensions}/"
       )
       DEFAULT_THEMES_DIR = Path(
-          "/Volumes/SystemBackup/data-backups/app-backups/obsidian/obsidian_themes/"
+          "${backupPaths.obsidianThemes}/"
       )
       MANIFEST_FILE = "manifest.json"
       PLUGIN_URL_FIELD = "pluginUrl"

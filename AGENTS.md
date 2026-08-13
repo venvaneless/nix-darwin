@@ -35,8 +35,8 @@ More specific `AGENTS.md` files extend these rules for their directory tree. In 
 - Please never delete comments I already added
 - Only change comments if they wrongly describe what they're supposed to describe and correct them instead
 - Use formatting the same way I do
+- For any existing paths, use the variables set in paths.nix. If a path doesn't exist yet, add them with their variable to paths.nix and then use paths.nix to add these variables in the file you're just working on.
 
-Canonical repository:
 
 ```text
 /Users/ven/.config/nix/nix-config

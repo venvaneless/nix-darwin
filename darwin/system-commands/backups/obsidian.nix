@@ -11,6 +11,17 @@
 { pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # The backup volume layout, the iCloud container root, and the mount
+  # check come from the centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+  backupPaths = paths.darwin.backups;
+
+  # ** Reached through the user's iCloudContainers symlink rather than
+  # ** the long Mobile Documents path. The vaults are read-only sources:
+  # ** this command never archives, deletes, or modifies them.
+  obsidianVaultsRoot = paths.darwin.icloud.obsidianVaults;
+
   obsidianBackup = pkgs.writeShellApplication {
     name = "obsidian-backup";
 
@@ -27,16 +38,16 @@ let
       # -----------------------------------------------------------------
       # BACKUP PATHS
       # -----------------------------------------------------------------
-      external_backup_volume="/Volumes/SystemBackup"
-      data_backups_root="$external_backup_volume/data-backups"
-      app_backups_root="$data_backups_root/app-backups"
+      external_backup_volume="${backupPaths.volume}"
+      data_backups_root="${backupPaths.data}"
+      app_backups_root="${backupPaths.apps}"
       backup_root="$app_backups_root/obsidian"
       extensions_dir="$backup_root/obsidian_extensions"
       themes_dir="$backup_root/obsidian_themes"
       preferences_dir="$backup_root/preferences"
 
       vault_names=("Obsidian_Hub" "Ven_MainVault")
-      vaults_root="/Users/ven/Library/Mobile Documents/iCloud~md~obsidian/Documents"
+      vaults_root="${obsidianVaultsRoot}"
       settings_files=(
         "core-plugins.json"
         "workspace.json"
@@ -74,7 +85,7 @@ let
       }
 
       ensure_volume_mounted() {
-        if [ ! -d "$external_backup_volume" ] || ! /sbin/mount | ${pkgs.gnugrep}/bin/grep -Fq " on $external_backup_volume "; then
+        if [ ! -d "$external_backup_volume" ] || ! ${paths.darwin.system.bin.mount} | ${pkgs.gnugrep}/bin/grep -Fq " on $external_backup_volume "; then
           fail "external backup volume is not mounted: $external_backup_volume"
         fi
       }

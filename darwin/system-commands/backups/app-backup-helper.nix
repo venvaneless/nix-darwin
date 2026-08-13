@@ -11,6 +11,18 @@
 { lib, pkgs }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # Option defaults, the lock directory, the mount check, and the
+  # LaunchAgent log directory come from the centralized path definitions.
+  # default.nix sets the same values explicitly; these defaults keep the
+  # option surface usable on its own.
+  paths = import ../../../options/paths.nix { };
+
+  userPaths = paths.darwin.home;
+  libraryPaths = paths.darwin.library;
+  backupPaths = paths.darwin.backups;
+  systemPaths = paths.darwin.system;
+
   # ---- GLOBAL APPLICATION BACKUP CONTROLS
   # Imported once by default.nix. Individual app modules keep their own
   # toggles below, while this switch controls every automatic app schedule.
@@ -19,61 +31,61 @@ let
       paths = {
         homeDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Users/ven";
+          default = userPaths.root;
           description = "Home directory used by macOS application backup modules.";
         };
 
         configDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Users/ven/.config";
+          default = userPaths.config;
           description = "Configuration root used by macOS application backup modules.";
         };
 
         applicationSupportDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Users/ven/Library/Application Support";
+          default = libraryPaths.applicationSupport;
           description = "macOS Application Support root used by application backup modules.";
         };
 
         preferencesDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Users/ven/Library/Preferences";
+          default = libraryPaths.preferences;
           description = "macOS Preferences root used by application backup modules.";
         };
 
         externalBackupVolume = lib.mkOption {
           type = lib.types.str;
-          default = "/Volumes/SystemBackup";
+          default = backupPaths.volume;
           description = "Mounted external backup volume root.";
         };
 
         downloadsDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Users/ven/Downloads";
+          default = userPaths.downloads;
           description = "Local staging root for application archives.";
         };
 
         dataBackupsDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Volumes/SystemBackup/data-backups";
+          default = backupPaths.data;
           description = "Shared data-backup root on the external backup volume.";
         };
 
         appBackupsDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Volumes/SystemBackup/data-backups/app-backups";
+          default = backupPaths.apps;
           description = "Application archive root on the external backup volume.";
         };
 
         browserBackupsDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Volumes/SystemBackup/data-backups/app-backups/browsers";
+          default = backupPaths.browsers;
           description = "Browser backup root on the external backup volume.";
         };
 
         terminalBackupsDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Volumes/SystemBackup/system/terminal";
+          default = backupPaths.terminal;
           description = "Terminal backup root on the external backup volume.";
         };
       };
@@ -130,7 +142,7 @@ let
     destinationDir ? null,
     externalBackupVolume ? config.services.appBackups.paths.externalBackupVolume,
     downloadsDir ? config.services.appBackups.paths.downloadsDirectory,
-    globalLockDir ? "/private/tmp/com.ven.app-backup.lock",
+    globalLockDir ? backupPaths.appLock,
     sourceMarkerFiles ? [ ],
     destinationMarkerFile ? null,
     sources ? [ ],
@@ -322,7 +334,7 @@ ${extraExcludes}
     }
 
     ensure_volume_mounted() {
-      if [ ! -d "$external_backup_volume" ] || ! /sbin/mount | ${pkgs.gnugrep}/bin/grep -Fq " on $external_backup_volume "; then
+      if [ ! -d "$external_backup_volume" ] || ! ${systemPaths.bin.mount} | ${pkgs.gnugrep}/bin/grep -Fq " on $external_backup_volume "; then
         fail "external backup volume is not mounted: $external_backup_volume"
       fi
     }
@@ -514,8 +526,8 @@ in
           Nice = 20;
           LowPriorityIO = true;
           LowPriorityBackgroundIO = true;
-          StandardOutPath = "/Users/ven/Library/Logs/${commandName}.log";
-          StandardErrorPath = "/Users/ven/Library/Logs/${commandName}-error.log";
+          StandardOutPath = "${libraryPaths.logs}/${commandName}.log";
+          StandardErrorPath = "${libraryPaths.logs}/${commandName}-error.log";
         };
       };
     })

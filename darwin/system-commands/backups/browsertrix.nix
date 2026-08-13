@@ -5,10 +5,11 @@
 
 let
   # ---- EDITABLE BACKUP ROOTS
+  # ** Destination and staging directories are registered under
+  # ** darwin.backups.perContainer in options/paths.nix and resolved by
+  # ** the helper from appSlug. Change them there, not here.
   backupPaths = config.services.containerBackups.paths;
   containerDirectory = backupPaths.containerDirectory;
-  destinationDir = "${backupPaths.containerBackupsDirectory}/browsertrix";
-  localStagingDir = "${backupPaths.downloadsDirectory}/backup-staging/browsertrix";
 
   # ---- EDITABLE BACKUP PATHS
   # These entries resolve from containerDirectory. Add as many Browsertrix
@@ -59,7 +60,7 @@ containerBackupHelper.mkContainerBackup {
   appSlug = "browsertrix";
   inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-  inherit sourceEntries destinationDir localStagingDir extraExcludePatterns;
+  inherit sourceEntries extraExcludePatterns;
   sourceRoot = containerDirectory;
   scheduledHour = 2;
   scheduledMinute = 0;

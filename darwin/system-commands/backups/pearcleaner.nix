@@ -4,19 +4,24 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # macOS Library roots come from the centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+  libraryPaths = paths.darwin.library;
+
   applicationSupportSources = [
     {
-      sourcePath = "/Users/ven/Library/Application Support/Pearcleaner";
+      sourcePath = "${libraryPaths.applicationSupport}/Pearcleaner";
       destinationPath = "Pearcleaner";
     }
   ];
   applicationPreferences = [
     {
-      sourcePath = "/Users/ven/Library/Preferences/com.alienator88.Pearcleaner.plist";
+      sourcePath = "${libraryPaths.preferences}/com.alienator88.Pearcleaner.plist";
       destinationPath = "app-pref/com.alienator88.Pearcleaner.plist";
     }
     {
-      sourcePath = "/Users/ven/Library/Preferences/group.com.alienator88.Pearcleaner.plist";
+      sourcePath = "${libraryPaths.preferences}/group.com.alienator88.Pearcleaner.plist";
       destinationPath = "app-pref/group.com.alienator88.Pearcleaner.plist";
     }
   ];

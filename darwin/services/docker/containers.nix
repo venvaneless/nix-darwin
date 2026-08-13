@@ -9,12 +9,16 @@
 { config, pkgs, lib, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # Container data root and the Docker Desktop CLI come from the
+  # centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+
   # Root directory for container data
-  containersRoot = "/Users/ven/.config/containers";
+  containersRoot = paths.darwin.docker.data.root;
 
   # Docker binary for Docker Desktop on macOS
-  dockerBin =
-    "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
+  dockerBin = paths.darwin.docker.cli;
 
   # Helper function to declare a Docker container
   mkContainer =

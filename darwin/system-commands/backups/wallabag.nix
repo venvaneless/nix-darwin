@@ -10,11 +10,14 @@
 }:
 
 let
-  # ---- EDITABLE BACKUP PATHS
-  backupPaths = config.services.containerBackups.paths;
-  wallabagSourceDir = "${backupPaths.containerDirectory}/wallabag";
-  backupDestinationDir = "${backupPaths.externalBackupVolume}/data-backups/container-backups/wallabag";
-  localStagingDir = "${backupPaths.downloadsDirectory}/backup-staging/wallabag";
+  # ---- BACKUP PATHS
+  # ** The source is the directory the Wallabag service itself declares,
+  # ** so the backup follows the service if that data directory moves.
+  #
+  # ** Destination and staging directories are registered under
+  # ** darwin.backups.perContainer in options/paths.nix and resolved by
+  # ** the helper from appSlug. Change them there, not here.
+  wallabagSourceDir = config.services.wallabag.dataDir;
 
   # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
   automatic = false;
@@ -40,8 +43,6 @@ containerBackupHelper.mkContainerBackup {
   inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild extraExcludePatterns;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   sourceDir = wallabagSourceDir;
-  destinationDir = backupDestinationDir;
-  inherit localStagingDir;
   scheduledHour = 5;
   scheduledMinute = 0;
 }

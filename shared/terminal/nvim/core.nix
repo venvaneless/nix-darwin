@@ -163,7 +163,10 @@ in
 
                 signcolumn = "yes",
 
-                wrap = false,
+                # Wraps text at word boundaries while preserving source lines.
+                wrap = true,
+                linebreak = true,
+                breakindent = true,
               },
             },
           },

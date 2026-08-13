@@ -10,8 +10,11 @@
 { lib, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  paths = import ../../../../options/paths.nix { };
+
   # Shared paths for Vaultwarden
-  dataDir = "/Users/ven/.config/containers/vaultwarden";
+  dataDir = paths.darwin.docker.data.vaultwarden;
 
   # Internal container port
   internalPort = 80;

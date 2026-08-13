@@ -7,8 +7,9 @@ let
   # ---- EDITABLE BACKUP ROOTS
   backupPaths = config.services.containerBackups.paths;
   containerDirectory = backupPaths.containerDirectory;
-  destinationDir = "${backupPaths.containerBackupsDirectory}/karakeep";
-  localStagingDir = "${backupPaths.downloadsDirectory}/backup-staging/karakeep";
+  # ** Destination and staging directories are registered under
+  # ** darwin.backups.perContainer in options/paths.nix and resolved by
+  # ** the helper from appSlug. Change them there, not here.
 
   # ---- EDITABLE BACKUP PATHS
   # These entries resolve from containerDirectory. Add every Karakeep data
@@ -61,7 +62,7 @@ containerBackupHelper.mkContainerBackup {
   appSlug = "karakeep";
   inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-  inherit sourceEntries destinationDir localStagingDir extraExcludePatterns;
+  inherit sourceEntries extraExcludePatterns;
   sourceRoot = containerDirectory;
   inherit scheduledHour scheduledMinute;
 }

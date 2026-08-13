@@ -32,12 +32,16 @@
 let
   cfg = config.ven.nginx;
 
+  # Shared path roots (/etc, /var/log, /var/run, /etc/ven/services).
+  paths = import ../../../options/paths.nix { };
+  systemPaths = paths.darwin.system;
+
   # ------------------------------------------------------- #
   # ------ PATHS ------ #
   # Config is store-backed and reached through /etc symlinks.
   # Runtime state must stay writable, so it lives outside the store.
   # ------------------------------------------------------- #
-  confRoot  = "/etc/${cfg.etcDir}";
+  confRoot  = "${systemPaths.etc}/${cfg.etcDir}";
   nginxConf = "${confRoot}/nginx.conf";
   appsDir   = "${confRoot}/apps-enabled";
 
@@ -49,7 +53,9 @@ let
   catBin   = "${pkgs.coreutils}/bin/cat";
 
   # Generation-stable wrapper path used by the launchd daemon.
-  runnerPath = "/etc/ven/services/run-nginx-custom";
+  runnerName   = "run-nginx-custom";
+  runnerTarget = "${systemPaths.venServicesTarget}/${runnerName}";
+  runnerPath   = "${systemPaths.venServices}/${runnerName}";
   # ------------------------------------------------------- #
 
 
@@ -247,13 +253,13 @@ in
     # ---- RUNTIME STATE
     logDir = lib.mkOption {
       type = lib.types.str;
-      default = "/var/log/nginx";
+      default = "${systemPaths.logs}/nginx";
       description = "Directory for nginx access and error logs.";
     };
 
     pidFile = lib.mkOption {
       type = lib.types.str;
-      default = "/var/run/nginx-custom.pid";
+      default = "${systemPaths.run}/nginx-custom.pid";
       description = "Pid file written by the nginx master process.";
     };
 
@@ -326,7 +332,7 @@ in
     environment.etc = etcEntries // {
 
       # Stable wrapper path for launchd (avoids /nix/store path churn)
-      "ven/services/run-nginx-custom".source = "${runner}/bin/run-nginx-custom";
+      "${runnerTarget}".source = "${runner}/bin/${runnerName}";
     };
 
     # Create the log directory only. The configuration itself is handled
@@ -398,8 +404,8 @@ in
 
         # launchd opens these files before starting ProgramArguments.
         # Therefore they must not live under /Users/ven during early boot.
-        StandardOutPath = "/var/log/com.ven.nginx-custom.out.log";
-        StandardErrorPath = "/var/log/com.ven.nginx-custom.err.log";
+        StandardOutPath = "${systemPaths.logs}/${cfg.label}.out.log";
+        StandardErrorPath = "${systemPaths.logs}/${cfg.label}.err.log";
       };
     };
   };

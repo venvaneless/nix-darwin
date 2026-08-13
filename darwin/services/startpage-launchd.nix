@@ -13,13 +13,25 @@
 { config, pkgs, lib, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # The iCloud content directory, the stable /etc runner location, and
+  # the launchd log directory come from the centralized path definitions.
+  paths = import ../../options/paths.nix { };
+
   # Define the application name for the Tartarus startpage service
   appName = "tartarus-startpage";
   # Tartarus is a personal startpage that provides quick access to frequently used links, tools, and information. It is designed to be lightweight and customizable, allowing users to create a personalized dashboard for their daily tasks and activities.
 
   # Path to the local startpage directory (must contain index.html)
-  startpageDir =
-    "/Users/ven/Library/Mobile Documents/com~apple~CloudDocs/Documents/system/services/tartarus-startpage/";
+  # ** Lives in iCloud Drive and is only ever read: the runner exits
+  # ** rather than creating anything if the directory is unavailable.
+  startpageDir = paths.darwin.icloud.services.tartarusStartpage;
+
+  # Stable /etc location of the generated runner
+  # ** environment.etc keys are relative to /etc; launchd needs the
+  # ** absolute form of the same file.
+  runnerEtcPath = "${paths.darwin.system.venServicesTarget}/run-${appName}";
+  runnerAbsolutePath = "${paths.darwin.system.venServices}/run-${appName}";
 
   # Network settings for the local server
   host = "127.0.0.1";
@@ -67,7 +79,7 @@ in
   ];
 
   # Create a stable path for the runner script so the LaunchAgent does not point directly to a changing Nix store path
-  environment.etc."ven/services/run-tartarus-startpage".source =
+  environment.etc."${runnerEtcPath}".source =
     "${runner}/bin/run-${appName}";
 
   # Define the LaunchAgent for the Tartarus startpage service
@@ -77,7 +89,7 @@ in
       Label = "com.ven.tartarus-startpage";
 
       # Command to execute the runner script through its stable path
-      ProgramArguments = [ "/etc/ven/services/run-tartarus-startpage" ];
+      ProgramArguments = [ runnerAbsolutePath ];
 
       # Run the service at load and keep it alive
       RunAtLoad = true;
@@ -87,8 +99,8 @@ in
       ThrottleInterval = 10;
 
       # Paths to log files for standard output and error
-      StandardOutPath = "/tmp/com.ven.tartarus-startpage.out.log";
-      StandardErrorPath = "/tmp/com.ven.tartarus-startpage.err.log";
+      StandardOutPath = "${paths.darwin.system.tmp}/com.ven.${appName}.out.log";
+      StandardErrorPath = "${paths.darwin.system.tmp}/com.ven.${appName}.err.log";
     };
   };
 }

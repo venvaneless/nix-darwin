@@ -17,11 +17,15 @@
 }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # Container data root, the Docker Desktop CLI, and the launchd log
+  # location come from the centralized path definitions.
+  paths = import ../../../../options/paths.nix { };
 
   # Application name for the Vaultwarden container
   appName = "vaultwarden";
 
-  dataDir = config.ven.vaultwarden.dataDir or "/Users/ven/.config/containers/vaultwarden";
+  dataDir = config.ven.vaultwarden.dataDir or paths.darwin.docker.data.vaultwarden;
   # Host port for Vaultwarden container (nginx will talk to this)
   hostPort = config.ven.vaultwarden.hostPort or 8080;
 
@@ -32,10 +36,16 @@ let
   envVars = config.ven.vaultwarden.envVars or [ ];
 
   # User-specific directory for container data
-  containersRoot = "/Users/ven/.config/containers";
+  containersRoot = paths.darwin.docker.data.root;
 
   # Docker binary path for Docker Desktop on macOS
-  dockerBin = "/Applications/Programming/Docker.app/Contents/Resources/bin/docker";
+  dockerBin = paths.darwin.docker.cli;
+
+  # Stable /etc location of the generated runner
+  # ** environment.etc keys are relative to /etc; launchd needs the
+  # ** absolute form of the same file.
+  runnerEtcPath = "${paths.darwin.system.venServicesTarget}/run-${appName}";
+  runnerAbsolutePath = "${paths.darwin.system.venServices}/run-${appName}";
 
   # Concatenate environment variables into Docker run arguments
   envArgs = lib.concatStringsSep " " (map (v: "-e ${lib.escapeShellArg v}") envVars);
@@ -145,7 +155,9 @@ in
   ];
 
   # Stable runner path for launchd.
-  environment.etc."ven/services/run-vaultwarden".source = "${runner}/bin/run-${appName}";
+  # ** environment.etc targets are resolved below /etc, so the relative
+  # ** form of the shared services directory is used here.
+  environment.etc."${runnerEtcPath}".source = "${runner}/bin/run-${appName}";
 
   # Activation script to ensure data directory exists before starting the service
   system.activationScripts.extraActivation.text = lib.mkAfter ''
@@ -159,7 +171,7 @@ in
       Label = "com.ven.vaultwarden";
 
       ProgramArguments = [
-        "/etc/ven/services/run-vaultwarden"
+        runnerAbsolutePath
       ];
 
       # Try once when the user logs in.
@@ -181,8 +193,8 @@ in
 
       ProcessType = "Background";
 
-      StandardOutPath = "/tmp/com.ven.vaultwarden.out.log";
-      StandardErrorPath = "/tmp/com.ven.vaultwarden.err.log";
+      StandardOutPath = "${paths.darwin.system.tmp}/com.ven.vaultwarden.out.log";
+      StandardErrorPath = "${paths.darwin.system.tmp}/com.ven.vaultwarden.err.log";
     };
   };
 }

@@ -10,6 +10,15 @@
 { lib, pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # Source roots and the external backup volume layout come from the
+  # centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+
+  userPaths = paths.darwin.home;
+  libraryPaths = paths.darwin.library;
+  backupPaths = paths.darwin.backups;
+
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
 in
@@ -52,16 +61,16 @@ in
     # matching individual app module's automatic = true setting.
     services.appBackups = {
       paths = {
-        homeDirectory = "/Users/ven";
-        configDirectory = "/Users/ven/.config";
-        applicationSupportDirectory = "/Users/ven/Library/Application Support";
-        preferencesDirectory = "/Users/ven/Library/Preferences";
-        externalBackupVolume = "/Volumes/SystemBackup";
-        downloadsDirectory = "/Users/ven/Downloads";
-        dataBackupsDirectory = "/Volumes/SystemBackup/data-backups";
-        appBackupsDirectory = "/Volumes/SystemBackup/data-backups/app-backups";
-        browserBackupsDirectory = "/Volumes/SystemBackup/data-backups/app-backups/browsers";
-        terminalBackupsDirectory = "/Volumes/SystemBackup/system/terminal";
+        homeDirectory = userPaths.root;
+        configDirectory = userPaths.config;
+        applicationSupportDirectory = libraryPaths.applicationSupport;
+        preferencesDirectory = libraryPaths.preferences;
+        externalBackupVolume = backupPaths.volume;
+        downloadsDirectory = userPaths.downloads;
+        dataBackupsDirectory = backupPaths.data;
+        appBackupsDirectory = backupPaths.apps;
+        browserBackupsDirectory = backupPaths.browsers;
+        terminalBackupsDirectory = backupPaths.terminal;
       };
       enabled = true;
       automaticEnabled = false;
@@ -80,13 +89,14 @@ in
     # individual container module's automatic = true setting.
     services.containerBackups = {
       paths = {
-        homeDirectory = "/Users/ven";
-        configDirectory = "/Users/ven/.config";
-        containerDirectory = "/Users/ven/.config/containers";
-        externalBackupVolume = "/Volumes/SystemBackup";
-        downloadsDirectory = "/Users/ven/Downloads";
-        dataBackupsDirectory = "/Volumes/SystemBackup/data-backups";
-        containerBackupsDirectory = "/Volumes/SystemBackup/data-backups/container-backups";
+        homeDirectory = userPaths.root;
+        configDirectory = userPaths.config;
+        containerDirectory = userPaths.containers;
+        externalBackupVolume = backupPaths.volume;
+        downloadsDirectory = userPaths.downloads;
+        stagingDirectory = backupPaths.staging;
+        dataBackupsDirectory = backupPaths.data;
+        containerBackupsDirectory = backupPaths.containers;
       };
       enabled = true;
       automaticEnabled = false;

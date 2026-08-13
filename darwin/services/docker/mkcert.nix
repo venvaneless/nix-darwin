@@ -13,14 +13,16 @@
 { config, pkgs, lib, ... }:
 
 let
-  # User home directory
-  userName = "ven";
+  # ---- SHARED PATHS ---- #
+  # The CA root is shared with the Vaultwarden certificate modules, so
+  # it is defined once in the centralized path definitions.
+  paths = import ../../../options/paths.nix { };
 
-  # mkcert CA root directory
-  userHome = config.users.users.${userName}.home;
+  # User that must own the generated CA files
+  userName = paths.user.name;
 
   # mkcert CA root directory for storing rootCA.pem and rootCA-key.pem
-  caroot   = "${userHome}/.config/mkcert";
+  caroot   = paths.darwin.home.mkcert;
 
   # Helper script to ensure mkcert CA is installed and ownership is correct
   mkcertScript = pkgs.writeShellScriptBin "mkcert-install" ''

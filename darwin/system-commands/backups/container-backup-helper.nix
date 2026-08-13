@@ -11,6 +11,32 @@
 { lib, pkgs }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # Option defaults, the lock directories, the mount check, and the
+  # LaunchAgent log directory come from the centralized path definitions.
+  # default.nix sets the same values explicitly; these defaults keep the
+  # option surface usable on its own.
+  paths = import ../../../options/paths.nix { };
+
+  userPaths = paths.darwin.home;
+  libraryPaths = paths.darwin.library;
+  backupPaths = paths.darwin.backups;
+  systemPaths = paths.darwin.system;
+
+  # ---- PER-CONTAINER LOCATION LOOKUP
+  # Resolves one container's backup locations from the registry in
+  # options/paths.nix. Kept as a helper so an unregistered container
+  # fails with a message that says what to do, rather than with a bare
+  # "attribute missing" error.
+  containerLocations = config: appSlug:
+    config.services.containerBackups.paths.perContainer.${appSlug}
+      or (throw ''
+        container backup "${appSlug}" has no registered backup locations.
+
+        Add an entry for it under darwin.backups.perContainer in
+        options/paths.nix, with a destination and a staging directory.
+      '');
+
   # ---- GLOBAL CONTAINER BACKUP CONTROLS
   # Imported once by default.nix. Per-container modules retain their own
   # schedule, interval, CPU cap, and rebuild toggles.
@@ -19,44 +45,73 @@ let
       paths = {
         homeDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Users/ven";
+          default = userPaths.root;
           description = "Home directory used by macOS container backup modules.";
         };
 
         configDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Users/ven/.config";
+          default = userPaths.config;
           description = "Configuration root used by macOS container backup modules.";
         };
 
         containerDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Users/ven/.config/containers";
+          default = userPaths.containers;
           description = "Container-data root used by macOS container backup modules.";
         };
 
         externalBackupVolume = lib.mkOption {
           type = lib.types.str;
-          default = "/Volumes/SystemBackup";
+          default = backupPaths.volume;
           description = "Mounted external backup volume root.";
         };
 
         dataBackupsDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Volumes/SystemBackup/data-backups";
+          default = backupPaths.data;
           description = "Shared data-backup root on the external backup volume.";
         };
 
         containerBackupsDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Volumes/SystemBackup/data-backups/container-backups";
+          default = backupPaths.containers;
           description = "Container archive root on the external backup volume.";
         };
 
         downloadsDirectory = lib.mkOption {
           type = lib.types.str;
-          default = "/Users/ven/Downloads";
-          description = "Local staging root for container archives.";
+          default = userPaths.downloads;
+          description = "Downloads directory used while container archives are built.";
+        };
+
+        stagingDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = backupPaths.staging;
+          description = "Local staging root holding one working directory per container backup.";
+        };
+
+        perContainer = lib.mkOption {
+          type = lib.types.attrsOf (lib.types.submodule {
+            options = {
+              destination = lib.mkOption {
+                type = lib.types.str;
+                description = "Directory on the external volume holding this container's archives.";
+              };
+
+              staging = lib.mkOption {
+                type = lib.types.str;
+                description = "Local working directory used while this container's archive is built.";
+              };
+            };
+          });
+          default = backupPaths.perContainer;
+          description = ''
+            Backup locations for each container, keyed by its slug.
+
+            Defined in options/paths.nix. A container backup module never
+            composes these paths itself: the helper looks them up by slug.
+          '';
         };
       };
 
@@ -116,13 +171,13 @@ let
     sourceRoot ? config.services.containerBackups.paths.containerDirectory,
     sourceEntries ? [ ],
     containerConfig ? [ ],
-    destinationDir ? "${config.services.containerBackups.paths.containerBackupsDirectory}/${appSlug}",
+    destinationDir ? (containerLocations config appSlug).destination,
     externalBackupVolume ? config.services.containerBackups.paths.externalBackupVolume,
-    localStagingDir ? "${config.services.containerBackups.paths.downloadsDirectory}/backup-staging/${appSlug}",
+    localStagingDir ? (containerLocations config appSlug).staging,
     sourceMarkerFile ? null,
     destinationMarkerFile ? null,
-    lockDir ? "/private/tmp/com.ven.${appSlug}-backup.lock",
-    globalLockDir ? "/private/tmp/com.ven.backup-archive.lock",
+    lockDir ? "${backupPaths.lockRoot}/com.ven.${appSlug}-backup.lock",
+    globalLockDir ? backupPaths.archiveLock,
     scheduledHour ? 4,
     scheduledMinute ? 0,
     prepareArchive ? "",
@@ -169,7 +224,7 @@ let
   '') resolvedSourceEntries;
   prepareSourceEntries = lib.optionalString (resolvedSourceEntries != [ ]) ''
       staging_dir="$(
-        ${pkgs.coreutils}/bin/mktemp -d "/private/tmp/${appSlug}-backup.XXXXXX"
+        ${pkgs.coreutils}/bin/mktemp -d "${backupPaths.lockRoot}/${appSlug}-backup.XXXXXX"
       )"
       archive_source_parent="$staging_dir"
       archive_source_name="$app_slug"
@@ -306,7 +361,7 @@ ${extraExcludes}
         fail "external backup volume is not available at: $external_backup_volume"
       fi
 
-      if ! /sbin/mount | ${pkgs.gnugrep}/bin/grep -Fq \
+      if ! ${systemPaths.bin.mount} | ${pkgs.gnugrep}/bin/grep -Fq \
           " on $external_backup_volume "; then
         fail "external backup volume is not mounted: $external_backup_volume"
       fi
@@ -617,8 +672,8 @@ in
           Nice = 20;
           LowPriorityIO = true;
           LowPriorityBackgroundIO = true;
-          StandardOutPath = "/Users/ven/Library/Logs/${commandName}.log";
-          StandardErrorPath = "/Users/ven/Library/Logs/${commandName}-error.log";
+          StandardOutPath = "${libraryPaths.logs}/${commandName}.log";
+          StandardErrorPath = "${libraryPaths.logs}/${commandName}-error.log";
         };
       };
     })

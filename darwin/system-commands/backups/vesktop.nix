@@ -4,15 +4,20 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # macOS Library roots come from the centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+  libraryPaths = paths.darwin.library;
+
   applicationSupportSources = [
     {
-      sourcePath = "/Users/ven/Library/Application Support/vesktop";
+      sourcePath = "${libraryPaths.applicationSupport}/vesktop";
       destinationPath = "vesktop";
     }
   ];
   applicationPreferences = [
     {
-      sourcePath = "/Users/ven/Library/Preferences/dev.vencord.vesktop.plist";
+      sourcePath = "${libraryPaths.preferences}/dev.vencord.vesktop.plist";
       destinationPath = "dev.vencord.vesktop.plist";
     }
   ];

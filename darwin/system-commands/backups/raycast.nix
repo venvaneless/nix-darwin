@@ -4,6 +4,11 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # macOS Library roots come from the centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+  libraryPaths = paths.darwin.library;
+
   # ---- EDITABLE BACKUP PATHS
   applicationSupportEntries = [
     {
@@ -59,8 +64,8 @@ let
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
     requiredAny = [ [
-      "/Users/ven/Library/Application Support/com.raycast.macos"
-      "/Users/ven/Library/Application Support/com.raycast-x.macos"
+      "${libraryPaths.applicationSupport}/com.raycast.macos"
+      "${libraryPaths.applicationSupport}/com.raycast-x.macos"
     ] ];
   };
 in

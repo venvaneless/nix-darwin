@@ -3,17 +3,18 @@
 { config, pkgs, lib, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # Owner, container data root, Docker Desktop CLI directory, the
+  # stable /etc runner location, and the macOS base binaries all come
+  # from the centralized path definitions.
+  paths = import ../../../options/paths.nix { };
+
   # Main macOS user that owns the Wallabag data directories
-  userName = "ven";
-
-  # Home directory of the main macOS user
-  userHome = "/Users/${userName}";
-
-  # Root directory for persistent Docker container data
-  containersDir = "${userHome}/.config/containers";
+  userName = paths.user.name;
 
   # Persistent data directory used specifically by Wallabag
-  wallabagDataDir = "${containersDir}/wallabag";
+  # ** Composed in paths.nix from the shared container data root.
+  wallabagDataDir = paths.darwin.docker.data.wallabag;
 
   cfg = config.services.wallabag;
 
@@ -23,7 +24,19 @@ let
   serviceLabel = "com.${userName}.${appName}";
 
   # Relative /etc path used for the stable Wallabag runner
-  runnerEtcPath = "${userName}/services/run-${appName}";
+  # ** environment.etc targets are resolved below /etc, so this stays relative.
+  runnerEtcPath = "${paths.darwin.system.venServicesTarget}/run-${appName}";
+
+  # Absolute path to the same runner, used by the launchd job
+  runnerAbsolutePath = "${paths.darwin.system.venServices}/run-${appName}";
+
+  # PATH used by the generated runner
+  # ** Docker Desktop's credential helpers are not on launchd's default
+  # ** PATH, so its executable directory is prepended to the shared
+  # ** system fallback list.
+  runnerPath = builtins.concatStringsSep ":" (
+    [ paths.darwin.docker.binDir ] ++ paths.darwin.system.launchdPath
+  );
 
 
   # Docker Compose file for Wallabag service
@@ -49,7 +62,7 @@ let
 
     # Docker Desktop credential helpers are not included in launchd's
     # default PATH, so add Docker Desktop's executable directory.
-    export PATH="/Applications/Programming/Docker.app/Contents/Resources/bin:/run/current-system/sw/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    export PATH="${runnerPath}"
 
     # Ensure that the Wallabag data directory and its subdirectories exist
     mkdir -p "${cfg.dataDir}/data"
@@ -186,19 +199,19 @@ in
       # ** '-g staff': Set the group of the created directories to 'staff'
 
       # Path to the Wallabag data directory
-      /usr/bin/install -d -m 0775 -o ${userName} -g staff "${cfg.dataDir}"
+      ${paths.darwin.system.bin.install} -d -m 0775 -o ${userName} -g staff "${cfg.dataDir}"
 
       # Wallabag's persistent data storage directory
-      /usr/bin/install -d -m 0775 -o ${userName} -g staff "${cfg.dataDir}/data"
+      ${paths.darwin.system.bin.install} -d -m 0775 -o ${userName} -g staff "${cfg.dataDir}/data"
 
       # Wallabag's images storage directory
-      /usr/bin/install -d -m 0775 -o ${userName} -g staff "${cfg.dataDir}/images"
+      ${paths.darwin.system.bin.install} -d -m 0775 -o ${userName} -g staff "${cfg.dataDir}/images"
 
       # Wallabag service logs directory
-      /usr/bin/install -d -m 0775 -o ${userName} -g staff "${cfg.dataDir}/logs"
+      ${paths.darwin.system.bin.install} -d -m 0775 -o ${userName} -g staff "${cfg.dataDir}/logs"
 
       # Set the correct permissions for the Wallabag data directory and its contents
-      /usr/sbin/chown -R ${userName}:staff "${cfg.dataDir}" || true
+      ${paths.darwin.system.bin.chown} -R ${userName}:staff "${cfg.dataDir}" || true
 
       # ---- NOTE: FLAGS AND EXPLANATION OF THE `chown` COMMAND ---- #
       # ** `chown`: Change the ownership of the specified directory and its contents to the user 'ven' and group 'staff'
@@ -230,7 +243,7 @@ in
         Label = serviceLabel;
 
         # Command to execute the Wallabag runner script
-        ProgramArguments = [ "/etc/${runnerEtcPath}" ];
+        ProgramArguments = [ runnerAbsolutePath ];
 
         # Run service at load, start automatically on system boot or user login
         RunAtLoad = true;
