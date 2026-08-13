@@ -7,7 +7,10 @@
 # - Ensures mkcert CA is installed into:
 #       ~/.config/mkcert
 # - Fixes ownership so files are owned by "ven".
-# - Logs every step during darwin activation.
+#
+# Activation output:
+# - Silent when the CA already exists and is owned correctly.
+# - Logs only when it creates the CA or repairs ownership, and on error.
 # =====================================================================
 
 { config, pkgs, lib, ... }:
@@ -30,10 +33,22 @@ let
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # Print messages for debugging
-    echo ">>> [mkcert] START mkcert-install"
-    echo ">>> [mkcert] CAROOT       = ${caroot}"
-    echo ">>> [mkcert] mkcert bin   = ${pkgs.mkcert}/bin/mkcert"
+    # ---- NOTHING TO DO ---- #
+    # Both halves of the CA are present and the directory already
+    # belongs to the user, so there is no work and nothing to report.
+    #
+    # ** Ownership is part of the check on purpose. Skipping only on
+    # ** file existence would stop repairing a CAROOT that ended up
+    # ** owned by root, which is what made it unreadable before.
+    if [ -f "${caroot}/rootCA.pem" ] \
+      && [ -f "${caroot}/rootCA-key.pem" ] \
+      && [ "$(${paths.darwin.system.bin.stat} -f '%Su' "${caroot}" 2>/dev/null || true)" = "${userName}" ]; then
+      exit 0
+    fi
+
+    # ---- WORK IS NEEDED ---- #
+    # From here on every step reports, because something changed.
+    echo ">>> [mkcert] CAROOT = ${caroot}"
 
     # Ensure CAROOT directory exists
     mkdir -p "${caroot}"
@@ -51,8 +66,6 @@ let
         exit 1
       }
       echo ">>> [mkcert] mkcert -install completed"
-    else
-      echo ">>> [mkcert] Existing rootCA.pem found at ${caroot}/rootCA.pem"
     fi
 
     # Fix ownership so you can inspect / delete certs without sudo
@@ -71,10 +84,9 @@ in
   # Run mkcert-install on every darwin activation
   system.activationScripts.extraActivation.text = lib.mkAfter ''
 
-  	# Print message indicating that mkcert-install is being run
-    echo ">>> Running mkcert-install (global)"
-
-    # Run the mkcert-install script to ensure mkcert CA is installed and ownership is correct
+    # Run the mkcert-install script to ensure mkcert CA is installed and ownership is correct.
+    # ** The script is silent when there is nothing to do, so no banner
+    # ** is printed here either.
     ${mkcertScript}/bin/mkcert-install || echo "!!! mkcert-install failed (continuing)"
   '';
 }

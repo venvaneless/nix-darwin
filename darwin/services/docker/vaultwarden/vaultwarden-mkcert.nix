@@ -16,8 +16,11 @@
 # 
 # - Exports mkcert CA root as:
 #       ~/.config/ssl/vaultwarden/rootCA.crt
-# 
-# - Logs all actions during activation.
+#
+# Activation output:
+# - Silent when the cert, key, and CA copy are all present and owned
+#   correctly.
+# - Logs only when it issues or repairs something, and on error.
 # =====================================================================
 
 { config, pkgs, lib, ... }:
@@ -47,10 +50,24 @@ let
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # Print a message to indicate what this script is doing
-    echo ">>> [vw-cert] START: Vaultwarden SSL setup"
-    echo ">>> [vw-cert]   CAROOT:    ${caroot}"
-    echo ">>> [vw-cert]   CERT DIR:  ${certDir}"
+    # ---- NOTHING TO DO ---- #
+    # Server cert, key, and the CA copy for phones are all in place and
+    # the directory belongs to the user, so there is no work to report.
+    #
+    # ** Ownership is part of the check on purpose: a cert directory
+    # ** left owned by root is exactly the state this script exists to
+    # ** repair, and skipping on file existence alone would hide it.
+    if [ -f "${certPem}" ] \
+      && [ -f "${keyPem}" ] \
+      && [ -f "${caCrt}" ] \
+      && [ "$(${paths.darwin.system.bin.stat} -f '%Su' "${certDir}" 2>/dev/null || true)" = "${userName}" ]; then
+      exit 0
+    fi
+
+    # ---- WORK IS NEEDED ---- #
+    # From here on every step reports, because something changed.
+    echo ">>> [vw-cert] CAROOT:   ${caroot}"
+    echo ">>> [vw-cert] CERT DIR: ${certDir}"
 
     # Ensure certDir exists
     mkdir -p "${certDir}"
@@ -73,8 +90,6 @@ let
           exit 1
         }
       echo ">>> [vw-cert] New server cert + key created"
-    else
-      echo ">>> [vw-cert] Existing cert + key found, reusing"
     fi
 
     # Export mkcert CA → rootCA.crt for phones
@@ -108,7 +123,8 @@ in
 
   # Run it automatically on every activation (same pattern as cleanup + rsync)
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> Running vaultwarden-cert-setup"
+    # ** The script is silent when there is nothing to do, so no banner
+    # ** is printed here either.
     ${vwCertScript}/bin/vaultwarden-cert-setup || echo "!!! vaultwarden-cert-setup failed (continuing)"
   '';
 }

@@ -71,6 +71,10 @@ let
       extensions = "${root}/extensions";
       sharedData = "${root}/shared-data";
 
+      # ** The tunnel and serve-web CLI keeps its metadata separately
+      # ** and ignores VSCODE_PORTABLE, so it needs its own variable.
+      cli = "${root}/cli";
+
       settings = "${userData}/User/settings.json";
       keybindings = "${userData}/User/keybindings.json";
       snippets = "${userData}/User/snippets";
@@ -358,6 +362,10 @@ in
       mount = "/sbin/mount";
       chmod = "/bin/chmod";
       rm = "/bin/rm";
+
+      # BSD stat. The activation PATH is minimal, and its format flags
+      # differ from the coreutils build, so it is addressed explicitly.
+      stat = "/usr/bin/stat";
 
       # Clears the immutable and system-immutable file flags.
       chflags = "/bin/chflags";

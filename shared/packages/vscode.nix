@@ -8,8 +8,9 @@
 # .config/vscode.
 #
 # VS Code resolves VSCODE_PORTABLE before VSCODE_APPDATA,
-# --user-data-dir, and its platform default, so one variable moves user
-# data, extensions, and argv.json together.
+# --user-data-dir, and its platform default, so a single variable moves
+# the editor's own state. The tunnel CLI is the one part that ignores
+# it and needs a second variable of its own.
 #
 # ** Nothing here makes extensions immutable. The Marketplace still
 # ** installs normally, only into the relocated extensions directory.
@@ -27,6 +28,38 @@ let
   vscodePaths = (paths.forPlatform platforms.isDarwin).vscode;
 
   appName = "Visual Studio Code.app";
+
+  # ------------------------------------------------------------
+  # ------ RELOCATED STATE ------ #
+  # ------------------------------------------------------------
+  # Two variables are needed, because they cover different processes.
+  #
+  #   VSCODE_PORTABLE      the editor itself: user data, extensions,
+  #                        argv.json, and the shared-data directory
+  #                        that otherwise lands in ~/.vscode-shared
+  #
+  #   VSCODE_CLI_DATA_DIR  the tunnel and serve-web CLI, which stores
+  #                        its metadata in ~/.vscode/cli and does not
+  #                        consult VSCODE_PORTABLE at all
+  #
+  # ** Together these empty ~/.vscode completely. They do not affect
+  # ** directories that extensions create for themselves in $HOME:
+  # ** those come from the extension calling the operating system's
+  # ** home-directory lookup, which no VS Code setting intercepts.
+  #
+  # ** The root directory has to exist for any of this to take effect.
+  # ** VS Code's portable bootstrap tests the path and, when it is
+  # ** missing, deletes VSCODE_PORTABLE from its own environment and
+  # ** falls back to the standard locations. That makes activation
+  # ** safe before the data has been migrated, but it also means an
+  # ** empty root silently produces a first-run editor, so the
+  # ** directory should be created by the migration and not by this
+  # ** module.
+
+  vscodeEnvironment = {
+    VSCODE_PORTABLE = vscodePaths.root;
+    VSCODE_CLI_DATA_DIR = vscodePaths.cli;
+  };
 
   # ------------------------------------------------------------
   # ------ GUI SESSION ENVIRONMENT ------ #
@@ -47,6 +80,11 @@ let
   # ** launchctl setenv would instead persist in the user's launchd
   # ** domain long after the configuration stopped setting it.
 
+  renderPlistEntry = name: value: "<key>${name}</key><string>${value}</string>";
+
+  plistEntries =
+    lib.concatStrings (lib.mapAttrsToList renderPlistEntry vscodeEnvironment);
+
   vscodePackage =
     if platforms.isDarwin then
       pkgs.vscode.overrideAttrs (previous: {
@@ -54,7 +92,7 @@ let
           substituteInPlace "$out/Applications/${appName}/Contents/Info.plist" \
             --replace-fail \
               '<key>MallocNanoZone</key>' \
-              '<key>VSCODE_PORTABLE</key><string>${vscodePaths.root}</string><key>MallocNanoZone</key>'
+              '${plistEntries}<key>MallocNanoZone</key>'
         '';
       })
     else
@@ -87,6 +125,6 @@ lib.mkMerge [
   # Linux this is the only mechanism needed; macOS additionally relies
   # on the LSEnvironment patch above.
   {
-    environment.variables.VSCODE_PORTABLE = vscodePaths.root;
+    environment.variables = vscodeEnvironment;
   }
 ]

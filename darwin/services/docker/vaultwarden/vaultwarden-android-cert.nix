@@ -34,15 +34,32 @@ let
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # Print a message to indicate what this script is doing
-    echo ">>> [vw-android] START: Exporting mkcert CA for Android"
-    echo ">>> [vw-android]   CAROOT: ${caroot}"
-
     # We ONLY read rootCA.pem. If it does not exist, we do nothing.
+    #
+    # ** This one still reports, because a missing CA is an anomaly
+    # ** rather than the normal steady state.
     if [ ! -f "${caroot}/rootCA.pem" ]; then
       echo "!!! [vw-android] ${caroot}/rootCA.pem not found; nothing to export"
       exit 0
     fi
+
+    # ---- NOTHING TO DO ---- #
+    # Both exports exist and neither is older than the CA they were
+    # taken from, so they are current and there is nothing to report.
+    #
+    # ** The age comparison matters: after `mkcert -install` replaces
+    # ** the CA, the old exports would still exist and a plain presence
+    # ** check would leave phones trusting a CA that is gone.
+    if [ -f "${androidPemCrt}" ] \
+      && [ -f "${androidDerCrt}" ] \
+      && [ ! "${caroot}/rootCA.pem" -nt "${androidPemCrt}" ] \
+      && [ ! "${caroot}/rootCA.pem" -nt "${androidDerCrt}" ]; then
+      exit 0
+    fi
+
+    # ---- WORK IS NEEDED ---- #
+    # From here on every step reports, because something changed.
+    echo ">>> [vw-android] CAROOT: ${caroot}"
 
     # 1) Plain PEM copy with .crt extension (many Androids accept this)
     echo ">>> [vw-android] Writing PEM copy -> ${androidPemCrt}"
@@ -86,7 +103,8 @@ in
   # Run automatically at activation.
   # DOES NOT call mkcert, DOES NOT modify nginx, ONLY exports extra files.
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo ">>> Running vaultwarden-android-cert-export"
+    # ** The script is silent when the exports are already current, so
+    # ** no banner is printed here either.
     ${androidExportScript}/bin/vaultwarden-android-cert-export || echo "!!! vaultwarden-android-cert-export failed (continuing)"
   '';
 }
