@@ -18,13 +18,19 @@
     # Btop settings and the theme selected in btop.nix
     ./btop/btop.nix
 
-    ./delta.nix
+    # Delta settings and the theme selected in delta.nix
+    ./delta/delta.nix
 
     # Eza settings; its themes are imported from eza.nix
     ./eza/eza.nix
 
     ./fastfetch/fastfetch.nix
+
+    # Fd settings, its ignore file, and the theme selected in fd.nix
+    ./fd/fd.nix
+
     ./fzf/fzf.nix
+    ./gh.nix
 
     # Micro settings and the theme selected in micro.nix
     ./micro/micro.nix

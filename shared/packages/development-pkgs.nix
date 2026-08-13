@@ -79,7 +79,10 @@ let
 
     # ---- Development and document tools
     bitwardenCli = sharedPackage pkgs.bitwarden-cli;
-    delta = sharedPackage pkgs.delta;
+
+    # delta is installed by shared/terminal/cli-tuis/delta/delta.nix, which
+    # also owns its git integration and theme.
+
     docker = sharedPackage pkgs.docker_29;
     dockerCompose = sharedPackage pkgs.docker-compose;
     direnv = sharedPackage pkgs.direnv;
@@ -88,7 +91,8 @@ let
     pandoc = sharedPackage pkgs.pandoc;
 
     # ---- Git tools
-    gh = sharedPackage pkgs.gh;
+    # gh is installed by shared/terminal/cli-tuis/gh.nix, which also owns
+    # its config.yml and git credential helper.
     gitCrypt = sharedPackage pkgs.git-crypt;
     gitFilterRepo = sharedPackage pkgs.git-filter-repo;
     gitLfs = sharedPackage pkgs.git-lfs;

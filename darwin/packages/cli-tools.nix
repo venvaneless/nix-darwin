@@ -28,7 +28,10 @@ let
     };
 
     bashInteractive = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.bashInteractive; };
-    fd = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.fd; };
+
+    # fd is installed cross-platform by shared/terminal/cli-tuis/fd/fd.nix,
+    # which also owns its ignore file and colours.
+
     ffmpegthumbnailer = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.ffmpegthumbnailer; };
     fish = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.fish; };
     gawk = { enable = true; installOn = { darwin = true; linux = false; }; package = pkgs.gawk; };

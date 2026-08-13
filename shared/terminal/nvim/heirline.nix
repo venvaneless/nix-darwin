@@ -271,21 +271,35 @@
               }
             )
 
-            local lsp = segment(
-              function()
-                local clients = vim.lsp.get_clients({ bufnr = 0 })
+            -- Copilot registers a real LSP client, but it is a completion
+            -- source rather than a language server, so it is hidden here.
+            local ignored_lsp_clients = {
+              copilot = true,
+              ["copilot-language-server"] = true,
+              ["GitHub Copilot"] = true,
+            }
 
-                if #clients == 0 then
-                  return "No LSP"
-                end
+            local function attached_lsp_clients()
+              local names = {}
 
-                local names = {}
-
-                for _, client in ipairs(clients) do
+              for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
+                if not ignored_lsp_clients[client.name] then
                   table.insert(names, client.name)
                 end
+              end
 
-                table.sort(names)
+              table.sort(names)
+
+              return names
+            end
+
+            local lsp = segment(
+              function()
+                local names = attached_lsp_clients()
+
+                if #names == 0 then
+                  return "No LSP"
+                end
 
                 if #names == 1 then
                   return names[1]
@@ -296,21 +310,21 @@
               "",
               colors.bg0,
               colors.green,
-              colors.bg0,
+              colors.bg1,
               {
                 name = "heirline_lsp_click",
                 callback = function()
-                  local clients = vim.lsp.get_clients({ bufnr = 0 })
+                  local names = attached_lsp_clients()
 
-                  if #clients == 0 then
+                  if #names == 0 then
                     vim.notify("No LSP client is attached to this buffer")
                     return
                   end
 
                   local lines = { "Active LSP clients:" }
 
-                  for _, client in ipairs(clients) do
-                    table.insert(lines, "• " .. client.name)
+                  for _, name in ipairs(names) do
+                    table.insert(lines, "• " .. name)
                   end
 
                   vim.notify(table.concat(lines, "\n"))
@@ -322,6 +336,132 @@
               "LspAttach",
               "LspDetach",
               "BufEnter",
+            }
+
+            -- ---- GIT ---- #
+            -- Repository name, branch, and per-buffer diff counts.
+            -- Gitsigns publishes all of this in b:gitsigns_status_dict.
+            local function git_status()
+              return vim.b.gitsigns_status_dict
+            end
+
+            local function git_is_dirty()
+              local status = git_status()
+
+              if not status then
+                return false
+              end
+
+              return ((status.added or 0) + (status.changed or 0) + (status.removed or 0)) > 0
+            end
+
+            -- Renders one diff counter, or nothing when the count is zero.
+            local function diff_provider(key, prefix)
+              return function()
+                local status = git_status()
+                local count = status and status[key] or 0
+
+                if count == 0 then
+                  return ""
+                end
+
+                return " " .. prefix .. count
+              end
+            end
+
+            local git = {
+              -- Repository name, taken from the same root as the language segment.
+              {
+                provider = function()
+                  return "  " .. vim.fs.basename(project_root()) .. " "
+                end,
+
+                hl = {
+                  fg = colors.yellow,
+                  bg = colors.bg1,
+                  bold = true,
+                },
+              },
+
+              -- Current branch; orange while the worktree has changes.
+              {
+                provider = function()
+                  local status = git_status()
+
+                  if not status or not status.head or status.head == "" then
+                    return "no repo"
+                  end
+
+                  return " " .. status.head
+                end,
+
+                hl = function()
+                  return {
+                    fg = git_is_dirty() and colors.orange or colors.fg1,
+                    bg = colors.bg1,
+                    bold = true,
+                  }
+                end,
+              },
+
+              -- Added / changed / removed lines in this buffer.
+              {
+                provider = diff_provider("added", "+"),
+                hl = {
+                  fg = colors.green,
+                  bg = colors.bg1,
+                  bold = true,
+                },
+              },
+              {
+                provider = diff_provider("changed", "~"),
+                hl = {
+                  fg = colors.yellow,
+                  bg = colors.bg1,
+                  bold = true,
+                },
+              },
+              {
+                provider = diff_provider("removed", "-"),
+                hl = {
+                  fg = colors.red,
+                  bg = colors.bg1,
+                  bold = true,
+                },
+              },
+
+              -- Trailing padding and the separator into the statusline body.
+              {
+                provider = " ",
+                hl = {
+                  bg = colors.bg1,
+                },
+              },
+              {
+                provider = "",
+                hl = {
+                  fg = colors.bg1,
+                  bg = colors.bg0,
+                },
+              },
+
+              on_click = {
+                name = "heirline_git_click",
+                callback = function()
+                  if git_status() then
+                    vim.cmd("Telescope git_status")
+                  else
+                    vim.notify("This buffer is not inside a Git repository")
+                  end
+                end,
+              },
+
+              update = {
+                "BufEnter",
+                "BufWritePost",
+                "CursorHold",
+                "User",
+              },
             }
 
             local fill = {
@@ -378,6 +518,7 @@
               shell,
               language,
               lsp,
+              git,
               fill,
               host,
               clock,

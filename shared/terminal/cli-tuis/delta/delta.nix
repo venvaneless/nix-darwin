@@ -1,0 +1,102 @@
+# shared/terminal/cli-tuis/delta/delta.nix
+#
+# =====================================================================
+# DELTA
+#
+# Syntax-highlighting pager for git and diff output
+#
+# Installation and behaviour are managed through Home Manager. Colours
+# live in their own theme files as named delta features. Select one
+# directly below; delta imports and enables only that one module.
+# =====================================================================
+
+{ config, lib, pkgs, ... }:
+
+let
+  cfg = config.ven.features.terminal.cliTuis.delta;
+
+  # ---- PLATFORM TOGGLES ---- #
+  # Change these values to set Delta's default per platform. Hosts can
+  # still override ven.features.terminal.cliTuis.delta.enable directly.
+  delta = {
+    enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
+  };
+
+  isDarwin = pkgs.stdenv.hostPlatform.isDarwin;
+  isLinux = pkgs.stdenv.hostPlatform.isLinux;
+  enabledForCurrentSystem =
+    delta.enable && ((isDarwin && delta.installOn.darwin) || (isLinux && delta.installOn.linux));
+
+  # ---- THEME SELECTION ---- #
+  # Change this value to select a different saved delta theme. The
+  # Default selection leaves delta on its own built-in colours.
+  selectedTheme = "gruvbox";
+
+  # ---- AVAILABLE THEMES ---- #
+  # Each palette remains separate, but only selectedTheme is imported.
+  themeModules = {
+    default = {
+      module = null;
+      option = null;
+    };
+    gruvbox = {
+      module = ./themes/gruvbox.nix;
+      option = "gruvbox";
+    };
+  };
+
+  selectedThemeConfig =
+    if lib.hasAttr selectedTheme themeModules then
+      themeModules.${selectedTheme}
+    else
+      throw ''
+        delta: unknown selectedTheme "${selectedTheme}".
+        Choose one of: ${lib.concatStringsSep ", " (lib.attrNames themeModules)}
+      '';
+in
+{
+  options.ven.features.terminal.cliTuis.delta.enable =
+    lib.mkEnableOption "Delta syntax-highlighting pager";
+
+  config = lib.mkMerge [
+    {
+      ven.features.terminal.cliTuis.delta.enable = lib.mkDefault enabledForCurrentSystem;
+    }
+    (lib.mkIf cfg.enable {
+      programs.delta = {
+        # Install delta and enable its Git integration
+        enable = true;
+        enableGitIntegration = true;
+
+        # ---- OPTIONS ---- #
+        # Layout and navigation only. Every colour, including the syntax
+        # theme, belongs to the selected theme module so that the two
+        # never disagree: options set here always win over a feature.
+        options = {
+
+          # Set delta's navigation option
+          navigate = true;
+
+          # Enable line numbers
+          line-numbers = true;
+
+          # Enable side-by-side view
+          side-by-side = true;
+
+          # Optional dark mode setting
+          dark = true;
+        };
+      };
+    })
+    (lib.mkIf (cfg.enable && selectedThemeConfig.option != null) {
+      # Only the selected theme module is imported and enabled.
+      ven.features.terminal.cliTuis.delta.themes.${selectedThemeConfig.option}.enable = true;
+    })
+  ];
+
+  imports = lib.optional (selectedThemeConfig.module != null) selectedThemeConfig.module;
+}
