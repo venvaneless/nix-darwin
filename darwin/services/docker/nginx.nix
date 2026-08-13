@@ -160,6 +160,11 @@ let
   #
   # This script never starts and never kills nginx. Starting is launchd's
   # job; killing was the old manual repair that this design avoids.
+  #
+  # ** It is deliberately silent on success. A rebuild should not scroll
+  # ** past routine nginx chatter, so output means something needs looking
+  # ** at. Startup logging belongs in the runner below, which writes to
+  # ** /var/log/com.ven.nginx-custom.out.log instead of the terminal.
   reloader = pkgs.writeShellScriptBin "nginx-custom-reload" ''
     set -euo pipefail
 
@@ -167,21 +172,22 @@ let
 
     # The config is a symlink into the Nix store created by environment.etc.
     if [ ! -e "${nginxConf}" ]; then
-      echo "$LOG_PREFIX ${nginxConf} is missing; nothing to reload"
+      echo "!!! $LOG_PREFIX ${nginxConf} is missing; nothing to reload"
       exit 0
     fi
 
-    # Refuse to reload a configuration that nginx itself rejects. The
-    # running process keeps serving the last known-good config.
-    if ! "${nginxBin}" -t -c "${nginxConf}"; then
+    # Validate quietly. nginx's own "syntax is ok" chatter is captured and
+    # only printed when it actually rejects the configuration.
+    if ! test_output="$("${nginxBin}" -t -c "${nginxConf}" 2>&1)"; then
       echo "!!! $LOG_PREFIX config is INVALID; NOT reloading"
+      echo "$test_output"
       echo "!!! $LOG_PREFIX the running nginx was left untouched"
       exit 1
     fi
 
-    # No pid file means nginx is not running. launchd starts it at boot.
+    # No pid file means nginx is not running, which is normal here:
+    # launchd owns starting it. Nothing worth reporting.
     if [ ! -f "${cfg.pidFile}" ]; then
-      echo "$LOG_PREFIX no pid file at ${cfg.pidFile}; nginx is not running"
       exit 0
     fi
 
@@ -195,8 +201,12 @@ let
       exit 0
     fi
 
-    echo "$LOG_PREFIX reloading nginx master pid $nginx_pid"
-    exec "${nginxBin}" -s reload -e "${cfg.logDir}/error.log" -c "${nginxConf}"
+    # Reload quietly. Only a failed reload is worth interrupting a rebuild.
+    if ! reload_output="$("${nginxBin}" -s reload -e "${cfg.logDir}/error.log" -c "${nginxConf}" 2>&1)"; then
+      echo "!!! $LOG_PREFIX reload FAILED for master pid $nginx_pid"
+      echo "$reload_output"
+      exit 1
+    fi
   '';
   # ------------------------------------------------------- #
 
@@ -321,9 +331,9 @@ in
 
     # Create the log directory only. The configuration itself is handled
     # by the etc activation step, which runs later than this one.
+    # Silent unless the directory cannot be created.
     system.activationScripts.extraActivation.text = lib.mkAfter ''
-      echo ">>> [nginx] Ensuring log directory: ${cfg.logDir}"
-      ${mkdirBin} -p "${cfg.logDir}" || echo "!!! [nginx] could not create ${cfg.logDir} (continuing)"
+      "${mkdirBin}" -p "${cfg.logDir}" || echo "!!! [nginx] could not create ${cfg.logDir} (continuing)"
     '';
 
     # Apply configuration changes to the already running nginx.
@@ -332,9 +342,12 @@ in
     # **   extraActivation -> etc -> launchd -> postActivation
     # ** The reload must therefore run in postActivation: only by then have
     # ** the /etc symlinks been updated to the new generation.
+    #
+    # ** The '|| echo' is required, not cosmetic: the activation script runs
+    # ** under 'set -e', so an unhandled non-zero exit here would abort the
+    # ** whole switch. nginx never gets to break a rebuild.
     system.activationScripts.postActivation.text = lib.mkAfter ''
-      echo ">>> [nginx] Reloading nginx if it is running"
-      ${reloader}/bin/nginx-custom-reload || echo "!!! [nginx] reload skipped or failed (continuing)"
+      ${reloader}/bin/nginx-custom-reload || echo "!!! [nginx] reload step failed (continuing)"
     '';
 
     # Launchd daemon: com.ven.nginx-custom

@@ -76,6 +76,11 @@ in
         # Layout and navigation only. Every colour, including the syntax
         # theme, belongs to the selected theme module so that the two
         # never disagree: options set here always win over a feature.
+        #
+        # `dark` and `light` belong to the theme too. A value here would
+        # override the feature and force a future light theme into dark
+        # mode, and delta only counts a feature as a theme when the
+        # feature itself declares one of the two.
         options = {
 
           # Set delta's navigation option
@@ -86,9 +91,6 @@ in
 
           # Enable side-by-side view
           side-by-side = true;
-
-          # Optional dark mode setting
-          dark = true;
         };
       };
     })

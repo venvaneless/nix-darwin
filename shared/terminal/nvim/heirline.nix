@@ -67,6 +67,17 @@
               }) or vim.fn.getcwd()
             end
 
+            -- Git worktree root for the current buffer. project_root()
+            -- also matches flake.nix and friends, but Telescope's git
+            -- pickers need an actual repository.
+            local function git_root()
+              local buffer = vim.api.nvim_get_current_buf()
+              local filename = vim.api.nvim_buf_get_name(buffer)
+              local start = filename ~= "" and vim.fs.dirname(filename) or vim.fn.getcwd()
+
+              return vim.fs.root(start, ".git")
+            end
+
             local function dominant_language()
               local root = project_root()
 
@@ -316,18 +327,97 @@
                 callback = function()
                   local names = attached_lsp_clients()
 
-                  if #names == 0 then
-                    vim.notify("No LSP client is attached to this buffer")
-                    return
+                  -- Restart through nvim-lspconfig when its commands are
+                  -- available, otherwise stop the client and let the
+                  -- filetype autocommand attach it again.
+                  local function restart(name)
+                    if vim.fn.exists(":LspRestart") == 2 then
+                      vim.cmd("LspRestart " .. name)
+                      return
+                    end
+
+                    for _, client in ipairs(vim.lsp.get_clients({ name = name })) do
+                      vim.lsp.stop_client(client.id, true)
+                    end
+
+                    vim.defer_fn(function()
+                      vim.cmd("edit")
+                    end, 500)
                   end
 
-                  local lines = { "Active LSP clients:" }
+                  local function stop(name)
+                    for _, client in ipairs(vim.lsp.get_clients({ name = name })) do
+                      vim.lsp.stop_client(client.id, true)
+                    end
+
+                    vim.notify("Stopped LSP: " .. name)
+                  end
+
+                  local actions = {}
 
                   for _, name in ipairs(names) do
-                    table.insert(lines, "• " .. name)
+                    table.insert(actions, {
+                      label = "Restart  " .. name,
+                      run = function() restart(name) end,
+                    })
+                    table.insert(actions, {
+                      label = "Stop     " .. name,
+                      run = function() stop(name) end,
+                    })
                   end
 
-                  vim.notify(table.concat(lines, "\n"))
+                  -- Always available, including when nothing is attached.
+                  table.insert(actions, {
+                    label = "Start / re-attach for this buffer",
+                    run = function()
+                      if vim.fn.exists(":LspStart") == 2 then
+                        vim.cmd("LspStart")
+                      else
+                        vim.cmd("edit")
+                      end
+                    end,
+                  })
+
+                  table.insert(actions, {
+                    label = "Restart all attached servers",
+                    run = function()
+                      for _, name in ipairs(names) do
+                        restart(name)
+                      end
+                    end,
+                  })
+
+                  table.insert(actions, {
+                    label = "LSP info",
+                    run = function()
+                      if vim.fn.exists(":LspInfo") == 2 then
+                        vim.cmd("LspInfo")
+                      else
+                        vim.cmd("checkhealth vim.lsp")
+                      end
+                    end,
+                  })
+
+                  table.insert(actions, {
+                    label = "LSP log",
+                    run = function()
+                      vim.cmd("tabnew " .. vim.lsp.get_log_path())
+                    end,
+                  })
+
+                  local title = #names > 0 and ("LSP: " .. table.concat(names, ", "))
+                    or "LSP: nothing attached"
+
+                  vim.ui.select(actions, {
+                    prompt = title,
+                    format_item = function(action)
+                      return action.label
+                    end,
+                  }, function(choice)
+                    if choice then
+                      choice.run()
+                    end
+                  end)
                 end,
               }
             )
@@ -448,11 +538,63 @@
               on_click = {
                 name = "heirline_git_click",
                 callback = function()
-                  if git_status() then
-                    vim.cmd("Telescope git_status")
-                  else
-                    vim.notify("This buffer is not inside a Git repository")
+                  local root = git_root()
+
+                  -- Neovim's cwd is often the home directory, so every
+                  -- picker below is scoped to the buffer's own repository.
+                  if not root then
+                    vim.notify(
+                      "This buffer is not inside a Git repository",
+                      vim.log.levels.WARN
+                    )
+                    return
                   end
+
+                  local telescope = require("telescope.builtin")
+
+                  local actions = {
+                    {
+                      label = "Switch branch",
+                      run = function()
+                        telescope.git_branches({ cwd = root })
+                      end,
+                    },
+                    {
+                      label = "Changed files",
+                      run = function()
+                        telescope.git_status({ cwd = root })
+                      end,
+                    },
+                    {
+                      label = "Commits",
+                      run = function()
+                        telescope.git_commits({ cwd = root })
+                      end,
+                    },
+                    {
+                      label = "Commits for this file",
+                      run = function()
+                        telescope.git_bcommits({ cwd = root })
+                      end,
+                    },
+                    {
+                      label = "Stashes",
+                      run = function()
+                        telescope.git_stash({ cwd = root })
+                      end,
+                    },
+                  }
+
+                  vim.ui.select(actions, {
+                    prompt = vim.fs.basename(root) .. " — Git",
+                    format_item = function(action)
+                      return action.label
+                    end,
+                  }, function(choice)
+                    if choice then
+                      choice.run()
+                    end
+                  end)
                 end,
               },
 
