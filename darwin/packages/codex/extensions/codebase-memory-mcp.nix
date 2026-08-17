@@ -2,7 +2,12 @@
 # =========================
 # Package and register the Codebase Memory MCP server
 
-{ lib, pkgs, unstablePkgs, ... }:
+{
+  lib,
+  pkgs,
+  unstablePkgs,
+  ...
+}:
 
 let
   userName = "ven";
@@ -16,14 +21,11 @@ let
     "chatgpt"
   ];
 
-
   # PACKAGE
   # =========================
   # Install the verified Apple-Silicon release archive in the Nix store
 
-  release = builtins.fromJSON (
-    builtins.readFile ../codebase-memory-mcp-release.json
-  );
+  release = builtins.fromJSON (builtins.readFile ../codebase-memory-mcp-release.json);
 
   codebaseMemoryMcp = pkgs.stdenvNoCC.mkDerivation {
     pname = "codebase-memory-mcp";
@@ -72,7 +74,6 @@ let
     };
   };
 
-
   # SYNC
   # =========================
   # Register the store-backed MCP server with both Codex profiles
@@ -82,6 +83,7 @@ let
 
     runtimeInputs = [
       pkgs.coreutils
+      pkgs.jq
     ];
 
     text = ''
@@ -95,8 +97,33 @@ let
 
       mkdir -p -- "$mcp_data_dir"
 
+      mcp_matches_declaration() {
+        profile="$1"
+
+        CODEX_CLI="$codex_cli" \
+          "$codex_profile" cli "$profile" \
+          mcp get codebase-memory-mcp \
+          --json \
+          2>/dev/null \
+          | ${pkgs.jq}/bin/jq -e \
+              --arg mcp_binary "$mcp_binary" \
+              --arg mcp_data_dir "$mcp_data_dir" \
+              '.enabled == true
+                and .transport.type == "stdio"
+                and .transport.command == $mcp_binary
+                and .transport.args == []
+                and .transport.env == { "CBM_CACHE_DIR": $mcp_data_dir }
+                and .transport.env_vars == []
+                and .transport.cwd == null' \
+          >/dev/null
+      }
+
       sync_profile() {
         profile="$1"
+
+        if mcp_matches_declaration "$profile"; then
+          return
+        fi
 
         if CODEX_CLI="$codex_cli" \
             "$codex_profile" cli "$profile" \
@@ -112,15 +139,9 @@ let
           mcp add codebase-memory-mcp \
           --env "CBM_CACHE_DIR=$mcp_data_dir" \
           -- "$mcp_binary"
-
-        printf \
-          'Codebase Memory MCP synchronized for profile: %s\n' \
-          "$profile"
       }
 
-      ${lib.concatMapStringsSep "\n" (
-        profile: "sync_profile ${lib.escapeShellArg profile}"
-      ) profiles}
+      ${lib.concatMapStringsSep "\n" (profile: "sync_profile ${lib.escapeShellArg profile}") profiles}
     '';
   };
 in
@@ -131,8 +152,6 @@ in
   ];
 
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo "[nix-darwin][codex] Registering Codebase Memory MCP..."
-
     /usr/bin/sudo \
       -u ${userName} \
       /usr/bin/env \

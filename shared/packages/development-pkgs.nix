@@ -253,6 +253,20 @@ let
       package = pkgs.bitwarden-cli;
     };
 
+    # Modern file encryption tool.
+    age = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.age;
+    };
+
+    # Manages encrypted secrets using age keys.
+    sops = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.sops;
+    };
+
     # Container runtime CLI, pinned to the 29 series.
     docker = {
       enable = true;

@@ -12,7 +12,12 @@
 # and enables only that one module.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.ven.features.terminal.cliTuis.bat;
@@ -75,24 +80,36 @@ in
     }
     (lib.mkIf cfg.enable {
       programs.bat = {
-      enable = true;
+        enable = true;
 
-      config = {
-        # ---- APPEARANCE ---- #
+        config = {
+          # ---- APPEARANCE ---- #
 
-        # The selected theme module overrides this built-in fallback.
-        theme = lib.mkDefault "Monokai Extended";
+          # The selected theme module overrides this built-in fallback.
+          theme = lib.mkDefault "Monokai Extended";
 
-        # Line numbers, Git change markers, and the file header.
-        style = "numbers,changes,header";
+          # Line numbers, Git change markers, and the file header.
+          style = "numbers,changes,header";
 
-        # Wrap long lines at the terminal width.
-        wrap = "auto";
+          # Wrap long lines at the terminal width.
+          wrap = "auto";
 
-        # Keep bat's output plain when it is piped into another command.
-        paging = "auto";
+          # Keep bat's output plain when it is piped into another command.
+          paging = "auto";
+        };
       };
-      };
+
+      # Home Manager always rebuilds bat's cache. Keep the cache current while
+      # silencing its informational messages about empty custom-theme folders.
+      home.activation.batCache = lib.mkForce (
+        lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+          (
+            export XDG_CACHE_HOME=${lib.escapeShellArg config.xdg.cacheHome}
+            cd "${pkgs.emptyDirectory}"
+            run ${lib.getExe config.programs.bat.package} cache --build >/dev/null 2>&1
+          )
+        ''
+      );
     })
     (lib.mkIf (cfg.enable && selectedThemeConfig.option != null) {
       # Only the selected theme module is imported and enabled.

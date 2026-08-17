@@ -47,6 +47,24 @@
                   use_git_status_colors = true,
                 },
 
+                -- Use compact, font-independent labels in addition to colour.
+                -- The previous Nerd Font glyphs can be easy to miss in a
+                -- narrow Neovide sidebar.
+                git_status = {
+                  symbols = {
+                    added = "+",
+                    deleted = "-",
+                    modified = "~",
+                    renamed = ">",
+                    untracked = "?",
+                    ignored = "·",
+                    unstaged = "~",
+                    staged = "+",
+                    conflict = "!",
+                  },
+                  align = "right",
+                },
+
                 -- Neo-tree ships this column but hides it below an 88 column
                 -- window. The sidebar is 35 wide, so lower the requirement and
                 -- use relative timestamps to keep it short.
@@ -96,6 +114,16 @@
                   apply_git_highlights()
                   vim.cmd("Neotree show")
                 end)
+              end,
+            })
+
+            -- Git changes made outside Neovim (for example by a terminal or
+            -- GUI client) become visible as soon as focus returns.
+            vim.api.nvim_create_autocmd("FocusGained", {
+              desc = "Refresh Neo-tree Git status when Neovim regains focus",
+              callback = function()
+                local manager = package.loaded["neo-tree.sources.manager"]
+                if manager then manager.refresh("filesystem") end
               end,
             })
           end,

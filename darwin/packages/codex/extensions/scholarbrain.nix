@@ -22,7 +22,6 @@ let
     "chatgpt"
   ];
 
-
   # PACKAGE
   # =========================
   # Wrap ScholarBrain's portable agent skill as a valid Codex plugin.
@@ -63,7 +62,6 @@ let
       ${scholarBrainManifest} \
       "$out/.codex-plugin/plugin.json"
   '';
-
 
   # MARKETPLACE
   # =========================
@@ -106,7 +104,6 @@ let
       "$out/.agents/plugins/marketplace.json"
   '';
 
-
   # SYNC
   # =========================
   # Register the plugin with both shared Codex profiles.
@@ -117,6 +114,7 @@ let
     runtimeInputs = [
       pkgs.coreutils
       pkgs.gawk
+      pkgs.jq
     ];
 
     text = ''
@@ -127,9 +125,25 @@ let
 
       marketplace_name="ven-scholarbrain"
       marketplace_root="${scholarBrainMarketplace}"
+      plugin_id="scholarbrain@$marketplace_name"
+
+      plugin_is_installed() {
+        profile="$1"
+
+        CODEX_CLI="$codex_cli" \
+          "$codex_profile" cli "$profile" \
+          plugin list \
+          --marketplace "$marketplace_name" \
+          --json \
+          | ${pkgs.jq}/bin/jq -e \
+              --arg plugin_id "$plugin_id" \
+              'any(.installed[]?; .pluginId == $plugin_id and .installed and .enabled)' \
+          >/dev/null
+      }
 
       sync_profile() {
         profile="$1"
+        marketplace_changed=false
 
         configured_root="$(
           CODEX_CLI="$codex_cli" \
@@ -141,6 +155,8 @@ let
         )"
 
         if test "$configured_root" != "$marketplace_root"; then
+          marketplace_changed=true
+
           if test -n "$configured_root"; then
             CODEX_CLI="$codex_cli" \
               "$codex_profile" cli "$profile" \
@@ -152,21 +168,19 @@ let
             plugin marketplace add "$marketplace_root"
         fi
 
-        CODEX_CLI="$codex_cli" \
-          "$codex_profile" cli "$profile" \
-          plugin add "scholarbrain@$marketplace_name"
+        if test "$marketplace_changed" = true || ! plugin_is_installed "$profile"; then
+          CODEX_CLI="$codex_cli" \
+            "$codex_profile" cli "$profile" \
+            plugin add "$plugin_id"
+        fi
       }
 
-      ${lib.concatMapStringsSep "\n" (
-        profile: "sync_profile ${lib.escapeShellArg profile}"
-      ) profiles}
+      ${lib.concatMapStringsSep "\n" (profile: "sync_profile ${lib.escapeShellArg profile}") profiles}
     '';
   };
 in
 {
   system.activationScripts.extraActivation.text = lib.mkAfter ''
-    echo "[nix-darwin][codex] Installing ScholarBrain..."
-
     mkdir -p "${sharedPlugins}"
 
     rm -rf "${sharedPlugins}/scholarbrain"

@@ -71,8 +71,10 @@ let
   # so Finder can no longer launch the application.
   #
   # ** Keep the upstream bundle unmodified. Finder launches use VS
-  # ** Code's standard state locations; terminal launches remain
-  # ** portable through environment.variables below.
+  # ** Code's standard state locations unless the variables are also
+  # ** present in the user's launchd domain. That domain is the safe
+  # ** app-wide environment mechanism: it reaches Dock, Spotlight, and
+  # ** Finder launches without modifying the signed bundle.
 
   # ------------------------------------------------------------
   # ------ PACKAGE DEFINITION ------ #
@@ -103,4 +105,24 @@ lib.mkMerge [
   {
     environment.variables = vscodeEnvironment;
   }
+
+  # ---- macOS GUI-session environment
+  # Makes the portable root available to VS Code launched from the Dock,
+  # Spotlight, or Finder. The root is user-managed and must already
+  # exist; this module never creates or migrates mutable editor state.
+  (lib.mkIf platforms.isDarwin {
+    system.activationScripts.vscodeGuiEnvironment.text = lib.mkAfter ''
+      vscode_user_uid="$(/usr/bin/id -u ${paths.user.name})"
+
+      if [ -d "${vscodePaths.root}" ]; then
+        /bin/launchctl asuser "$vscode_user_uid" \
+          /bin/launchctl setenv VSCODE_PORTABLE "${vscodePaths.root}"
+
+        /bin/launchctl asuser "$vscode_user_uid" \
+          /bin/launchctl setenv VSCODE_CLI_DATA_DIR "${vscodePaths.cli}"
+      else
+        echo "[vscode] Portable root is missing; leaving the GUI-session environment unchanged: ${vscodePaths.root}" >&2
+      fi
+    '';
+  })
 ]

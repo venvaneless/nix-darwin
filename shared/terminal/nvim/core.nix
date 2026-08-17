@@ -87,6 +87,22 @@ in
       vim.opt.rtp:prepend(lazypath)
 
       require("lazy_setup")
+
+
+      -- ---- AUTOMATIC SAVES ---- #
+      -- Saves every modified normal file buffer once per minute.
+      vim.fn.timer_start(60000, function()
+        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+          if vim.api.nvim_buf_is_loaded(buf)
+            and vim.bo[buf].modified
+            and vim.bo[buf].buftype == ""
+            and vim.api.nvim_buf_get_name(buf) ~= "" then
+            vim.api.nvim_buf_call(buf, function()
+              vim.cmd("silent write")
+            end)
+          end
+        end
+      end, { ["repeat"] = -1 })
     '';
 
     xdg.configFile."nvim/lua/lazy_setup.lua".text = ''

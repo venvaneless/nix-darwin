@@ -17,6 +17,7 @@ both: - macOS through nix-darwin - Linux through NixOS
 - test.nix is only for testing if nil, etc. is working on different machines - ignore it
 - Make sure you always utilise flakeParts when creating and editing my nix-config.
 - Make sure you always add short descriptions to each code block (grouping them in sections) and short comments, the way I'm doing it till now.
+- Do not run any Nix evaluation, rebuild, check, test, or other validation command that evaluates the config unless I tell you to
 
 Primary repository: `/Users/ven/.config/nix/nix-config`
 
@@ -36,7 +37,6 @@ More specific `AGENTS.md` files extend these rules for their directory tree. In 
 - Only change comments if they wrongly describe what they're supposed to describe and correct them instead
 - Use formatting the same way I do
 - For any existing paths, use the variables set in paths.nix. If a path doesn't exist yet, add them with their variable to paths.nix and then use paths.nix to add these variables in the file you're just working on.
-
 
 ```text
 /Users/ven/.config/nix/nix-config
