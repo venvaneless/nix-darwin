@@ -51,8 +51,9 @@ let
       preferences_dir="$backup_root/preferences"
       cpu_limit_percent=10
       transfer_limit_kibps=4096
+      show_progress=${if progressEnabled then "1" else "0"}
       rsync_progress_args=()
-      if [ ${if progressEnabled then "1" else "0"} -eq 1 ]; then
+      if [ "$show_progress" -eq 1 ]; then
         rsync_progress_args+=(--info=progress2)
       fi
       global_lock_dir="${backupPaths.archiveLock}"
