@@ -77,6 +77,8 @@ in
       defaultAutomaticIntervalSeconds = 86400;
       defaultMinimumIntervalSeconds = 28800;
       defaultCpuLimitPercent = 25;
+      maximumCpuLimitPercent = 10;
+      defaultTransferLimitKiBps = 4096;
       defaultExtraExcludePatterns = [
         "sockets/"
         "private/socket"
@@ -103,6 +105,8 @@ in
       defaultAutomaticIntervalSeconds = 86400;
       defaultMinimumIntervalSeconds = 28800;
       defaultCpuLimitPercent = 35;
+      maximumCpuLimitPercent = 10;
+      defaultTransferLimitKiBps = 4096;
       defaultExtraExcludePatterns = [
         "sockets/"
         "private/socket"

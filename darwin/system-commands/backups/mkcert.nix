@@ -30,13 +30,54 @@ let
 
   mkcertBackup = pkgs.writeShellApplication {
     name = "mkcert-backup";
-    runtimeInputs = with pkgs; [ coreutils gnugrep rsync ];
+    runtimeInputs = with pkgs; [ cpulimit coreutils gnugrep rsync ];
     text = ''
       set -euo pipefail
 
       source_dir="${sourceDir}"
       destination_dir="${destinationDir}"
       external_backup_volume="${backupPaths.volume}"
+      cpu_limit_percent=10
+      transfer_limit_kibps=4096
+      global_lock_dir="${backupPaths.archiveLock}"
+      global_lock_acquired=0
+
+      backup_process() {
+        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- "$@"
+      }
+
+      fail() {
+        echo "[mkcert backup] ERROR $*" >&2
+        exit 1
+      }
+
+      release_backup_lock() {
+        if [ "$global_lock_acquired" -eq 1 ]; then
+          ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid" 2>/dev/null || true
+          ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" 2>/dev/null || true
+        fi
+      }
+
+      acquire_backup_lock() {
+        if ! ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir" 2>/dev/null; then
+          previous_pid=""
+          if [ -r "$global_lock_dir/pid" ]; then
+            IFS= read -r previous_pid < "$global_lock_dir/pid" || true
+          fi
+          if [ -n "$previous_pid" ] && kill -0 "$previous_pid" 2>/dev/null; then
+            fail "another backup is already running"
+          fi
+          ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid"
+          ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" || fail "refusing to replace an unexpected backup lock"
+          ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir"
+        fi
+
+        printf '%s\n' "$$" > "$global_lock_dir/pid"
+        global_lock_acquired=1
+      }
+
+      trap release_backup_lock EXIT
+      trap 'exit 130' INT TERM
 
       # ---- PREREQUISITES ---- #
 
@@ -52,6 +93,7 @@ let
         exit 1
       fi
 
+      acquire_backup_lock
       ${pkgs.coreutils}/bin/mkdir -p -- "$destination_dir"
 
       # ---- CHANGE DETECTION ---- #
@@ -80,7 +122,7 @@ let
         echo "[mkcert backup]   $change"
       done
 
-      ${pkgs.rsync}/bin/rsync -a -- "$source_dir/" "$destination_dir/"
+      backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 -- "$source_dir/" "$destination_dir/"
       echo "[mkcert backup] DONE $destination_dir"
     '';
   };

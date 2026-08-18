@@ -8,6 +8,7 @@ let
   # ------------------------------------------------------------
 
   helpers = import ../../options { inherit lib options pkgs; };
+  inherit (helpers) paths;
 
   # ------------------------------------------------------------
   # ------ AGENT PACKAGE DEFINITIONS ------ #
@@ -26,6 +27,18 @@ let
       enable = true;
       installOn = { darwin = true; linux = false; };
       package = pkgs.codex-profile;
+    };
+
+    # Dock launcher that always opens the ChatGPT Codex profile.
+    codexChatgptLauncher = {
+      enable = true;
+      installOn = { darwin = true; linux = false; };
+      package = pkgs.callPackage ./codex/chatgpt-launcher.nix {
+        codexProfile = pkgs.codex-profile;
+        inherit paths;
+      };
+      appName = "Codex ChatGPT.app";
+      symlinkApplications = true;
     };
   };
 in

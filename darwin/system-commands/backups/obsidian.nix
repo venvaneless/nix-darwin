@@ -26,6 +26,7 @@ let
     name = "obsidian-backup";
 
     runtimeInputs = with pkgs; [
+      cpulimit
       coreutils
       gnugrep
       gnused
@@ -40,11 +41,15 @@ let
       # -----------------------------------------------------------------
       external_backup_volume="${backupPaths.volume}"
       data_backups_root="${backupPaths.data}"
-      app_backups_root="$data_backups_root/app-backups"
+      app_backups_root="${backupPaths.apps}"
       backup_root="$app_backups_root/obsidian"
       extensions_dir="$backup_root/obsidian_extensions"
       themes_dir="$backup_root/obsidian_themes"
       preferences_dir="$backup_root/preferences"
+      cpu_limit_percent=10
+      transfer_limit_kibps=4096
+      global_lock_dir="${backupPaths.archiveLock}"
+      global_lock_acquired=0
 
       vault_names=("Obsidian_Hub" "Ven_MainVault")
       vaults_root="${obsidianVaultsRoot}"
@@ -84,6 +89,35 @@ let
         exit 1
       }
 
+      backup_process() {
+        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- "$@"
+      }
+
+      release_backup_lock() {
+        if [ "$global_lock_acquired" -eq 1 ]; then
+          ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid" 2>/dev/null || true
+          ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" 2>/dev/null || true
+        fi
+      }
+
+      acquire_backup_lock() {
+        if ! ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir" 2>/dev/null; then
+          previous_pid=""
+          if [ -r "$global_lock_dir/pid" ]; then
+            IFS= read -r previous_pid < "$global_lock_dir/pid" || true
+          fi
+          if [ -n "$previous_pid" ] && kill -0 "$previous_pid" 2>/dev/null; then
+            fail "another backup is already running"
+          fi
+          ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid"
+          ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" || fail "refusing to replace an unexpected backup lock"
+          ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir"
+        fi
+
+        printf '%s\n' "$$" > "$global_lock_dir/pid"
+        global_lock_acquired=1
+      }
+
       ensure_volume_mounted() {
         if [ ! -d "$external_backup_volume" ] || ! ${paths.darwin.system.bin.mount} | ${pkgs.gnugrep}/bin/grep -Fq " on $external_backup_volume "; then
           fail "external backup volume is not mounted: $external_backup_volume"
@@ -116,7 +150,7 @@ let
 
         if [ ! -f "$destination_manifest" ]; then
           ${pkgs.coreutils}/bin/mkdir -p -- "$destination_item"
-          ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
+          backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
           log "SYNC $item_kind: $item_name (new or missing manifest)"
           return 0
         fi
@@ -125,14 +159,18 @@ let
         destination_version="''${destination_version:-0.0.0}"
 
         if version_is_higher "$source_version" "$destination_version"; then
-          ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
+          backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
           log "UPDATE $item_kind: $item_name ($destination_version -> $source_version)"
         else
           log "SKIP $item_kind unchanged/newer: $item_name ($destination_version >= $source_version)"
         fi
       }
 
+      trap release_backup_lock EXIT
+      trap 'exit 130' INT TERM
+
       ensure_volume_mounted
+      acquire_backup_lock
       ${pkgs.coreutils}/bin/mkdir -p -- "$extensions_dir" "$themes_dir" "$preferences_dir"
 
       for vault_name in "''${vault_names[@]}"; do
@@ -159,7 +197,7 @@ let
         for setting_name in "''${settings_files[@]}"; do
           setting_source="$obsidian_path/$setting_name"
           if [ -f "$setting_source" ]; then
-            ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$setting_source" "$preferences_dir/$vault_slug-$setting_name"
+            backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- "$setting_source" "$preferences_dir/$vault_slug-$setting_name"
             log "SYNC setting: $vault_slug-$setting_name"
           fi
         done
@@ -170,7 +208,7 @@ let
           if [ -d "$source_path" ]; then
             destination_path="$vault_backup_dir/$relative_path"
             ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$destination_path" )"
-            ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
+            backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
             log "SYNC $vault_slug/$relative_path"
           fi
         done

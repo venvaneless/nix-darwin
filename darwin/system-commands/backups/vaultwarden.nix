@@ -65,7 +65,7 @@ containerBackupHelper.mkContainerBackup {
     staged_source="$staging_dir/$source_name"
 
     ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source"
-    ${pkgs.rsync}/bin/rsync -a "''${exclude_args[@]}" \
+    backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" \
       --exclude='.DS_Store' \
       --exclude='._*' \
       --exclude='.AppleDouble' \
@@ -88,6 +88,7 @@ containerBackupHelper.mkContainerBackup {
     fi
 
     ${pkgs.coreutils}/bin/timeout 300 \
+      ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
       ${pkgs.sqlite}/bin/sqlite3 \
       "$source_dir/db.sqlite3" \
       ".backup '$staged_source/db.sqlite3'"

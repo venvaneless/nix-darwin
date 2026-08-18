@@ -46,6 +46,11 @@
       flake = false;
     };
 
+    claude-mem = {
+      url = "github:thedotmack/claude-mem";
+      flake = false;
+    };
+
     simple-english = {
       url = "github:AminBlg/SimpleEnglish";
       flake = false;

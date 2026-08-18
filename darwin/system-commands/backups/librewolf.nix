@@ -5,16 +5,23 @@
 
 let
   # ---- EDITABLE BACKUP CONTENTS
+  # Browser-specific mutable locations come from the centralized paths.
+  paths = import ../../../options/paths.nix { };
+  browserPaths = paths.darwin.home.browsers;
+
   destinationSegments = [ "librewolf" ];
   applicationSupportEntries = [
     { relativePath = "librewolf"; destinationPath = "app-support/librewolf"; }
   ];
   preferenceEntries = [
-    { relativePath = "net.librewolf.librewolf.plist"; destinationPath = "app-pref/net.librewolf.librewolf.plist"; }
-    { relativePath = "org.mozilla.librewolf.plist"; destinationPath = "app-pref/org.mozilla.librewolf.plist"; }
+    # The current Nix-installed LibreWolf bundle uses this identifier.
+    { relativePath = "org.nixos.librewolf.plist"; destinationPath = "app-pref/org.nixos.librewolf.plist"; }
   ];
   additionalSources = [
-    # { sourcePath = "/Users/ven/Library/Somewhere/LibreWolf"; destinationPath = "additional/LibreWolf"; }
+    {
+      sourcePath = browserPaths.firefoxProfile;
+      destinationPath = "profile/firefox-ven";
+    }
   ];
   extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
   archive = true;

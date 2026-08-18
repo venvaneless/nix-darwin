@@ -99,6 +99,17 @@ let
     data = "${darwinHome}/.config/.local/share";
     cache = "${darwinHome}/.config/.cache";
 
+    # ---- Browsers
+    # Browser profiles and extension state stay mutable under the existing
+    # configuration root. Backup modules read these exact locations but never
+    # link, replace, or otherwise modify them.
+    browsers = rec {
+      root = "${darwinHome}/.config/browsers";
+      firefoxProfile = "${root}/firefox-ven";
+      heliumExtensions = "${root}/helium-extensions";
+      heliumProfile = "${root}/helium-ven";
+    };
+
     # ---- Certificates
     # mkcert CA root holding rootCA.pem, rootCA-key.pem and the Android
     # export copies. Read by every local HTTPS service.
@@ -312,7 +323,13 @@ in
     # ** directory, and CLI belong with the container paths in the
     # ** Docker group below.
     bundles = {
+      cider = "${multimedia}/Cider.app";
       chatgpt = "${root}/ChatGPT.app";
+      codexChatgpt = "${root}/Codex ChatGPT.app";
+      helium = "${root}/Helium.app";
+      snippetsLab = "${programming}/SnippetsLab.app";
+      wezterm = "${nixApps}/WezTerm.app";
+      zed = "${nixApps}/Zed.app";
     };
   };
 
@@ -332,6 +349,8 @@ in
     codex = rec {
       root = "${darwinHomePaths.config}/codex";
 
+      api = "${root}/api";
+      chatgpt = "${root}/chatgpt";
       shared = "${root}/shared";
       sharedSkills = "${shared}/skills";
       sharedPlugins = "${shared}/plugins";
@@ -441,6 +460,9 @@ in
       # ** so Finder stops showing a stale entry. Never used to reset or
       # ** evict iCloud data.
       killall = "/usr/bin/killall";
+
+      # Delivers user-visible notifications from scheduled LaunchAgents.
+      osascript = "/usr/bin/osascript";
     };
 
     # ---- Fallback PATH for generated runners

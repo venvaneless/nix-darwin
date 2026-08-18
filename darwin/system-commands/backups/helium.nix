@@ -5,6 +5,10 @@
 
 let
   # ---- EDITABLE BACKUP PATHS
+  # Browser-specific mutable locations come from the centralized paths.
+  paths = import ../../../options/paths.nix { };
+  browserPaths = paths.darwin.home.browsers;
+
   destinationSegments = [ "helium" ];
   applicationSupportEntries = [
     { relativePath = "net.imput.helium"; destinationPath = "app-support/net.imput.helium"; }
@@ -13,7 +17,14 @@ let
     { relativePath = "net.imput.helium.plist"; destinationPath = "app-pref/net.imput.helium.plist"; }
   ];
   additionalSources = [
-    # { sourcePath = "/Users/ven/Library/Somewhere/Helium"; destinationPath = "additional/Helium"; }
+    {
+      sourcePath = browserPaths.heliumExtensions;
+      destinationPath = "profile/helium-extensions";
+    }
+    {
+      sourcePath = browserPaths.heliumProfile;
+      destinationPath = "profile/helium-ven";
+    }
   ];
   extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
 

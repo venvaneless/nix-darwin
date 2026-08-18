@@ -9,7 +9,13 @@
 # - Provides placeholders for all other Dock-related options.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ lib, options, pkgs, ... }:
+
+let
+  # Shared path definitions keep Dock entries aligned with their owners.
+  helpers = import ../../options { inherit lib options pkgs; };
+  inherit (helpers) paths;
+in
 
 {
   # ****************************************************************
@@ -175,11 +181,14 @@
     
     # ------------------------------------------------------
     persistent-apps = [
-    "/Applications/Multimedia/Cider.app"
-    "/Applications/Nix Apps/WezTerm.app"
-    "/Applications/Helium.app"
-    "/Applications/Nix Apps/Zed.app"
-    "/Applications/Programming/SnippetsLab.app"
+      paths.darwin.applications.bundles.cider
+      paths.darwin.applications.bundles.wezterm
+      paths.darwin.applications.bundles.helium
+      paths.darwin.applications.bundles.zed
+      paths.darwin.applications.bundles.snippetsLab
+
+      # This launcher selects the chatgpt profile and its Electron state.
+      paths.darwin.applications.bundles.codexChatgpt
     ];
     # ------------------------------------------------------
   };

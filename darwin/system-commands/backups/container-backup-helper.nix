@@ -155,6 +155,18 @@ let
         description = "Default CPU percentage used by container backup archive work.";
       };
 
+      maximumCpuLimitPercent = lib.mkOption {
+        type = lib.types.ints.between 1 100;
+        default = 10;
+        description = "Hard CPU ceiling for every container backup process, including manual runs.";
+      };
+
+      defaultTransferLimitKiBps = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 4096;
+        description = "Default maximum local rsync transfer rate in KiB/s for container backups.";
+      };
+
       runOnRebuild = lib.mkOption {
         type = lib.types.bool;
         default = false;
@@ -182,9 +194,11 @@ let
     scheduledMinute ? 0,
     prepareArchive ? "",
     automatic ? false,
+    notifyOnAutomatic ? true,
     automaticIntervalSeconds ? config.services.containerBackups.defaultAutomaticIntervalSeconds,
     minimumIntervalSeconds ? config.services.containerBackups.defaultMinimumIntervalSeconds,
     cpuLimitPercent ? config.services.containerBackups.defaultCpuLimitPercent,
+    transferLimitKiBps ? config.services.containerBackups.defaultTransferLimitKiBps,
     runOnRebuild ? false,
     extraExcludePatterns ? [ ],
     archive ? true,
@@ -212,14 +226,16 @@ let
   resolvedDestinationMarkerFile = if destinationMarkerFile == null then "${destinationDir}/.last-backup" else destinationMarkerFile;
   cfg = config.services.containerBackups.${appSlug};
   backupCfg = config.services.containerBackups;
+  effectiveCpuLimitPercent = lib.min cfg.cpuLimitPercent backupCfg.maximumCpuLimitPercent;
   extraExcludes = lib.concatMapStringsSep "\n" (pattern: ''
         --exclude=${lib.escapeShellArg pattern}
   '') (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
   zipExtraExcludes = lib.concatMapStringsSep " " (pattern: "-x ${lib.escapeShellArg pattern}") (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
   rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
+  rsyncTransferArguments = "--bwlimit=${toString cfg.transferLimitKiBps}";
   stageSourceEntries = lib.concatMapStringsSep "\n" (entry: ''
         ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
-        ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} "''${exclude_args[@]}" -- \
+        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable --info=progress2 "''${exclude_args[@]}" -- \
           ${lib.escapeShellArg "${entry.sourcePath}/"} "$staged_source/${entry.destinationPath}/"
   '') resolvedSourceEntries;
   prepareSourceEntries = lib.optionalString (resolvedSourceEntries != [ ]) ''
@@ -267,12 +283,14 @@ ${stageSourceEntries}
       lock_dir="$(printf '%s' ${lib.escapeShellArg lockDir})"
       global_lock_dir="$(printf '%s' ${lib.escapeShellArg globalLockDir})"
       backup_interval_seconds=${toString cfg.minimumIntervalSeconds}
-      cpu_limit_percent=${toString cfg.cpuLimitPercent}
+      cpu_limit_percent=${toString effectiveCpuLimitPercent}
+      transfer_limit_kibps=${toString cfg.transferLimitKiBps}
       archive_enabled=${if cfg.archive then "1" else "0"}
       archive_in_downloads=${if cfg.stageInDownloads then "1" else "0"}
       archive_name_template="$(printf '%s' ${lib.escapeShellArg cfg.archiveFilenameTemplate})"
       archive_timestamp_format="$(printf '%s' ${lib.escapeShellArg cfg.archiveTimestampFormat})"
       archive_prefix="$(printf '%s' ${lib.escapeShellArg cfg.archivePrefix})"
+      automatic_notifications_enabled=${if cfg.notifyOnAutomatic then "1" else "0"}
 
       mode="manual"
       temporary_archive=""
@@ -280,6 +298,7 @@ ${stageSourceEntries}
       temporary_marker=""
       staging_dir=""
       global_lock_acquired=0
+      backup_started=0
       exclude_args=(
         --exclude='.DS_Store'
         --exclude='._*'
@@ -309,6 +328,10 @@ ${extraExcludes}
         printf '[%s backup] %s\n' "$app_slug" "$*"
       }
 
+      backup_process() {
+        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- "$@"
+      }
+
       release_lock() {
         ${pkgs.coreutils}/bin/rm -f -- "$lock_dir/pid" 2>/dev/null || true
         ${pkgs.coreutils}/bin/rmdir -- "$lock_dir" 2>/dev/null || true
@@ -336,6 +359,35 @@ ${extraExcludes}
 
         release_lock
         release_global_lock
+      }
+
+      notify_automatic() {
+        if [ "$mode" != "scheduled" ] || [ "$automatic_notifications_enabled" -ne 1 ]; then
+          return 0
+        fi
+
+        if ! ${systemPaths.bin.osascript} \
+          -e 'on run argv
+                display notification (item 1 of argv) with title (item 2 of argv)
+              end run' \
+          "$1" "$app_name backup"; then
+          log "WARN could not deliver automatic-backup notification"
+        fi
+      }
+
+      on_exit() {
+        exit_status="$?"
+        cleanup
+
+        if [ "$backup_started" -eq 1 ]; then
+          if [ "$exit_status" -eq 0 ]; then
+            notify_automatic "Backup completed successfully."
+          else
+            notify_automatic "Backup failed. Check the backup log for details."
+          fi
+        fi
+
+        return "$exit_status"
       }
 
       case "''${1:-}" in
@@ -399,7 +451,8 @@ ${extraExcludes}
       fi
 
       printf '%s\n' "$$" > "$lock_dir/pid"
-      trap cleanup EXIT INT TERM
+      trap on_exit EXIT
+      trap 'exit 130' INT TERM
 
       if [ -e "$marker_file" ]; then
         previous_backup_epoch="$(
@@ -468,10 +521,7 @@ ${extraExcludes}
       archive_source_parent="$source_parent"
       archive_source_name="$source_name"
 
-      ${prepareSourceEntries}
-      ${prepareArchive}
-
-      # Only one backup may compress, verify, or hand off to external storage at once.
+      # Only one backup may read, compress, verify, or hand off to external storage at once.
       if ! ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir" 2>/dev/null; then
         global_previous_pid=""
 
@@ -493,6 +543,9 @@ ${extraExcludes}
       printf '%s\n' "$$" > "$global_lock_dir/pid"
       global_lock_acquired=1
 
+      ${prepareSourceEntries}
+      ${prepareArchive}
+
       timestamp="$(
         ${pkgs.coreutils}/bin/date "+$archive_timestamp_format"
       )"
@@ -508,9 +561,12 @@ ${extraExcludes}
         fail "refusing to overwrite an existing archive: $archive"
       fi
 
+      backup_started=1
+      notify_automatic "Backup started."
+
       if [ "$archive_enabled" -eq 0 ]; then
         log "syncing unarchived backup: $destination_dir"
-        ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} "''${exclude_args[@]}" -- \
+        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable --info=progress2 "''${exclude_args[@]}" -- \
           "$archive_source_parent/$archive_source_name/" "$destination_dir/"
         ${pkgs.coreutils}/bin/touch -- "$marker_file" "$source_marker_file"
         log "completed successfully: $destination_dir"
@@ -526,8 +582,7 @@ ${extraExcludes}
       (
         cd -- "$archive_source_parent"
 
-        ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
-          ${pkgs.zip}/bin/zip -q -r -y "$temporary_archive" "$archive_source_name" \
+        backup_process ${pkgs.zip}/bin/zip -q -r -y "$temporary_archive" "$archive_source_name" \
           -x '*/.DS_Store' \
           -x '*/._*' \
           -x '*/.AppleDouble' \
@@ -537,8 +592,7 @@ ${extraExcludes}
           ${zipExtraExcludes}
       )
 
-      ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
-        ${pkgs.unzip}/bin/unzip -t "$temporary_archive" >/dev/null
+      backup_process ${pkgs.unzip}/bin/unzip -t "$temporary_archive" >/dev/null
       if [ "$archive_in_downloads" -eq 1 ]; then
         ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$local_archive"
       else
@@ -590,6 +644,12 @@ in
       description = "Run the ${appName} backup automatically through its interval-based LaunchAgent schedule when explicitly enabled.";
     };
 
+    notifyOnAutomatic = lib.mkOption {
+      type = lib.types.bool;
+      default = notifyOnAutomatic;
+      description = "Show macOS notifications when an automatic ${appName} backup starts and completes or fails.";
+    };
+
     automaticIntervalSeconds = lib.mkOption {
       type = lib.types.ints.positive;
       default = automaticIntervalSeconds;
@@ -606,6 +666,12 @@ in
       type = lib.types.ints.between 1 100;
       default = cpuLimitPercent;
       description = "Maximum CPU percentage used for ${appName} archive creation and verification.";
+    };
+
+    transferLimitKiBps = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = transferLimitKiBps;
+      description = "Maximum local copy rate in KiB/s for ${appName} backups.";
     };
 
     runOnRebuild = lib.mkOption {
