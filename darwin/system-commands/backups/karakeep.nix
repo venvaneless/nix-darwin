@@ -49,6 +49,7 @@ let
   automaticIntervalSeconds = 86400;
   minimumIntervalSeconds = 28800;
   cpuLimitPercent = 35;
+  showProgress = true;
   runOnRebuild = false;
   scheduledHour = 6;
   scheduledMinute = 0;
@@ -60,7 +61,7 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "Karakeep";
   appSlug = "karakeep";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild;
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   inherit sourceEntries extraExcludePatterns;
   sourceRoot = containerDirectory;

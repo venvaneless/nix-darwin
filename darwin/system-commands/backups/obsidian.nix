@@ -8,7 +8,7 @@
 # archives, deletes, or otherwise changes the iCloud-backed source vaults.
 # =====================================================================
 
-{ pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -16,6 +16,8 @@ let
   # check come from the centralized path definitions.
   paths = import ../../../options/paths.nix { };
   backupPaths = paths.darwin.backups;
+  showProgress = true;
+  progressEnabled = config.services.appBackups.obsidian.showProgress;
 
   # ** Reached through the user's iCloudContainers symlink rather than
   # ** the long Mobile Documents path. The vaults are read-only sources:
@@ -47,6 +49,10 @@ let
       preferences_dir="$backup_root/preferences"
       cpu_limit_percent=10
       transfer_limit_kibps=4096
+      rsync_progress_args=()
+      if [ ${if progressEnabled then "1" else "0"} -eq 1 ]; then
+        rsync_progress_args+=(--info=progress2)
+      fi
       global_lock_dir="${backupPaths.archiveLock}"
       global_lock_acquired=0
 
@@ -149,7 +155,7 @@ let
 
         if [ ! -f "$destination_manifest" ]; then
           ${pkgs.coreutils}/bin/mkdir -p -- "$destination_item"
-          backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
+          backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
           log "SYNC $item_kind: $item_name (new or missing manifest)"
           return 0
         fi
@@ -158,7 +164,7 @@ let
         destination_version="''${destination_version:-0.0.0}"
 
         if version_is_higher "$source_version" "$destination_version"; then
-          backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
+          backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- "$source_item/" "$destination_item/"
           log "UPDATE $item_kind: $item_name ($destination_version -> $source_version)"
         else
           log "SKIP $item_kind unchanged/newer: $item_name ($destination_version >= $source_version)"
@@ -196,7 +202,7 @@ let
         for setting_name in "''${settings_files[@]}"; do
           setting_source="$obsidian_path/$setting_name"
           if [ -f "$setting_source" ]; then
-            backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- "$setting_source" "$preferences_dir/$vault_slug-$setting_name"
+            backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- "$setting_source" "$preferences_dir/$vault_slug-$setting_name"
             log "SYNC setting: $vault_slug-$setting_name"
           fi
         done
@@ -207,7 +213,7 @@ let
           if [ -d "$source_path" ]; then
             destination_path="$vault_backup_dir/$relative_path"
             ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$destination_path" )"
-            backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
+            backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- "$source_path/" "$destination_path/"
             log "SYNC $vault_slug/$relative_path"
           fi
         done
@@ -216,5 +222,13 @@ let
   };
 in
 {
-  environment.systemPackages = [ obsidianBackup ];
+  options.services.appBackups.obsidian = {
+    showProgress = lib.mkOption {
+      type = lib.types.bool;
+      default = showProgress;
+      description = "Show rsync transfer progress for the Obsidian backup.";
+    };
+  };
+
+  config.environment.systemPackages = [ obsidianBackup ];
 }

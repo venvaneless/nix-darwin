@@ -12,7 +12,7 @@
 #   the command runs manually or from a schedule.
 # =====================================================================
 
-{ lib, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -27,6 +27,8 @@ let
   # ** archive. Change the location in options/paths.nix.
   sourceDir = paths.darwin.home.mkcert;
   destinationDir = backupPaths.certificates;
+  showProgress = true;
+  progressEnabled = config.services.appBackups.mkcert.showProgress;
 
   mkcertBackup = pkgs.writeShellApplication {
     name = "mkcert-backup";
@@ -39,6 +41,10 @@ let
       external_backup_volume="${backupPaths.volume}"
       cpu_limit_percent=10
       transfer_limit_kibps=4096
+      rsync_progress_args=()
+      if [ ${if progressEnabled then "1" else "0"} -eq 1 ]; then
+        rsync_progress_args+=(--info=progress2)
+      fi
       global_lock_dir="${backupPaths.archiveLock}"
       global_lock_acquired=0
 
@@ -122,11 +128,19 @@ let
         echo "[mkcert backup]   $change"
       done
 
-      backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 -- "$source_dir/" "$destination_dir/"
+      backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" -- "$source_dir/" "$destination_dir/"
       echo "[mkcert backup] DONE $destination_dir"
     '';
   };
 in
 {
-  environment.systemPackages = [ mkcertBackup ];
+  options.services.appBackups.mkcert = {
+    showProgress = lib.mkOption {
+      type = lib.types.bool;
+      default = showProgress;
+      description = "Show rsync transfer progress for the mkcert backup.";
+    };
+  };
+
+  config.environment.systemPackages = [ mkcertBackup ];
 }

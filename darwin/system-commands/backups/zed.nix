@@ -26,6 +26,7 @@ let
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+    showProgress = true;
     inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };

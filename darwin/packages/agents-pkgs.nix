@@ -34,7 +34,6 @@ let
       enable = true;
       installOn = { darwin = true; linux = false; };
       package = pkgs.callPackage ./codex/chatgpt-launcher.nix {
-        codexProfile = pkgs.codex-profile;
         inherit paths;
       };
       appName = "Codex ChatGPT.app";

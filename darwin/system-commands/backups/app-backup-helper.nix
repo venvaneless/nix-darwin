@@ -141,6 +141,12 @@ let
         default = 4096;
         description = "Default maximum local rsync transfer rate in KiB/s for application backups.";
       };
+
+      defaultShowProgress = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Show rsync transfer progress for application backups unless an individual backup overrides it.";
+      };
     };
   };
 
@@ -182,6 +188,7 @@ let
     minimumIntervalSeconds ? config.services.appBackups.defaultMinimumIntervalSeconds,
     cpuLimitPercent ? config.services.appBackups.defaultCpuLimitPercent,
     transferLimitKiBps ? config.services.appBackups.defaultTransferLimitKiBps,
+    showProgress ? config.services.appBackups.defaultShowProgress,
   }:
   let
     cfg = config.services.appBackups.${appSlug};
@@ -250,6 +257,7 @@ let
       ""
     else
       "--bwlimit=${toString cfg.transferLimitKiBps}";
+  rsyncProgressArguments = if cfg.showProgress then "--info=progress2" else "";
 
   copySources = lib.concatMapStringsSep "\n" (source: ''
     copy_source ${lib.escapeShellArg source.path} ${lib.escapeShellArg source.destination} ${lib.escapeShellArgs (source.excludePatterns or [ ])}
@@ -417,11 +425,11 @@ ${extraExcludes}
       if [ -d "$source_path" ]; then
         ${pkgs.coreutils}/bin/mkdir -p -- "$destination_path"
         ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
-          ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable --info=progress2 "''${exclude_args[@]}" "''${source_exclude_args[@]}" -- "$source_path/" "$destination_path/"
+          ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable ${rsyncProgressArguments} "''${exclude_args[@]}" "''${source_exclude_args[@]}" -- "$source_path/" "$destination_path/"
       else
         ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$destination_path" )"
         ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
-          ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable --info=progress2 "''${exclude_args[@]}" "''${source_exclude_args[@]}" -- "$source_path" "$destination_path"
+          ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable ${rsyncProgressArguments} "''${exclude_args[@]}" "''${source_exclude_args[@]}" -- "$source_path" "$destination_path"
       fi
       copied_count=$((copied_count + 1))
       log "COPIED $source_path -> $archive_relative_path"
@@ -478,7 +486,7 @@ ${extraExcludes}
     if [ "$archive_enabled" -eq 0 ]; then
       log "SYNC unarchived backup: $destination_dir"
       ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
-        ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable --info=progress2 "''${exclude_args[@]}" -- "$archive_root/" "$destination_dir/"
+        ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable ${rsyncProgressArguments} "''${exclude_args[@]}" -- "$archive_root/" "$destination_dir/"
       ${pkgs.coreutils}/bin/touch -- "$marker_file"
       ${touchSourceMarkers}
       log "DONE $destination_dir"
@@ -552,6 +560,12 @@ in
       type = lib.types.nullOr lib.types.ints.positive;
       default = transferLimitKiBps;
       description = "Maximum local copy rate in KiB/s for ${appName} backups.";
+    };
+
+    showProgress = lib.mkOption {
+      type = lib.types.bool;
+      default = showProgress;
+      description = "Show rsync transfer progress for ${appName} backups.";
     };
 
     archive = lib.mkOption {

@@ -63,6 +63,7 @@ let
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+    showProgress = true;
     inherit applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
     applicationSupportRoot = applicationSupportDirectory;
     preferencesRoot = preferencesDirectory;

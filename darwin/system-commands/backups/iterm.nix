@@ -31,6 +31,7 @@ let
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+    showProgress = true;
     archive = true;
     stageInDownloads = true;
     archiveFilenameTemplate = "{timestamp}-{prefix}.tar";

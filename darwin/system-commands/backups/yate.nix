@@ -19,6 +19,7 @@ let
   automaticIntervalSeconds = 86400;
   minimumIntervalSeconds = 28800;
   cpuLimitPercent = 25;
+  showProgress = true;
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
@@ -31,7 +32,7 @@ let
     inherit config;
     appName = "Yate";
     appSlug = "yate";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent;
+    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     inherit applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
   };

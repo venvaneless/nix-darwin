@@ -24,6 +24,7 @@ let
   automaticIntervalSeconds = 86400;
   minimumIntervalSeconds = 28800;
   cpuLimitPercent = 35;
+  showProgress = true;
   runOnRebuild = false;
   archive = true;
   stageInDownloads = true;
@@ -40,7 +41,7 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "Wallabag";
   appSlug = "wallabag";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild extraExcludePatterns;
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild extraExcludePatterns;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   sourceDir = wallabagSourceDir;
   scheduledHour = 5;

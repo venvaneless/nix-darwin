@@ -57,6 +57,7 @@ let
   automaticIntervalSeconds = 86400;
   minimumIntervalSeconds = 28800;
   cpuLimitPercent = 25;
+  showProgress = true;
 
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
 in
@@ -66,7 +67,7 @@ appBackupHelper.mkAppBackup {
   appName = "A Better Finder Rename";
   appSlug = "better-finder-renamer";
   commandName = "better-renamer-backup";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent;
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
   inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
   applicationSupportRoot = applicationSupportDirectory;
   preferencesRoot = preferencesDirectory;

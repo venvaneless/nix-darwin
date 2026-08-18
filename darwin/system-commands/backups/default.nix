@@ -79,6 +79,7 @@ in
       defaultCpuLimitPercent = 25;
       maximumCpuLimitPercent = 10;
       defaultTransferLimitKiBps = 4096;
+      defaultShowProgress = true;
       defaultExtraExcludePatterns = [
         "sockets/"
         "private/socket"
@@ -107,6 +108,7 @@ in
       defaultCpuLimitPercent = 35;
       maximumCpuLimitPercent = 10;
       defaultTransferLimitKiBps = 4096;
+      defaultShowProgress = true;
       defaultExtraExcludePatterns = [
         "sockets/"
         "private/socket"

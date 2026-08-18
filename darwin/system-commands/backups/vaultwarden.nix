@@ -34,6 +34,7 @@ let
   automaticIntervalSeconds = 86400;
   minimumIntervalSeconds = 28800;
   cpuLimitPercent = 35;
+  showProgress = true;
   runOnRebuild = false;
   archive = true;
   stageInDownloads = true;
@@ -50,7 +51,7 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "Vaultwarden";
   appSlug = "vaultwarden";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild extraExcludePatterns;
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild extraExcludePatterns;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   sourceDir = vaultwardenSourceDir;
   scheduledHour = 4;
@@ -65,7 +66,7 @@ containerBackupHelper.mkContainerBackup {
     staged_source="$staging_dir/$source_name"
 
     ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source"
-    backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" \
+    backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" \
       --exclude='.DS_Store' \
       --exclude='._*' \
       --exclude='.AppleDouble' \

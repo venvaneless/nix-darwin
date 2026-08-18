@@ -92,6 +92,7 @@ let
   # ceiling as well as the background scheduling safeguards.
   cpuLimitPercent = 10;
   transferLimitKiBps = 4096;
+  showProgress = true;
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
@@ -104,7 +105,7 @@ let
     inherit config;
     appName = "Raycast";
     appSlug = "raycast";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent transferLimitKiBps;
+    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent transferLimitKiBps showProgress;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
     requiredAny = [ [

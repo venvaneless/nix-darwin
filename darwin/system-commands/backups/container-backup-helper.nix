@@ -167,6 +167,12 @@ let
         description = "Default maximum local rsync transfer rate in KiB/s for container backups.";
       };
 
+      defaultShowProgress = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Show rsync transfer progress for container backups unless an individual backup overrides it.";
+      };
+
       runOnRebuild = lib.mkOption {
         type = lib.types.bool;
         default = false;
@@ -199,6 +205,7 @@ let
     minimumIntervalSeconds ? config.services.containerBackups.defaultMinimumIntervalSeconds,
     cpuLimitPercent ? config.services.containerBackups.defaultCpuLimitPercent,
     transferLimitKiBps ? config.services.containerBackups.defaultTransferLimitKiBps,
+    showProgress ? config.services.containerBackups.defaultShowProgress,
     runOnRebuild ? false,
     extraExcludePatterns ? [ ],
     archive ? true,
@@ -234,7 +241,7 @@ let
   rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
   stageSourceEntries = lib.concatMapStringsSep "\n" (entry: ''
         ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
-        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- \
+        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
           ${lib.escapeShellArg "${entry.sourcePath}/"} "$staged_source/${entry.destinationPath}/"
   '') resolvedSourceEntries;
   prepareSourceEntries = lib.optionalString (resolvedSourceEntries != [ ]) ''
@@ -290,6 +297,10 @@ ${stageSourceEntries}
       archive_timestamp_format="$(printf '%s' ${lib.escapeShellArg cfg.archiveTimestampFormat})"
       archive_prefix="$(printf '%s' ${lib.escapeShellArg cfg.archivePrefix})"
       automatic_notifications_enabled=${if cfg.notifyOnAutomatic then "1" else "0"}
+      rsync_progress_args=()
+      if [ ${if cfg.showProgress then "1" else "0"} -eq 1 ]; then
+        rsync_progress_args+=(--info=progress2)
+      fi
 
       mode="manual"
       temporary_archive=""
@@ -565,7 +576,7 @@ ${extraExcludes}
 
       if [ "$archive_enabled" -eq 0 ]; then
         log "syncing unarchived backup: $destination_dir"
-        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- \
+        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
           "$archive_source_parent/$archive_source_name/" "$destination_dir/"
         ${pkgs.coreutils}/bin/touch -- "$marker_file" "$source_marker_file"
         log "completed successfully: $destination_dir"
@@ -671,6 +682,12 @@ in
       type = lib.types.ints.positive;
       default = transferLimitKiBps;
       description = "Maximum local copy rate in KiB/s for ${appName} backups.";
+    };
+
+    showProgress = lib.mkOption {
+      type = lib.types.bool;
+      default = showProgress;
+      description = "Show rsync transfer progress for ${appName} backups.";
     };
 
     runOnRebuild = lib.mkOption {

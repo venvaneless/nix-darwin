@@ -49,6 +49,7 @@ let
   automaticIntervalSeconds = 86400;
   minimumIntervalSeconds = 28800;
   cpuLimitPercent = 35;
+  showProgress = true;
   runOnRebuild = false;
 
   containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
@@ -58,7 +59,7 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "Browsertrix";
   appSlug = "browsertrix";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent runOnRebuild;
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   inherit sourceEntries extraExcludePatterns;
   sourceRoot = containerDirectory;

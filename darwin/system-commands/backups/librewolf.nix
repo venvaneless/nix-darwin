@@ -40,6 +40,7 @@ let
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+    showProgress = true;
     destinationRoot = "browserBackups";
     inherit destinationSegments applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
