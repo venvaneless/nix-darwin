@@ -22,6 +22,7 @@ let
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;
   systemPaths = paths.darwin.system;
+  excludeHelper = import ./backup-exclude-helper.nix { inherit lib; };
 
   # ---- PER-CONTAINER LOCATION LOOKUP
   # Resolves one container's backup locations from the registry in
@@ -234,10 +235,10 @@ let
   cfg = config.services.containerBackups.${appSlug};
   backupCfg = config.services.containerBackups;
   effectiveCpuLimitPercent = lib.min cfg.cpuLimitPercent backupCfg.maximumCpuLimitPercent;
-  extraExcludes = lib.concatMapStringsSep "\n" (pattern: ''
-        --exclude=${lib.escapeShellArg pattern}
-  '') (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
-  zipExtraExcludes = lib.concatMapStringsSep " " (pattern: "-x ${lib.escapeShellArg pattern}") (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
+  defaultMetadataExcludes = excludeHelper.mkRsyncExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
+  extraExcludes = excludeHelper.mkRsyncExcludeArguments (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
+  zipMetadataExcludes = excludeHelper.mkZipExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
+  zipExtraExcludes = excludeHelper.mkZipExcludeArguments (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
   rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
   stageSourceEntries = lib.concatMapStringsSep "\n" (entry: ''
         ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
@@ -297,8 +298,9 @@ ${stageSourceEntries}
       archive_timestamp_format="$(printf '%s' ${lib.escapeShellArg cfg.archiveTimestampFormat})"
       archive_prefix="$(printf '%s' ${lib.escapeShellArg cfg.archivePrefix})"
       automatic_notifications_enabled=${if cfg.notifyOnAutomatic then "1" else "0"}
+      show_progress=${if cfg.showProgress then "1" else "0"}
       rsync_progress_args=()
-      if [ ${if cfg.showProgress then "1" else "0"} -eq 1 ]; then
+      if [ "$show_progress" -eq 1 ]; then
         rsync_progress_args+=(--info=progress2)
       fi
 
@@ -310,18 +312,7 @@ ${stageSourceEntries}
       global_lock_acquired=0
       backup_started=0
       exclude_args=(
-        --exclude='.DS_Store'
-        --exclude='._*'
-        --exclude='.AppleDouble'
-        --exclude='.DocumentRevisions-V100'
-        --exclude='.fseventsd'
-        --exclude='.LSOverride'
-        --exclude='.Spotlight-V100'
-        --exclude='.TemporaryItems'
-        --exclude='.Trashes'
-        --exclude='.Trash'
-        --exclude='.Trash-*'
-        --exclude='__MACOSX'
+${defaultMetadataExcludes}
 ${extraExcludes}
       )
 
@@ -593,13 +584,9 @@ ${extraExcludes}
         cd -- "$archive_source_parent"
 
         backup_process ${pkgs.zip}/bin/zip -q -r -y "$temporary_archive" "$archive_source_name" \
-          -x '*/.DS_Store' \
-          -x '*/._*' \
-          -x '*/.AppleDouble' \
-          -x '*/__MACOSX/*' \
           -x '*/Thumbs.db' \
           -x '*/desktop.ini' \
-          ${zipExtraExcludes}
+          ${zipMetadataExcludes} ${zipExtraExcludes}
       )
 
       backup_process ${pkgs.unzip}/bin/unzip -t "$temporary_archive" >/dev/null

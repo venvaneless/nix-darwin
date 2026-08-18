@@ -4,6 +4,12 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
+
   # ---- EDITABLE BACKUP PATHS
   applicationSupportEntries = [
     { relativePath = "org.videolan.vlc"; destinationPath = "app-support/org.videolan.vlc"; }
@@ -11,6 +17,9 @@ let
   preferenceEntries = [
     { relativePath = "org.videolan.vlc"; destinationPath = "app-pref/org.videolan.vlc"; }
     { relativePath = "org.videolan.vlc.plist"; destinationPath = "app-pref/org.videolan.vlc.plist"; }
+  ];
+  configEntries = [
+    # { relativePath = "vlc"; destinationPath = "user-config/vlc"; }
   ];
   extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
   additionalSources = [ ];
@@ -32,7 +41,10 @@ let
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
     showProgress = true;
-    inherit applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
+    inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in

@@ -16,8 +16,10 @@ let
   # check come from the centralized path definitions.
   paths = import ../../../options/paths.nix { };
   backupPaths = paths.darwin.backups;
+  excludeHelper = import ./backup-exclude-helper.nix { inherit lib; };
   showProgress = true;
   progressEnabled = config.services.appBackups.obsidian.showProgress;
+  defaultMetadataExcludes = excludeHelper.mkRsyncExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
 
   # ** Reached through the user's iCloudContainers symlink rather than
   # ** the long Mobile Documents path. The vaults are read-only sources:
@@ -71,18 +73,7 @@ let
         "hotkeys.json"
       )
       exclude_args=(
-        --exclude='.DS_Store'
-        --exclude='._*'
-        --exclude='.AppleDouble'
-        --exclude='.DocumentRevisions-V100'
-        --exclude='.fseventsd'
-        --exclude='.LSOverride'
-        --exclude='.Spotlight-V100'
-        --exclude='.TemporaryItems'
-        --exclude='.Trashes'
-        --exclude='.Trash'
-        --exclude='.Trash-*'
-        --exclude='__MACOSX'
+${defaultMetadataExcludes}
       )
 
       log() {

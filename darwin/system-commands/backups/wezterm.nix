@@ -4,6 +4,12 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
+
   # ---- EDITABLE BACKUP CONTENTS
   destinationSegments = [ "wezterm" "backups" ];
   applicationSupportEntries = [
@@ -51,6 +57,9 @@ let
     preserveSymlinks = true;
     destinationRoot = "terminalBackups";
     inherit destinationSegments applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
   };
 in
 weztermBackup

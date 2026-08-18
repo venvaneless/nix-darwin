@@ -4,6 +4,13 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
+
+  # ---- EDITABLE BACKUP CONTENTS
   configEntries = [
     { relativePath = "espanso"; destinationPath = "user-config/espanso"; }
   ];
@@ -31,6 +38,9 @@ let
     cpuLimitPercent = 25;
     showProgress = true;
     inherit configEntries preferenceEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in

@@ -4,6 +4,12 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
+
   # ---- EDITABLE BACKUP PATHS
   # Browser-specific mutable locations come from the centralized paths.
   paths = import ../../../options/paths.nix { };
@@ -15,6 +21,9 @@ let
   ];
   preferenceEntries = [
     { relativePath = "net.imput.helium.plist"; destinationPath = "app-pref/net.imput.helium.plist"; }
+  ];
+  configEntries = [
+    # { relativePath = "helium"; destinationPath = "user-config/helium"; }
   ];
   additionalSources = [
     {
@@ -49,7 +58,10 @@ let
     inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     destinationRoot = "browserBackups";
-    inherit destinationSegments applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
+    inherit destinationSegments applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
   };
 in
 heliumBackup

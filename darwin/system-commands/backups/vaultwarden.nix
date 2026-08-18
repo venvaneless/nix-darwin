@@ -67,18 +67,6 @@ containerBackupHelper.mkContainerBackup {
 
     ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source"
     backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" \
-      --exclude='.DS_Store' \
-      --exclude='._*' \
-      --exclude='.AppleDouble' \
-      --exclude='.DocumentRevisions-V100' \
-      --exclude='.fseventsd' \
-      --exclude='.LSOverride' \
-      --exclude='.Spotlight-V100' \
-      --exclude='.TemporaryItems' \
-      --exclude='.Trashes' \
-      --exclude='.Trash' \
-      --exclude='.Trash-*' \
-      --exclude='__MACOSX' \
       --exclude='db.sqlite3' \
       --exclude='db.sqlite3-shm' \
       --exclude='db.sqlite3-wal' \

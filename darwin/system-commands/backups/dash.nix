@@ -8,6 +8,7 @@ let
   backupPaths = config.services.appBackups.paths;
   applicationSupportDirectory = backupPaths.applicationSupportDirectory;
   preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
 
   # These entries resolve from applicationSupportDirectory. Add one entry for
   # every Dash path stored in Application Support.
@@ -32,6 +33,9 @@ let
       relativePath = "com.kapeli.dash-setapp.plist";
       destinationPath = "app-pref/com.kapeli.dash-setapp.plist";
     }
+  ];
+  configEntries = [
+    # { relativePath = "dash"; destinationPath = "user-config/dash"; }
   ];
   # Use this list for any additional absolute source outside the standard
   # roots above; every item is copied to its own destinationPath.
@@ -64,9 +68,10 @@ let
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
     showProgress = true;
-    inherit applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
+    inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
     applicationSupportRoot = applicationSupportDirectory;
     preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in

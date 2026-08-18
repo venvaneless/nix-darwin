@@ -4,26 +4,31 @@
 { config, lib, pkgs, ... }:
 
 let
-  # ---- SHARED PATHS ---- #
-  # macOS Library roots come from the centralized path definitions.
-  paths = import ../../../options/paths.nix { };
-  libraryPaths = paths.darwin.library;
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
 
-  applicationSupportSources = [
+  # ---- EDITABLE BACKUP CONTENTS
+  applicationSupportEntries = [
     {
-      sourcePath = "${libraryPaths.applicationSupport}/Pearcleaner";
-      destinationPath = "Pearcleaner";
+      relativePath = "Pearcleaner";
+      destinationPath = "app-support/Pearcleaner";
     }
   ];
-  applicationPreferences = [
+  preferenceEntries = [
     {
-      sourcePath = "${libraryPaths.preferences}/com.alienator88.Pearcleaner.plist";
+      relativePath = "com.alienator88.Pearcleaner.plist";
       destinationPath = "app-pref/com.alienator88.Pearcleaner.plist";
     }
     {
-      sourcePath = "${libraryPaths.preferences}/group.com.alienator88.Pearcleaner.plist";
+      relativePath = "group.com.alienator88.Pearcleaner.plist";
       destinationPath = "app-pref/group.com.alienator88.Pearcleaner.plist";
     }
+  ];
+  configEntries = [
+    # { relativePath = "pearcleaner"; destinationPath = "user-config/pearcleaner"; }
   ];
   additionalSources = [ ];
   archive = true;
@@ -44,7 +49,10 @@ let
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
     showProgress = true;
-    inherit applicationSupportSources applicationPreferences additionalSources;
+    inherit applicationSupportEntries preferenceEntries configEntries additionalSources;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in

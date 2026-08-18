@@ -4,10 +4,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  # ---- SHARED PATHS ---- #
-  # macOS Library roots come from the centralized path definitions.
-  paths = import ../../../options/paths.nix { };
-  libraryPaths = paths.darwin.library;
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
 
   # ---- EDITABLE BACKUP PATHS
   applicationSupportEntries = [
@@ -108,9 +109,12 @@ let
     inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent transferLimitKiBps showProgress;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
     requiredAny = [ [
-      "${libraryPaths.applicationSupport}/com.raycast.macos"
-      "${libraryPaths.applicationSupport}/com.raycast-x.macos"
+      "${applicationSupportDirectory}/com.raycast.macos"
+      "${applicationSupportDirectory}/com.raycast-x.macos"
     ] ];
   };
 in

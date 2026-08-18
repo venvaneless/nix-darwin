@@ -20,6 +20,7 @@ let
   # the centralized path definitions.
   paths = import ../../../options/paths.nix { };
   backupPaths = paths.darwin.backups;
+  excludeHelper = import ./backup-exclude-helper.nix { inherit lib; };
 
   # ---- BACKUP PATHS
   # ** Certificates live beside the other data backups rather than under
@@ -29,6 +30,7 @@ let
   destinationDir = backupPaths.certificates;
   showProgress = true;
   progressEnabled = config.services.appBackups.mkcert.showProgress;
+  defaultMetadataExcludes = excludeHelper.mkRsyncExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
 
   mkcertBackup = pkgs.writeShellApplication {
     name = "mkcert-backup";
@@ -45,6 +47,9 @@ let
       if [ ${if progressEnabled then "1" else "0"} -eq 1 ]; then
         rsync_progress_args+=(--info=progress2)
       fi
+      exclude_args=(
+${defaultMetadataExcludes}
+      )
       global_lock_dir="${backupPaths.archiveLock}"
       global_lock_acquired=0
 
@@ -111,7 +116,7 @@ let
       # ** changed: the mirror is not touched and its timestamps stay as
       # ** they were at the last real backup.
       pending="$(
-        ${pkgs.rsync}/bin/rsync -a --itemize-changes --dry-run \
+        ${pkgs.rsync}/bin/rsync -a --itemize-changes --dry-run "''${exclude_args[@]}" \
           -- "$source_dir/" "$destination_dir/" \
           | ${pkgs.gnugrep}/bin/grep -v '^\.' || true
       )"
@@ -128,7 +133,7 @@ let
         echo "[mkcert backup]   $change"
       done
 
-      backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" -- "$source_dir/" "$destination_dir/"
+      backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- "$source_dir/" "$destination_dir/"
       echo "[mkcert backup] DONE $destination_dir"
     '';
   };

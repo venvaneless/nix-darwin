@@ -4,6 +4,12 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
+
   # ---- EDITABLE BACKUP CONTENTS
   applicationSupportEntries = [ { relativePath = "zed"; destinationPath = "app-support/zed"; } ];
   preferenceEntries = [ { relativePath = "dev.zed.Zed.plist"; destinationPath = "app-pref/dev.zed.Zed.plist"; } ];
@@ -28,6 +34,9 @@ let
     cpuLimitPercent = 25;
     showProgress = true;
     inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in

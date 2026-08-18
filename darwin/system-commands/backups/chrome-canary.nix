@@ -4,6 +4,12 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
+
   # ---- EDITABLE BACKUP CONTENTS
   destinationSegments = [ "chrome-canary" ];
   applicationSupportEntries = [
@@ -17,6 +23,9 @@ let
       relativePath = "com.google.Chrome.canary.plist";
       destinationPath = "app-pref/com.google.Chrome.canary.plist";
     }
+  ];
+  configEntries = [
+    # { relativePath = "chrome-canary"; destinationPath = "user-config/chrome-canary"; }
   ];
   additionalSources = [
     # { sourcePath = "/Users/ven/Library/Somewhere/Chrome Canary"; destinationPath = "additional/Chrome Canary"; }
@@ -44,7 +53,10 @@ let
     cpuLimitPercent = 25;
     showProgress = true;
     destinationRoot = "browserBackups";
-    inherit destinationSegments applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
+    inherit destinationSegments applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in

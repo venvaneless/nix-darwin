@@ -22,6 +22,7 @@ let
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;
   systemPaths = paths.darwin.system;
+  excludeHelper = import ./backup-exclude-helper.nix { inherit lib; };
 
   # ---- GLOBAL APPLICATION BACKUP CONTROLS
   # Imported once by default.nix. Individual app modules keep their own
@@ -247,9 +248,8 @@ let
       "${resolvedDestinationDir}/.last-backup"
     else
       destinationMarkerFile;
-  extraExcludes = lib.concatMapStringsSep "\n" (pattern: ''
-      --exclude=${lib.escapeShellArg pattern}
-  '') (config.services.appBackups.defaultExtraExcludePatterns ++ extraExcludePatterns);
+  defaultMetadataExcludes = excludeHelper.mkRsyncExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
+  extraExcludes = excludeHelper.mkRsyncExcludeArguments (config.services.appBackups.defaultExtraExcludePatterns ++ extraExcludePatterns);
 
   rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
   rsyncTransferArguments =
@@ -326,18 +326,7 @@ let
     copied_count=0
     backup_started=0
     exclude_args=(
-      --exclude='.DS_Store'
-      --exclude='._*'
-      --exclude='.AppleDouble'
-      --exclude='.DocumentRevisions-V100'
-      --exclude='.fseventsd'
-      --exclude='.LSOverride'
-      --exclude='.Spotlight-V100'
-      --exclude='.TemporaryItems'
-      --exclude='.Trashes'
-      --exclude='.Trash'
-      --exclude='.Trash-*'
-      --exclude='__MACOSX'
+${defaultMetadataExcludes}
 ${extraExcludes}
     )
 

@@ -4,22 +4,27 @@
 { config, lib, pkgs, ... }:
 
 let
-  # ---- SHARED PATHS ---- #
-  # macOS Library roots come from the centralized path definitions.
-  paths = import ../../../options/paths.nix { };
-  libraryPaths = paths.darwin.library;
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
 
-  applicationSupportSources = [
+  # ---- EDITABLE BACKUP CONTENTS
+  applicationSupportEntries = [
     {
-      sourcePath = "${libraryPaths.applicationSupport}/vesktop";
-      destinationPath = "vesktop";
+      relativePath = "vesktop";
+      destinationPath = "app-support/vesktop";
     }
   ];
-  applicationPreferences = [
+  preferenceEntries = [
     {
-      sourcePath = "${libraryPaths.preferences}/dev.vencord.vesktop.plist";
-      destinationPath = "dev.vencord.vesktop.plist";
+      relativePath = "dev.vencord.vesktop.plist";
+      destinationPath = "app-pref/dev.vencord.vesktop.plist";
     }
+  ];
+  configEntries = [
+    # { relativePath = "vesktop"; destinationPath = "user-config/vesktop"; }
   ];
   additionalSources = [ ];
   archive = true;
@@ -40,7 +45,10 @@ let
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
     showProgress = true;
-    inherit applicationSupportSources applicationPreferences additionalSources;
+    inherit applicationSupportEntries preferenceEntries configEntries additionalSources;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in

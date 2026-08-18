@@ -4,12 +4,21 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
+
   # ---- EDITABLE BACKUP PATHS
   applicationSupportEntries = [
     { relativePath = "Yate/Backups"; destinationPath = "app-support/Yate/Backups"; }
   ];
   preferenceEntries = [
     { relativePath = "com.2manyrobots.Yate.plist"; destinationPath = "app-pref/com.2manyrobots.Yate.plist"; }
+  ];
+  configEntries = [
+    # { relativePath = "yate"; destinationPath = "user-config/yate"; }
   ];
   extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
   additionalSources = [ ];
@@ -34,7 +43,10 @@ let
     appSlug = "yate";
     inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-    inherit applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
+    inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
   };
 in
 yateBackup

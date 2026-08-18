@@ -4,6 +4,12 @@
 { config, lib, pkgs, ... }:
 
 let
+  # ---- EDITABLE BACKUP ROOTS
+  backupPaths = config.services.appBackups.paths;
+  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
+  preferencesDirectory = backupPaths.preferencesDirectory;
+  configDirectory = backupPaths.configDirectory;
+
   # ---- EDITABLE BACKUP CONTENTS
   destinationSegments = [ "iterm" "backups" ];
   applicationSupportEntries = [
@@ -18,8 +24,16 @@ let
       destinationPath = "app-pref/com.googlecode.iterm2.plist";
     }
   ];
+  configEntries = [
+    # { relativePath = "iterm2"; destinationPath = "user-config/iterm2"; }
+  ];
   additionalSources = [
     # { sourcePath = "/Users/ven/Library/Somewhere/iTerm2"; destinationPath = "additional/iTerm2"; }
+  ];
+  extraExcludePatterns = [
+    "sockets/"
+    "private/socket"
+    "*.sock"
   ];
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   itermBackup = appBackupHelper.mkAppBackup {
@@ -39,12 +53,10 @@ let
     archivePrefix = "iterm";
     preserveSymlinks = true;
     destinationRoot = "terminalBackups";
-    inherit destinationSegments applicationSupportEntries preferenceEntries additionalSources;
-    extraExcludePatterns = [
-      "sockets/"
-      "private/socket"
-      "*.sock"
-    ];
+    inherit destinationSegments applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    applicationSupportRoot = applicationSupportDirectory;
+    preferencesRoot = preferencesDirectory;
+    configRoot = configDirectory;
   };
 in
 itermBackup
