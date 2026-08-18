@@ -23,7 +23,7 @@ let
   appName = "Codex ChatGPT";
   chatgptApp = paths.darwin.applications.bundles.chatgpt;
   chatgptExecutable = "${chatgptApp}/Contents/MacOS/ChatGPT";
-  chatgptIcon = "${chatgptApp}/Contents/Resources/electron.icns";
+  chatgptIcon = "${chatgptApp}/Contents/Resources/app.icns";
 
   # Keep the named profile contract aligned with codex-profile.
   codexHome = paths.darwin.agents.codex.chatgpt;
@@ -42,7 +42,7 @@ let
         <key>CFBundleIdentifier</key>
         <string>com.ven.codex-chatgpt</string>
         <key>CFBundleIconFile</key>
-        <string>electron.icns</string>
+        <string>app.icns</string>
         <key>CFBundleName</key>
         <string>${appName}</string>
         <key>CFBundlePackageType</key>
@@ -90,5 +90,5 @@ runCommand "codex-chatgpt-launcher" { } ''
   # Reuse the installed signed app's icon without modifying its bundle.
   mkdir -p "$application/Contents/Resources"
   ln -s ${lib.escapeShellArg chatgptIcon} \
-    "$application/Contents/Resources/electron.icns"
+    "$application/Contents/Resources/app.icns"
 ''

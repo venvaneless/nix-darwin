@@ -24,6 +24,28 @@ let
   flakeRoot = paths.darwin.home.nixConfig;
   codexRoot = paths.darwin.agents.codex.root;
   profileConfig = paths.darwin.agents.codex.profileConfig;
+  claudeMem = paths.darwin.agents.claudeMem;
+  claudeMemSettingsPath = claudeMem.settings;
+  claudeMemSettingsRelativePath = lib.removePrefix "${homeDir}/" claudeMemSettingsPath;
+
+  # SETTINGS
+  # =========================
+  # Keep only intentional overrides here. Claude-mem merges this file with
+  # its upstream defaults, so update-added defaults remain compatible.
+
+  # PAUSE PRESETS
+  # =========================
+  # "CLAUDE_MEM_EXCLUDED_PROJECTS": "*"
+  #   Pause Claude-mem for every project.
+  # "CLAUDE_MEM_EXCLUDED_PROJECTS": ""
+  #   Resume Claude-mem for every project.
+  excludedProjects = "";
+
+  claudeMemSettings = builtins.toJSON {
+    CLAUDE_MEM_DATA_DIR = claudeMem.data;
+    CLAUDE_MEM_TRANSCRIPTS_CONFIG_PATH = claudeMem.transcriptWatch;
+    CLAUDE_MEM_EXCLUDED_PROJECTS = excludedProjects;
+  };
 
   profiles = [
     "api"
@@ -146,6 +168,16 @@ let
   };
 in
 {
+  # SETTINGS
+  # =========================
+  # Home Manager links the declared settings file while the database, logs,
+  # worker, and transcript state remain mutable outside the Nix store.
+
+  home-manager.users.${userName}.home.file."${claudeMemSettingsRelativePath}" = {
+    force = true;
+    text = claudeMemSettings;
+  };
+
   # COMMANDS
   # =========================
   # The manual synchronizer repairs either profile without a rebuild;
@@ -159,7 +191,7 @@ in
   # ACTIVATION
   # =========================
   # Only Codex's marketplace registry changes here. Claude-mem's mutable
-  # database, settings, cache, and worker state are deliberately untouched.
+  # database, cache, and worker state are deliberately untouched.
 
   system.activationScripts.extraActivation.text = lib.mkAfter ''
     /usr/bin/sudo \
