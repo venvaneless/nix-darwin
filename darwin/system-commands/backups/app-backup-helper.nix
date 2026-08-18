@@ -223,7 +223,7 @@ let
     destination = entry.destinationPath;
     excludePatterns = entry.excludePatterns or [ ];
   }) additionalSources;
-  resolvedSources = sources ++ additionalSources ++ resolvedApplicationSupportEntries ++ preferenceSources ++ configSources ++ readableApplicationSupportSources ++ readableApplicationPreferences ++ readableApplicationConfig;
+  resolvedSources = sources ++ readableAdditionalSources ++ resolvedApplicationSupportEntries ++ preferenceSources ++ configSources ++ readableApplicationSupportSources ++ readableApplicationPreferences ++ readableApplicationConfig;
   resolvedDestinationDir =
     if destinationDir != null then
       destinationDir

@@ -49,6 +49,22 @@
         "type": "github"
       }
     },
+    "claude-mem": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786907351,
+        "narHash": "sha256-SDbl3PVIgJKW5IGGudJSoy0n5UCudBUE/MAmigoNOYs=",
+        "owner": "thedotmack",
+        "repo": "claude-mem",
+        "rev": "fae697a45d107aae567d605916391ab64d8ecae1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "thedotmack",
+        "repo": "claude-mem",
+        "type": "github"
+      }
+    },
     "codebase-memory-mcp": {
       "flake": false,
       "locked": {
@@ -194,6 +210,7 @@
       "inputs": {
         "astronvim": "astronvim",
         "caveman": "caveman",
+        "claude-mem": "claude-mem",
         "codebase-memory-mcp": "codebase-memory-mcp",
         "darwin": "darwin",
         "flake-parts": "flake-parts",

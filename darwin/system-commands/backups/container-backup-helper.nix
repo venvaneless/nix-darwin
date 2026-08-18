@@ -232,10 +232,9 @@ let
   '') (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
   zipExtraExcludes = lib.concatMapStringsSep " " (pattern: "-x ${lib.escapeShellArg pattern}") (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
   rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
-  rsyncTransferArguments = "--bwlimit=${toString cfg.transferLimitKiBps}";
   stageSourceEntries = lib.concatMapStringsSep "\n" (entry: ''
         ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
-        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable --info=progress2 "''${exclude_args[@]}" -- \
+        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- \
           ${lib.escapeShellArg "${entry.sourcePath}/"} "$staged_source/${entry.destinationPath}/"
   '') resolvedSourceEntries;
   prepareSourceEntries = lib.optionalString (resolvedSourceEntries != [ ]) ''
@@ -566,7 +565,7 @@ ${extraExcludes}
 
       if [ "$archive_enabled" -eq 0 ]; then
         log "syncing unarchived backup: $destination_dir"
-        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable --info=progress2 "''${exclude_args[@]}" -- \
+        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable --info=progress2 "''${exclude_args[@]}" -- \
           "$archive_source_parent/$archive_source_name/" "$destination_dir/"
         ${pkgs.coreutils}/bin/touch -- "$marker_file" "$source_marker_file"
         log "completed successfully: $destination_dir"
