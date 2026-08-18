@@ -92,8 +92,8 @@ in
 
       (if hasSystemPackages then
         lib.mkIf (platforms.isDarwin && hasApplications) {
-          # Application bundles are available before postActivation runs.
-          system.activationScripts.postActivation.text = lib.mkAfter ''
+          # Link bundles before Dock defaults resolve persistent apps.
+          system.activationScripts.applications.text = lib.mkAfter ''
             ${applicationLinkManager}/bin/manage-${name}-application-links
           '';
         }
