@@ -333,8 +333,14 @@ in
 
       # -----------------------------------------------------------------
       # ---- unarchive -> Extract archives and remove on success ---- #
-      # Extracts one or more archives into each archive's own folder.
-      # Deletes each archive only after it extracts successfully.
+      # Extracts one or more archives without spilling files directly
+      # into the archive's parent folder.
+      #
+      # If an archive already contains a matching root folder, that folder
+      # is preserved. Otherwise, contents are placed inside a folder named
+      # after the archive.
+      #
+      # Deletes each archive only after successful extraction and placement.
       # Failed archives are kept and reported after processing finishes.
       #
       # Supported formats:
@@ -366,7 +372,45 @@ in
             continue
           end
 
-          set -l destination (dirname "$archive")
+          set -l parent (dirname "$archive")
+          set -l filename (basename "$archive")
+          set -l folder_name "$filename"
+
+          switch "$folder_name"
+            case '*.tar.gz'
+              set folder_name (string replace -r '\.tar\.gz$' "" "$folder_name")
+            case '*.tar.bz2'
+              set folder_name (string replace -r '\.tar\.bz2$' "" "$folder_name")
+            case '*.tar.xz'
+              set folder_name (string replace -r '\.tar\.xz$' "" "$folder_name")
+            case '*.tar.zst'
+              set folder_name (string replace -r '\.tar\.zst$' "" "$folder_name")
+            case '*.tgz'
+              set folder_name (string replace -r '\.tgz$' "" "$folder_name")
+            case '*.tbz2'
+              set folder_name (string replace -r '\.tbz2$' "" "$folder_name")
+            case '*.tbz'
+              set folder_name (string replace -r '\.tbz$' "" "$folder_name")
+            case '*.txz'
+              set folder_name (string replace -r '\.txz$' "" "$folder_name")
+            case '*.tzst'
+              set folder_name (string replace -r '\.tzst$' "" "$folder_name")
+            case '*.tar'
+              set folder_name (string replace -r '\.tar$' "" "$folder_name")
+            case '*.zip'
+              set folder_name (string replace -r '\.zip$' "" "$folder_name")
+          end
+
+          set -l destination "$parent/$folder_name"
+          set -l temp_dir (mktemp -d "$parent/.unarchive.XXXXXX")
+
+          if test $status -ne 0
+            echo "Could not create temporary extraction folder:"
+            echo "$archive"
+            set -a failed_archives "$archive"
+            continue
+          end
+
           set -l extract_status 1
 
           switch "$archive"
@@ -376,15 +420,16 @@ in
                  '*.tar.zst' '*.tzst' \
                  '*.tar'
 
-              tar -xf "$archive" -C "$destination"
+              tar -xf "$archive" -C "$temp_dir"
               set extract_status $status
 
             case '*.zip'
-              unzip "$archive" -d "$destination"
+              unzip -q "$archive" -d "$temp_dir"
               set extract_status $status
 
             case '*'
               echo "Unsupported archive format: $archive"
+              rm -rf "$temp_dir"
               set -a failed_archives "$archive"
               continue
           end
@@ -393,8 +438,99 @@ in
             echo "Extraction failed. Archive kept:"
             echo "$archive"
 
+            rm -rf "$temp_dir"
             set -a failed_archives "$archive"
             continue
+          end
+
+          set -l extracted_items "$temp_dir"/*
+
+          if test (count $extracted_items) -eq 1
+            if test -d "$extracted_items[1]"
+              if test (basename "$extracted_items[1]") = "$folder_name"
+                if test -e "$destination"
+                  echo "Destination already exists. Archive kept:"
+                  echo "$destination"
+
+                  rm -rf "$temp_dir"
+                  set -a failed_archives "$archive"
+                  continue
+                end
+
+                mv "$extracted_items[1]" "$destination"
+                set -l move_status $status
+
+                rm -rf "$temp_dir"
+
+                if test $move_status -ne 0
+                  echo "Could not move extracted folder. Archive kept:"
+                  echo "$archive"
+
+                  set -a failed_archives "$archive"
+                  continue
+                end
+              else
+                if test -e "$destination"
+                  echo "Destination already exists. Archive kept:"
+                  echo "$destination"
+
+                  rm -rf "$temp_dir"
+                  set -a failed_archives "$archive"
+                  continue
+                end
+
+                mv "$temp_dir" "$destination"
+
+                if test $status -ne 0
+                  echo "Could not place extracted contents. Archive kept:"
+                  echo "$archive"
+
+                  rm -rf "$temp_dir"
+                  set -a failed_archives "$archive"
+                  continue
+                end
+              end
+            else
+              if test -e "$destination"
+                echo "Destination already exists. Archive kept:"
+                echo "$destination"
+
+                rm -rf "$temp_dir"
+                set -a failed_archives "$archive"
+                continue
+              end
+
+              mv "$temp_dir" "$destination"
+
+              if test $status -ne 0
+                echo "Could not place extracted contents. Archive kept:"
+                echo "$archive"
+
+                rm -rf "$temp_dir"
+                set -a failed_archives "$archive"
+                continue
+              end
+            end
+          else
+            if test -e "$destination"
+              echo "Destination already exists. Archive kept:"
+              echo "$destination"
+
+              rm -rf "$temp_dir"
+              set -a failed_archives "$archive"
+              continue
+            end
+
+            mv "$temp_dir" "$destination"
+
+            if test $status -ne 0
+              echo "Could not place extracted contents. Archive kept:"
+              echo "$archive"
+
+              rm -rf "$temp_dir"
+              set -a failed_archives "$archive"
+              continue
+            end
           end
 
           rm -f "$archive"; or begin
@@ -405,8 +541,8 @@ in
             continue
           end
 
-          echo "Extracted and removed:"
-          echo "$archive"
+          echo "Extracted: $destination"
+          echo "Removed:   $archive"
         end
 
         if test (count $failed_archives) -gt 0
