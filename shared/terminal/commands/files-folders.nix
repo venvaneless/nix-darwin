@@ -332,9 +332,10 @@ in
 
 
       # -----------------------------------------------------------------
-      # ---- unarchive -> Extract archive and remove it on success ---- #
-      # Extracts an archive into the same folder as the archive.
-      # Deletes the archive only after extraction completes successfully.
+      # ---- unarchive -> Extract archives and remove on success ---- #
+      # Extracts one or more archives into each archive's own folder.
+      # Deletes each archive only after it extracts successfully.
+      # Failed archives are kept and reported after processing finishes.
       #
       # Supported formats:
       # .tar
@@ -344,58 +345,80 @@ in
       # .tar.zst / .tzst
       # .zip
       #
-      # Example:
+      # Examples:
       # unarchive ~/Downloads/archive.tar
+      # unarchive ~/Downloads/archive-1.tar.gz ~/Downloads/archive-2.zip
       # -----------------------------------------------------------------
       unarchive = ''
-        if test (count $argv) -ne 1
-          echo "Usage: unarchive <path/to/archive>"
+        if test (count $argv) -eq 0
+          echo "Usage: unarchive <archive> [archive ...]"
           return 1
         end
 
-        set -l archive (realpath "$argv[1]")
+        set -l failed_archives
 
-        if not test -f "$archive"
-          echo "Archive not found: $archive"
-          return 1
-        end
+        for input in $argv
+          set -l archive (realpath "$input")
 
-        set -l destination (dirname "$archive")
-        set -l extract_status 1
+          if not test -f "$archive"
+            echo "Archive not found: $input"
+            set -a failed_archives "$input"
+            continue
+          end
 
-        switch "$archive"
-          case '*.tar.gz' '*.tgz' \
-               '*.tar.bz2' '*.tbz2' '*.tbz' \
-               '*.tar.xz' '*.txz' \
-               '*.tar.zst' '*.tzst' \
-               '*.tar'
+          set -l destination (dirname "$archive")
+          set -l extract_status 1
 
-            tar -xf "$archive" -C "$destination"
-            set extract_status $status
+          switch "$archive"
+            case '*.tar.gz' '*.tgz' \
+                 '*.tar.bz2' '*.tbz2' '*.tbz' \
+                 '*.tar.xz' '*.txz' \
+                 '*.tar.zst' '*.tzst' \
+                 '*.tar'
 
-          case '*.zip'
-            unzip "$archive" -d "$destination"
-            set extract_status $status
+              tar -xf "$archive" -C "$destination"
+              set extract_status $status
 
-          case '*'
-            echo "Unsupported archive format: $archive"
-            return 1
-        end
+            case '*.zip'
+              unzip "$archive" -d "$destination"
+              set extract_status $status
 
-        if test $extract_status -ne 0
-          echo "Extraction failed. Archive kept:"
+            case '*'
+              echo "Unsupported archive format: $archive"
+              set -a failed_archives "$archive"
+              continue
+          end
+
+          if test $extract_status -ne 0
+            echo "Extraction failed. Archive kept:"
+            echo "$archive"
+
+            set -a failed_archives "$archive"
+            continue
+          end
+
+          rm -f "$archive"; or begin
+            echo "Archive extracted, but could not be deleted:"
+            echo "$archive"
+
+            set -a failed_archives "$archive"
+            continue
+          end
+
+          echo "Extracted and removed:"
           echo "$archive"
-          return $extract_status
         end
 
-        rm -f "$archive"; or begin
-          echo "Archive extracted, but could not be deleted:"
-          echo "$archive"
+        if test (count $failed_archives) -gt 0
+          echo
+          echo "Failed archives:"
+
+          for archive in $failed_archives
+            echo "$archive"
+          end
+
           return 1
         end
-
-        echo "Extracted and removed:"
-        echo "$archive"
       '';
       # -----------------------------------------------------------------
     };

@@ -3,10 +3,11 @@
 # CODEX: CHATGPT PROFILE LAUNCHER
 # =====================================================================
 # Provides a Dock-compatible macOS application bundle that launches
-# the primary chatgpt Codex profile through the signed ChatGPT app.
+# the primary chatgpt Codex profile through codex-profile.
 # =====================================================================
 
 {
+  codexProfile,
   lib,
   paths,
   python3,
@@ -18,18 +19,11 @@
 let
   # ------------------------------------------------------------
   # ------ APPLICATION BUNDLE ------ #
-  # The Dock requires an .app bundle. The launcher directly execs the
-  # signed ChatGPT executable so macOS keeps one running Dock item.
+  # The Dock requires an .app bundle, while codex-profile supplies
+  # the profile-specific CODEX_HOME and Electron user-data directory.
 
   appName = "Codex ChatGPT";
-  chatgptApp = paths.darwin.applications.bundles.chatgpt;
-  chatgptExecutable = "${chatgptApp}/Contents/MacOS/ChatGPT";
-  codexIcon = "${chatgptApp}/Contents/Resources/icon-codex-dark-color.png";
-
-  # Keep the named profile contract aligned with codex-profile.
-  codexHome = paths.darwin.agents.codex.chatgpt;
-  codexSqliteHome = "${codexHome}/sqlite";
-  electronUserData = "${codexHome}/electron-user-data";
+  codexIcon = "${paths.darwin.applications.bundles.chatgpt}/Contents/Resources/icon-codex-dark-color.png";
 
   infoPlist = writeText "${appName}.plist" ''
     <?xml version="1.0" encoding="UTF-8"?>
@@ -59,24 +53,13 @@ let
   launcher = writeShellScript "launch-${appName}" ''
     set -euo pipefail
 
-    chatgpt_executable=${lib.escapeShellArg chatgptExecutable}
-    codex_home=${lib.escapeShellArg codexHome}
-    codex_sqlite_home=${lib.escapeShellArg codexSqliteHome}
-    electron_user_data=${lib.escapeShellArg electronUserData}
+    # Delegate profile setup and LaunchServices startup to the same command
+    # used by Raycast, including the chatgpt Electron user-data directory.
+    export CHATGPT_APP=${lib.escapeShellArg paths.darwin.applications.bundles.chatgpt}
+    export CODEX_PROFILE_CONFIG_HOME=${lib.escapeShellArg paths.darwin.agents.codex.profileConfig}
+    export CODEX_PROFILE_HOME_ROOT=${lib.escapeShellArg paths.darwin.agents.codex.root}
 
-    if [ ! -x "$chatgpt_executable" ]; then
-      echo "[Codex ChatGPT] ERROR: ChatGPT executable was not found: $chatgpt_executable" >&2
-      exit 1
-    fi
-
-    # Create only the exact mutable profile directories required by ChatGPT.
-    umask 077
-    /bin/mkdir -p "$codex_home" "$codex_sqlite_home" "$electron_user_data"
-
-    export CODEX_HOME="$codex_home"
-    export CODEX_SQLITE_HOME="$codex_sqlite_home"
-
-    exec "$chatgpt_executable" "--user-data-dir=$electron_user_data"
+    exec ${lib.escapeShellArg "${codexProfile}/bin/codex-profile"} app chatgpt
   '';
 in
 runCommand "codex-chatgpt-launcher" {
