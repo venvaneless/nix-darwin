@@ -361,35 +361,31 @@ in
         end
 
         set -l destination (dirname "$archive")
+        set -l extract_status 1
 
         switch "$archive"
-          case '*.tar.gz' '*.tgz'
-            gzip -dc "$archive" | tar -xf - -C "$destination"
+          case '*.tar.gz' '*.tgz' \
+               '*.tar.bz2' '*.tbz2' '*.tbz' \
+               '*.tar.xz' '*.txz' \
+               '*.tar.zst' '*.tzst' \
+               '*.tar'
 
-          case '*.tar.bz2' '*.tbz2' '*.tbz'
-            bzip2 -dc "$archive" | tar -xf - -C "$destination"
-
-          case '*.tar.xz' '*.txz'
-            xz -dc "$archive" | tar -xf - -C "$destination"
-
-          case '*.tar.zst' '*.tzst'
-            zstd -dc "$archive" | tar -xf - -C "$destination"
-
-          case '*.tar'
             tar -xf "$archive" -C "$destination"
+            set extract_status $status
 
           case '*.zip'
             unzip "$archive" -d "$destination"
+            set extract_status $status
 
           case '*'
             echo "Unsupported archive format: $archive"
             return 1
         end
 
-        if test $pipestatus[1] -ne 0; or test $pipestatus[-1] -ne 0
+        if test $extract_status -ne 0
           echo "Extraction failed. Archive kept:"
           echo "$archive"
-          return 1
+          return $extract_status
         end
 
         rm -f "$archive"; or begin
