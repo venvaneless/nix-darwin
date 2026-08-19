@@ -16,7 +16,7 @@ let
   # ------ SHARED CONFIGURATION ------ #
   # Keep the marketplace registration aligned with the shared profiles.
 
-  helpers = import ../../../../options { inherit lib options pkgs; };
+  helpers = import ../../../../../options { inherit lib options pkgs; };
   inherit (helpers) paths;
 
   userName = paths.user.name;
@@ -24,29 +24,6 @@ let
   flakeRoot = paths.darwin.home.nixConfig;
   codexRoot = paths.darwin.agents.codex.root;
   profileConfig = paths.darwin.agents.codex.profileConfig;
-  claudeMem = paths.darwin.agents.claudeMem;
-  claudeMemSettingsPath = claudeMem.settings;
-  claudeMemSettingsRelativePath = lib.removePrefix "${homeDir}/" claudeMemSettingsPath;
-
-  # SETTINGS
-  # =========================
-  # Keep only intentional overrides here. Claude-mem merges this file with
-  # its upstream defaults, so update-added defaults remain compatible.
-
-  # PAUSE PRESETS
-  # =========================
-  # "CLAUDE_MEM_EXCLUDED_PROJECTS": "*"
-  #   Pause Claude-mem for every project.
-  # "CLAUDE_MEM_EXCLUDED_PROJECTS": ""
-  #   Resume Claude-mem for every project.
-  excludedProjects = "";
-
-  claudeMemSettings = builtins.toJSON {
-    CLAUDE_MEM_DATA_DIR = claudeMem.data;
-    CLAUDE_MEM_TRANSCRIPTS_CONFIG_PATH = claudeMem.transcriptWatch;
-    CLAUDE_MEM_EXCLUDED_PROJECTS = excludedProjects;
-  };
-
   profiles = [
     "api"
     "chatgpt"
@@ -168,15 +145,16 @@ let
   };
 in
 {
-  # SETTINGS
-  # =========================
-  # Home Manager links the declared settings file while the database, logs,
-  # worker, and transcript state remain mutable outside the Nix store.
+  imports = [
+    ./claude-mem-settings.nix
 
-  home-manager.users.${userName}.home.file."${claudeMemSettingsRelativePath}" = {
-    force = true;
-    text = claudeMemSettings;
-  };
+    ./standup.nix
+    ./what-the.nix
+    ./make-plan.nix
+    ./mem-search.nix
+    ./pathfinder.nix
+    ./mode-creator.nix
+  ];
 
   # COMMANDS
   # =========================

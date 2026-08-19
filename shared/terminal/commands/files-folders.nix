@@ -330,5 +330,78 @@ in
       '';
       # -----------------------------------------------------------------
     };
+
+    # -----------------------------------------------------------------
+    # ---- unarchive -> Extract archive and remove it on success ---- #
+    # Extracts an archive into the same folder as the archive.
+    # Deletes the archive only after extraction completes successfully.
+    #
+    # Supported formats:
+    # .tar
+    # .tar.gz / .tgz
+    # .tar.bz2 / .tbz2 / .tbz
+    # .tar.xz / .txz
+    # .tar.zst / .tzst
+    # .zip
+    #
+    # Example:
+    # unarchive ~/Downloads/archive.tar
+    # -----------------------------------------------------------------
+    unarchive = ''
+      if test (count $argv) -ne 1
+        echo "Usage: unarchive <path/to/archive>"
+        return 1
+      end
+
+      set -l archive (realpath "$argv[1]")
+
+      if not test -f "$archive"
+        echo "Archive not found: $archive"
+        return 1
+      end
+
+      set -l destination (dirname "$archive")
+
+      switch "$archive"
+        case '*.tar.gz' '*.tgz'
+          gzip -dc "$archive" | tar -xf - -C "$destination"
+
+        case '*.tar.bz2' '*.tbz2' '*.tbz'
+          bzip2 -dc "$archive" | tar -xf - -C "$destination"
+
+        case '*.tar.xz' '*.txz'
+          xz -dc "$archive" | tar -xf - -C "$destination"
+
+        case '*.tar.zst' '*.tzst'
+          zstd -dc "$archive" | tar -xf - -C "$destination"
+
+        case '*.tar'
+          tar -xf "$archive" -C "$destination"
+
+        case '*.zip'
+          unzip "$archive" -d "$destination"
+
+        case '*'
+          echo "Unsupported archive format: $archive"
+          return 1
+      end
+
+      if test $pipestatus[1] -ne 0; or test $pipestatus[-1] -ne 0
+        echo "Extraction failed. Archive kept:"
+        echo "$archive"
+        return 1
+      end
+
+      rm -f "$archive"; or begin
+        echo "Archive extracted, but could not be deleted:"
+        echo "$archive"
+        return 1
+      end
+
+      echo "Extracted and removed:"
+      echo "$archive"
+    '';
+    # -----------------------------------------------------------------
+    
   };
 }

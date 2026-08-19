@@ -9,6 +9,7 @@
 {
   lib,
   paths,
+  python3,
   runCommand,
   writeShellScript,
   writeText,
@@ -23,7 +24,7 @@ let
   appName = "Codex ChatGPT";
   chatgptApp = paths.darwin.applications.bundles.chatgpt;
   chatgptExecutable = "${chatgptApp}/Contents/MacOS/ChatGPT";
-  chatgptIcon = "${chatgptApp}/Contents/Resources/app.icns";
+  codexIcon = "${chatgptApp}/Contents/Resources/icon-codex-dark-color.png";
 
   # Keep the named profile contract aligned with codex-profile.
   codexHome = paths.darwin.agents.codex.chatgpt;
@@ -42,13 +43,15 @@ let
         <key>CFBundleIdentifier</key>
         <string>com.ven.codex-chatgpt</string>
         <key>CFBundleIconFile</key>
-        <string>app.icns</string>
+        <string>Codex.icns</string>
         <key>CFBundleName</key>
         <string>${appName}</string>
         <key>CFBundlePackageType</key>
         <string>APPL</string>
         <key>CFBundleShortVersionString</key>
-        <string>1.0</string>
+        <string>2.0</string>
+        <key>CFBundleVersion</key>
+        <string>2</string>
       </dict>
     </plist>
   '';
@@ -76,7 +79,9 @@ let
     exec "$chatgpt_executable" "--user-data-dir=$electron_user_data"
   '';
 in
-runCommand "codex-chatgpt-launcher" { } ''
+runCommand "codex-chatgpt-launcher" {
+  nativeBuildInputs = [ python3 ];
+} ''
   application="$out/Applications/${appName}.app"
 
   install -Dm444 \
@@ -87,8 +92,23 @@ runCommand "codex-chatgpt-launcher" { } ''
     ${launcher} \
     "$application/Contents/MacOS/${appName}"
 
-  # Reuse the installed signed app's icon without modifying its bundle.
+  # Package the Codex artwork as a native icon so the Dock has it before the
+  # Electron application starts and can supply its runtime icon.
   mkdir -p "$application/Contents/Resources"
-  ln -s ${lib.escapeShellArg chatgptIcon} \
-    "$application/Contents/Resources/app.icns"
+
+  python3 - ${lib.escapeShellArg codexIcon} \
+    "$application/Contents/Resources/Codex.icns" <<'PY'
+import struct
+import sys
+
+png_path, icns_path = sys.argv[1:]
+png = open(png_path, "rb").read()
+
+with open(icns_path, "wb") as icon:
+    icon.write(b"icns")
+    icon.write(struct.pack(">I", 16 + len(png)))
+    icon.write(b"ic10")
+    icon.write(struct.pack(">I", 8 + len(png)))
+    icon.write(png)
+PY
 ''

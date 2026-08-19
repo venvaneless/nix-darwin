@@ -83,7 +83,7 @@ in
     ./shared.nix
 
     ./caveman.nix
-    ./claude-mem.nix
+    ./claude-mem/default.nix
     ./simple-english.nix
     ./codebase-memory-mcp.nix
 

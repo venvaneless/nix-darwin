@@ -388,6 +388,7 @@ in
       settings = "${root}/settings.json";
       data = "${darwinHome}/.claude-mem";
       transcriptWatch = "${data}/transcript-watch.json";
+      modes = "${data}/modes";
 
       marketplace = "${root}/marketplace";
       plugin = "${marketplace}/plugin";
