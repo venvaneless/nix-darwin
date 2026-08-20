@@ -53,6 +53,9 @@ in
 
     # Codex backup command and LaunchAgent
     ./codex/codex-backup.nix
+
+    # Repairs shared conversation storage after the profile layout changed
+    ./codex/codex-repair.nix
   ];
 
   config = helpers.packageOptions.mkPackageModule {

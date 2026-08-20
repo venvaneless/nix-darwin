@@ -9,7 +9,6 @@
 {
   lib,
   paths,
-  python3,
   runCommand,
   writeShellScript,
   writeText,
@@ -30,6 +29,37 @@ let
   codexHome = paths.darwin.agents.codex.chatgpt;
   codexSqliteHome = "${codexHome}/sqlite";
   electronUserData = "${codexHome}/electron-user-data";
+
+  # ------------------------------------------------------------
+  # ------ ICON LADDER ------ #
+  # Apple's canonical representation set. Every consumer picks a
+  # representation out of this ladder; an icon file that carries only
+  # icon_512x512@2x is accepted by Finder but rejected by Chromium, and
+  # the running Electron process then falls back to its own bundled
+  # electron.icns. Emitting the full ladder is what keeps the Dock tile
+  # correct both before and after the app starts.
+
+  iconLadder = [
+    { pixels = 16; name = "icon_16x16"; }
+    { pixels = 32; name = "icon_16x16@2x"; }
+    { pixels = 32; name = "icon_32x32"; }
+    { pixels = 64; name = "icon_32x32@2x"; }
+    { pixels = 128; name = "icon_128x128"; }
+    { pixels = 256; name = "icon_128x128@2x"; }
+    { pixels = 256; name = "icon_256x256"; }
+    { pixels = 512; name = "icon_256x256@2x"; }
+    { pixels = 512; name = "icon_512x512"; }
+    { pixels = 1024; name = "icon_512x512@2x"; }
+  ];
+
+  renderIconEntry = entry: ''
+    /usr/bin/sips \
+      --setProperty format png \
+      --resampleHeightWidth ${toString entry.pixels} ${toString entry.pixels} \
+      "$source_icon" \
+      --out "$iconset/${entry.name}.png" \
+      > /dev/null
+  '';
 
   infoPlist = writeText "${appName}.plist" ''
     <?xml version="1.0" encoding="UTF-8"?>
@@ -52,6 +82,8 @@ let
         <string>2.0</string>
         <key>CFBundleVersion</key>
         <string>2</string>
+        <key>NSHighResolutionCapable</key>
+        <true/>
       </dict>
     </plist>
   '';
@@ -79,9 +111,7 @@ let
     exec "$chatgpt_executable" "--user-data-dir=$electron_user_data"
   '';
 in
-runCommand "codex-chatgpt-launcher" {
-  nativeBuildInputs = [ python3 ];
-} ''
+runCommand "codex-chatgpt-launcher" { } ''
   application="$out/Applications/${appName}.app"
 
   install -Dm444 \
@@ -92,23 +122,30 @@ runCommand "codex-chatgpt-launcher" {
     ${launcher} \
     "$application/Contents/MacOS/${appName}"
 
-  # Package the Codex artwork as a native icon so the Dock has it before the
-  # Electron application starts and can supply its runtime icon.
+
+  # ------ ICON ------ #
+  # sips and iconutil are the system tools that produce a canonical
+  # icns. They are reachable here because this derivation already reads
+  # the artwork out of the signed ChatGPT bundle, so the build is
+  # host-impure by design.
+
+  source_icon=${lib.escapeShellArg codexIcon}
+
+  if [ ! -f "$source_icon" ]; then
+    echo "[Codex ChatGPT] ERROR: Codex artwork was not found: $source_icon" >&2
+    echo "[Codex ChatGPT] ChatGPT.app may have renamed its icon resources." >&2
+    exit 1
+  fi
+
+  iconset="$TMPDIR/Codex.iconset"
+  mkdir -p "$iconset"
+
+  ${lib.concatMapStringsSep "\n" renderIconEntry iconLadder}
+
   mkdir -p "$application/Contents/Resources"
 
-  python3 - ${lib.escapeShellArg codexIcon} \
-    "$application/Contents/Resources/Codex.icns" <<'PY'
-import struct
-import sys
-
-png_path, icns_path = sys.argv[1:]
-png = open(png_path, "rb").read()
-
-with open(icns_path, "wb") as icon:
-    icon.write(b"icns")
-    icon.write(struct.pack(">I", 16 + len(png)))
-    icon.write(b"ic10")
-    icon.write(struct.pack(">I", 8 + len(png)))
-    icon.write(png)
-PY
+  /usr/bin/iconutil \
+    --convert icns \
+    "$iconset" \
+    --output "$application/Contents/Resources/Codex.icns"
 ''

@@ -3,6 +3,10 @@
 # Share Codex skills, plugins, and conversation storage between all configured
 # profiles. Session and archive storage must share one root because archiving
 # moves a session between them.
+#
+# Activation never migrates existing conversations or rewrites the state
+# database. When either is still needed the profile is reported here and
+# `codex-repair` performs the migration with ChatGPT closed.
 
 { lib, options, pkgs, ... }:
 
@@ -32,6 +36,7 @@ in
     mkdir -p \
       "${codex.sharedSkills}" \
       "${codex.sharedPlugins}" \
+      "${codex.sharedSessions}" \
       "${codex.sharedArchivedSessions}"
 
     ${lib.concatMapStringsSep "\n" (profile: ''
@@ -60,7 +65,8 @@ in
           echo "[nix-darwin][codex] Existing session link is unmanaged: $session_root" >&2
         fi
       elif [ -e "$session_root" ]; then
-        echo "[nix-darwin][codex] Existing shared session migration is pending: $session_root" >&2
+        echo "[nix-darwin][codex] Session migration is pending: $session_root" >&2
+        echo "[nix-darwin][codex] Quit ChatGPT and run: codex-repair --apply" >&2
       else
         ln -s \
           "${codex.sharedSessions}" \
@@ -68,7 +74,9 @@ in
       fi
 
       # Existing archive directories contain user conversations, so they are
-      # migrated explicitly while ChatGPT is closed. Never replace one here.
+      # migrated by codex-repair while ChatGPT is closed. Never replace one
+      # here: archiving is what moves a conversation between the two roots,
+      # and a half-migrated tree is what breaks it.
       if [ -L "$archive_root" ]; then
         archive_target="$(readlink "$archive_root")"
 
@@ -76,7 +84,8 @@ in
           echo "[nix-darwin][codex] Existing archive link is unmanaged: $archive_root" >&2
         fi
       elif [ -e "$archive_root" ]; then
-        echo "[nix-darwin][codex] Shared archive migration is pending: $archive_root" >&2
+        echo "[nix-darwin][codex] Archive migration is pending: $archive_root" >&2
+        echo "[nix-darwin][codex] Quit ChatGPT and run: codex-repair --apply" >&2
       else
         ln -s \
           "${codex.sharedArchivedSessions}" \
