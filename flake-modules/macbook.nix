@@ -57,6 +57,9 @@ in
             nixpkgs.overlays = [ macbookOverlay ];
           }
 
+          # Provides SOPS secret management
+          inputs.sops-nix.darwinModules.sops
+
           ../darwin/default.nix
         ];
       }

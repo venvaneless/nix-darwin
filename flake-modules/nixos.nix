@@ -17,10 +17,13 @@
   # integrated Home Manager module does not require inputs.self.
   flake.nixosModules.ven = {
     imports = [
-      # Provides the integrated Home Manager NixOS module.
+      # Provides the integrated Home Manager NixOS module
       inputs.home-manager.nixosModules.home-manager
 
-      # Provides the supplied system and user configuration.
+      # Provides SOPS secret management
+      inputs.sops-nix.nixosModules.sops
+
+      # Provides the supplied system and user configuration
       ../nixos/default.nix
       ../nixos/home-manager.nix
     ];

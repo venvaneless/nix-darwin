@@ -39,8 +39,8 @@
     ./ripgrep.nix
     ./starship.nix
 
-    # Television settings and the theme selected in television.nix
-    ./television/television.nix
+    # Television channels and the theme selected in television/default.nix
+    ./television
 
     ./tmux.nix
     ./yazi.nix

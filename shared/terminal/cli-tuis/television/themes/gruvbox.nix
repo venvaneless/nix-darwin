@@ -4,7 +4,7 @@
 # TELEVISION: GRUVBOX THEME
 #
 # - Installs the `ven-gruvbox` Television theme file
-# - Selected directly in television.nix with selectedTheme = "gruvbox"
+# - Selected directly in television/default.nix with selectedTheme = "gruvbox"
 # - Uses the same Gruvbox Dark colours as the local WezTerm palette
 # =====================================================================
 
@@ -23,7 +23,7 @@ in
   options.ven.features.terminal.cliTuis.television.gruvbox.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
-    description = "Internal switch for the Gruvbox theme selected in television.nix.";
+    description = "Internal switch for the Gruvbox theme selected in television/default.nix.";
   };
 
   config = lib.mkIf (televisionCfg.enable && cfg.enable) {

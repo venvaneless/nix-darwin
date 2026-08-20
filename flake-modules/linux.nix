@@ -14,13 +14,16 @@
   flake.homeConfigurations.ven = config.flake.lib.mkStandaloneHome {
     system = "x86_64-linux";
 
-    # Keeps shared modules able to reference flake inputs when needed.
+    # Keeps shared modules able to reference flake inputs when needed
     extraSpecialArgs = {
       inherit inputs;
     };
 
-    # Uses the same unfree policy as the existing shared host modules.
+    # Uses the same unfree policy as the existing shared host modules
     nixpkgsConfig.allowUnfree = true;
+
+    # Provides SOPS secret management
+    inputs.sops-nix.homeManagerModules.sops
 
     modules = [
       ../linux/default.nix
