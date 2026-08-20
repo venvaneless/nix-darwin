@@ -1,12 +1,10 @@
 # CODEX: SHARED EXTENSIONS
 # =========================
-# Share Codex skills, plugins, and conversation storage between all configured
-# profiles. Session and archive storage must share one root because archiving
-# moves a session between them.
+# Share Codex skills and plugins between all configured profiles.
 #
-# Activation never migrates existing conversations or rewrites the state
-# database. When either is still needed the profile is reported here and
-# `codex-repair` performs the migration with ChatGPT closed.
+# ** Conversation storage is not handled here. Sessions and archives are not
+# ** extensions, and their layout is what archiving depends on, so they are
+# ** owned by codex.nix alongside the rest of the profile contract.
 
 { lib, options, pkgs, ... }:
 
@@ -18,81 +16,33 @@ let
   codex = paths.darwin.agents.codex;
   sharedRoot = codex.shared;
 
-  profiles = [
-    {
-      name = "api";
-      root = codex.api;
-    }
-    {
-      name = "chatgpt";
-      root = codex.chatgpt;
-    }
-  ];
+  profileRoots = [ codex.api codex.chatgpt ];
+
+  renderProfile = root: ''
+    mkdir -p ${lib.escapeShellArg root}
+
+    rm -rf ${lib.escapeShellArg "${root}/skills"}
+    rm -rf ${lib.escapeShellArg "${root}/plugins"}
+
+    ln -s \
+      ${lib.escapeShellArg codex.sharedSkills} \
+      ${lib.escapeShellArg "${root}/skills"}
+
+    ln -s \
+      ${lib.escapeShellArg codex.sharedPlugins} \
+      ${lib.escapeShellArg "${root}/plugins"}
+  '';
 in
 {
   system.activationScripts.extraActivation.text = lib.mkBefore ''
-    echo "[nix-darwin][codex] Configuring shared Codex resources..."
+    echo "[nix-darwin][codex] Configuring shared Codex skills and plugins..."
 
     mkdir -p \
-      "${codex.sharedSkills}" \
-      "${codex.sharedPlugins}" \
-      "${codex.sharedSessions}" \
-      "${codex.sharedArchivedSessions}"
+      ${lib.escapeShellArg codex.sharedSkills} \
+      ${lib.escapeShellArg codex.sharedPlugins}
 
-    ${lib.concatMapStringsSep "\n" (profile: ''
-      profile_root="${profile.root}"
-      session_root="$profile_root/sessions"
-      archive_root="$profile_root/archived_sessions"
+    ${lib.concatMapStringsSep "\n" renderProfile profileRoots}
 
-      mkdir -p "$profile_root"
-
-      rm -rf "$profile_root/skills"
-      rm -rf "$profile_root/plugins"
-
-      ln -s \
-        "${codex.sharedSkills}" \
-        "$profile_root/skills"
-
-      ln -s \
-        "${codex.sharedPlugins}" \
-        "$profile_root/plugins"
-
-      # Existing session directories are never replaced during activation.
-      if [ -L "$session_root" ]; then
-        session_target="$(readlink "$session_root")"
-
-        if [ "$session_target" != "${codex.sharedSessions}" ]; then
-          echo "[nix-darwin][codex] Existing session link is unmanaged: $session_root" >&2
-        fi
-      elif [ -e "$session_root" ]; then
-        echo "[nix-darwin][codex] Session migration is pending: $session_root" >&2
-        echo "[nix-darwin][codex] Quit ChatGPT and run: codex-repair --apply" >&2
-      else
-        ln -s \
-          "${codex.sharedSessions}" \
-          "$session_root"
-      fi
-
-      # Existing archive directories contain user conversations, so they are
-      # migrated by codex-repair while ChatGPT is closed. Never replace one
-      # here: archiving is what moves a conversation between the two roots,
-      # and a half-migrated tree is what breaks it.
-      if [ -L "$archive_root" ]; then
-        archive_target="$(readlink "$archive_root")"
-
-        if [ "$archive_target" != "${codex.sharedArchivedSessions}" ]; then
-          echo "[nix-darwin][codex] Existing archive link is unmanaged: $archive_root" >&2
-        fi
-      elif [ -e "$archive_root" ]; then
-        echo "[nix-darwin][codex] Archive migration is pending: $archive_root" >&2
-        echo "[nix-darwin][codex] Quit ChatGPT and run: codex-repair --apply" >&2
-      else
-        ln -s \
-          "${codex.sharedArchivedSessions}" \
-          "$archive_root"
-      fi
-    '') profiles}
-
-    chown -R ${paths.user.name}:staff "${sharedRoot}"
+    chown -R ${paths.user.name}:staff ${lib.escapeShellArg sharedRoot}
   '';
 }

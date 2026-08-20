@@ -21,10 +21,45 @@ let
   codexRoot = codex.root;
 
   # ------------------------------------------------------------
+  # ------ CONVERSATION STORAGE ------ #
+  # ------------------------------------------------------------
+  # Codex records threads.rollout_path in each profile's state database and
+  # derives a thread's archive destination from that path relative to
+  # $CODEX_HOME. When it cannot find a thread where the database says it is,
+  # it falls back to scanning and writes back the path it found -- the
+  # symlink-resolved one.
+  #
+  # So a sessions/ directory that is a symlink out of the profile resolves to
+  # a path outside $CODEX_HOME, the archive destination becomes unreachable,
+  # and the app reports "Failed to archive chat". Rewriting the rows alone
+  # does not hold: the next fallback scan restores the resolved spelling.
+  #
+  # The stable arrangement is for one profile to own the real directories, so
+  # that resolving a path returns the string it started as. Everything else
+  # links into it.
+  #
+  # ** Archiving is therefore structurally correct for the owner profile
+  # ** only. A second profile sharing one conversation tree necessarily
+  # ** resolves outside its own $CODEX_HOME. That is a Codex constraint.
+
+  storageOwner = codex.chatgpt;
+
+  storageLinked = [ codex.shared codex.api ];
+
+  # Both directories are managed together because archiving moves a thread
+  # between them, so they have to resolve consistently.
+  storageKinds = [ "sessions" "archived_sessions" ];
+
+  storageDatabases = map (root: "${root}/sqlite/state_5.sqlite") [
+    codex.chatgpt
+    codex.api
+  ];
+
+  # ------------------------------------------------------------
   # ------ DOCK LAUNCHER ------ #
   # ------------------------------------------------------------
-  # Same derivation as the one installed through agents-pkgs.nix, so
-  # both resolve to one store path.
+  # Same derivation as the one installed through agents-pkgs.nix, so both
+  # resolve to one store path.
 
   launcherPackage = pkgs.callPackage ./chatgpt-launcher.nix {
     inherit paths;
@@ -56,6 +91,121 @@ in
   };
 
 
+  # CODEX: CONVERSATION STORAGE
+  # =================================================================
+  # Runs on every activation and is idempotent: once the layout is correct
+  # every branch is a no-op. Conversations are moved, never overwritten, and
+  # nothing is touched at all while ChatGPT is running.
+
+  system.activationScripts.extraActivation.text = lib.mkBefore ''
+    echo "[nix-darwin][codex] Configuring Codex conversation storage..."
+
+    codex_owner_root=${lib.escapeShellArg storageOwner}
+    codex_shared_root=${lib.escapeShellArg codex.shared}
+
+    if /usr/bin/pgrep -qf '/Applications/ChatGPT.app/Contents/MacOS/ChatGPT'; then
+      echo "[nix-darwin][codex] ChatGPT is running; conversation storage left untouched." >&2
+      echo "[nix-darwin][codex] Quit it and rebuild to finish the layout." >&2
+    else
+      for codex_kind in ${lib.escapeShellArgs storageKinds}; do
+        codex_owner_dir="$codex_owner_root/$codex_kind"
+
+        # ---- The owner profile holds the real directory.
+        if [ -L "$codex_owner_dir" ]; then
+          codex_link_target="$(readlink "$codex_owner_dir")"
+          rm "$codex_owner_dir"
+
+          if [ -d "$codex_link_target" ]; then
+            mv "$codex_link_target" "$codex_owner_dir"
+            echo "[nix-darwin][codex] Took ownership of $codex_kind from $codex_link_target"
+          else
+            mkdir -p "$codex_owner_dir"
+          fi
+        elif [ ! -e "$codex_owner_dir" ]; then
+          mkdir -p "$codex_owner_dir"
+        fi
+
+        # ---- Every other location links at it.
+        for codex_linked_root in ${lib.escapeShellArgs storageLinked}; do
+          codex_linked_dir="$codex_linked_root/$codex_kind"
+
+          if [ -L "$codex_linked_dir" ]; then
+            if [ "$(readlink "$codex_linked_dir")" != "$codex_owner_dir" ]; then
+              rm "$codex_linked_dir"
+              ln -s "$codex_owner_dir" "$codex_linked_dir"
+            fi
+
+            continue
+          fi
+
+          if [ ! -e "$codex_linked_dir" ]; then
+            mkdir -p "$codex_linked_root"
+            ln -s "$codex_owner_dir" "$codex_linked_dir"
+            continue
+          fi
+
+          # A real directory here still holds conversations. They are moved
+          # one by one and a name that already exists at the destination is
+          # left alone, so the directory survives instead of being replaced.
+          codex_conflicts=0
+
+          while IFS= read -r -d "" codex_file; do
+            codex_relative="''${codex_file#"$codex_linked_dir"/}"
+            codex_destination="$codex_owner_dir/$codex_relative"
+
+            if [ -e "$codex_destination" ]; then
+              codex_conflicts=$((codex_conflicts + 1))
+              continue
+            fi
+
+            mkdir -p "$(dirname "$codex_destination")"
+            mv "$codex_file" "$codex_destination"
+          done < <(find "$codex_linked_dir" -type f ! -name '.DS_Store' -print0)
+
+          find "$codex_linked_dir" -name '.DS_Store' -type f -delete
+
+          if [ "$codex_conflicts" -ne 0 ]; then
+            echo "[nix-darwin][codex] $codex_conflicts conflict(s); left $codex_linked_dir in place" >&2
+            continue
+          fi
+
+          rm -r "$codex_linked_dir"
+          ln -s "$codex_owner_dir" "$codex_linked_dir"
+          echo "[nix-darwin][codex] Migrated $codex_linked_dir into the owner profile"
+        done
+      done
+
+      # ---- Rows recorded under the old resolved path.
+      # With the owner profile holding the real directories this rewrite is
+      # durable: resolving a path now returns the same spelling.
+      for codex_database in ${lib.escapeShellArgs storageDatabases}; do
+        [ -f "$codex_database" ] || continue
+
+        codex_stale="$(
+          ${pkgs.sqlite}/bin/sqlite3 "file:$codex_database?mode=ro" \
+            "SELECT COUNT(*) FROM threads WHERE rollout_path LIKE '$codex_shared_root/%';"
+        )"
+
+        if [ "$codex_stale" = "0" ]; then
+          continue
+        fi
+
+        mkdir -p "$(dirname "$codex_database")/backups"
+
+        ${pkgs.sqlite}/bin/sqlite3 "$codex_database" \
+          ".backup '$(dirname "$codex_database")/backups/state_5.sqlite.$(date +%Y%m%d-%H%M%S)'"
+
+        ${pkgs.sqlite}/bin/sqlite3 "$codex_database" \
+          "UPDATE threads
+              SET rollout_path = replace(rollout_path, '$codex_shared_root/', '$codex_owner_root/')
+            WHERE rollout_path LIKE '$codex_shared_root/%';"
+
+        echo "[nix-darwin][codex] Rewrote $codex_stale stale rollout path(s) in $codex_database"
+      done
+    fi
+  '';
+
+
   # CODEX: ACTIVATION
   # =================================================================
   # Two things that only make sense once the store paths for this
@@ -83,13 +233,10 @@ in
     # path changes -- which happens on every nixpkgs bump, not only when
     # the launcher itself is edited. LaunchServices keeps serving the
     # icon and metadata it recorded for the previous bundle, so the Dock
-    # tile silently reverts to a stale icon until the bundle is
-    # registered again.
+    # tile silently reverts to a stale icon until it is registered again.
     #
     # The store path that was last registered is recorded, so this only
     # does work when it actually changes.
-
-    echo "[nix-darwin][codex] Checking the Codex ChatGPT launcher registration..."
 
     codex_launcher_store_path=${lib.escapeShellArg launcherPackage}
     codex_launcher_bundle=${lib.escapeShellArg launcherBundle}
@@ -103,7 +250,7 @@ in
     if [ ! -e "$codex_launcher_bundle" ]; then
       echo "[nix-darwin][codex] Launcher bundle is missing: $codex_launcher_bundle" >&2
     elif [ "$codex_launcher_recorded" = "$codex_launcher_store_path" ]; then
-      echo "[nix-darwin][codex] Launcher registration is current."
+      : # Registration is current.
     elif [ ! -x ${lib.escapeShellArg lsregister} ]; then
       echo "[nix-darwin][codex] lsregister is unavailable; skipping registration." >&2
     else
@@ -123,8 +270,6 @@ in
 
       /bin/mkdir -p ${lib.escapeShellArg launcherMarkerDirectory}
       printf '%s' "$codex_launcher_store_path" > "$codex_launcher_marker"
-
-      echo "[nix-darwin][codex] Launcher registration refreshed."
     fi
   '';
 
