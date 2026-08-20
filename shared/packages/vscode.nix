@@ -99,30 +99,39 @@ lib.mkMerge [
   })
 
   # ---- Shell environment
-  # Covers the `code` CLI and any terminal launch on both platforms. On
-  # Linux this is the only mechanism needed; macOS additionally relies
-  # on the LSEnvironment patch above.
-  {
-    environment.variables = vscodeEnvironment;
-  }
+  # Covers the `code` CLI and any terminal launch on both platforms. Home
+  # Manager owns the Linux session environment; nix-darwin owns the Darwin
+  # process environment. macOS additionally relies on launchd below for GUI
+  # application launches.
+  (if platforms.isDarwin then
+    {
+      environment.variables = vscodeEnvironment;
+    }
+  else
+    {
+      home.sessionVariables = vscodeEnvironment;
+    })
 
   # ---- macOS GUI-session environment
   # Makes the portable root available to VS Code launched from the Dock,
   # Spotlight, or Finder. The root is user-managed and must already
   # exist; this module never creates or migrates mutable editor state.
-  (lib.mkIf platforms.isDarwin {
-    system.activationScripts.vscodeGuiEnvironment.text = lib.mkAfter ''
-      vscode_user_uid="$(/usr/bin/id -u ${paths.user.name})"
+  (if platforms.isDarwin then
+    {
+      system.activationScripts.vscodeGuiEnvironment.text = lib.mkAfter ''
+        vscode_user_uid="$(/usr/bin/id -u ${paths.user.name})"
 
-      if [ -d "${vscodePaths.root}" ]; then
-        /bin/launchctl asuser "$vscode_user_uid" \
-          /bin/launchctl setenv VSCODE_PORTABLE "${vscodePaths.root}"
+        if [ -d "${vscodePaths.root}" ]; then
+          /bin/launchctl asuser "$vscode_user_uid" \
+            /bin/launchctl setenv VSCODE_PORTABLE "${vscodePaths.root}"
 
-        /bin/launchctl asuser "$vscode_user_uid" \
-          /bin/launchctl setenv VSCODE_CLI_DATA_DIR "${vscodePaths.cli}"
-      else
-        echo "[vscode] Portable root is missing; leaving the GUI-session environment unchanged: ${vscodePaths.root}" >&2
-      fi
-    '';
-  })
+          /bin/launchctl asuser "$vscode_user_uid" \
+            /bin/launchctl setenv VSCODE_CLI_DATA_DIR "${vscodePaths.cli}"
+        else
+          echo "[vscode] Portable root is missing; leaving the GUI-session environment unchanged: ${vscodePaths.root}" >&2
+        fi
+      '';
+    }
+  else
+    { })
 ]

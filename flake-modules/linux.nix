@@ -22,10 +22,10 @@
     # Uses the same unfree policy as the existing shared host modules
     nixpkgsConfig.allowUnfree = true;
 
-    # Provides SOPS secret management
-    inputs.sops-nix.homeManagerModules.sops
-
     modules = [
+      # Provides SOPS secret management
+      inputs.sops-nix.homeManagerModules.sops
+
       ../linux/default.nix
     ];
   };

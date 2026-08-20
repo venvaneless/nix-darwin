@@ -28,6 +28,10 @@
     home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
+    # SOPS secret management for Darwin, standalone Home Manager, and NixOS
+    sops-nix.url = "github:Mic92/sops-nix";
+    sops-nix.inputs.nixpkgs.follows = "nixpkgs";
+
     # nix-homebrew (FIXED)
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
 
