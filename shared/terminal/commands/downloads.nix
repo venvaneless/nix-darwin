@@ -2107,19 +2107,36 @@ in
                   command mkdir -p \
                       (dirname "$auxiliary_destination")
 
-                  if command gh api \
-                          -H "Accept: application/vnd.github.raw+json" \
+                  # GitHub CLI's raw response transform can fail for binary
+                  # images and GIFs. Resolve the raw URL as metadata, then
+                  # use curl to download a staged file before replacing it.
+                  set auxiliary_url (
+                      command gh api \
                           "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
-                          >"$auxiliary_destination" \
-                          2>/dev/null; and \
-                          test -s "$auxiliary_destination"
+                          --jq .download_url \
+                          2>/dev/null
+                  )
+
+                  set auxiliary_staging "$auxiliary_destination.gitdll-new"
+                  command rm -f -- "$auxiliary_staging"
+
+                  if test -n "$auxiliary_url"; and \
+                      command curl \
+                          --fail \
+                          --location \
+                          --silent \
+                          --show-error \
+                          --output "$auxiliary_staging" \
+                          "$auxiliary_url"; and \
+                      test -s "$auxiliary_staging"; and \
+                      command mv -- "$auxiliary_staging" "$auxiliary_destination"
 
                       set saved_files \
                           $saved_files \
                           (string replace "$plugin_stage/" "" -- "$auxiliary_destination")
                   else
                       command rm -f \
-                          "$auxiliary_destination"
+                          "$auxiliary_staging"
 
                       echo \
                           "Notice: Could not download plugin repository file: $auxiliary_path"

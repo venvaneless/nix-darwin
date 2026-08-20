@@ -18,12 +18,14 @@ let
 in
 {
 
-  # CODEX: ENVIRONMENT
+  # CODEX: GUI SESSION ENVIRONMENT
   # =================================================================
-
+  # Make the ChatGPT profile the default for apps launched normally
+  # from the Dock, Spotlight, or Finder. Also expose the shared Codex
+  # profile root to the macOS GUI session.
   # Env variables
   environment.variables = {
-    CODEX_HOME = "${codexRoot}/chatgpt";
+    # CODEX_HOME = "${codexRoot}/chatgpt";
     
     CODEX_PROFILE_HOME_ROOT = codexRoot;
     CODEX_PROFILE_CONFIG_HOME = "${homeDir}/.config/codex-profile";
@@ -39,15 +41,15 @@ in
     # Apps launched from the Dock, Spotlight, or Finder never source
     # those, so they are seeded into ven's launchd domain here.
   
-    system.activationScripts.postActivation.text = lib.mkAfter ''
-      ven_uid="$(/usr/bin/id -u ${userName})"
-  
-      /bin/launchctl asuser "$ven_uid" \
-        /bin/launchctl setenv CODEX_HOME "${codexRoot}/chatgpt"
-  
-      /bin/launchctl asuser "$ven_uid" \
-        /bin/launchctl setenv CODEX_PROFILE_HOME_ROOT "${codexRoot}"
-    '';
+  system.activationScripts.postActivation.text = lib.mkAfter ''
+    ven_uid="$(/usr/bin/id -u ${userName})"
+
+    /bin/launchctl asuser "$ven_uid" \
+      /bin/launchctl unsetenv CODEX_HOME
+
+    /bin/launchctl asuser "$ven_uid" \
+      /bin/launchctl setenv CODEX_PROFILE_HOME_ROOT "${codexRoot}"
+  '';
 
   # CODEX: HOME MANAGER CONFIGURATION
   # =================================================================
