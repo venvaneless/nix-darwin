@@ -344,8 +344,9 @@ in
   darwin.agents = {
     # ---- Codex
     # codex-profile is patched to store each profile below .config
-    # instead of ~/.codex-<profile>, and both profiles share one skills
-    # and plugins tree through the symlinks made by extensions/shared.nix.
+    # instead of ~/.codex-<profile>. Both profiles share their skills,
+    # plugins, sessions, and archived sessions through the symlinks made by
+    # extensions/shared.nix.
     codex = rec {
       root = "${darwinHomePaths.config}/codex";
 
@@ -354,6 +355,8 @@ in
       shared = "${root}/shared";
       sharedSkills = "${shared}/skills";
       sharedPlugins = "${shared}/plugins";
+      sharedSessions = "${shared}/sessions";
+      sharedArchivedSessions = "${shared}/archived_sessions";
 
       # codex-profile's own configuration, kept beside the profile tree.
       profileConfig = "${darwinHomePaths.config}/codex-profile";
