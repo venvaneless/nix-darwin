@@ -36,11 +36,11 @@ fileB.nix
 
 - Since Wezterm is an app I will use on all my machines it should be installed through this:
 ```
-shared/packages/development-pkgs.nix
+shared/packages.nix
 ```
 
-Same as in media-pkgs.nix it should have toggles so I can easily install and unistall it separately for each machine. See this file for more:
+It should have toggles so I can easily install and unistall it separately for each machine. Every entry in that file carries its own `enable` flag and an `installOn = { darwin; linux; }` toggle. See the same file for examples:
 ```
-shared/packages/media-pkgs.nix
+shared/packages.nix
 ```
 

@@ -1554,8 +1554,13 @@ darwin/packages/tools-pkgs.nix
 darwin/packages/cli-tools.nix
 darwin/packages/development-pkgs.nix
 darwin/packages/media-pkgs.nix
-shared/packages/media-pkgs.nix
+shared/packages.nix
 ```
+
+Darwin-only packages stay split by purpose under `darwin/packages/`. Every
+cross-platform declaration lives in the single `shared/packages.nix`, grouped
+into categories inside one `let` block. `shared/packages/` now holds only
+`vscode.nix`, which owns its own module because it also relocates VS Code state.
 
 Do not rename a package group to a vague name such as `misc` or `things`. Use a name that describes what the file actually owns.
 

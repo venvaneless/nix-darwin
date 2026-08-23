@@ -325,7 +325,11 @@ in
     bundles = {
       cider = "${multimedia}/Cider.app";
       chatgpt = "${root}/ChatGPT.app";
-      codexChatgpt = "${root}/Codex ChatGPT.app";
+      # Pinned in the Dock, so this must be the real bundle path rather
+      # than the /Applications symlink: the Dock only resolves an entry
+      # as a bundle when its URL points at a real directory, and cannot
+      # read the icon out of it until the app is running otherwise.
+      codexChatgpt = "${nixApps}/Codex ChatGPT.app";
       helium = "${root}/Helium.app";
       snippetsLab = "${programming}/SnippetsLab.app";
       wezterm = "${nixApps}/WezTerm.app";

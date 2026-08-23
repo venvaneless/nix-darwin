@@ -27,13 +27,11 @@
         ../shared/terminal/nvim
         ../shared/terminal/cli-tuis
 
-        # ---- SHARED PACKAGE CATEGORIES ---- #
+        # ---- SHARED PACKAGE DECLARATIONS ---- #
         # User-scoped packages and session variables belong to Home Manager.
-        ../shared/packages/apps-pkgs.nix
-        ../shared/packages/media-pkgs.nix
-        ../shared/packages/development-pkgs.nix
-        ../shared/packages/productivity-pkgs.nix
-        ../shared/packages/tools-pkgs.nix
+        # Every category lives in one file; each entry keeps its own
+        # enable flag and per-platform installOn toggle.
+        ../shared/packages.nix
       ];
 
       # ---- HOST TERMINAL FEATURES ---- #

@@ -1,10 +1,19 @@
-# shared/packages/development-pkgs.nix
+# shared/packages.nix
 #
 # =====================================================================
-# PACKAGES: SHARED DEVELOPMENT TOOLS
+# PACKAGES: SHARED PACKAGE DECLARATIONS
 #
-# Declares development packages for Darwin and Linux. Shared helpers
-# provide the common enable, platform-selection, and Darwin-link logic.
+# Every cross-platform package declaration, grouped by category in one
+# file. Each entry keeps its own enable flag, its per-platform installOn
+# toggle, and its Darwin application-link category.
+#
+# This file is imported once per host:
+#   darwin/default.nix       -> environment.systemPackages
+#   linux/default.nix        -> environment.systemPackages
+#   nixos/home-manager.nix   -> home.packages
+#
+# The shared helpers choose that destination automatically, so the same
+# declarations work at system level and inside Home Manager.
 # =====================================================================
 
 { lib, options, pkgs, ... }:
@@ -12,16 +21,35 @@
 let
   # ------------------------------------------------------------
   # ------ SHARED PACKAGE HELPERS ------ #
+  # Provides mkPackageModule, byPlatform, and the Darwin
+  # application-link manager. Defined once in options/.
   # ------------------------------------------------------------
 
-  helpers = import ../../options { inherit lib options pkgs; };
+  helpers = import ../options { inherit lib options pkgs; };
 
   # ------------------------------------------------------------
   # ------ CUSTOM TEX LIVE ENVIRONMENT ------ #
+  # Only the schemes actually used, which keeps the closure small.
   # ------------------------------------------------------------
 
   myTex = pkgs.texlive.combine {
     inherit (pkgs.texlive) scheme-medium titlesec;
+  };
+
+  # ------------------------------------------------------------
+  # ------ GENERAL APPLICATION DEFINITIONS ------ #
+  # ------------------------------------------------------------
+
+  appPackages = {
+    # ---- LibreWolf
+    # Privacy-focused Firefox-derived web browser.
+    librewolf = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.librewolf;
+      appName = "LibreWolf.app";
+      symlinkApplications = true;
+    };
   };
 
   # ------------------------------------------------------------
@@ -460,7 +488,7 @@ let
     iterm2 = {
       enable = true;
       installOn = { darwin = true; linux = false; };
-      package = pkgs.callPackage ../../darwin/packages/iterm2 { };
+      package = pkgs.callPackage ../darwin/packages/iterm2 { };
       appName = "iTerm.app";
       symlinkProgramming = true;
     };
@@ -470,7 +498,7 @@ let
     itermAiPlugin = {
       enable = true;
       installOn = { darwin = true; linux = false; };
-      package = pkgs.callPackage ../../darwin/packages/iterm2/iterm-ai-plugin.nix { };
+      package = pkgs.callPackage ../darwin/packages/iterm2/iterm-ai-plugin.nix { };
       appName = "iTermAI.app";
       symlinkProgramming = true;
     };
@@ -480,7 +508,7 @@ let
     itermBrowserPlugin = {
       enable = true;
       installOn = { darwin = true; linux = false; };
-      package = pkgs.callPackage ../../darwin/packages/iterm2/iterm-browser-plugin.nix { };
+      package = pkgs.callPackage ../darwin/packages/iterm2/iterm-browser-plugin.nix { };
       appName = "iTermBrowserPlugin.app";
       symlinkProgramming = true;
     };
@@ -509,21 +537,159 @@ let
     # ---- Zed
     zed = {
       enable = true;
-      package = pkgs.zed-editor;
       installOn = { darwin = true; linux = true; };
+      package = pkgs.zed-editor;
       appName = "Zed.app";
       symlinkProgramming = true;
     };
   };
+
+  # ------------------------------------------------------------
+  # ------ MEDIA PACKAGE DEFINITIONS ------ #
+  # ------------------------------------------------------------
+
+  mediaPackages = {
+    # ---- Kiwix
+    # Offline content reader with platform-specific application bundles.
+    kiwix = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = helpers.packageOptions.byPlatform {
+        darwin = pkgs.kiwix-apple;
+        linux = pkgs.kiwix;
+      };
+      appName = "Kiwix.app";
+      symlinkMultimedia = true;
+    };
+
+    # ---- MediaInfo
+    # Inspects technical and tag information in media files.
+    mediainfo = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.mediainfo;
+    };
+
+    # ---- Poppler
+    # Provides command-line utilities for rendering and inspecting PDFs.
+    poppler = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.poppler-utils;
+    };
+
+    # ---- YouTube Music Desktop
+    # Shared desktop application for YouTube Music.
+    ytmdesktop = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.ytmdesktop;
+      appName = "YouTube Music Desktop App.app";
+      symlinkMultimedia = true;
+    };
+  };
+
+  # ------------------------------------------------------------
+  # ------ PRODUCTIVITY PACKAGE DEFINITIONS ------ #
+  # ------------------------------------------------------------
+
+  productivityPackages = {
+    # ---- Obsidian
+    # Knowledge base and note-taking application with Markdown support.
+    obsidian = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.obsidian;
+      appName = "Obsidian.app";
+      symlinkProductivity = true;
+    };
+
+    # ---- Vesktop
+    # Alternate Discord client with Vencord built in.
+    vesktop = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.vesktop;
+      appName = "Vesktop.app";
+      symlinkProductivity = true;
+    };
+
+    # ---- Signal Desktop
+    # Private messenger linked to the Signal mobile application.
+    signalDesktop = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.signal-desktop;
+      appName = "Signal.app";
+      symlinkProductivity = true;
+    };
+
+    # ---- Signal Export
+    # Command-line tool that exports Signal chats to Markdown.
+    signalExport = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.signal-export;
+    };
+  };
+
+  # ------------------------------------------------------------
+  # ------ TOOL PACKAGE DEFINITIONS ------ #
+  # ------------------------------------------------------------
+
+  toolPackages = {
+    # ---- Espanso
+    # Cross-platform text expander for keyboard-driven snippets.
+    espanso = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.espanso;
+      appName = "Espanso.app";
+      symlinkTools = true;
+    };
+  };
+
 in
 {
-  # ---- Programs that own their own module
+  # ------------------------------------------------------------
+  # ------ PROGRAMS THAT OWN THEIR OWN MODULE ------ #
   # VS Code keeps its package, its Darwin application link, and the
   # relocation of its state together rather than split across files.
-  imports = [ ./vscode.nix ];
+  # ------------------------------------------------------------
 
-  config = helpers.packageOptions.mkPackageModule {
-    name = "shared-development";
-    packages = developmentPackages // darwinDevelopmentApplications // developmentApplications;
-  };
+  imports = [ ./packages/vscode.nix ];
+
+  # ------------------------------------------------------------
+  # ------ PACKAGE MODULE ASSEMBLY ------ #
+  # One call per category, merged into a single config. Each call keeps
+  # its own name so the Darwin application-link manager it generates
+  # stays separate, exactly as it was when these were five files.
+  # ------------------------------------------------------------
+
+  config = lib.mkMerge [
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-apps";
+      packages = appPackages;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-development";
+      packages = developmentPackages // darwinDevelopmentApplications // developmentApplications;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-media";
+      packages = mediaPackages;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-productivity";
+      packages = productivityPackages;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-tools";
+      packages = toolPackages;
+    })
+  ];
 }

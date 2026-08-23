@@ -17,8 +17,9 @@
 let
   # ------------------------------------------------------------
   # ------ APPLICATION BUNDLE ------ #
-  # The Dock requires an .app bundle. The launcher directly execs the
-  # signed ChatGPT executable so macOS keeps one running Dock item.
+  # The Dock requires an .app bundle. The launcher hands the real launch
+  # to LaunchServices via open(1); see the note on the launcher script
+  # for why it must not exec the ChatGPT binary itself.
 
   appName = "Codex ChatGPT";
   chatgptApp = paths.darwin.applications.bundles.chatgpt;
@@ -91,6 +92,7 @@ let
   launcher = writeShellScript "launch-${appName}" ''
     set -euo pipefail
 
+    chatgpt_app=${lib.escapeShellArg chatgptApp}
     chatgpt_executable=${lib.escapeShellArg chatgptExecutable}
     codex_home=${lib.escapeShellArg codexHome}
     codex_sqlite_home=${lib.escapeShellArg codexSqliteHome}
@@ -105,10 +107,27 @@ let
     umask 077
     /bin/mkdir -p "$codex_home" "$codex_sqlite_home" "$electron_user_data"
 
-    export CODEX_HOME="$codex_home"
-    export CODEX_SQLITE_HOME="$codex_sqlite_home"
+    # Already running for this profile: just bring it forward. Launching a
+    # second copy of the same profile would fight over its Electron state.
+    if /usr/bin/pgrep -qf "user-data-dir=$electron_user_data"; then
+      exec /usr/bin/open -a "$chatgpt_app"
+    fi
 
-    exec "$chatgpt_executable" "--user-data-dir=$electron_user_data"
+    # Hand the launch to LaunchServices rather than exec'ing the binary.
+    #
+    # ** An exec'd binary inherits the Dock's bootstrap namespace and
+    # ** registers com.openai.codex.MachPortRendezvousServer.<n> there. A
+    # ** second profile started later through open(1) then cannot claim that
+    # ** name, fails with "Permission denied (1100)", and its whole instance
+    # ** dies a few seconds after starting -- which is what broke
+    # ** `codex-profile app api` while this launcher's instance was running.
+    # ** Going through open(1) gives each instance its own LaunchServices
+    # ** context, and the profiles coexist.
+    exec /usr/bin/open -n \
+      --env "CODEX_HOME=$codex_home" \
+      --env "CODEX_SQLITE_HOME=$codex_sqlite_home" \
+      -a "$chatgpt_app" \
+      --args "--user-data-dir=$electron_user_data"
   '';
 in
 runCommand "codex-chatgpt-launcher" { } ''

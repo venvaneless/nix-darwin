@@ -153,7 +153,7 @@
           "ungoogled-chromium"
 
           # Vesktop is installed through Nix instead of Homebrew.
-          # See shared/packages/productivity-pkgs.nix
+          # See shared/packages.nix
 
           # System utilities
 
