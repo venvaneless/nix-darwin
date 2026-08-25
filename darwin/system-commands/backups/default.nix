@@ -67,6 +67,7 @@ in
         preferencesDirectory = libraryPaths.preferences;
         externalBackupVolume = backupPaths.volume;
         downloadsDirectory = userPaths.downloads;
+        stagingDirectory = backupPaths.staging;
         dataBackupsDirectory = backupPaths.data;
         appBackupsDirectory = backupPaths.apps;
         browserBackupsDirectory = backupPaths.browsers;

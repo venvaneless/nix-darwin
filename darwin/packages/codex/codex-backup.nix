@@ -14,6 +14,20 @@
 { pkgs, ... }:
 
 let
+  # ---- SHARED PATHS ---- #
+  # The Codex backup keeps its verified archive in Downloads only until it
+  # can be handed off to the external backup volume.
+  paths = import ../../../options/paths.nix { };
+  userPaths = paths.darwin.home;
+  libraryPaths = paths.darwin.library;
+  backupPaths = paths.darwin.backups;
+
+  # ---- INDIVIDUAL BACKUP CONTROLS ---- #
+  # Toggle this off only when the external volume should receive the archive
+  # directly instead of after local creation and verification in Downloads.
+  stageInDownloads = true;
+  cpuLimitPercent = 10;
+
   # Run the shell script
   codexBackup = pkgs.writeShellScriptBin "codex-backup" ''
     set -euo pipefail
@@ -34,21 +48,23 @@ let
     esac
 
     # Source and destination directories
-    source_parent="/Users/ven/.config"
+    source_parent="${userPaths.config}"
     source_name="codex"
     source_dir="$source_parent/$source_name"
 
-    external_backup_root="/Volumes/SystemBackup"
-    backup_dir="$external_backup_root/data-backups/container-backups/codex"
-    local_staging_dir="/Users/ven/Downloads/backup-staging/codex"
+    external_backup_root="${backupPaths.volume}"
+    backup_dir="${backupPaths.containers}/codex"
+    local_staging_root="${backupPaths.staging}"
+    local_staging_dir="$local_staging_root/codex"
     marker_file="$backup_dir/.last-backup"
-    lock_dir="/private/tmp/com.ven.codex-backup.lock"
-    global_lock_dir="/private/tmp/com.ven.backup-archive.lock"
-    cpu_limit_percent=35
+    lock_dir="${backupPaths.lockRoot}/com.ven.codex-backup.lock"
+    global_lock_dir="${backupPaths.archiveLock}"
+    archive_in_downloads=${if stageInDownloads then "1" else "0"}
+    cpu_limit_percent=${toString cpuLimitPercent}
 
     temp_archive=""
-    local_archive=""
     run_marker=""
+    lock_acquired=0
     global_lock_acquired=0
 
     # Cleanup function to remove temp files and directories
@@ -64,12 +80,21 @@ let
         ${pkgs.coreutils}/bin/rm -f "$run_marker"
       fi
 
-      # Remove only the exact per-backup and global lock directories.
-      ${pkgs.coreutils}/bin/rm -f -- "$lock_dir/pid" 2>/dev/null || true
-      ${pkgs.coreutils}/bin/rmdir -- "$lock_dir" 2>/dev/null || true
+      # Remove only locks created by this backup process.
+      if [ "$lock_acquired" -eq 1 ]; then
+        ${pkgs.coreutils}/bin/rm -f -- "$lock_dir/pid" 2>/dev/null || true
+        ${pkgs.coreutils}/bin/rmdir -- "$lock_dir" 2>/dev/null || true
+      fi
       if [ "$global_lock_acquired" -eq 1 ]; then
         ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid" 2>/dev/null || true
         ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" 2>/dev/null || true
+      fi
+
+      # Keep a verified local archive when its handoff failed. rmdir removes
+      # only empty helper-owned directories after a completed or skipped run.
+      if [ "$archive_in_downloads" -eq 1 ]; then
+        ${pkgs.coreutils}/bin/rmdir -- "$local_staging_dir" 2>/dev/null || true
+        ${pkgs.coreutils}/bin/rmdir -- "$local_staging_root" 2>/dev/null || true
       fi
     }
 
@@ -96,13 +121,17 @@ let
     # Create only the configured directory on the mounted external backup volume.
     ${pkgs.coreutils}/bin/mkdir -p "$backup_dir"
 
-    ${pkgs.coreutils}/bin/mkdir -p "$local_staging_dir"
+    if [ "$archive_in_downloads" -eq 1 ]; then
+      ${pkgs.coreutils}/bin/mkdir -p "$local_staging_dir"
 
-    if [ ! -d "$local_staging_dir" ]; then
-      printf 'Codex backup failed: local staging directory does not exist: %s\n' \
-        "$local_staging_dir" >&2
-      exit 1
+      if [ ! -d "$local_staging_dir" ]; then
+        printf 'Codex backup failed: local staging directory does not exist: %s\n' \
+          "$local_staging_dir" >&2
+        exit 1
+      fi
     fi
+
+    trap cleanup EXIT INT TERM
 
     # Prevent two backups from running simultaneously.
     if ! ${pkgs.coreutils}/bin/mkdir "$lock_dir" 2>/dev/null; then
@@ -131,8 +160,7 @@ let
 
     # Write the PID of the current backup to the lock directory. This allows future backups to check if a backup is already running.
     printf '%s\n' "$$" > "$lock_dir/pid"
-
-    trap cleanup EXIT INT TERM
+    lock_acquired=1
 
     # Automatic launchd runs only create a backup when at least eight hours
     # have passed since the previous successful backup.
@@ -220,23 +248,33 @@ let
 
     # File template for the backup archive name with timestamp included
     archive="$backup_dir/codex-$timestamp.tar.gz"
-    local_archive="$local_staging_dir/codex-$timestamp.tar.gz"
+    if [ "$archive_in_downloads" -eq 1 ]; then
+      completed_archive="$local_staging_dir/codex-$timestamp.tar.gz"
+      archive_work_dir="$local_staging_dir"
+    else
+      completed_archive="$archive"
+      archive_work_dir="$backup_dir"
+    fi
 
-    # Never overwrite an existing local or iCloud backup.
-    if [ -e "$archive" ] || [ -e "$local_archive" ]; then
+    # Never overwrite an existing local or external backup.
+    if [ -e "$archive" ] || { [ "$archive_in_downloads" -eq 1 ] && [ -e "$completed_archive" ]; }; then
       archive="$backup_dir/codex-$timestamp-$$.tar.gz"
-      local_archive="$local_staging_dir/codex-$timestamp-$$.tar.gz"
+      if [ "$archive_in_downloads" -eq 1 ]; then
+        completed_archive="$local_staging_dir/codex-$timestamp-$$.tar.gz"
+      else
+        completed_archive="$archive"
+      fi
     fi
 
     # Create a temporary archive name to avoid leaving a partially created archive in the destination directory
-    temp_archive="$local_staging_dir/.codex-$timestamp-$$.tar.gz.incomplete"
-    run_marker="$local_staging_dir/.codex-backup-start-$$"
+    temp_archive="$archive_work_dir/.codex-$timestamp-$$.tar.gz.incomplete"
+    run_marker="$archive_work_dir/.codex-backup-start-$$"
 
     # Preserve the time at which this backup started. Changes made while the
     # archive is being created will therefore be detected by the next run.
     ${pkgs.coreutils}/bin/touch "$run_marker"
 
-    printf 'Creating local Codex backup: %s\n' "$local_archive"
+    printf 'Creating Codex backup: %s\n' "$completed_archive"
 
     # The macOS bsdtar implementation preserves symlinks without following
     # them. The explicit metadata options also preserve macOS ACLs, extended
@@ -290,18 +328,18 @@ let
     ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
       /usr/bin/tar -tzf "$temp_archive" > /dev/null
 
-    # Complete and verify locally before handing the archive to iCloud.
-    ${pkgs.coreutils}/bin/mv "$temp_archive" "$local_archive"
+    # Complete and verify locally before handing the archive to the external volume.
+    ${pkgs.coreutils}/bin/mv "$temp_archive" "$completed_archive"
     temp_archive=""
 
-    printf 'Moving verified Codex backup to external storage: %s\n' "$archive"
-    if ! ${pkgs.coreutils}/bin/mv "$local_archive" "$archive"; then
-      printf 'Codex backup failed: verified local archive remains at: %s\n' \
-        "$local_archive" >&2
-      exit 1
+    if [ "$archive_in_downloads" -eq 1 ]; then
+      printf 'Moving verified Codex backup to external storage: %s\n' "$archive"
+      if ! ${pkgs.coreutils}/bin/mv "$completed_archive" "$archive"; then
+        printf 'Codex backup failed: verified local archive remains at: %s\n' \
+          "$completed_archive" >&2
+        exit 1
+      fi
     fi
-
-    local_archive=""
 
     # Only update the marker after creation and verification succeeded.
     ${pkgs.coreutils}/bin/mv -f "$run_marker" "$marker_file"
@@ -338,10 +376,10 @@ in
 
       # Log output and errors to files in the user's Library/Logs directory.
       StandardOutPath =
-        "/Users/ven/Library/Logs/codex-backup.log";
+        "${libraryPaths.logs}/codex-backup.log";
 
       StandardErrorPath =
-        "/Users/ven/Library/Logs/codex-backup-error.log";
+        "${libraryPaths.logs}/codex-backup-error.log";
     };
   };
 }

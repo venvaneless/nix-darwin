@@ -22,6 +22,9 @@ let
   # for why it must not exec the ChatGPT binary itself.
 
   appName = "Codex ChatGPT";
+  # Match the real signed app so the Dock associates its running process
+  # with this pinned profile launcher instead of creating another tile.
+  chatgptBundleIdentifier = "com.openai.codex";
   chatgptApp = paths.darwin.applications.bundles.chatgpt;
   chatgptExecutable = "${chatgptApp}/Contents/MacOS/ChatGPT";
   codexIcon = "${chatgptApp}/Contents/Resources/icon-codex-dark-color.png";
@@ -72,7 +75,7 @@ let
         <key>CFBundleExecutable</key>
         <string>${appName}</string>
         <key>CFBundleIdentifier</key>
-        <string>com.ven.codex-chatgpt</string>
+        <string>${chatgptBundleIdentifier}</string>
         <key>CFBundleIconFile</key>
         <string>Codex.icns</string>
         <key>CFBundleName</key>
@@ -82,7 +85,7 @@ let
         <key>CFBundleShortVersionString</key>
         <string>2.0</string>
         <key>CFBundleVersion</key>
-        <string>2</string>
+        <string>3</string>
         <key>NSHighResolutionCapable</key>
         <true/>
       </dict>

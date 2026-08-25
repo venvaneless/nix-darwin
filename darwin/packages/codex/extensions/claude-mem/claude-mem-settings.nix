@@ -1,6 +1,6 @@
 # CODEX: CLAUDE-MEM SETTINGS
 # =========================
-# Declare the Claude-mem settings file without taking ownership of memory data
+# Declare the Claude-mem settings file inside its mutable .config data root
 
 {
   config,
@@ -13,7 +13,7 @@
 let
   # ------------------------------------------------------------
   # ------ SHARED CONFIGURATION ------ #
-  # Keep the settings path and existing mutable data path centralized.
+  # Keep the shared .config root and its linked settings path centralized.
 
   helpers = import ../../../../../options { inherit lib options pkgs; };
   inherit (helpers) paths;

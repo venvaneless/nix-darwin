@@ -235,6 +235,7 @@ let
   cfg = config.services.containerBackups.${appSlug};
   backupCfg = config.services.containerBackups;
   effectiveCpuLimitPercent = lib.min cfg.cpuLimitPercent backupCfg.maximumCpuLimitPercent;
+  localStagingUsesSharedRoot = lib.hasPrefix "${backupCfg.paths.stagingDirectory}/" localStagingDir;
   defaultMetadataExcludes = excludeHelper.mkRsyncExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
   extraExcludes = excludeHelper.mkRsyncExcludeArguments (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
   zipMetadataExcludes = excludeHelper.mkZipExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
@@ -283,6 +284,7 @@ ${stageSourceEntries}
       source_dir="$(printf '%s' ${lib.escapeShellArg resolvedSourceDir})"
       external_backup_volume="$(printf '%s' ${lib.escapeShellArg externalBackupVolume})"
       destination_dir="$(printf '%s' ${lib.escapeShellArg destinationDir})"
+      local_staging_root="$(printf '%s' ${lib.escapeShellArg backupCfg.paths.stagingDirectory})"
       local_staging_dir="$(printf '%s' ${lib.escapeShellArg localStagingDir})"
 
       source_marker_file="$(printf '%s' ${lib.escapeShellArg resolvedSourceMarkerFile})"
@@ -309,6 +311,7 @@ ${stageSourceEntries}
       local_archive=""
       temporary_marker=""
       staging_dir=""
+      lock_acquired=0
       global_lock_acquired=0
       backup_started=0
       exclude_args=(
@@ -334,6 +337,10 @@ ${extraExcludes}
       }
 
       release_lock() {
+        if [ "$lock_acquired" -ne 1 ]; then
+          return 0
+        fi
+
         ${pkgs.coreutils}/bin/rm -f -- "$lock_dir/pid" 2>/dev/null || true
         ${pkgs.coreutils}/bin/rmdir -- "$lock_dir" 2>/dev/null || true
       }
@@ -356,6 +363,15 @@ ${extraExcludes}
 
         if [ -n "$staging_dir" ] && [ -d "$staging_dir" ]; then
           ${pkgs.coreutils}/bin/rm -rf -- "$staging_dir" 2>/dev/null || true
+        fi
+
+        # A failed handoff deliberately leaves its verified local archive in
+        # place. rmdir therefore removes only an empty helper-owned directory.
+        if [ "$archive_in_downloads" -eq 1 ]; then
+          ${pkgs.coreutils}/bin/rmdir -- "$local_staging_dir" 2>/dev/null || true
+          if [ ${if localStagingUsesSharedRoot then "1" else "0"} -eq 1 ]; then
+            ${pkgs.coreutils}/bin/rmdir -- "$local_staging_root" 2>/dev/null || true
+          fi
         fi
 
         release_lock
@@ -426,12 +442,17 @@ ${extraExcludes}
         fail "could not create backup directory: $destination_dir"
       fi
 
-      # Create only this explicitly configured local staging directory.
-      ${pkgs.coreutils}/bin/mkdir -p -- "$local_staging_dir"
+      # Create the Downloads staging directory only for backups that use it.
+      if [ "$archive_in_downloads" -eq 1 ]; then
+        ${pkgs.coreutils}/bin/mkdir -p -- "$local_staging_dir"
 
-      if [ ! -d "$local_staging_dir" ]; then
-        fail "could not create local staging directory: $local_staging_dir"
+        if [ ! -d "$local_staging_dir" ]; then
+          fail "could not create local staging directory: $local_staging_dir"
+        fi
       fi
+
+      trap on_exit EXIT
+      trap 'exit 130' INT TERM
 
       if ! ${pkgs.coreutils}/bin/mkdir -- "$lock_dir" 2>/dev/null; then
         previous_pid=""
@@ -452,8 +473,7 @@ ${extraExcludes}
       fi
 
       printf '%s\n' "$$" > "$lock_dir/pid"
-      trap on_exit EXIT
-      trap 'exit 130' INT TERM
+      lock_acquired=1
 
       if [ -e "$marker_file" ]; then
         previous_backup_epoch="$(
@@ -554,11 +574,17 @@ ${extraExcludes}
       archive_name="''${archive_name//\{prefix\}/$archive_prefix}"
       archive_name="''${archive_name//\{appSlug\}/$app_slug}"
       archive="$destination_dir/$archive_name"
-      local_archive="$local_staging_dir/$archive_name"
-      temporary_archive="$local_staging_dir/.$archive_name.$$.incomplete"
-      temporary_marker="$local_staging_dir/.last-backup-$$.incomplete"
+      temporary_marker="$destination_dir/.last-backup-$$.incomplete"
 
-      if [ "$archive_enabled" -eq 1 ] && { [ -e "$archive" ] || [ -e "$local_archive" ]; }; then
+      if [ "$archive_in_downloads" -eq 1 ]; then
+        local_archive="$local_staging_dir/$archive_name"
+        temporary_archive="$local_staging_dir/.$archive_name.$$.incomplete"
+      else
+        local_archive=""
+        temporary_archive="$destination_dir/.$archive_name.$$.incomplete"
+      fi
+
+      if [ "$archive_enabled" -eq 1 ] && { [ -e "$archive" ] || { [ "$archive_in_downloads" -eq 1 ] && [ -e "$local_archive" ]; }; }; then
         fail "refusing to overwrite an existing archive: $archive"
       fi
 
@@ -572,10 +598,6 @@ ${extraExcludes}
         ${pkgs.coreutils}/bin/touch -- "$marker_file" "$source_marker_file"
         log "completed successfully: $destination_dir"
         exit 0
-      fi
-
-      if [ "$archive_in_downloads" -eq 0 ]; then
-        temporary_archive="$destination_dir/.$archive_name.$$.incomplete"
       fi
 
       log "creating archive: $temporary_archive"
@@ -692,7 +714,7 @@ in
     stageInDownloads = lib.mkOption {
       type = lib.types.bool;
       default = stageInDownloads;
-      description = "Create ${appName} archives in Downloads before moving them to the external destination.";
+      description = "Create and verify ${appName} archives in its Downloads staging directory before moving them to the external destination; false creates them directly on the external volume.";
     };
 
     archiveFilenameTemplate = lib.mkOption {

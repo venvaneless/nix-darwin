@@ -404,9 +404,9 @@ in
     # ---- claude-mem
     # Registered with both Codex profiles and Claude Code.
     #
-    # ** root contains Nix-owned settings.json. data remains at the
-    # ** installer-created location so its SQLite database, Chroma store,
-    # ** logs, and transcript state stay mutable and are never migrated.
+    # ** root is the single Claude-mem location below .config. Nix owns only
+    # ** settings.json; its SQLite database, Chroma store, logs, and transcript
+    # ** state remain mutable beside that linked configuration file.
     #
     # ** The plugin tree is deliberately not a Nix store symlink. The
     # ** plugin needs a writable node_modules beside its bundled
@@ -418,7 +418,7 @@ in
       root = "${darwinHomePaths.config}/claude-mem";
 
       settings = "${root}/settings.json";
-      data = "${darwinHome}/.claude-mem";
+      data = root;
       transcriptWatch = "${data}/transcript-watch.json";
       modes = "${data}/modes";
 

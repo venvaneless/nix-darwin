@@ -66,6 +66,12 @@ let
           description = "Local staging root for application archives.";
         };
 
+        stagingDirectory = lib.mkOption {
+          type = lib.types.str;
+          default = backupPaths.staging;
+          description = "Local staging directory used for completed application archives before they are moved to the external volume.";
+        };
+
         dataBackupsDirectory = lib.mkOption {
           type = lib.types.str;
           default = backupPaths.data;
@@ -161,6 +167,7 @@ let
     destinationDir ? null,
     externalBackupVolume ? config.services.appBackups.paths.externalBackupVolume,
     downloadsDir ? config.services.appBackups.paths.downloadsDirectory,
+    localStagingDir ? "${config.services.appBackups.paths.stagingDirectory}/${appSlug}",
     globalLockDir ? backupPaths.archiveLock,
     sourceMarkerFiles ? [ ],
     destinationMarkerFile ? null,
@@ -196,6 +203,7 @@ let
   effectiveCpuLimitPercent = lib.min cfg.cpuLimitPercent config.services.appBackups.maximumCpuLimitPercent;
   destinationSuffix = lib.concatStringsSep "/" destinationSegments;
   backupPaths = config.services.appBackups.paths;
+  localStagingUsesSharedRoot = lib.hasPrefix "${backupPaths.stagingDirectory}/" localStagingDir;
   resolvedApplicationSupportEntries = map (entry: {
     path = "${applicationSupportRoot}/${entry.relativePath}";
     destination = entry.destinationPath or entry.destination;
@@ -303,6 +311,8 @@ let
     external_backup_volume="$(printf '%s' ${lib.escapeShellArg externalBackupVolume})"
     destination_dir="$(printf '%s' ${lib.escapeShellArg resolvedDestinationDir})"
     downloads_dir="$(printf '%s' ${lib.escapeShellArg downloadsDir})"
+    local_staging_root="$(printf '%s' ${lib.escapeShellArg backupPaths.stagingDirectory})"
+    local_staging_dir="$(printf '%s' ${lib.escapeShellArg localStagingDir})"
 
     timestamp="$(${pkgs.coreutils}/bin/date ${lib.escapeShellArg "+${cfg.archiveTimestampFormat}"})"
     archive_prefix="$(printf '%s' ${lib.escapeShellArg cfg.archivePrefix})"
@@ -312,11 +322,15 @@ let
     archive_name="''${archive_name//\{appSlug\}/$app_slug}"
     archive_path="$destination_dir/$archive_name"
     marker_file="$(printf '%s' ${lib.escapeShellArg resolvedDestinationMarkerFile})"
-    staging_dir="$downloads_dir/.$app_slug-backup-$timestamp-$$"
-    archive_root="$staging_dir/$app_slug"
     archive_in_downloads=${if cfg.stageInDownloads then "1" else "0"}
     archive_enabled=${if cfg.archive then "1" else "0"}
-    temporary_archive="$downloads_dir/.$archive_name.$$.incomplete"
+    staging_base_dir="$destination_dir"
+    if [ "$archive_in_downloads" -eq 1 ]; then
+      staging_base_dir="$local_staging_dir"
+    fi
+    staging_dir="$staging_base_dir/.$app_slug-backup-$timestamp-$$"
+    archive_root="$staging_dir/$app_slug"
+    temporary_archive="$staging_base_dir/.$archive_name.$$.incomplete"
     global_lock_dir="$(printf '%s' ${lib.escapeShellArg globalLockDir})"
     global_lock_acquired=0
     cpu_limit_percent="$(printf '%s' ${toString effectiveCpuLimitPercent})"
@@ -353,6 +367,16 @@ ${extraExcludes}
     cleanup() {
       ${pkgs.coreutils}/bin/rm -f -- "$temporary_archive" 2>/dev/null || true
       ${pkgs.coreutils}/bin/rm -rf -- "$staging_dir" 2>/dev/null || true
+
+      # A failed handoff deliberately leaves its verified local archive in
+      # place. rmdir therefore removes only an empty helper-owned directory.
+      if [ "$archive_in_downloads" -eq 1 ]; then
+        ${pkgs.coreutils}/bin/rmdir -- "$local_staging_dir" 2>/dev/null || true
+        if [ ${if localStagingUsesSharedRoot then "1" else "0"} -eq 1 ]; then
+          ${pkgs.coreutils}/bin/rmdir -- "$local_staging_root" 2>/dev/null || true
+        fi
+      fi
+
       if [ "$global_lock_acquired" -eq 1 ]; then
         ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid" 2>/dev/null || true
         ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" 2>/dev/null || true
@@ -447,6 +471,9 @@ ${extraExcludes}
     global_lock_acquired=1
 
     ${pkgs.coreutils}/bin/mkdir -p -- "$destination_dir"
+    if [ "$archive_in_downloads" -eq 1 ]; then
+      ${pkgs.coreutils}/bin/mkdir -p -- "$local_staging_dir"
+    fi
     ${pkgs.coreutils}/bin/mkdir -p -- "$archive_root"
 
     if [ "$mode" = "scheduled" ] && [ -e "$marker_file" ]; then
@@ -566,7 +593,7 @@ in
     stageInDownloads = lib.mkOption {
       type = lib.types.bool;
       default = stageInDownloads;
-      description = "Create ${appName} archives in Downloads before publishing them to the external destination.";
+      description = "Create and verify ${appName} archives in its Downloads staging directory before moving them to the external destination; false creates them directly on the external volume.";
     };
 
     archiveFilenameTemplate = lib.mkOption {
