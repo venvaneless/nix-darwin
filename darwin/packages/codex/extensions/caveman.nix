@@ -7,7 +7,6 @@
   lib,
   options,
   pkgs,
-  unstablePkgs,
   ...
 }:
 
@@ -16,8 +15,11 @@ let
   # ------ SHARED CONFIGURATION ------ #
   # Keep Caveman aligned with the Codex profiles and path definitions.
 
-  helpers = import ../../../../options { inherit lib options pkgs; };
-  inherit (helpers) paths;
+  # ---- Variables from options/default.nix
+  # The unstable package set is built once there, under the same
+  # nixpkgs policy as the stable set.
+  helpers = import ../../../../options { inherit inputs lib options pkgs; };
+  inherit (helpers) unstablePkgs paths;
 
   userName = paths.user.name;
   homeDir = paths.user.darwinHome;

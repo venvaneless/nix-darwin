@@ -12,6 +12,11 @@
 
 { inputs, ... }:
 
+let
+  # ---- Variables from options/default.nix
+  # The nixpkgs policy is defined once there and read by every machine.
+  inherit (import ../options { }) nixpkgsConfig;
+in
 {
   perSystem =
     { system, ... }:
@@ -19,12 +24,12 @@
       pkgs = import inputs.nixpkgs {
         inherit system;
 
-        config.allowUnfree = true;
+        config = nixpkgsConfig;
       };
     in
     {
-      # Use the same unfree-package policy as the Darwin host when
-      # evaluating packages directly through this flake.
+      # Uses the same policy as every host when evaluating packages
+      # directly through this flake.
       _module.args.pkgs = pkgs;
 
       packages = {

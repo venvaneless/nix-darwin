@@ -198,8 +198,10 @@
     ./packages/cli-tools.nix
     ./packages/media-pkgs.nix
     
-    # Shared host configuration and packages
-    ../shared/hosts.nix
+    # Shared packages
+    # The nixpkgs policy comes from options/default.nix, applied in
+    # flake-modules/macbook.nix. Modules needing the unstable set read
+    # unstablePkgs from options/default.nix directly.
     ../shared/packages.nix
 
     # Homebrew

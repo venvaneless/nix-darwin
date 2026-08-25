@@ -1,14 +1,17 @@
 # darwin/packages/agents-pkgs.nix
 
-{ lib, options, pkgs, unstablePkgs, ... }:
+{ inputs, lib, options, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
   # ------ SHARED PACKAGE HELPERS ------ #
   # ------------------------------------------------------------
 
-  helpers = import ../../options { inherit lib options pkgs; };
-  inherit (helpers) paths;
+  # ---- Variables from options/default.nix
+  # The unstable package set is built once there, under the same
+  # nixpkgs policy as the stable set.
+  helpers = import ../../options { inherit inputs lib options pkgs; };
+  inherit (helpers) unstablePkgs paths;
 
   # ------------------------------------------------------------
   # ------ AGENT PACKAGE DEFINITIONS ------ #

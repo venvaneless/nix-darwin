@@ -13,7 +13,14 @@
 {
   imports = [
     # ---- SHARED NIXPKGS POLICY ---- #
-    ../shared/hosts.nix
+    # Defined in options/default.nix and applied by mkNixosHost in
+    # flake-modules/hosts.nix. Modules needing the unstable set read
+    # unstablePkgs from options/default.nix directly.
+
+    # ---- OPTIONAL BACKGROUND SERVICES ---- #
+    # Declares the toggle only. Each service stays off until this host
+    # enables it below.
+    ../shared/services/qbittorrent.nix
   ];
 
   # ===================================================================
@@ -40,4 +47,10 @@
     home = "/home/ven";
     shell = pkgs.fish;
   };
+
+  # ---- BACKGROUND TORRENTING ---- #
+  # Headless qBittorrent, independent of the desktop client and of any
+  # logged-in session. Enable it on the hosts that should keep seeding,
+  # and add the Web UI password secret before doing so.
+  ven.features.services.qbittorrent.enable = false;
 }

@@ -7,9 +7,14 @@
 # marketplace and MCP entries into both mutable Codex profile configurations.
 # =====================================================================
 
-{ inputs, lib, pkgs, unstablePkgs, ... }:
+{ inputs, lib, pkgs, ... }:
 
 let
+  # ---- Variables from options/default.nix
+  # The unstable package set is built once there, under the same
+  # nixpkgs policy as the stable set.
+  inherit (import ../../../../options { inherit inputs pkgs; }) unstablePkgs;
+
   # Keep the two Codex profiles aligned while retaining their independent UI state.
   profiles = [ "chatgpt" "api" ];
   sharedRoot = "/Users/ven/.config/codex/shared";

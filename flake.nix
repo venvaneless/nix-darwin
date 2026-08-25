@@ -106,11 +106,17 @@
       systems = [ "aarch64-darwin" ];
 
       imports = [
+        # ---- SHARED BUILDING BLOCKS ---- #
         ./flake-modules/packages.nix
-        ./flake-modules/macbook.nix
         ./flake-modules/hosts.nix
+
+        # ---- ONE FILE PER MACHINE ---- #
+        # macbook   : Apple Silicon MacBook, nix-darwin
+        # linux     : ROG Zephyrus
+        # imac-nix  : 2015 Intel iMac, NixOS
+        ./flake-modules/macbook.nix
         ./flake-modules/linux.nix
-        ./flake-modules/nixos.nix
+        ./flake-modules/imac-nix.nix
       ];
     };
 

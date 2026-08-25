@@ -80,6 +80,31 @@ let
       snippets = "${userData}/User/snippets";
     };
 
+    # ---- Torrents
+    # qBittorrent keeps its whole profile below one root, chosen with
+    # --profile or with the QBT_PROFILE variable that mirrors it. The
+    # application creates <profile>/qBittorrent/{cache,config,data}
+    # itself, so the profile root is .config and every location below
+    # it lands in .config/qBittorrent on both platforms.
+    #
+    # ** The NixOS daemon is a separate instance with its own state.
+    # ** Its paths live in the Linux service group at the end of this
+    # ** file and must never point here.
+    qbittorrent = rec {
+      profileRoot = "${home}/.config";
+
+      root = "${profileRoot}/qBittorrent";
+
+      cache = "${root}/cache";
+      config = "${root}/config";
+      data = "${root}/data";
+
+      configFile = "${config}/qBittorrent.conf";
+
+      # Torrent output, kept apart from the browser's own downloads.
+      downloads = "${home}/Downloads/torrents";
+    };
+
     # ---- Other
     downloads = "${home}/Downloads";
     localBin = "${home}/.local/bin";
@@ -644,4 +669,30 @@ in
   # equivalent yet and are deliberately absent.
 
   linux.home = linuxHomePaths;
+
+  # ------------------------------------------------------------
+  # ------ SERVICES ------ #
+  # ------------------------------------------------------------
+  # State owned by NixOS system services rather than by the user.
+
+  linux.services = {
+    # ---- qBittorrent daemon
+    # The headless service uses the same profile layout as the desktop
+    # client, so its configuration file sits inside its own profile.
+    #
+    # ** This is deliberately not below the user's home directory. The
+    # ** daemon is a second qBittorrent instance, and sharing a profile
+    # ** with the desktop client would make two processes rewrite one
+    # ** session state.
+    qbittorrent = rec {
+      profileDir = "/var/lib/qBittorrent";
+
+      root = "${profileDir}/qBittorrent";
+
+      config = "${root}/config";
+      configFile = "${config}/qBittorrent.conf";
+
+      downloads = "${profileDir}/downloads";
+    };
+  };
 }

@@ -9,6 +9,13 @@
 
 { inputs, ... }:
 
+let
+  # ---- Variables from options/default.nix
+  # The nixpkgs policy is defined once there, so a host that does not
+  # override it still matches the rest. Bound under a different name
+  # than the constructor arguments below, which would shadow it.
+  sharedNixpkgsConfig = (import ../options { }).nixpkgsConfig;
+in
 {
   # ---- HOME MANAGER FLAKE-PARTS OPTIONS ---- #
   # Provides typed flake.homeModules and flake.homeConfigurations options.
@@ -36,7 +43,7 @@
           system,
           modules,
           extraSpecialArgs ? { },
-          nixpkgsConfig ? { },
+          nixpkgsConfig ? sharedNixpkgsConfig,
         }:
         let
           pkgs = import inputs.nixpkgs {
@@ -60,7 +67,7 @@
           system,
           modules,
           extraSpecialArgs ? { },
-          nixpkgsConfig ? { },
+          nixpkgsConfig ? sharedNixpkgsConfig,
           homeManagerModule ? null,
         }:
         inputs.nixpkgs.lib.nixosSystem {

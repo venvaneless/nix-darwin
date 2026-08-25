@@ -655,9 +655,17 @@ in
   # ------ PROGRAMS THAT OWN THEIR OWN MODULE ------ #
   # VS Code keeps its package, its Darwin application link, and the
   # relocation of its state together rather than split across files.
+  #
+  # qBittorrent does the same for its package, its application link,
+  # its profile location, and the settings declared for that profile.
+  # The optional NixOS daemon is not part of it: a system service
+  # cannot be declared from a file that Home Manager also evaluates.
   # ------------------------------------------------------------
 
-  imports = [ ./packages/vscode.nix ];
+  imports = [
+    ./packages/vscode.nix
+    ./packages/qbittorrent.nix
+  ];
 
   # ------------------------------------------------------------
   # ------ PACKAGE MODULE ASSEMBLY ------ #

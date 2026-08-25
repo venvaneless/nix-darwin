@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/shared/hosts.nix
+# shared/hosts.nix
 #
 # =====================================================================
 # SHARED HOST CONFIGURATION
