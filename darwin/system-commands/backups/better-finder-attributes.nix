@@ -10,7 +10,7 @@ let
   preferencesDirectory = backupPaths.preferencesDirectory;
   configDirectory = backupPaths.configDirectory;
 
-  # ---- EDITABLE BACKUP PATHS
+  # ---- EDITABLE BACKUP CONTENTS
   applicationSupportEntries = [
     {
       relativePath = "A Better Finder Attributes 7";
@@ -40,20 +40,20 @@ let
     "*.sock"
   ];
 
-  # ---- INDIVIDUAL BACKUP CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "better-finder-attributes";
-  preserveSymlinks = true;
-
   # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
   automatic = false;
   automaticIntervalSeconds = 86400;
   minimumIntervalSeconds = 28800;
   cpuLimitPercent = 25;
   showProgress = true;
+
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "better-finder-attributes";
+  preserveSymlinks = true;
 
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
 in

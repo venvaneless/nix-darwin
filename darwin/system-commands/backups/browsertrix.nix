@@ -27,7 +27,7 @@ let
     #   destinationPath = "additional/Somewhere/Browsertrix";
     # }
   ];
-  sourceEntries = containerEntries ++ additionalSources;
+  sourceEntries = containerEntries;
 
   # ---- EDITABLE EXCLUSIONS
   extraExcludePatterns = [
@@ -61,7 +61,7 @@ containerBackupHelper.mkContainerBackup {
   appSlug = "browsertrix";
   inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-  inherit sourceEntries extraExcludePatterns;
+  inherit sourceEntries additionalSources extraExcludePatterns;
   sourceRoot = containerDirectory;
   scheduledHour = 2;
   scheduledMinute = 0;

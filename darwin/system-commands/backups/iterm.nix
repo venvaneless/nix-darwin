@@ -35,23 +35,29 @@ let
     "private/socket"
     "*.sock"
   ];
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 25;
+  showProgress = true;
+
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
+  archive = true;
+  stageInDownloads = true;
+  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+  archivePrefix = "iterm";
+  preserveSymlinks = true;
+
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   itermBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "iTerm2";
     appSlug = "iterm";
-    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-    automatic = false;
-    automaticIntervalSeconds = 86400;
-    minimumIntervalSeconds = 28800;
-    cpuLimitPercent = 25;
-    showProgress = true;
-    archive = true;
-    stageInDownloads = true;
-    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-    archivePrefix = "iterm";
-    preserveSymlinks = true;
+    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     destinationRoot = "terminalBackups";
     inherit destinationSegments applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
     applicationSupportRoot = applicationSupportDirectory;

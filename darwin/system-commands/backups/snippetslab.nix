@@ -32,6 +32,22 @@ let
     }
   ];
   additionalSources = [ ];
+
+  # ---- EDITABLE EXCLUSIONS
+  extraExcludePatterns = [
+    "sockets/"
+    "private/socket"
+    "*.sock"
+  ];
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 25;
+  showProgress = true;
+
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
@@ -44,14 +60,9 @@ let
     inherit config;
     appName = "SnippetsLab";
     appSlug = "snippetslab";
-    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-    automatic = false;
-    automaticIntervalSeconds = 86400;
-    minimumIntervalSeconds = 28800;
-    cpuLimitPercent = 25;
-    showProgress = true;
-    inherit applicationSupportSources applicationPreferences additionalSources;
+    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
+    inherit applicationSupportSources applicationPreferences additionalSources extraExcludePatterns;
   };
 in
 snippetslabBackup

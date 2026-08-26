@@ -43,9 +43,6 @@ in
       # Provides the integrated Home Manager NixOS module
       inputs.home-manager.nixosModules.home-manager
 
-      # Provides SOPS secret management
-      inputs.sops-nix.nixosModules.sops
-
       # This machine's system and user configuration
       ../nixos/default.nix
       ../nixos/home-manager.nix

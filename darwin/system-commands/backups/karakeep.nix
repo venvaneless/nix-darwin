@@ -27,7 +27,7 @@ let
     #   destinationPath = "additional/Somewhere/Karakeep";
     # }
   ];
-  sourceEntries = containerEntries ++ additionalSources;
+  sourceEntries = containerEntries;
 
   # ---- EDITABLE EXCLUSIONS
   extraExcludePatterns = [
@@ -63,7 +63,7 @@ containerBackupHelper.mkContainerBackup {
   appSlug = "karakeep";
   inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-  inherit sourceEntries extraExcludePatterns;
+  inherit sourceEntries additionalSources extraExcludePatterns;
   sourceRoot = containerDirectory;
   inherit scheduledHour scheduledMinute;
 }

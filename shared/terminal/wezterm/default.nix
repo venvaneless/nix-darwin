@@ -59,6 +59,7 @@ in
 
     # ---- Embedded Lua modules
     ./plugins/wez-plugins.nix
+    ./personal/wez-nvim_chrome.nix
     ./personal/wez-replace_tab.nix
     ./personal/wez-save_scrollback.nix
   ];
@@ -166,6 +167,12 @@ in
         )
 
         replace_tab.apply(config)
+
+        local nvim_chrome = dofile(
+            wezterm.config_dir .. "/personal/nvim_chrome.lua"
+        )
+
+        nvim_chrome.apply(config)
 
       '';
     };

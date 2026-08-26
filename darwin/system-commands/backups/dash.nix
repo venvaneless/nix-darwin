@@ -4,7 +4,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  # ---- EDITABLE BACKUP CONTENTS
+  # ---- EDITABLE BACKUP ROOTS
   backupPaths = config.services.appBackups.paths;
   applicationSupportDirectory = backupPaths.applicationSupportDirectory;
   preferencesDirectory = backupPaths.preferencesDirectory;
@@ -45,11 +45,22 @@ let
     #   destinationPath = "additional/Somewhere/Dash";
     # }
   ];
+
+  # ---- EDITABLE EXCLUSIONS
   extraExcludePatterns = [
     "sockets/"
     "private/socket"
     "*.sock"
   ];
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 25;
+  showProgress = true;
+
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
@@ -62,17 +73,12 @@ let
     inherit config;
     appName = "Dash";
     appSlug = "dash";
-    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-    automatic = false;
-    automaticIntervalSeconds = 86400;
-    minimumIntervalSeconds = 28800;
-    cpuLimitPercent = 25;
-    showProgress = true;
+    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
     applicationSupportRoot = applicationSupportDirectory;
     preferencesRoot = preferencesDirectory;
     configRoot = configDirectory;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in
 dashBackup

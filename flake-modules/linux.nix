@@ -63,9 +63,6 @@ in
     inherit nixpkgsConfig;
 
     modules = [
-      # Provides SOPS secret management
-      inputs.sops-nix.homeManagerModules.sops
-
       ../linux/default.nix
     ];
   };
@@ -89,9 +86,6 @@ in
       modules = [
         # Provides the integrated Home Manager NixOS module
         inputs.home-manager.nixosModules.home-manager
-
-        # Provides SOPS secret management
-        inputs.sops-nix.nixosModules.sops
 
         # This machine's system and user configuration
         ../nixos/zephyrus/default.nix

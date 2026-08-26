@@ -10,18 +10,30 @@ let
   preferencesDirectory = backupPaths.preferencesDirectory;
   configDirectory = backupPaths.configDirectory;
 
-  # ---- EDITABLE BACKUP PATHS
+  # ---- EDITABLE BACKUP CONTENTS
   applicationSupportEntries = [
-    { relativePath = "Yate/Backups"; destinationPath = "app-support/Yate/Backups"; }
+    {
+      relativePath = "Yate/Backups";
+      destinationPath = "app-support/Yate/Backups";
+    }
   ];
   preferenceEntries = [
-    { relativePath = "com.2manyrobots.Yate.plist"; destinationPath = "app-pref/com.2manyrobots.Yate.plist"; }
+    {
+      relativePath = "com.2manyrobots.Yate.plist";
+      destinationPath = "app-pref/com.2manyrobots.Yate.plist";
+    }
   ];
   configEntries = [
     # { relativePath = "yate"; destinationPath = "user-config/yate"; }
   ];
-  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
   additionalSources = [ ];
+
+  # ---- EDITABLE EXCLUSIONS
+  extraExcludePatterns = [
+    "sockets/"
+    "private/socket"
+    "*.sock"
+  ];
 
   # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
   automatic = false;
@@ -29,6 +41,8 @@ let
   minimumIntervalSeconds = 28800;
   cpuLimitPercent = 25;
   showProgress = true;
+
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";

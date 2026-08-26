@@ -32,7 +32,22 @@ let
       destinationPath = "profile/firefox-ven";
     }
   ];
-  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
+
+  # ---- EDITABLE EXCLUSIONS
+  extraExcludePatterns = [
+    "sockets/"
+    "private/socket"
+    "*.sock"
+  ];
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 25;
+  showProgress = true;
+
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
@@ -44,18 +59,13 @@ let
     inherit config;
     appName = "LibreWolf";
     appSlug = "librewolf";
-    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-    automatic = false;
-    automaticIntervalSeconds = 86400;
-    minimumIntervalSeconds = 28800;
-    cpuLimitPercent = 25;
-    showProgress = true;
+    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     destinationRoot = "browserBackups";
     inherit destinationSegments applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
     applicationSupportRoot = applicationSupportDirectory;
     preferencesRoot = preferencesDirectory;
     configRoot = configDirectory;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in
 librewolfBackup

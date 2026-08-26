@@ -19,6 +19,9 @@ let
   # ** the helper from appSlug. Change them there, not here.
   wallabagSourceDir = config.services.wallabag.dataDir;
 
+  # Additional paths are added only to the staged archive, never live data.
+  additionalSources = [ ];
+
   # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
   automatic = false;
   automaticIntervalSeconds = 86400;
@@ -41,7 +44,7 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "Wallabag";
   appSlug = "wallabag";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild extraExcludePatterns;
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild additionalSources extraExcludePatterns;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   sourceDir = wallabagSourceDir;
   scheduledHour = 5;

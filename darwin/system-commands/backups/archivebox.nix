@@ -29,6 +29,9 @@ let
   # ** the helper from appSlug. Change them there, not here.
   archiveboxSourceDir = config.services.archivebox.dataDir;
 
+  # Additional paths are added only to the staged archive, never live data.
+  additionalSources = [ ];
+
   # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
   automatic = false;
   automaticIntervalSeconds = 86400;
@@ -51,7 +54,7 @@ containerBackupHelper.mkContainerBackup {
 
   appName = "ArchiveBox";
   appSlug = "archivebox";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild extraExcludePatterns;
+  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild additionalSources extraExcludePatterns;
   inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   sourceDir = archiveboxSourceDir;
   scheduledHour = 1;

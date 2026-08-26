@@ -35,7 +35,7 @@
 
             opts.window = vim.tbl_deep_extend("force", opts.window or {}, {
               position = "left",
-              width = 35,
+              width = 36,
             })
 
             opts.default_component_configs = vim.tbl_deep_extend(
@@ -65,14 +65,10 @@
                   align = "right",
                 },
 
-                -- Neo-tree ships this column but hides it below an 88 column
-                -- window. The sidebar is 35 wide, so lower the requirement and
-                -- use relative timestamps to keep it short.
+                -- Show the file's age beside the project and Git context in
+                -- the statusline instead, so file names keep the full width.
                 last_modified = {
-                  enabled = true,
-                  width = 11,
-                  required_width = 30,
-                  format = require("neo-tree.utils").relative_date,
+                  enabled = false,
                 },
               }
             )

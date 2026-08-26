@@ -459,6 +459,42 @@
               end
             end
 
+            -- Keep the last saved file age beside the repository context,
+            -- rather than spending room on every file in the Neo-tree sidebar.
+            local function relative_file_mtime()
+              local filename = vim.api.nvim_buf_get_name(0)
+
+              if filename == "" or vim.bo.buftype ~= "" then
+                return nil
+              end
+
+              if vim.bo.modified then
+                return "unsaved"
+              end
+
+              local stat = vim.uv.fs_stat(filename)
+
+              if not stat or not stat.mtime then
+                return nil
+              end
+
+              local elapsed = math.max(0, os.time() - stat.mtime.sec)
+
+              if elapsed < 60 then
+                return "now"
+              end
+
+              if elapsed < 3600 then
+                return math.floor(elapsed / 60) .. "m ago"
+              end
+
+              if elapsed < 86400 then
+                return math.floor(elapsed / 3600) .. "h ago"
+              end
+
+              return math.floor(elapsed / 86400) .. "d ago"
+            end
+
             local git = {
               -- Repository name, taken from the same root as the language segment.
               {
@@ -515,6 +551,25 @@
                 provider = diff_provider("removed", "-"),
                 hl = {
                   fg = colors.red,
+                  bg = colors.bg1,
+                  bold = true,
+                },
+              },
+
+              -- Current file's relative modification time.
+              {
+                provider = function()
+                  local value = relative_file_mtime()
+
+                  if not value then
+                    return ""
+                  end
+
+                  return " 󰃭 " .. value
+                end,
+
+                hl = {
+                  fg = colors.gray,
                   bg = colors.bg1,
                   bold = true,
                 },
@@ -602,6 +657,7 @@
                 "BufEnter",
                 "BufWritePost",
                 "CursorHold",
+                "FocusGained",
                 "User",
               },
             }

@@ -15,12 +15,19 @@ let
   paths = import ../../../options/paths.nix { };
   browserPaths = paths.darwin.home.browsers;
 
+  # ---- EDITABLE BACKUP CONTENTS
   destinationSegments = [ "helium" ];
   applicationSupportEntries = [
-    { relativePath = "net.imput.helium"; destinationPath = "app-support/net.imput.helium"; }
+    {
+      relativePath = "net.imput.helium";
+      destinationPath = "app-support/net.imput.helium";
+    }
   ];
   preferenceEntries = [
-    { relativePath = "net.imput.helium.plist"; destinationPath = "app-pref/net.imput.helium.plist"; }
+    {
+      relativePath = "net.imput.helium.plist";
+      destinationPath = "app-pref/net.imput.helium.plist";
+    }
   ];
   configEntries = [
     # { relativePath = "helium"; destinationPath = "user-config/helium"; }
@@ -35,7 +42,13 @@ let
       destinationPath = "profile/helium-ven";
     }
   ];
-  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
+
+  # ---- EDITABLE EXCLUSIONS
+  extraExcludePatterns = [
+    "sockets/"
+    "private/socket"
+    "*.sock"
+  ];
 
   # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
   automatic = false;
@@ -43,6 +56,8 @@ let
   minimumIntervalSeconds = 28800;
   cpuLimitPercent = 25;
   showProgress = true;
+
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";

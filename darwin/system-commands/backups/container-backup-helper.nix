@@ -189,6 +189,8 @@ let
     sourceDir ? null,
     sourceRoot ? config.services.containerBackups.paths.containerDirectory,
     sourceEntries ? [ ],
+    # Additional absolute paths copied into a staged container snapshot.
+    additionalSources ? [ ],
     containerConfig ? [ ],
     destinationDir ? (containerLocations config appSlug).destination,
     externalBackupVolume ? config.services.containerBackups.paths.externalBackupVolume,
@@ -221,6 +223,10 @@ let
     sourcePath = if entry ? sourcePath then entry.sourcePath else "${sourceRoot}/${entry.relativePath}";
     destinationPath = entry.destinationPath;
   }) sourceEntries;
+  resolvedAdditionalSources = map (entry: {
+    sourcePath = entry.sourcePath;
+    destinationPath = entry.destinationPath;
+  }) additionalSources;
   resolvedSourceDir =
     if resolvedSourceEntries != [ ] then
       (builtins.head resolvedSourceEntries).sourcePath
@@ -246,6 +252,19 @@ let
         backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
           ${lib.escapeShellArg "${entry.sourcePath}/"} "$staged_source/${entry.destinationPath}/"
   '') resolvedSourceEntries;
+  stageAdditionalSources = lib.concatMapStringsSep "\n" (entry: ''
+      if [ ! -e ${lib.escapeShellArg entry.sourcePath} ] && [ ! -L ${lib.escapeShellArg entry.sourcePath} ]; then
+        log "SKIP missing additional source: ${entry.sourcePath}"
+      elif [ -d ${lib.escapeShellArg entry.sourcePath} ]; then
+        ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
+        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
+          ${lib.escapeShellArg "${entry.sourcePath}/"} "$staged_source/${entry.destinationPath}/"
+      else
+        ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$staged_source/${entry.destinationPath}" )"
+        backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
+          ${lib.escapeShellArg entry.sourcePath} "$staged_source/${entry.destinationPath}"
+      fi
+  '') resolvedAdditionalSources;
   prepareSourceEntries = lib.optionalString (resolvedSourceEntries != [ ]) ''
       staging_dir="$(
         ${pkgs.coreutils}/bin/mktemp -d "${backupPaths.lockRoot}/${appSlug}-backup.XXXXXX"
@@ -255,6 +274,21 @@ let
       staged_source="$staging_dir/$app_slug"
       ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source"
 ${stageSourceEntries}
+  '';
+  prepareAdditionalSources = lib.optionalString (resolvedAdditionalSources != [ ]) ''
+      additional_staging_dir="$(
+        ${pkgs.coreutils}/bin/mktemp -d "${backupPaths.lockRoot}/${appSlug}-additional.XXXXXX"
+      )"
+      staged_source="$additional_staging_dir/$app_slug"
+      ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source"
+
+      # Work from a staged copy so additional sources never change the live
+      # container directory or its database-aware prepared snapshot.
+      backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
+        "$archive_source_parent/$archive_source_name/" "$staged_source/"
+${stageAdditionalSources}
+      archive_source_parent="$additional_staging_dir"
+      archive_source_name="$app_slug"
   '';
 
   commandName = "${appSlug}-backup";
@@ -310,6 +344,7 @@ ${stageSourceEntries}
       local_archive=""
       temporary_marker=""
       staging_dir=""
+      additional_staging_dir=""
       lock_acquired=0
       global_lock_acquired=0
       backup_started=0
@@ -362,6 +397,10 @@ ${extraExcludes}
 
         if [ -n "$staging_dir" ] && [ -d "$staging_dir" ]; then
           ${pkgs.coreutils}/bin/rm -rf -- "$staging_dir" 2>/dev/null || true
+        fi
+
+        if [ -n "$additional_staging_dir" ] && [ -d "$additional_staging_dir" ]; then
+          ${pkgs.coreutils}/bin/rm -rf -- "$additional_staging_dir" 2>/dev/null || true
         fi
 
         # A failed handoff deliberately leaves its verified local archive in
@@ -565,6 +604,7 @@ ${lib.optionalString localStagingUsesSharedRoot ''
 
       ${prepareSourceEntries}
       ${prepareArchive}
+      ${prepareAdditionalSources}
 
       timestamp="$(
         ${pkgs.coreutils}/bin/date "+$archive_timestamp_format"

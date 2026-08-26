@@ -10,7 +10,7 @@ let
   preferencesDirectory = backupPaths.preferencesDirectory;
   configDirectory = backupPaths.configDirectory;
 
-  # ---- EDITABLE BACKUP PATHS
+  # ---- EDITABLE BACKUP CONTENTS
   applicationSupportEntries = [
     {
       relativePath = "com.wiheads.paste-direct";
@@ -41,7 +41,7 @@ let
     "*.sock"
   ];
 
-  # ---- INDIVIDUAL BACKUP CONTROLS
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
@@ -49,22 +49,24 @@ let
   archivePrefix = "paste";
   preserveSymlinks = true;
 
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 25;
+  showProgress = true;
+
   appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
   pasteBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Paste";
     appSlug = "paste";
-    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-    automatic = false;
-    automaticIntervalSeconds = 86400;
-    minimumIntervalSeconds = 28800;
-    cpuLimitPercent = 25;
-    showProgress = true;
+    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
     applicationSupportRoot = applicationSupportDirectory;
     preferencesRoot = preferencesDirectory;
     configRoot = configDirectory;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in
 pasteBackup

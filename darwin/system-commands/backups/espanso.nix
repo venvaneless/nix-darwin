@@ -12,13 +12,34 @@ let
 
   # ---- EDITABLE BACKUP CONTENTS
   configEntries = [
-    { relativePath = "espanso"; destinationPath = "user-config/espanso"; }
+    {
+      relativePath = "espanso";
+      destinationPath = "user-config/espanso";
+    }
   ];
   preferenceEntries = [
-    { relativePath = "com.federicoterzi.espanso.plist"; destinationPath = "app-pref/com.federicoterzi.espanso.plist"; }
+    {
+      relativePath = "com.federicoterzi.espanso.plist";
+      destinationPath = "app-pref/com.federicoterzi.espanso.plist";
+    }
   ];
-  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
   additionalSources = [ ];
+
+  # ---- EDITABLE EXCLUSIONS
+  extraExcludePatterns = [
+    "sockets/"
+    "private/socket"
+    "*.sock"
+  ];
+
+  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+  automatic = false;
+  automaticIntervalSeconds = 86400;
+  minimumIntervalSeconds = 28800;
+  cpuLimitPercent = 25;
+  showProgress = true;
+
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
@@ -31,17 +52,12 @@ let
     inherit config;
     appName = "Espanso";
     appSlug = "espanso";
-    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-    automatic = false;
-    automaticIntervalSeconds = 86400;
-    minimumIntervalSeconds = 28800;
-    cpuLimitPercent = 25;
-    showProgress = true;
+    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
+    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
     inherit configEntries preferenceEntries additionalSources extraExcludePatterns;
     applicationSupportRoot = applicationSupportDirectory;
     preferencesRoot = preferencesDirectory;
     configRoot = configDirectory;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
   };
 in
 espansoBackup

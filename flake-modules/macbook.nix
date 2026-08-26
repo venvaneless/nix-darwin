@@ -8,6 +8,7 @@
 # =====================================================================
 
 {
+  config,
   inputs,
   withSystem,
   ...
@@ -45,7 +46,7 @@ in
   flake.darwinConfigurations.macbook =
     withSystem system (
       { ... }:
-      inputs.darwin.lib.darwinSystem {
+      config.flake.lib.mkDarwinHost {
         inherit system;
 
         specialArgs = {
@@ -65,9 +66,6 @@ in
             # shared/hosts.nix used to provide.
             nixpkgs.config = nixpkgsConfig;
           }
-
-          # Provides SOPS secret management
-          inputs.sops-nix.darwinModules.sops
 
           ../darwin/default.nix
         ];

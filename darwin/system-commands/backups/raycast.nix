@@ -10,7 +10,7 @@ let
   preferencesDirectory = backupPaths.preferencesDirectory;
   configDirectory = backupPaths.configDirectory;
 
-  # ---- EDITABLE BACKUP PATHS
+  # ---- EDITABLE BACKUP CONTENTS
   applicationSupportEntries = [
     {
       relativePath = "com.raycast.macos";
@@ -78,6 +78,8 @@ let
       ];
     }
   ];
+
+  # ---- EDITABLE EXCLUSIONS
   extraExcludePatterns = [
     "sockets/"
     "private/socket"
@@ -94,6 +96,8 @@ let
   cpuLimitPercent = 10;
   transferLimitKiBps = 4096;
   showProgress = true;
+
+  # ---- INDIVIDUAL ARCHIVE CONTROLS
   archive = true;
   stageInDownloads = true;
   archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
