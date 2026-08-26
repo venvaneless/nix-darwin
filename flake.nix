@@ -6,9 +6,6 @@
 # - Integrates Home Manager via darwin/default.nix
 # ==========================================================
 
-let
-  hosts = import ./flake-modules/hosts.nix;
-in
 {
   description = "Ven’s setup";
 
@@ -16,7 +13,7 @@ in
   nixConfig.allow-dirty = true;
 
   # Shared host definitions also provide the external dependency set.
-  inputs = hosts.inputs;
+  inputs = (import ./flake-modules/hosts.nix).inputs;
 
   outputs =
     inputs@{
@@ -24,6 +21,9 @@ in
       ...
 
     }:
+    let
+      hosts = import ./flake-modules/hosts.nix;
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       # Governs current per-system Darwin package outputs. Linux and NixOS
       # host outputs and modules are defined separately in flake-modules/.
