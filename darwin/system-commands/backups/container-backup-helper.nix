@@ -284,7 +284,6 @@ ${stageSourceEntries}
       source_dir="$(printf '%s' ${lib.escapeShellArg resolvedSourceDir})"
       external_backup_volume="$(printf '%s' ${lib.escapeShellArg externalBackupVolume})"
       destination_dir="$(printf '%s' ${lib.escapeShellArg destinationDir})"
-      local_staging_root="$(printf '%s' ${lib.escapeShellArg backupCfg.paths.stagingDirectory})"
       local_staging_dir="$(printf '%s' ${lib.escapeShellArg localStagingDir})"
 
       source_marker_file="$(printf '%s' ${lib.escapeShellArg resolvedSourceMarkerFile})"
@@ -369,9 +368,9 @@ ${extraExcludes}
         # place. rmdir therefore removes only an empty helper-owned directory.
         if [ "$archive_in_downloads" -eq 1 ]; then
           ${pkgs.coreutils}/bin/rmdir -- "$local_staging_dir" 2>/dev/null || true
-          if [ ${if localStagingUsesSharedRoot then "1" else "0"} -eq 1 ]; then
-            ${pkgs.coreutils}/bin/rmdir -- "$local_staging_root" 2>/dev/null || true
-          fi
+${lib.optionalString localStagingUsesSharedRoot ''
+          ${pkgs.coreutils}/bin/rmdir -- ${lib.escapeShellArg backupCfg.paths.stagingDirectory} 2>/dev/null || true
+''}
         fi
 
         release_lock

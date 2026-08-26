@@ -60,12 +60,6 @@ let
           description = "Mounted external backup volume root.";
         };
 
-        downloadsDirectory = lib.mkOption {
-          type = lib.types.str;
-          default = userPaths.downloads;
-          description = "Local staging root for application archives.";
-        };
-
         stagingDirectory = lib.mkOption {
           type = lib.types.str;
           default = backupPaths.staging;
@@ -166,7 +160,6 @@ let
     destinationSegments ? [ appSlug ],
     destinationDir ? null,
     externalBackupVolume ? config.services.appBackups.paths.externalBackupVolume,
-    downloadsDir ? config.services.appBackups.paths.downloadsDirectory,
     localStagingDir ? "${config.services.appBackups.paths.stagingDirectory}/${appSlug}",
     globalLockDir ? backupPaths.archiveLock,
     sourceMarkerFiles ? [ ],
@@ -310,8 +303,6 @@ let
     app_slug="$(printf '%s' ${lib.escapeShellArg appSlug})"
     external_backup_volume="$(printf '%s' ${lib.escapeShellArg externalBackupVolume})"
     destination_dir="$(printf '%s' ${lib.escapeShellArg resolvedDestinationDir})"
-    downloads_dir="$(printf '%s' ${lib.escapeShellArg downloadsDir})"
-    local_staging_root="$(printf '%s' ${lib.escapeShellArg backupPaths.stagingDirectory})"
     local_staging_dir="$(printf '%s' ${lib.escapeShellArg localStagingDir})"
 
     timestamp="$(${pkgs.coreutils}/bin/date ${lib.escapeShellArg "+${cfg.archiveTimestampFormat}"})"
@@ -372,9 +363,9 @@ ${extraExcludes}
       # place. rmdir therefore removes only an empty helper-owned directory.
       if [ "$archive_in_downloads" -eq 1 ]; then
         ${pkgs.coreutils}/bin/rmdir -- "$local_staging_dir" 2>/dev/null || true
-        if [ ${if localStagingUsesSharedRoot then "1" else "0"} -eq 1 ]; then
-          ${pkgs.coreutils}/bin/rmdir -- "$local_staging_root" 2>/dev/null || true
-        fi
+${lib.optionalString localStagingUsesSharedRoot ''
+        ${pkgs.coreutils}/bin/rmdir -- ${lib.escapeShellArg backupPaths.stagingDirectory} 2>/dev/null || true
+''}
       fi
 
       if [ "$global_lock_acquired" -eq 1 ]; then

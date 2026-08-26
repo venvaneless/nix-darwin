@@ -24,6 +24,11 @@
     useUserPackages = true;
     extraSpecialArgs = { inherit inputs; };
 
+    # Provides the Home Manager sops.* options used by shared/secrets.nix.
+    sharedModules = [
+      inputs.sops-nix.homeManagerModules.sops
+    ];
+
     users.ven = {
       home.username = "ven";
       home.homeDirectory = "/Users/ven";
@@ -43,6 +48,7 @@
         ../../shared/terminal/nvim
         ../../shared/terminal/cli-tuis
         ../../shared/terminal/wezterm
+        ../../shared/secrets.nix
         ./hm-options.nix
       ];
 
