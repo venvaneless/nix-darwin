@@ -195,8 +195,6 @@
     # macOS-only packages
     ./packages/agents-pkgs.nix
     ./packages/tools-pkgs.nix
-    ./packages/cli-tools.nix
-    ./packages/media-pkgs.nix
     
     # Shared packages
     # The nixpkgs policy comes from options/default.nix, applied in

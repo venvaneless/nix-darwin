@@ -44,15 +44,13 @@ let
           NEXTAUTH_SECRET: "''${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET in the Karakeep env file}"
           NEXTAUTH_URL: "''${NEXTAUTH_URL:?Set NEXTAUTH_URL in the Karakeep env file}"
       chrome:
-        image: gcr.io/zenika-hub/alpine-chrome:124
+        image: ${cfg.chromeImage}
         container_name: ${appName}-chrome
         restart: unless-stopped
+        init: true
         command:
-          - --no-sandbox
           - --disable-gpu
           - --disable-dev-shm-usage
-          - --remote-debugging-address=0.0.0.0
-          - --remote-debugging-port=9222
           - --hide-scrollbars
           - --disable-blink-features=AutomationControlled
           - --window-size=1440,900
@@ -134,8 +132,14 @@ in
 
     image = lib.mkOption {
       type = lib.types.str;
-      default = "ghcr.io/karakeep-app/karakeep:0.32.0";
+      default = "ghcr.io/karakeep-app/karakeep:0.33.2";
       description = "Pinned Karakeep Docker image.";
+    };
+
+    chromeImage = lib.mkOption {
+      type = lib.types.str;
+      default = "ghcr.io/karakeep-app/karakeep-chrome:release";
+      description = "Karakeep-supported Chrome image for the configured release channel.";
     };
   };
 

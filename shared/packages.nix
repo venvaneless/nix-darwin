@@ -16,7 +16,7 @@
 # declarations work at system level and inside Home Manager.
 # =====================================================================
 
-{ lib, options, pkgs, ... }:
+{ inputs, lib, options, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
@@ -67,11 +67,19 @@ let
       package = pkgs.alejandra;
     };
 
-    # Standalone Home Manager command-line tool.
-    homeManager = {
+    # Runs a program from nixpkgs without installing it.
+    comma = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      package = pkgs.home-manager;
+      package = pkgs.comma;
+    };
+
+    # Rebuilds the active nix-darwin system configuration.
+    # This command is only available on Darwin.
+    darwinRebuild = {
+      enable = true;
+      installOn = { darwin = true; linux = false; };
+      package = inputs.darwin.packages.${pkgs.stdenv.hostPlatform.system}.darwin-rebuild;
     };
 
     # Finds unused declarations in Nix files.
@@ -79,6 +87,13 @@ let
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.deadnix;
+    };
+
+    # Standalone Home Manager command-line tool.
+    homeManager = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.home-manager;
     };
 
     # Wrapper around rebuild, search, and garbage-collection commands.
@@ -93,13 +108,6 @@ let
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.nil;
-    };
-
-    # Dependency pinning for Nix projects.
-    npins = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.npins;
     };
 
     # Faster direnv integration for Nix shells.
@@ -123,11 +131,11 @@ let
       package = pkgs.nixfmt;
     };
 
-    # Lints Nix files for antipatterns.
-    statix = {
+    # Locates which package provides a given file.
+    nixIndex = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      package = pkgs.statix;
+      package = pkgs.nix-index;
     };
 
     # Renders build output as a live dependency tree.
@@ -137,13 +145,6 @@ let
       package = pkgs.nix-output-monitor;
     };
 
-    # Interactive browser for store paths and their dependencies.
-    nixTree = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.nix-tree;
-    };
-
     # Searches nixpkgs from the terminal.
     nixSearch = {
       enable = true;
@@ -151,18 +152,11 @@ let
       package = pkgs.nix-search;
     };
 
-    # Locates which package provides a given file.
-    nixIndex = {
+    # Interactive browser for store paths and their dependencies.
+    nixTree = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      package = pkgs.nix-index;
-    };
-
-    # Runs a program from nixpkgs without installing it.
-    comma = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.comma;
+      package = pkgs.nix-tree;
     };
 
     # Updates package versions and their hashes.
@@ -172,27 +166,27 @@ let
       package = pkgs.nix-update;
     };
 
+    # Dependency pinning for Nix projects.
+    npins = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.npins;
+    };
+
+    # Lints Nix files for antipatterns.
+    statix = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.statix;
+    };
+
     # ---- Language servers and toolchains
 
-    # TypeScript compiler.
-    typescript = {
+    # Rust package manager and build tool.
+    cargo = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      package = pkgs.typescript;
-    };
-
-    # Language server for JavaScript and TypeScript.
-    typescriptLanguageServer = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.typescript-language-server;
-    };
-
-    # Language server for Vue single-file components.
-    vueLanguageServer = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.vue-language-server;
+      package = pkgs.cargo;
     };
 
     # Go compiler and toolchain.
@@ -209,25 +203,11 @@ let
       package = pkgs.gopls;
     };
 
-    # Rust compiler.
-    rustc = {
+    # Language server for Lua.
+    luaLanguageServer = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      package = pkgs.rustc;
-    };
-
-    # Rust package manager and build tool.
-    cargo = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.cargo;
-    };
-
-    # Rust language server.
-    rustAnalyzer = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.rust-analyzer;
+      package = pkgs.lua-language-server;
     };
 
     # Static type checker and language server for Python.
@@ -244,18 +224,18 @@ let
       package = pkgs.ruff;
     };
 
-    # Language servers for HTML, CSS, JSON, and ESLint.
-    vscodeLanguageServers = {
+    # Rust language server.
+    rustAnalyzer = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      package = pkgs.vscode-langservers-extracted;
+      package = pkgs.rust-analyzer;
     };
 
-    # Language server for YAML, with schema support.
-    yamlLanguageServer = {
+    # Rust compiler.
+    rustc = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      package = pkgs.yaml-language-server;
+      package = pkgs.rustc;
     };
 
     # TOML formatter, linter, and language server.
@@ -265,21 +245,42 @@ let
       package = pkgs.taplo;
     };
 
-    # Language server for Lua.
-    luaLanguageServer = {
+    # TypeScript compiler.
+    typescript = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      package = pkgs.lua-language-server;
+      package = pkgs.typescript;
+    };
+
+    # Language server for JavaScript and TypeScript.
+    typescriptLanguageServer = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.typescript-language-server;
+    };
+
+    # Language servers for HTML, CSS, JSON, and ESLint.
+    vscodeLanguageServers = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.vscode-langservers-extracted;
+    };
+
+    # Language server for Vue single-file components.
+    vueLanguageServer = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.vue-language-server;
+    };
+
+    # Language server for YAML, with schema support.
+    yamlLanguageServer = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.yaml-language-server;
     };
 
     # ---- Development and document tools
-
-    # Command-line client for the Bitwarden vault.
-    bitwardenCli = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.bitwarden-cli;
-    };
 
     # Modern file encryption tool.
     age = {
@@ -288,11 +289,18 @@ let
       package = pkgs.age;
     };
 
-    # Manages encrypted secrets using age keys.
-    sops = {
+    # Command-line client for the Bitwarden vault.
+    bitwardenCli = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      package = pkgs.sops;
+      package = pkgs.bitwarden-cli;
+    };
+
+    # Loads and unloads environment variables per directory.
+    direnv = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.direnv;
     };
 
     # Container runtime CLI, pinned to the 29 series.
@@ -309,20 +317,6 @@ let
       package = pkgs.docker-compose;
     };
 
-    # Loads and unloads environment variables per directory.
-    direnv = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.direnv;
-    };
-
-    # Custom TeX Live environment defined in the let block above.
-    texLive = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = myTex;
-    };
-
     # certutil and related tools for managing certificate stores.
     nssTools = {
       enable = true;
@@ -335,6 +329,20 @@ let
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.pandoc;
+    };
+
+    # Manages encrypted secrets using age keys.
+    sops = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.sops;
+    };
+
+    # Custom TeX Live environment defined in the let block above.
+    texLive = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = myTex;
     };
 
     # ---- Git tools
@@ -369,39 +377,11 @@ let
 
     # ---- Linters and formatters
 
-    # Formatter for web languages.
-    prettier = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.prettier;
-    };
-
     # Long-running ESLint daemon.
     eslintD = {
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.eslint_d;
-    };
-
-    # Runs many Go linters through one command.
-    golangciLint = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.golangci-lint;
-    };
-
-    # Lua linter.
-    selene = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.selene;
-    };
-
-    # YAML linter.
-    yamllint = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.yamllint;
     };
 
     # Stricter gofmt.
@@ -411,11 +391,32 @@ let
       package = pkgs.gofumpt;
     };
 
+    # Runs many Go linters through one command.
+    golangciLint = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.golangci-lint;
+    };
+
+    # Formatter for web languages.
+    prettier = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.prettier;
+    };
+
     # Rust formatter.
     rustfmt = {
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.rustfmt;
+    };
+
+    # Lua linter.
+    selene = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.selene;
     };
 
     # CSS and SCSS linter.
@@ -430,6 +431,13 @@ let
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.stylua;
+    };
+
+    # YAML linter.
+    yamllint = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.yamllint;
     };
 
     # ---- JavaScript and Python
@@ -448,18 +456,18 @@ let
       package = pkgs.nodejs;
     };
 
-    # Python interpreter.
-    python3 = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.python3;
-    };
-
     # Python data analysis library.
     pandas = {
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.python3Packages.pandas;
+    };
+
+    # Python interpreter.
+    python3 = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.python3;
     };
 
     # Python PDF generation library.
@@ -474,6 +482,93 @@ let
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.uv;
+    };
+  };
+
+  # ------------------------------------------------------------
+  # ------ CLI PACKAGE DEFINITIONS ------ #
+  # Every entry can override enable or installOn locally.
+  # ------------------------------------------------------------
+
+  # fd is installed cross-platform by shared/terminal/cli-tuis/fd/fd.nix,
+  # which also owns its ignore file and colours.
+
+  cliPackages = {
+    # Interactive Bash shell with completion support.
+    bashInteractive = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.bashInteractive;
+    };
+
+    # Generates thumbnails for video files.
+    ffmpegthumbnailer = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.ffmpegthumbnailer;
+    };
+
+    # Cross-platform command shell.
+    fish = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.fish;
+    };
+
+    # GNU implementation of awk.
+    gawk = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.gawk;
+    };
+
+    # Tool for creating shell scripts with styled output.
+    gum = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.gum;
+    };
+
+    # Image manipulation command-line tools.
+    imagemagick = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.imagemagick;
+    };
+
+    # 7-Zip-compatible archive tools.
+    p7zip = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.p7zip;
+    };
+
+    # Displays directory trees in the terminal.
+    tree = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.tree;
+    };
+
+    # Extracts a broad range of archive formats.
+    unar = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.unar;
+    };
+
+    # Non-interactive network downloader.
+    wget = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.wget;
+    };
+
+    # Zstandard compression tools.
+    zstd = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.zstd;
     };
   };
 
@@ -576,6 +671,19 @@ let
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.poppler-utils;
+    };
+
+    # ---- VLC
+    # Plays video, audio, streams, discs, and many media formats.
+    vlc = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = helpers.packageOptions.byPlatform {
+        darwin = pkgs.vlc-bin;
+        linux = pkgs.vlc;
+      };
+      appName = "VLC.app";
+      symlinkMultimedia = true;
     };
 
     # ---- YouTube Music Desktop
@@ -683,6 +791,11 @@ in
     (helpers.packageOptions.mkPackageModule {
       name = "shared-development";
       packages = developmentPackages // darwinDevelopmentApplications // developmentApplications;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-cli";
+      packages = cliPackages;
     })
 
     (helpers.packageOptions.mkPackageModule {
