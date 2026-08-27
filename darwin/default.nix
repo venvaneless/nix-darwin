@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/default.nix
+# darwin/default.nix
 #
 # DARWIN: MAIN SYSTEM MODULE
 # ================================================
@@ -186,7 +186,7 @@
   imports = [
     # Home Manager
     home-manager.darwinModules.home-manager
-    ./home/home-manager.nix
+    ./home
 
     # System options
     ./system/system-options.nix

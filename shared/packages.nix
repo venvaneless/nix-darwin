@@ -570,6 +570,12 @@ let
       installOn = { darwin = true; linux = true; };
       package = pkgs.zstd;
     };
+
+    unison = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.unison;
+    };
   };
 
   # ------------------------------------------------------------
