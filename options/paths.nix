@@ -300,7 +300,7 @@ in
     root = "${darwinHome}/Documents/Obsidian";
     vault = "${root}/Ven";
     logs = "${root}/logs";
-    iCloudVault = "${obsidianVaultsRoot}/Ven";
+    iCloudVault = obsidianVaultsRoot;
   };
 
   # ------------------------------------------------------------
