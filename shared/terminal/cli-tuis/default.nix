@@ -43,7 +43,8 @@
     ./television
 
     ./tmux.nix
-    ./yazi.nix
+    # Yazi settings and plugins
+    ./yazi
     ./zoxide.nix
   ];
 

@@ -81,7 +81,10 @@ in
           set --local blocked_files \
               agents.md \
               claude.md \
+              list of urls.md \
+              main-debug.js \
               publishing.md \
+              release.md \
               third_party_notices.md \
               wechat-渐读介绍.md \
               readme_ko.md \

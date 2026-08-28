@@ -21,6 +21,12 @@
     # Declares the toggle only. Each service stays off until this host
     # enables it below.
     ../shared/services/qbittorrent.nix
+
+    # ---- SHARED SYSTEM COMMANDS ---- #
+    # Installs the portable Obsidian archive checker system-wide.
+    (import ../shared/system-commands/obsidian-archive-check.nix {
+      installTarget = "system";
+    })
   ];
 
   # ===================================================================

@@ -32,21 +32,14 @@ let
     micro.enable && ((isDarwin && micro.installOn.darwin) || (isLinux && micro.installOn.linux));
 
   # ---- THEME SELECTION ---- #
-  # Change this value to select the saved Catppuccin Mocha or Gruvbox
-  # palette. Only the selected theme module creates a colourscheme file.
+  # Change this value to select one of the themes in themes/default.nix.
+  # Only the selected theme module creates a colourscheme file.
   selectedTheme = "gruvbox";
 
   # ---- AVAILABLE THEMES ---- #
-  themeModules = {
-    catppuccin = {
-      module = ./themes/catppuccin-mocha.nix;
-      themeName = "catppuccin-mocha";
-    };
-    gruvbox = {
-      module = ./themes/gruvbox.nix;
-      themeName = "gruvbox";
-    };
-  };
+  # The registry remains separate so this main module keeps the visible
+  # selector while each theme stays in its own implementation module.
+  themeModules = import ./themes;
 
   selectedThemeConfig =
     if lib.hasAttr selectedTheme themeModules then
@@ -107,6 +100,9 @@ in
   ];
 
   imports = [
+    # Own Micro's colourscheme index for every Nix-managed theme.
+    ./themes/micro-themes-schemas.nix
+
     # Imports only the module selected in the THEME SELECTION section.
     selectedThemeConfig.module
   ];

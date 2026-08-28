@@ -1,0 +1,56 @@
+# shared/terminal/cli-tuis/micro/themes/bubblegum.nix
+#
+# =====================================================================
+# MICRO: BUBBLEGUM THEME
+#
+# - Official Bubblegum theme for Micro
+# - Selected directly in ../micro.nix with selectedTheme = "bubblegum"
+# =====================================================================
+
+{ config, lib, ... }:
+
+let
+  microCfg = config.ven.features.terminal.cliTuis.micro;
+  cfg = microCfg.themes.bubblegum;
+in
+{
+  options.ven.features.terminal.cliTuis.micro.themes.bubblegum.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = "Internal switch for the Bubblegum theme selected in micro.nix.";
+  };
+
+  config = lib.mkIf (microCfg.enable && cfg.enable) {
+    # Micro loads custom colour schemes from this XDG colourschemes directory.
+    xdg.configFile."micro/colorschemes/bubblegum.micro".text = ''
+      color-link default "241,231"
+      color-link comment "246,231"
+      color-link constant "130,231"
+      color-link constant.string "136,231"
+      color-link constant.number "131,231"
+      color-link identifier "133,231"
+      color-link statement "32,231"
+      color-link symbol "32,231"
+      color-link preproc "28,231"
+      color-link type "61,231"
+      color-link special "167,231"
+      color-link error "231, 160"
+      color-link underlined "underline 241,231"
+      color-link todo "246,231"
+      color-link hlsearch "231,136"
+      color-link statusline "241,254"
+      color-link tabbar "241,254"
+      color-link diff-added "34"
+      color-link diff-modified "214"
+      color-link diff-deleted "160"
+      color-link gutter-error "197,231"
+      color-link gutter-warning "134,231"
+      color-link line-number "246,254"
+      color-link cursor-line "254"
+      color-link color-column "254"
+      #No extended types (bool in C, &c.) and plain brackets
+      color-link type.extended "241,231"
+      color-link symbol.brackets "241,231"
+    '';
+  };
+}

@@ -192,6 +192,11 @@
     ./system/system-options.nix
     ./system-commands
 
+    # Shared system commands
+    (import ../shared/system-commands/obsidian-archive-check.nix {
+      installTarget = "system";
+    })
+
     # macOS-only packages
     ./packages/agents-pkgs.nix
     ./packages/tools-pkgs.nix

@@ -1,0 +1,63 @@
+# shared/terminal/cli-tuis/micro/themes/dukeubuntu-tc.nix
+#
+# =====================================================================
+# MICRO: DUKEUBUNTU TC THEME
+#
+# - Dukeubuntu TC theme for Micro
+# - Selected directly in ../micro.nix with selectedTheme = "dukeubuntu-tc"
+# =====================================================================
+
+{ config, lib, ... }:
+
+let
+  microCfg = config.ven.features.terminal.cliTuis.micro;
+  cfg = microCfg.themes.dukeubuntu-tc;
+in
+{
+  options.ven.features.terminal.cliTuis.micro.themes.dukeubuntu-tc.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = "Internal switch for the Dukeubuntu TC theme selected in micro.nix.";
+  };
+
+  config = lib.mkIf (microCfg.enable && cfg.enable) {
+    # Micro loads custom colour schemes from this XDG colourschemes directory.
+    xdg.configFile."micro/colorschemes/dukeubuntu-tc.micro".text = ''
+      color-link color-column "#2d0023"
+      color-link comment "#886484,#2d0023"
+      color-link constant.bool "#fd971f,#2d0023"
+      color-link constant "#fd971f,#2d0023"
+      color-link constant.string "#a0f000,#2d0023"
+      color-link constant.string.char "#a0f000,#2d0023"
+      color-link constant.string.url "#a0f000,#2d0023"
+      color-link current-line-number "bold #fd971f,#2d0023"
+      color-link cursor-line "#230019"
+      color-link default "#ffffff,#2d0023"
+      color-link diff-added "#00c8a0,#2d0023"
+      color-link diff-modified "#fd971f,#2d0023"
+      color-link diff-deleted "#cb4b16,#2d0023"
+      color-link divider "#2d0023,#d0d0d0"
+      color-link error "#cb4b16,#2d0023"
+      color-link gutter-error "#cb4b16,#2d0023"
+      color-link gutter-warning "#fce94f,#2d0023"
+      color-link hlsearch "#ffffff,#005028"
+      color-link identifier "#00c8a0,#2d0023"
+      color-link identifier.class "#00c8a0,#2d0023"
+      color-link indent-char "#a0a0a0,#2d0023"
+      color-link line-number "#a0a0a0,#230019"
+      color-link preproc "bold #5aaae6,#2d0023"
+      color-link special "#a6e22e,#2d0023"
+      color-link statement "bold #5aaae6,#2d0023"
+      color-link statusline "#ffffff,#0078c8"
+      color-link symbol "#00c8a0,#2d0023"
+      color-link symbol.brackets "#ffffff,#2d0023"
+      color-link symbol.tag "bold #5aaae6,#2d0023"
+      color-link tabbar "#2d0023,#ffffff"
+      color-link todo "#fce94f,#2d0023"
+      color-link type "bold #3cc83c,#2d0023"
+      color-link type.keyword "bold #5aaae6,#2d0023"
+      color-link type.extended "#ffffff,#2d0023"
+      color-link underlined "#886484,#2d0023"
+    '';
+  };
+}

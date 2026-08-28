@@ -1,4 +1,4 @@
-# shared/secrets.nix
+# shared/home/secrets.nix
 #
 # =====================================================================
 # HOME MANAGER: USER SECRETS
@@ -30,27 +30,27 @@ in
 
   sops.secrets = {
     ARCHIVEBOX_ADMIN_USERNAME = {
-      sopsFile = ../secrets/archivebox.sops.env;
+      sopsFile = ../../secrets/archivebox.sops.env;
       format = "dotenv";
     };
 
     ARCHIVEBOX_ADMIN_PASSWORD = {
-      sopsFile = ../secrets/archivebox.sops.env;
+      sopsFile = ../../secrets/archivebox.sops.env;
       format = "dotenv";
     };
 
     MEILI_MASTER_KEY = {
-      sopsFile = ../secrets/karakeep.sops.env;
+      sopsFile = ../../secrets/karakeep.sops.env;
       format = "dotenv";
     };
 
     NEXTAUTH_SECRET = {
-      sopsFile = ../secrets/karakeep.sops.env;
+      sopsFile = ../../secrets/karakeep.sops.env;
       format = "dotenv";
     };
 
     NEXTAUTH_URL = {
-      sopsFile = ../secrets/karakeep.sops.env;
+      sopsFile = ../../secrets/karakeep.sops.env;
       format = "dotenv";
     };
   };

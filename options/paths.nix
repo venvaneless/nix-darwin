@@ -153,6 +153,18 @@ let
     cache = "${linuxHome}/.cache";
   };
 
+  # ---- Linux external backup volume
+  # Linux mounts the same SystemBackup drive at /mnt/SystemBackup. Keep the
+  # persistent Obsidian repository layout identical to macOS below it.
+  linuxBackupPaths = rec {
+    volume = "/mnt/SystemBackup";
+    data = "${volume}/data-backups";
+    apps = "${data}/app-backups";
+    obsidian = "${apps}/obsidian";
+    obsidianExtensions = "${obsidian}/obsidian_extensions";
+    obsidianThemes = "${obsidian}/obsidian_themes";
+  };
+
   # ------------------------------------------------------------
   # ------ MACOS ROOTS ------ #
   # ------------------------------------------------------------
@@ -244,6 +256,7 @@ in
   # root reaches every path derived from it.
 
   darwin.home = darwinHomePaths;
+  linux.backups = linuxBackupPaths;
 
   # ---- iCloud
   # Prefer the short symlink forms. They are user-created, already in

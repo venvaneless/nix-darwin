@@ -4,6 +4,9 @@
 # RIPGREP
 #
 # Fast recursive search
+#
+# Installation, the global colour configuration, and shell aliases are
+# managed through Home Manager.
 # =====================================================================
 
 { config, lib, pkgs, ... }:
@@ -39,34 +42,42 @@ in
       ven.features.terminal.cliTuis.ripgrep.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
-    # Install and enable ripgrep w/o config file generated
-    programs.ripgrep.enable = true;
+      # ---- INSTALLATION ---- #
+      # Install ripgrep through Home Manager whenever this feature is enabled.
+      programs.ripgrep.enable = true;
 
-    # Loading a config file only when this variable is set.
-    home.sessionVariables.RIPGREP_CONFIG_PATH =
+      # ---- GLOBAL COLOURS ---- #
+      # Home Manager owns the configuration file read by RIPGREP_CONFIG_PATH.
+      xdg.configFile."ripgrep/config".text = ''
+        --colors=path:fg:0xbd,0x93,0xf9
+        --colors=line:fg:0x50,0xfa,0x7b
+        --colors=column:fg:0x50,0xfa,0x7b
+        --colors=match:fg:0xff,0x55,0x55
+      '';
 
-      # Load a custom config file if it exists
-      "${config.xdg.configHome}/ripgrep/config";
+      # Tell ripgrep to use its Nix-owned configuration file.
+      home.sessionVariables.RIPGREP_CONFIG_PATH =
+        "${config.xdg.configHome}/ripgrep/config";
 
-    programs.fish.shellAliases = {
-      # ---- KEYBINDINGS ---- #
+      programs.fish.shellAliases = {
+        # ---- KEYBINDINGS ---- #
 
-      # --- grep -> rg
-      # Use ripgrep instead of grep
-      grep = "rg --color=auto";
+        # --- grep -> rg
+        # Use ripgrep instead of grep
+        grep = "rg --color=auto";
 
-      # --- erg -> rg
-      # Extended regex search.
-      erg = "rg --color=auto";
+        # --- erg -> rg
+        # Extended regex search.
+        erg = "rg --color=auto";
 
-      # --- frg -> rg -F
-      # Fixed-string search.
-      frg = "rg -F --color=auto";
+        # --- frg -> rg -F
+        # Fixed-string search.
+        frg = "rg -F --color=auto";
 
-      # --- fgrep -> rg -F
-      # Fixed-string search compatibility alias.
-      fgrep = "rg -F --color=auto";
-    };
+        # --- fgrep -> rg -F
+        # Fixed-string search compatibility alias.
+        fgrep = "rg -F --color=auto";
+      };
     })
   ];
 }

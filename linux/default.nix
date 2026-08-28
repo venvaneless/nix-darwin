@@ -18,6 +18,13 @@
     # Every category lives in one file; each entry keeps its own
     # enable flag and per-platform installOn toggle.
     ../shared/packages.nix
+
+    # ---- SHARED SYSTEM COMMANDS ---- #
+    # The portable Obsidian archive checker is user-scoped while this host
+    # remains on standalone Home Manager.
+    (import ../shared/system-commands/obsidian-archive-check.nix {
+      installTarget = "home";
+    })
   ];
 
   # ---- HOME MANAGER IDENTITY ---- #

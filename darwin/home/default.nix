@@ -111,7 +111,8 @@ in
         ../../shared/terminal/wezterm
 
         # Shared secrets
-        ../../shared/secrets.nix
+        ../../shared/home/secrets.nix
+        ../../shared/home/sops.nix
 
         # Shared service options and per-machine settings
         helpers.serviceOptions
