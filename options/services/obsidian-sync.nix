@@ -32,9 +32,15 @@ let
       exit 1
     fi
 
-    if [ ! -d ${lib.escapeShellArg cfg.remoteVault} ]; then
-      echo "iCloud vault is unavailable: ${cfg.remoteVault}"
+    remoteParent=$(${pkgs.coreutils}/bin/dirname ${lib.escapeShellArg cfg.remoteVault})
+
+    if [ ! -d "$remoteParent" ]; then
+      echo "iCloud container is unavailable: $remoteParent"
       exit 1
+    fi
+
+    if [ ! -d ${lib.escapeShellArg cfg.remoteVault} ]; then
+      ${pkgs.coreutils}/bin/mkdir -p ${lib.escapeShellArg cfg.remoteVault}
     fi
 
     exec ${lib.escapeShellArgs (
