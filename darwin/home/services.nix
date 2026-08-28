@@ -26,7 +26,7 @@
     localVault = paths.darwin.obsidian.vault;
     remoteVault = paths.darwin.obsidian.iCloudVault;
     syncInterval = 300;
-    runAtLoad = true;
+    runAtLoad = false;
     logDirectory = paths.darwin.obsidian.logs;
 
     excludes = [

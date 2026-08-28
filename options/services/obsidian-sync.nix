@@ -40,7 +40,9 @@ let
     exec ${lib.escapeShellArgs (
       [
         "${pkgs.unison}/bin/unison"
+        "-root"
         cfg.localVault
+        "-root"
         cfg.remoteVault
       ]
       ++ lib.optionals unison.auto [ "-auto" ]
@@ -48,8 +50,6 @@ let
       ++ [
         # Keep the mutable logs limited to errors and failed checks.
         "-silent"
-        "-repeat"
-        (toString cfg.syncInterval)
         "-fastcheck"
         (if unison.fastCheck then "true" else "false")
         "-confirmbigdel"
