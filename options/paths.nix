@@ -162,7 +162,7 @@ let
   darwinLibrary = "${darwinHome}/Library";
   mobileDocuments = "${darwinLibrary}/Mobile Documents";
   iCloudDrive = "${mobileDocuments}/com~apple~CloudDocs";
-  obsidianVaults = "${mobileDocuments}/iCloud~md~obsidian/Documents";
+  obsidianVaultsRoot = "${mobileDocuments}/iCloud~md~obsidian/Documents";
 
   # ---- Applications
   applicationsRoot = "/Applications";
@@ -267,7 +267,7 @@ in
     realContainers = mobileDocuments;
 
     # ---- Application containers
-    obsidianVaults = obsidianVaults;
+    obsidianVaults = obsidianVaultsRoot;
 
     # ---- Locally served content
     # Content a local service reads out of iCloud Drive.
@@ -300,7 +300,7 @@ in
     root = "${darwinHome}/Documents/Obsidian";
     vault = "${root}/Ven";
     logs = "${root}/logs";
-    iCloudVault = "${obsidianVaults}/Ven";
+    iCloudVault = "${obsidianVaultsRoot}/Ven";
   };
 
   # ------------------------------------------------------------

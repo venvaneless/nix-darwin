@@ -3,33 +3,27 @@
 # =====================================================================
 # SHARED HOME MANAGER
 #
-# Top-level glue for Home Manager configuration that can be shared
-# between machines.
+# Central dispatcher for reusable Home Manager configuration.
 #
-# Shared modules are imported normally.
-# Cross-platform modules that should only apply on one platform can be
-# conditionally imported here.
+# All shared modules are imported here.
+#
+# FUTURE:
+# When multiple machines/platforms exist, pass a machine/platform
+# descriptor through extraSpecialArgs and use mkIf/mkMerge below to
+# enable the same feature with different settings per machine.
+#
+# Platform-specific implementations should normally use:
+#
+#   pkgs.stdenv.hostPlatform.isDarwin
+#   pkgs.stdenv.hostPlatform.isLinux
+#
+# rather than conditional imports based on config.
 # =====================================================================
 
-{ platforms, ... }:
+{ ... }:
 
-let
-  inherit (platforms) isDarwin isLinux;
-in
 {
-  imports =
-    [
-      # Shared Home Manager categories
-      ./services
-    ]
-
-    # Shared modules enabled only on Darwin
-    ++ (if isDarwin then [
-      # ./some-shared-darwin-only-module.nix
-    ] else [ ])
-
-    # Shared modules enabled only on Linux
-    ++ (if isLinux then [
-      # ./some-shared-linux-only-module.nix
-    ] else [ ]);
+  imports = [
+   # ./services
+  ];
 }

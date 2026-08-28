@@ -121,7 +121,7 @@ in
 
       config = {
         Label = "com.ven.obsidian-sync";
-        ProgramArguments = [ runner ];
+        ProgramArguments = [ "${runner}" ];
         RunAtLoad = cfg.runAtLoad;
       };
     };
