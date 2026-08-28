@@ -25,5 +25,6 @@
 {
   imports = [
    # ./services
+   ./pkgs-configs
   ];
 }

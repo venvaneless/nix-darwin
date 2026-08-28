@@ -83,6 +83,24 @@ let
         fail "external backup volume is not mounted: $backup_volume"
       fi
 
+      # Check both repositories before asking the Keychain helper for GitHub
+      # credentials. A local safety refusal should not prompt for a password.
+      preflight_library() {
+        local label="$1"
+        local root="$2"
+        local ignore_file="$root/.gitignore"
+        local state_file="$root/.archive-status.json"
+
+        [ -d "$root" ] || fail "missing $label directory: $root"
+        ${pkgs.git}/bin/git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1 || fail "not a Git repository: $root"
+        [ -z "$( ${pkgs.git}/bin/git -C "$root" status --porcelain )" ] || fail "repository has uncommitted changes: $root"
+        [ ! -L "$ignore_file" ] && [ -f "$ignore_file" ] || fail "missing or symlinked ignore file: $ignore_file"
+        [ ! -L "$state_file" ] || fail "refusing to write through symlink: $state_file"
+      }
+
+      preflight_library "extensions" "$extensions_root"
+      preflight_library "themes" "$themes_root"
+
       # ---- GITHUB API CREDENTIAL
       # Reuse the Keychain or credential-manager entry that Git already uses
       # for the HTTPS remotes. The token stays in process memory and is sent

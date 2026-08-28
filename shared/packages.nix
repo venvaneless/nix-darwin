@@ -751,16 +751,16 @@ let
   # ------ TOOL PACKAGE DEFINITIONS ------ #
   # ------------------------------------------------------------
 
+  espanso = import ./home/pkgs-configs/espanso/default.nix {
+    inherit lib pkgs;
+
+    paths = import ../options/paths.nix;
+  };
+
   toolPackages = {
     # ---- Espanso
     # Cross-platform text expander for keyboard-driven snippets.
-    espanso = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      package = pkgs.espanso;
-      appName = "Espanso.app";
-      symlinkTools = true;
-    };
+    espanso = espanso.package;
   };
 
 in

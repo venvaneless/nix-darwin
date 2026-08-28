@@ -79,10 +79,9 @@ in
   # CODEX: ENVIRONMENT
   # =================================================================
 
-  # Env variables
+  # Profile launchers select CODEX_HOME themselves, so it must not be
+  # exported as a global default that overrides the API profile.
   environment.variables = {
-    CODEX_HOME = codex.chatgpt;
-
     CODEX_PROFILE_HOME_ROOT = codexRoot;
     CODEX_PROFILE_CONFIG_HOME = codex.profileConfig;
 
@@ -220,8 +219,11 @@ in
     # Apps launched from the Dock, Spotlight, or Finder never source
     # those, so they are seeded into ven's launchd domain here.
 
+    # The Dock launcher and codex-profile app launches supply their own
+    # CODEX_HOME. Remove the old GUI-session default so it cannot force
+    # every profile into the ChatGPT state directory.
     /bin/launchctl asuser "$ven_uid" \
-      /bin/launchctl setenv CODEX_HOME ${lib.escapeShellArg codex.chatgpt}
+      /bin/launchctl unsetenv CODEX_HOME
 
     /bin/launchctl asuser "$ven_uid" \
       /bin/launchctl setenv CODEX_PROFILE_HOME_ROOT ${lib.escapeShellArg codexRoot}

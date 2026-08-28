@@ -56,6 +56,17 @@ let
     containers = "${home}/.config/containers";
     secrets = "${home}/.config/secrets";
 
+    # ---- Espanso
+    espanso = rec {
+      root = "${home}/.config/espanso";
+
+      config = "${root}/config";
+      match = "${root}/match";
+
+      defaultConfig = "${config}/default.yml";
+      baseMatches = "${match}/base.yml";
+    };
+
     # ---- Editors
     # VS Code portable root. The same relative location on both
     # platforms, so only the home prefix differs.
@@ -237,11 +248,22 @@ in
   # For cross-platform modules that must build a path from Home
   # Manager's config.home.homeDirectory instead of a fixed prefix.
 
-  relative = {
+  relative = rec {
     config = ".config";
     localBin = ".local/bin";
     nixConfig = ".config/nix/nix-config";
     nixScripts = ".config/nix/nix-scripts";
+
+    espanso = rec {
+      root = "${config}/espanso";
+
+      configDir = "${root}/config";
+      matchDir = "${root}/match";
+
+      defaultConfig = "${configDir}/default.yml";
+      baseMatches = "${matchDir}/base.yml";
+      markdownMatches = "${matchDir}/markdown.yml";
+    };
   };
 
   # =====================================================================
