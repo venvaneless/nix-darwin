@@ -50,11 +50,9 @@ let
       ++ [
         # Keep the mutable logs limited to errors and failed checks.
         "-silent"
-        "-fastcheck"
-        (if unison.fastCheck then "true" else "false")
-        "-confirmbigdel"
-        (if unison.confirmBigDeletes then "true" else "false")
       ]
+      ++ lib.optionals unison.fastCheck [ "-fastcheck" ]
+      ++ lib.optionals unison.confirmBigDeletes [ "-confirmbigdel" ]
       ++ excludeArguments
     )}
   '';
