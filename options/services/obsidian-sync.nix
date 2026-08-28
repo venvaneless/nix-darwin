@@ -56,6 +56,10 @@ let
       ++ [
         # Keep the mutable logs limited to errors and failed checks.
         "-silent"
+
+        # Stay alive and synchronize only when Unison detects changes.
+        "-repeat"
+        "watch"
       ]
       ++ lib.optionals unison.fastCheck [ "-fastcheck" ]
       ++ lib.optionals unison.confirmBigDeletes [ "-confirmbigdel" ]
@@ -82,16 +86,10 @@ in
           description = "iCloud copy of the Obsidian vault.";
         };
 
-        syncInterval = lib.mkOption {
-          type = lib.types.ints.positive;
-          default = 300;
-          description = "Interval between Unison synchronization cycles, in seconds.";
-        };
-
         runAtLoad = lib.mkOption {
           type = lib.types.bool;
           default = true;
-          description = "Start the repeating Unison process when the LaunchAgent loads at login.";
+          description = "Start the event-driven Unison watcher when the LaunchAgent loads at login.";
         };
 
         logDirectory = lib.mkOption {

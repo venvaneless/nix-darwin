@@ -32,7 +32,6 @@
 
   ven.services.obsidianSync = {
     enable = lib.mkDefault false;
-    syncInterval = lib.mkDefault 300;
     runAtLoad = lib.mkDefault true;
 
     excludes = lib.mkDefault [
