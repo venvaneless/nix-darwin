@@ -56,10 +56,6 @@ let
       ++ [
         # Keep the mutable logs limited to errors and failed checks.
         "-silent"
-
-        # Stay alive and synchronize only when Unison detects changes.
-        "-repeat"
-        "watch"
       ]
       ++ lib.optionals unison.fastCheck [ "-fastcheck" ]
       ++ lib.optionals unison.confirmBigDeletes [ "-confirmbigdel" ]
@@ -124,6 +120,11 @@ in
         Label = "com.ven.obsidian-sync";
         ProgramArguments = [ "${runner}" ];
         RunAtLoad = cfg.runAtLoad;
+
+        WatchPaths = [
+          cfg.localVault
+          cfg.remoteVault
+        ];
       };
     };
   };
