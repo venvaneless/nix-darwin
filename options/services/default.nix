@@ -14,8 +14,8 @@
 
 {
   imports = [
-    ./unison.nix
-    ./obsidian-sync.nix
+   # ./unison.nix
+   # ./obsidian-sync.nix
   ];
 
   # ------------------------------------------------------------

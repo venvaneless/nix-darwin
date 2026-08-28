@@ -14,7 +14,7 @@
   # ------------------------------------------------------------
 
   ven.services.unison = {
-    enable = true;
+    enable = false;
     auto = true;
     batch = true;
     fastCheck = true;
@@ -22,7 +22,7 @@
   };
 
   ven.services.obsidianSync = {
-    enable = true;
+    enable = false;
     localVault = paths.darwin.obsidian.vault;
     remoteVault = paths.darwin.obsidian.iCloudVault;
     syncInterval = 300;

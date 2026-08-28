@@ -66,7 +66,7 @@
       sleep 3
 
       # Open the iCloud Mobile Documents folder in Finder to verify that the folders are now visible
-      open ~/Library/Mobile\ Documents
+      open "/Users/ven/Library/Mobile Documents/NK37SPV8GQ~cn~winat~EasyVoice"
 
       # Print a message indicating that the process is complete and suggest rebooting if iCloud folders are still missing
       echo "Done. If iCloud folders are still missing, reboot once."
