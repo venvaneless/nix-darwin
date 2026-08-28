@@ -38,8 +38,8 @@ in
       macos_window_background_blur = 20;
 
       # Startup size
-      initial_cols = 80;
-      initial_rows = 24;
+      initial_cols = 95;
+      initial_rows = 30;
 
       # Padding
       window_padding = {

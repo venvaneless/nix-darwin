@@ -81,6 +81,13 @@ in
           set --local blocked_files \
               agents.md \
               claude.md \
+              publishing.md \
+              third_party_notices.md \
+              wechat-渐读介绍.md \
+              readme_ko.md \
+              readme_jp.md \
+              readme.zh.md \
+              readme.zh-cn.md \
               readme-zh_cn.md \
               readme-zh_tw.md \
               readme-zh.md \
@@ -167,6 +174,44 @@ in
           end
 
           printf '%s\n' "$fallback_name"
+        '';
+      };
+
+      # -----------------------------------------------------------------
+      # ---- Obsidian -> Named release archives ---- #
+      #
+      # A release may include a plugin/theme distribution archive named after
+      # the library itself. This is a last-resort core-payload fallback, unlike
+      # unrelated ZIP assets that remain ordinary release files.
+      # -----------------------------------------------------------------
+      __obsidian_is_named_release_archive = {
+        description = "Check whether a ZIP release asset is named after an Obsidian library";
+
+        body = ''
+          set --local asset_name "$argv[1]"
+          set --local library_name "$argv[2]"
+
+          if not string match -ri '\\.zip$' "$asset_name"
+            return 1
+          end
+
+          set --local normalized_asset_name (
+            string replace -ri '\\.zip$' "" -- "$asset_name" |
+            string lower |
+            string replace -ra '[^0-9a-z]+' ""
+          )
+          set --local normalized_library_name (
+            string lower -- "$library_name" |
+            string replace -ra '[^0-9a-z]+' ""
+          )
+
+          if test -z "$normalized_library_name"
+            return 1
+          end
+
+          string match -rq \
+            "^$normalized_library_name(v?[0-9].*)?\$" \
+            "$normalized_asset_name"
         '';
       };
 
@@ -1371,6 +1416,19 @@ in
               return 0
           end
 
+          function __gitdll_plugin_payload_is_healthy --argument-names plugin_directory
+              if not test -r "$plugin_directory/manifest.json"; or \
+                  not test -s "$plugin_directory/manifest.json"; or \
+                  not command jq -e 'type == "object"' "$plugin_directory/manifest.json" >/dev/null 2>&1; or \
+                  not test -r "$plugin_directory/main.js"; or \
+                  not test -s "$plugin_directory/main.js"; or \
+                  not command node --check "$plugin_directory/main.js" >/dev/null 2>&1
+                  return 1
+              end
+
+              return 0
+          end
+
           function __gitdll_replace_plugin_core_from_url --argument-names destination_file download_url
               set --local staging_file "$destination_file.gitdll-new"
               command rm -f -- "$staging_file"
@@ -1869,6 +1927,7 @@ in
               end
 
               set saved_files
+              set deferred_plugin_archives
 
               if test -f "$plugin_stage/manifest.json"
                   set saved_files manifest.json
@@ -1927,6 +1986,14 @@ in
                               end
 
                           case '*'
+                              if __obsidian_is_named_release_archive \
+                                      "$release_asset_name" \
+                                      "$plugin_folder_name"
+                                  set --append deferred_plugin_archives \
+                                      "$release_asset"
+                                  continue
+                              end
+
                               # Every actual GitHub release asset stays at the
                               # plugin root. GitHub's generated source archives are
                               # not included in the release assets API.
@@ -1985,6 +2052,46 @@ in
                           set saved_files \
                               $saved_files \
                               "$expected_file"
+                      end
+                  end
+              end
+
+              # A distribution archive named after the plugin is only needed
+              # when neither release nor repository supplied a usable core.
+              # styles.css is deliberately not part of this decision: it stays
+              # an independent optional release/repository asset.
+              if not __gitdll_plugin_payload_is_healthy "$plugin_stage"
+                  for deferred_plugin_archive in $deferred_plugin_archives
+                      set deferred_plugin_archive_parts \
+                          (string split \t "$deferred_plugin_archive")
+
+                      if test (count $deferred_plugin_archive_parts) -lt 2
+                          continue
+                      end
+
+                      set deferred_plugin_archive_name \
+                          "$deferred_plugin_archive_parts[1]"
+                      set deferred_plugin_archive_url \
+                          "$deferred_plugin_archive_parts[2]"
+
+                      if test -e "$plugin_stage/$deferred_plugin_archive_name"
+                          continue
+                      end
+
+                      if command curl \
+                              --fail \
+                              --location \
+                              --silent \
+                              --show-error \
+                              --output "$plugin_stage/$deferred_plugin_archive_name" \
+                              "$deferred_plugin_archive_url"
+
+                          set saved_files \
+                              $saved_files \
+                              "$deferred_plugin_archive_name"
+                      else
+                          echo \
+                              "Notice: Could not download release asset: $deferred_plugin_archive_name"
                       end
                   end
               end
@@ -2696,6 +2803,35 @@ in
               end
 
               # Prefer matching assets from the newest GitHub release.
+              set release_theme_archive_name "$fallback_folder_name"
+
+              if test -s "$extracted/manifest.json"; and \
+                      command jq -e 'type == "object"' \
+                          "$extracted/manifest.json" \
+                          >/dev/null 2>&1
+                  set manifest_theme_name (
+                      command jq -r \
+                          'if (.name | type) == "string" and (.name | length) > 0 then .name
+                           elif (.id | type) == "string" and (.id | length) > 0 then .id
+                           else empty
+                           end' \
+                          "$extracted/manifest.json" |
+                      string trim
+                  )
+
+                  if test -n "$manifest_theme_name"
+                      set release_theme_archive_name "$manifest_theme_name"
+                  end
+              end
+
+              set release_theme_payload_available 0
+              if test -s "$extracted/manifest.json"
+                  if test -s "$extracted/theme.css"; or \
+                          test -s "$extracted/obsidian.css"
+                      set release_theme_payload_available 1
+                  end
+              end
+
               set release_json (
                   command gh api \
                       "repos/$repository_owner/$repository_name/releases/latest" \
@@ -2738,6 +2874,15 @@ in
                               end
 
                           case '*'
+                              if __obsidian_is_named_release_archive \
+                                      "$release_asset_name" \
+                                      "$release_theme_archive_name"; and \
+                                      test "$release_theme_payload_available" -eq 1
+                                  # The release/repository core is already usable.
+                                  # Keep this distribution archive as a fallback only.
+                                  continue
+                              end
+
                               # Every other actual GitHub release asset is retained.
                               # GitHub's generated source archives are not members of
                               # the release assets API.
@@ -4288,6 +4433,10 @@ in
             end
 
             # Every actual GitHub release asset belongs at the entry root.
+            # A library-named ZIP is deferred until standard core recovery has
+            # exhausted both the release and the main repository.
+            set --local deferred_library_archives
+
             # GitHub's generated source archives are not members of .assets[].
             for release_asset in $release_assets
               set --local release_parts \
@@ -4310,6 +4459,14 @@ in
 
                   continue
                 end
+
+              if __obsidian_is_named_release_archive \
+                  "$release_asset_name" \
+                  (basename "$library_entry")
+                set --append deferred_library_archives \
+                  "$release_asset"
+                continue
+              end
 
               __obsidian_missing_download_url \
                 "$library_entry/$release_asset_name" \
@@ -4498,6 +4655,46 @@ in
                     "$theme_css_source" \
                     yes
                 end
+              end
+            end
+
+            # Only restore a library-named distribution ZIP if no usable core
+            # could be recovered. styles.css remains separate and is restored
+            # above whenever release or repository supplies it.
+            set --local library_core_available 0
+
+            if test "$requires_plugin_payload" -eq 1
+              if __obsidian_missing_manifest_is_healthy \
+                  "$library_entry/manifest.json"; and \
+                  __obsidian_missing_javascript_is_healthy \
+                    "$library_entry/main.js"
+                set library_core_available 1
+              end
+            else if __obsidian_missing_manifest_is_healthy \
+                "$library_entry/manifest.json"; and \
+                __obsidian_missing_stylesheet_is_healthy \
+                  "$library_entry/theme.css"
+              set library_core_available 1
+            end
+
+            if test "$library_core_available" -eq 0
+              for deferred_library_archive in $deferred_library_archives
+                set --local deferred_archive_parts \
+                  (string split \t "$deferred_library_archive")
+
+                if test (count $deferred_archive_parts) -lt 2
+                  continue
+                end
+
+                set --local deferred_archive_name \
+                  "$deferred_archive_parts[1]"
+                set --local deferred_archive_url \
+                  "$deferred_archive_parts[2]"
+
+                __obsidian_missing_download_url \
+                  "$library_entry/$deferred_archive_name" \
+                  "$deferred_archive_url" \
+                  "$deferred_archive_name"
               end
             end
 

@@ -3,24 +3,33 @@
 # =====================================================================
 # SHARED HOME MANAGER
 #
-# Top-level glue for all shared Home Manager configuration.
-# Imports:
-#   - configuration shared by all platforms
-#   - platform-specific Home Manager configuration
-#   - Home Manager submodules such as services
+# Top-level glue for Home Manager configuration that can be shared
+# between machines.
+#
+# Shared modules are imported normally.
+# Cross-platform modules that should only apply on one platform can be
+# conditionally imported here.
 # =====================================================================
 
-{ pkgs, ... }:
+{ platforms, ... }:
 
 let
-  platforms = import ../../options/platforms.nix { inherit pkgs; };
-  inherit (platforms) isDarwin;
+  inherit (platforms) isDarwin isLinux;
 in
 {
   imports =
     [
-      ./shared.nix
+      # Shared Home Manager categories
       ./services
     ]
-    ++ (if isDarwin then [ ./darwin.nix ] else [ ]);
+
+    # Shared modules enabled only on Darwin
+    ++ (if isDarwin then [
+      # ./some-shared-darwin-only-module.nix
+    ] else [ ])
+
+    # Shared modules enabled only on Linux
+    ++ (if isLinux then [
+      # ./some-shared-linux-only-module.nix
+    ] else [ ]);
 }

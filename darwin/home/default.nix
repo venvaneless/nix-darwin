@@ -6,11 +6,19 @@
 
 { inputs, pkgs, ... }:
 
+let
+  # Service option modules stay available through the shared options helper.
+  helpers = import ../../options { };
+in
+
 {
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
-    extraSpecialArgs = { inherit inputs; };
+    extraSpecialArgs = {
+      inherit inputs;
+      inherit (helpers) paths;
+    };
 
     # Provides the Home Manager sops.* options used by shared/secrets.nix.
     sharedModules = [
@@ -104,6 +112,10 @@
 
         # Shared secrets
         ../../shared/secrets.nix
+
+        # Shared service options and per-machine settings
+        helpers.serviceOptions
+        ./services.nix
       ];
     };
   };

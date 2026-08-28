@@ -68,6 +68,15 @@ let
   packageOptions = import ./package-options.nix {
     inherit lib options platforms symlinks;
   };
+
+  # ------------------------------------------------------------
+  # ------ SERVICE OPTION MODULE ------ #
+  #
+  # Keeps the service option tree discoverable through the same helper
+  # interface without turning this helper file into a Nix module itself.
+  # ------------------------------------------------------------
+
+  serviceOptions = ./services/default.nix;
 in
 {
   inherit
@@ -77,5 +86,6 @@ in
     platforms
     symlinks
     packageOptions
+    serviceOptions
     ;
 }

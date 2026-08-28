@@ -162,6 +162,7 @@ let
   darwinLibrary = "${darwinHome}/Library";
   mobileDocuments = "${darwinLibrary}/Mobile Documents";
   iCloudDrive = "${mobileDocuments}/com~apple~CloudDocs";
+  obsidianVaults = "${mobileDocuments}/iCloud~md~obsidian/Documents";
 
   # ---- Applications
   applicationsRoot = "/Applications";
@@ -266,7 +267,7 @@ in
     realContainers = mobileDocuments;
 
     # ---- Application containers
-    obsidianVaults = "${containers}/iCloud~md~obsidian/Documents";
+    obsidianVaults = obsidianVaults;
 
     # ---- Locally served content
     # Content a local service reads out of iCloud Drive.
@@ -286,6 +287,20 @@ in
       # ** service has always used.
       tartarusStartpage = "${root}/tartarus-startpage/";
     };
+  };
+
+  # ------------------------------------------------------------
+  # ------ OBSIDIAN ------ #
+  #
+  # The local vault and its synchronization logs stay outside the
+  # immutable Nix store. The iCloud vault is the Obsidian application
+  # container path defined above.
+
+  darwin.obsidian = rec {
+    root = "${darwinHome}/Documents/Obsidian";
+    vault = "${root}/Ven";
+    logs = "${root}/logs";
+    iCloudVault = "${obsidianVaults}/Ven";
   };
 
   # ------------------------------------------------------------
