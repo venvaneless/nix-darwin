@@ -25,8 +25,7 @@ let
     set -euo pipefail
 
     ${pkgs.coreutils}/bin/mkdir -p ${lib.escapeShellArg cfg.logDirectory}
-    exec >>${lib.escapeShellArg "${cfg.logDirectory}/obsidian-sync.out.log"} \\
-      2>>${lib.escapeShellArg "${cfg.logDirectory}/obsidian-sync.err.log"}
+    exec >>${lib.escapeShellArg "${cfg.logDirectory}/obsidian-sync.out.log"} 2>>${lib.escapeShellArg "${cfg.logDirectory}/obsidian-sync.err.log"}
 
     if [ ! -d ${lib.escapeShellArg cfg.localVault} ]; then
       echo "Local vault is unavailable: ${cfg.localVault}"
