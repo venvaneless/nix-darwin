@@ -13,17 +13,20 @@
 # Files below this directory own user configuration under $HOME.
 # =====================================================================
 
-{ lib, pkgs, ... }:
-
-let
-  paths = import ../../../options/paths.nix;
-
-  espanso = import ./espanso/default.nix {
-    inherit lib paths pkgs;
-  };
-in
 {
-  imports = [
-    espanso.homeModule
-  ];
+  # ------------------------------------------------------------
+  # ------ SHARED FEATURE MODULE INPUTS ------ #
+  # Paths are wired once at this shared Home Manager boundary.
+
+  imports =
+    let
+      paths = import ../../../options/paths.nix { };
+    in
+    [
+      # Espanso feature definitions
+      ../../../options/pkgs-configs/espanso/default.nix
+
+      # Shared Espanso toggle selection and base/default configuration files
+      (import ./espanso { inherit paths; })
+    ];
 }

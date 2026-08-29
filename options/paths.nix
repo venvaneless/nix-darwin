@@ -65,6 +65,7 @@ let
 
       defaultConfig = "${config}/default.yml";
       baseMatches = "${match}/base.yml";
+      markdownMatches = "${match}/markdown.yml";
     };
 
     # ---- Editors
