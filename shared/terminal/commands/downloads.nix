@@ -460,42 +460,72 @@ in
             function __gitdll_required_files_exist \
                 --argument-names candidate library_type
 
-              set --local manifest_url (
+              # A current release is the authoritative install source. Resolve
+              # each required file from it first, then ask the repository only
+              # for the individual files the release does not ship.
+              set --local release_assets (
                 command gh api \
-                  "repos/$candidate/contents/manifest.json" \
-                  --jq .download_url \
+                  "repos/$candidate/releases/latest" \
+                  --jq '.assets[]? | [.name, .browser_download_url] | @tsv' \
                   2>/dev/null
               )
-
-              if test -z "$manifest_url"
-                return 1
-              end
-
+              set --local manifest_url
               set --local payload_url
 
-              if test "$library_type" = plugins
-                set payload_url (
+              for release_asset in $release_assets
+                set --local release_parts (string split \t "$release_asset")
+                if test (count $release_parts) -lt 2
+                  continue
+                end
+
+                switch "$release_parts[1]"
+                  case manifest.json
+                    set manifest_url "$release_parts[2]"
+                  case main.js
+                    if test "$library_type" = plugins
+                      set payload_url "$release_parts[2]"
+                    end
+                  case theme.css obsidian.css
+                    if test "$library_type" = themes; and test -z "$payload_url"
+                      set payload_url "$release_parts[2]"
+                    end
+                end
+              end
+
+              if test -z "$manifest_url"
+                set manifest_url (
                   command gh api \
-                    "repos/$candidate/contents/main.js" \
+                    "repos/$candidate/contents/manifest.json" \
                     --jq .download_url \
                     2>/dev/null
                 )
-              else
-                for payload_name in theme.css obsidian.css
+              end
+
+              if test -z "$payload_url"
+                if test "$library_type" = plugins
                   set payload_url (
                     command gh api \
-                      "repos/$candidate/contents/$payload_name" \
+                      "repos/$candidate/contents/main.js" \
                       --jq .download_url \
                       2>/dev/null
                   )
+                else
+                  for payload_name in theme.css obsidian.css
+                    set payload_url (
+                      command gh api \
+                        "repos/$candidate/contents/$payload_name" \
+                        --jq .download_url \
+                        2>/dev/null
+                    )
 
-                  if test -n "$payload_url"
-                    break
+                    if test -n "$payload_url"
+                      break
+                    end
                   end
                 end
               end
 
-              test -n "$payload_url"
+              test -n "$manifest_url"; and test -n "$payload_url"
             end
 
             # Compare a remote manifest only in the fallback path. JSON parsing
@@ -503,14 +533,30 @@ in
             function __gitdll_remote_matches \
                 --argument-names candidate library_id library_author library_type
 
-              set --local remote_manifest (
+              set --local release_manifest_url (
                 command gh api \
-                  "repos/$candidate/contents/manifest.json" \
-                  --jq .content \
+                  "repos/$candidate/releases/latest" \
+                  --jq '.assets[]? | select(.name == "manifest.json") | .browser_download_url' \
                   2>/dev/null |
-                command tr -d '\n' |
-                command base64 -D 2>/dev/null
+                command head -n 1
               )
+              set --local remote_manifest
+
+              if test -n "$release_manifest_url"
+                set remote_manifest (
+                  command curl --fail --location --silent --show-error \
+                    "$release_manifest_url" 2>/dev/null
+                )
+              else
+                set remote_manifest (
+                  command gh api \
+                    "repos/$candidate/contents/manifest.json" \
+                    --jq .content \
+                    2>/dev/null |
+                  command tr -d '\n' |
+                  command base64 -D 2>/dev/null
+                )
+              end
 
               if test -z "$remote_manifest"
                 return 1
@@ -3951,6 +3997,30 @@ in
             ' "$stylesheet_file" >/dev/null 2>&1
           end
 
+          # Release assets are authoritative for Obsidian's compiled files.
+          # Repository contents are used only when the newest release does not
+          # provide the requested file.
+          function __obsidian_missing_release_asset_url \
+              --argument-names repository asset_name
+            set --local release_assets (
+              command gh api \
+                "repos/$repository/releases/latest" \
+                --jq '.assets[]? | [.name, .browser_download_url] | @tsv' \
+                2>/dev/null
+            )
+
+            for release_asset in $release_assets
+              set --local release_parts (string split \t "$release_asset")
+              if test (count $release_parts) -ge 2; and \
+                  test "$release_parts[1]" = "$asset_name"
+                printf '%s\n' "$release_parts[2]"
+                return 0
+              end
+            end
+
+            return 1
+          end
+
           # Download a file only when a healthy destination does not already exist.
           function __obsidian_missing_download_url \
               --argument-names destination download_url description replace_existing
@@ -5302,29 +5372,56 @@ in
               end
 
               set --local direct_candidate "$direct_owner/$library_id"
-              set --local direct_manifest_matches (
-                command gh api \
-                  "repos/$direct_candidate/contents/manifest.json" \
-                  --jq .content \
-                  2>/dev/null |
-                command tr -d '\n' |
-                command base64 -D \
-                  2>/dev/null |
-                command jq -e \
-                  --arg id "$library_id" \
-                  --arg author "$author" \
-                  '
-                    if type == "object" then
-                      (.id | type) == "string" and .id == $id and
-                      (if $author == "" then true else
-                        (.author? | type) == "string" and .author == $author
-                      end)
-                    else
-                      false
-                    end
-                  ' \
-                  >/dev/null
+              set --local direct_release_manifest_url (
+                __obsidian_missing_release_asset_url \
+                  "$direct_candidate" manifest.json
               )
+              set --local direct_manifest_matches
+
+              if test -n "$direct_release_manifest_url"
+                set direct_manifest_matches (
+                  command curl --fail --location --silent --show-error \
+                    "$direct_release_manifest_url" |
+                  command jq -e \
+                    --arg id "$library_id" \
+                    --arg author "$author" \
+                    '
+                      if type == "object" then
+                        (.id | type) == "string" and .id == $id and
+                        (if $author == "" then true else
+                          (.author? | type) == "string" and .author == $author
+                        end)
+                      else
+                        false
+                      end
+                    ' \
+                    >/dev/null
+                )
+              else
+                set direct_manifest_matches (
+                  command gh api \
+                    "repos/$direct_candidate/contents/manifest.json" \
+                    --jq .content \
+                    2>/dev/null |
+                  command tr -d '\n' |
+                  command base64 -D \
+                    2>/dev/null |
+                  command jq -e \
+                    --arg id "$library_id" \
+                    --arg author "$author" \
+                    '
+                      if type == "object" then
+                        (.id | type) == "string" and .id == $id and
+                        (if $author == "" then true else
+                          (.author? | type) == "string" and .author == $author
+                        end)
+                      else
+                        false
+                      end
+                    ' \
+                    >/dev/null
+                )
+              end
 
               if test $status -eq 0
                 set --local direct_repository_url "https://github.com/$direct_candidate"
@@ -5367,29 +5464,34 @@ in
 
             if test $status -eq 0
               set candidates $manifest_candidates
-            else
-              # Code search may be unavailable for a GitHub token. In that case,
-              # only inspect repositories owned by the manifest author.
-              set --local fallback_owner "$author"
+            end
 
-              if not string match -rq '^[A-Za-z0-9-]+$' "$fallback_owner"
-                set fallback_owner "$author_url_owner"
-              end
+            # Release-only manifests are not indexed by GitHub code search.
+            # Also inspect the declared author's repositories so a release can
+            # establish identity before falling back to repository contents.
+            set --local fallback_owner "$author"
 
-              if not string match -rq '^[A-Za-z0-9-]+$' "$fallback_owner"
-                set fallback_owner
-              end
+            if not string match -rq '^[A-Za-z0-9-]+$' "$fallback_owner"
+              set fallback_owner "$author_url_owner"
+            end
 
-              if test -n "$fallback_owner"
-                set --local owner_candidates (
-                  command gh api \
-                    "users/$fallback_owner/repos?per_page=100&type=owner" \
-                    --jq '.[] | select(.archived | not) | .full_name' \
-                    2>/dev/null
-                )
+            if not string match -rq '^[A-Za-z0-9-]+$' "$fallback_owner"
+              set fallback_owner
+            end
 
-                if test $status -eq 0
-                  set candidates $owner_candidates
+            if test -n "$fallback_owner"
+              set --local owner_candidates (
+                command gh api \
+                  "users/$fallback_owner/repos?per_page=100&type=owner" \
+                  --jq '.[] | select(.archived | not) | .full_name' \
+                  2>/dev/null
+              )
+
+              if test $status -eq 0
+                for owner_candidate in $owner_candidates
+                  if not contains -- "$owner_candidate" $candidates
+                    set --append candidates "$owner_candidate"
+                  end
                 end
               end
             end
@@ -5404,25 +5506,47 @@ in
             set --local candidate_details
 
             for candidate in $candidates
-              set --local candidate_manifest_fields (
-                command gh api \
-                  "repos/$candidate/contents/manifest.json" \
-                  --jq .content \
-                  2>/dev/null |
-                command tr -d '\n' |
-                command base64 -D \
-                  2>/dev/null |
-                command jq -r \
-                  'if type == "object" then
-                    if (.id | type) == "string" then
-                      [.id, (.author // ""), (.authorUrl // "")] | @tsv
+              set --local candidate_release_manifest_url (
+                __obsidian_missing_release_asset_url "$candidate" manifest.json
+              )
+              set --local candidate_manifest_fields
+
+              if test -n "$candidate_release_manifest_url"
+                set candidate_manifest_fields (
+                  command curl --fail --location --silent --show-error \
+                    "$candidate_release_manifest_url" |
+                  command jq -r \
+                    'if type == "object" then
+                      if (.id | type) == "string" then
+                        [.id, (.author // ""), (.authorUrl // "")] | @tsv
+                      else
+                        empty
+                      end
                     else
                       empty
-                    end
-                  else
-                    empty
-                  end'
-              )
+                    end'
+                )
+              else
+                set candidate_manifest_fields (
+                  command gh api \
+                    "repos/$candidate/contents/manifest.json" \
+                    --jq .content \
+                    2>/dev/null |
+                  command tr -d '\n' |
+                  command base64 -D \
+                    2>/dev/null |
+                  command jq -r \
+                    'if type == "object" then
+                      if (.id | type) == "string" then
+                        [.id, (.author // ""), (.authorUrl // "")] | @tsv
+                      else
+                        empty
+                      end
+                    else
+                      empty
+                    end'
+                )
+              end
 
               if test (count $candidate_manifest_fields) -ne 1
                 continue
@@ -5448,20 +5572,15 @@ in
               # repositories that happen to contain a matching manifest.
               if test "$requires_plugin_payload" -eq 1
                 set --local candidate_main_url (
+                  __obsidian_missing_release_asset_url "$candidate" main.js
+                )
+
+                if test -z "$candidate_main_url"
+                  set candidate_main_url (
                   command gh api \
                     "repos/$candidate/contents/main.js" \
                     --jq .download_url \
                     2>/dev/null
-                )
-
-                if test $status -ne 0; or test -z "$candidate_main_url"
-                  set candidate_main_url (
-                    command gh api \
-                      "repos/$candidate/releases/latest" \
-                      --jq \
-                      '.assets[]? | select(.name == "main.js") | .browser_download_url' \
-                      2>/dev/null |
-                    command head -n 1
                   )
                 end
 

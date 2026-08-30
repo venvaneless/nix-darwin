@@ -61,6 +61,7 @@ let
       import subprocess
       import sys
       import tempfile
+      from concurrent.futures import ThreadPoolExecutor, as_completed
       from dataclasses import dataclass
       from datetime import datetime
       from pathlib import Path
@@ -1753,6 +1754,26 @@ let
                   message=f"{repository_field(entry.library_type)} is missing or has no GitHub URL",
               )
 
+          # A successful release/source check already establishes that the
+          # repository is reachable. Inspect repository metadata only when the
+          # release/source is unavailable, to classify a missing or archived
+          # repository without an extra request for every entry.
+          if entry.library_type.is_theme:
+              source_result = check_theme_entry(
+                  entry,
+                  release_cache,
+                  repository_contents_cache,
+              )
+          else:
+              source_result = check_plugin_entry(
+                  entry,
+                  release_cache,
+                  manifest_cache,
+              )
+
+          if source_result.status != "UNAVAILABLE":
+              return source_result
+
           completed = run([GH_BIN, "api", f"repos/{entry.repository}"])
           if completed.returncode != 0:
               detail = completed.stderr.strip() or completed.stdout.strip()
@@ -1771,9 +1792,7 @@ let
               suffix = mark_repository_status(entry, ARCHIVED_FIELD)
               return CheckResult(entry, "ARCHIVED", message=f"GitHub marks this repository as archived{suffix}")
 
-          if entry.library_type.is_theme:
-              return check_theme_entry(entry, release_cache, repository_contents_cache)
-          return check_plugin_entry(entry, release_cache, manifest_cache)
+          return source_result
 
 
       def show_checks(
@@ -1800,10 +1819,47 @@ let
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> list[CheckResult]:
-          return [
-              check_entry(entry, release_cache, manifest_cache, repository_contents_cache)
-              for entry in entries
-          ]
+          if not entries:
+              return []
+
+          # Network-bound checks can run independently. Keep the pool modest
+          # enough for GitHub's secondary rate limits while avoiding thousands
+          # of sequential command launches.
+          worker_count = min(6, len(entries))
+          results: list[CheckResult | None] = [None] * len(entries)
+
+          with ThreadPoolExecutor(max_workers=worker_count) as executor:
+              futures = {
+                  executor.submit(
+                      check_entry,
+                      entry,
+                      release_cache,
+                      manifest_cache,
+                      repository_contents_cache,
+                  ): (index, entry)
+                  for index, entry in enumerate(entries)
+              }
+
+              for completed_count, future in enumerate(as_completed(futures), start=1):
+                  index, entry = futures[future]
+                  try:
+                      result = future.result()
+                  except Exception as error:
+                      result = CheckResult(
+                          entry,
+                          "UNAVAILABLE",
+                          message=f"unexpected check failure: {error}",
+                      )
+
+                  results[index] = result
+                  progress = (
+                      f"Checked {completed_count}/{len(entries)}: "
+                      f"{entry.library_type.label}: {entry.label} — {result.status}"
+                  )
+                  print(f"\r{progress[:180]:<180}", end="", flush=True)
+
+          print()
+          return [result for result in results if result is not None]
 
 
       def offer_updates(

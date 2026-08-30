@@ -98,6 +98,7 @@ in
 
     home.sessionPath = [
       "${config.home.homeDirectory}/${paths.relative.localBin}"
+      "${config.home.homeDirectory}/Documents/Obsidian/Ven/scripts"
     ];
   };
 }

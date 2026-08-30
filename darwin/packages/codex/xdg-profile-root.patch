@@ -1,9 +1,7 @@
-# /Users/ven/.config/nix/nix-config/darwin/modules/system/packages/codex/xdg-profile-root.patch
-
 diff --git a/bin/codex-profile b/bin/codex-profile
 --- a/bin/codex-profile
 +++ b/bin/codex-profile
-@@ -14,6 +14,7 @@ CODEX_PROFILE_APP_INSTANCE_ROOT="${CODEX_PROFILE_APP_INSTANCE_ROOT:-$HOME/Librar
+@@ -12,6 +12,7 @@
  CODEX_PROFILE_UPGRADE_REPO="${CODEX_PROFILE_UPGRADE_REPO:-https://github.com/Ducksss/codex-profiles.git}"
  CODEX_PROFILE_UPGRADE_REF="${CODEX_PROFILE_UPGRADE_REF:-main}"
  CODEX_PROFILE_CONFIG_HOME="${CODEX_PROFILE_CONFIG_HOME:-${XDG_CONFIG_HOME:-$HOME/.config}/codex-profile}"
@@ -11,8 +9,8 @@ diff --git a/bin/codex-profile b/bin/codex-profile
  WORKSPACE_REGISTRY="$CODEX_PROFILE_CONFIG_HOME/workspaces.tsv"
  WORKSPACE_GUARD_FILE="$CODEX_PROFILE_CONFIG_HOME/guard-mode"
  
-@@ -78,8 +79,7 @@ Deprecated compatibility:
-    --rebuild       Accepted by app; app bundles are never cloned or rebuilt.
+@@ -76,8 +77,7 @@
+   --rebuild       Accepted by app; app bundles are never cloned or rebuilt.
  
  Profiles:
 -  default         -> ~/.codex
@@ -21,7 +19,7 @@ diff --git a/bin/codex-profile b/bin/codex-profile
  
  Environment:
    CHATGPT_APP     Override the ChatGPT.app bundle path (preferred).
-@@ -88,6 +88,7 @@ Environment:
+@@ -85,6 +85,7 @@
    CODEX_APP_BIN   Locate a desktop .app from its executable (deprecated).
    CODEX_CLI       Override Codex CLI binary path.
    CODEX_BUNDLED_CLI  Override the bundled Codex CLI fallback path.
@@ -29,11 +27,10 @@ diff --git a/bin/codex-profile b/bin/codex-profile
    CODEX_PROFILE_CONFIG_HOME  Override private workspace binding storage.
    CODEX_PROFILE_APP_INSTANCE_ROOT  Legacy clone root (doctor only; never written).
    CODEX_PROFILE_UPGRADE_REPO    Override upgrade repository.
-@@ -139,12 +140,7 @@ codex_home_for_profile() {
-   local profile="$1"
+@@ -137,11 +138,7 @@
  
    validate_profile "$profile"
--
+ 
 -  if [[ "$profile" == "default" ]]; then
 -    printf '%s/.codex\n' "$HOME"
 -  else
@@ -43,7 +40,7 @@ diff --git a/bin/codex-profile b/bin/codex-profile
  }
  
  discovered_profile_is_managed() {
-@@ -160,13 +156,14 @@ discover_profiles() {
+@@ -158,13 +155,14 @@
    local include_default="${1:-yes}"
    local dir profile
  
@@ -61,22 +58,16 @@ diff --git a/bin/codex-profile b/bin/codex-profile
      discovered_profile_is_managed "$profile" "$dir" || continue
      printf '%s\n' "$profile"
    done
-
-@@ -845,9 +840,14 @@ run_desktop_app() {
-  note "Log: $log_file"
-  if [[ "$profile" == "default" ]]; then
--    (umask 077 && open -n --env "CODEX_HOME=$codex_home" --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace") \\
-+    (umask 077 && open -n \\
-+      --env "CODEX_HOME=$codex_home" \\
-+      --env "CODEX_SQLITE_HOME=$codex_home/sqlite" \\
-+      --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace") \\
-       || die "Cannot launch $product app: $app"
+@@ -910,11 +908,9 @@
+   note "Log: $log_file"
+ 
+   if [[ "$profile" == "default" ]]; then
+-    (umask 077 && open -n --env "CODEX_HOME=$codex_home" --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace") \
+-      || die "Cannot launch $product app: $app"
++    (umask 077 && open -n --env "CODEX_HOME=$codex_home" --env "CODEX_SQLITE_HOME=$codex_home/sqlite" -a "$app" "$workspace") || die "Cannot launch $product app: $app"
    else
--    (umask 077 && open -n --env "CODEX_HOME=$codex_home" --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace" --args "--user-data-dir=$user_data_dir") \\
-+    (umask 077 && open -n \\
-+      --env "CODEX_HOME=$codex_home" \\
-+      --env "CODEX_SQLITE_HOME=$codex_home/sqlite" \\
-+      --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace" --args "--user-data-dir=$user_data_dir") \\
-       || die "Cannot launch $product app: $app"
+-    (umask 077 && open -n --env "CODEX_HOME=$codex_home" --stdout "$log_file" --stderr "$log_file" -a "$app" "$workspace" --args "--user-data-dir=$user_data_dir") \
+-      || die "Cannot launch $product app: $app"
++    (umask 077 && open -n --env "CODEX_HOME=$codex_home" --env "CODEX_SQLITE_HOME=$codex_home/sqlite" -a "$app" "$workspace" --args "--user-data-dir=$user_data_dir") || die "Cannot launch $product app: $app"
    fi
  }

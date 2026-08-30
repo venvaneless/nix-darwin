@@ -219,11 +219,14 @@ in
     # Apps launched from the Dock, Spotlight, or Finder never source
     # those, so they are seeded into ven's launchd domain here.
 
-    # The Dock launcher and codex-profile app launches supply their own
-    # CODEX_HOME. Remove the old GUI-session default so it cannot force
-    # every profile into the ChatGPT state directory.
+    # The Dock pins the real signed app, which must receive the ChatGPT
+    # profile before it starts. codex-profile app launches pass explicit
+    # values for named profiles, so the API profile remains isolated.
     /bin/launchctl asuser "$ven_uid" \
-      /bin/launchctl unsetenv CODEX_HOME
+      /bin/launchctl setenv CODEX_HOME ${lib.escapeShellArg codex.chatgpt}
+
+    /bin/launchctl asuser "$ven_uid" \
+      /bin/launchctl setenv CODEX_SQLITE_HOME ${lib.escapeShellArg "${codex.chatgpt}/sqlite"}
 
     /bin/launchctl asuser "$ven_uid" \
       /bin/launchctl setenv CODEX_PROFILE_HOME_ROOT ${lib.escapeShellArg codexRoot}
