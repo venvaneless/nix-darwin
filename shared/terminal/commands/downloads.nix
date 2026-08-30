@@ -69,11 +69,29 @@ in
           # These names are blocked case-insensitively, with or without any
           # extension.
           set --local blocked_names \
+              agents \
+              algorithm \
+              architecture \
+              claude \
               license \
               changelog \
               contributing \
+              continent_design \
+              continent-design \
+              codex_task \
+              codex-task \
+              decisions \
+              design_system \
+              design-system \
+              implementation_plan \
+              implementation-plan \
+              manual_test_plan \
+              manual-test-plan \
               security \
-              privacy
+              privacy \
+              release_checklist \
+              release-checklist \
+              validation
 
           # ---- BLOCKED EXACT FILE NAMES ---- #
           #
@@ -184,37 +202,44 @@ in
       # ---- Obsidian -> Named release archives ---- #
       #
       # A release may include a plugin/theme distribution archive named after
-      # the library itself. This is a last-resort core-payload fallback, unlike
-      # unrelated ZIP assets that remain ordinary release files.
+      # the library itself. A matching ZIP is a last-resort core-payload
+      # fallback; matching tarballs are source-style archives and stay skipped.
       # -----------------------------------------------------------------
       __obsidian_is_named_release_archive = {
-        description = "Check whether a ZIP release asset is named after an Obsidian library";
+        description = "Check whether a release archive is named after an Obsidian library";
 
         body = ''
           set --local asset_name "$argv[1]"
-          set --local library_name "$argv[2]"
+          set --local library_names $argv[2..-1]
 
-          if not string match -ri '\\.zip$' "$asset_name"
+          if not string match -rqi '\\.(zip|tar\\.gz|tgz)$' "$asset_name"
             return 1
           end
 
           set --local normalized_asset_name (
-            string replace -ri '\\.zip$' "" -- "$asset_name" |
+            string replace -ri '\\.(zip|tar\\.gz|tgz)$' "" -- "$asset_name" |
             string lower |
             string replace -ra '[^0-9a-z]+' ""
           )
-          set --local normalized_library_name (
-            string lower -- "$library_name" |
-            string replace -ra '[^0-9a-z]+' ""
-          )
 
-          if test -z "$normalized_library_name"
-            return 1
+          for library_name in $library_names
+            set --local normalized_library_name (
+              string lower -- "$library_name" |
+              string replace -ra '[^0-9a-z]+' ""
+            )
+
+            if test -z "$normalized_library_name"
+              continue
+            end
+
+            if string match -rq \
+                "$normalized_library_name" \
+                "$normalized_asset_name"
+              return 0
+            end
           end
 
-          string match -rq \
-            "^$normalized_library_name(v?[0-9].*)?\$" \
-            "$normalized_asset_name"
+          return 1
         '';
       };
 
@@ -441,6 +466,7 @@ in
             functions \
               __obsidian_download_name_blocked \
               __obsidian_repository_fallback_name \
+              __obsidian_is_named_release_archive \
               "$downloader_function" \
               >"$function_file"
 
@@ -2009,6 +2035,12 @@ in
                       set release_asset_name "$release_asset_parts[1]"
                       set release_asset_url "$release_asset_parts[2]"
 
+                      if __obsidian_download_name_blocked \
+                              "$release_asset_name"
+
+                          continue
+                      end
+
                       switch "$release_asset_name"
                           case main.js styles.css manifest.json
                               if test -r "$plugin_stage/$release_asset_name"; and \
@@ -2037,9 +2069,12 @@ in
                           case '*'
                               if __obsidian_is_named_release_archive \
                                       "$release_asset_name" \
-                                      "$plugin_folder_name"
-                                  set --append deferred_plugin_archives \
-                                      "$release_asset"
+                                      "$plugin_folder_name" \
+                                      "$repository_name"
+                                  if string match -ri '\\.zip$' "$release_asset_name"
+                                      set --append deferred_plugin_archives \
+                                          "$release_asset"
+                                  end
                                   continue
                               end
 
@@ -2739,6 +2774,12 @@ in
                       set release_asset_name "$release_asset_parts[1]"
                       set release_asset_url "$release_asset_parts[2]"
 
+                      if __obsidian_download_name_blocked \
+                              "$release_asset_name"
+
+                          continue
+                      end
+
                       switch "$release_asset_name"
                           case manifest.json main.js
                               command curl \
@@ -2873,13 +2914,7 @@ in
                   end
               end
 
-              set release_theme_payload_available 0
-              if test -s "$extracted/manifest.json"
-                  if test -s "$extracted/theme.css"; or \
-                          test -s "$extracted/obsidian.css"
-                      set release_theme_payload_available 1
-                  end
-              end
+              set deferred_theme_archives
 
               set release_json (
                   command gh api \
@@ -2908,6 +2943,12 @@ in
                       set release_asset_name "$release_asset_parts[1]"
                       set release_asset_url "$release_asset_parts[2]"
 
+                      if __obsidian_download_name_blocked \
+                              "$release_asset_name"
+
+                          continue
+                      end
+
                       switch "$release_asset_name"
                           case manifest.json theme.css obsidian.css main.js
                               if not command curl \
@@ -2925,10 +2966,12 @@ in
                           case '*'
                               if __obsidian_is_named_release_archive \
                                       "$release_asset_name" \
-                                      "$release_theme_archive_name"; and \
-                                      test "$release_theme_payload_available" -eq 1
-                                  # The release/repository core is already usable.
-                                  # Keep this distribution archive as a fallback only.
+                                      "$release_theme_archive_name" \
+                                      "$repository_name"
+                                  if string match -ri '\\.zip$' "$release_asset_name"
+                                      set --append deferred_theme_archives \
+                                          "$release_asset"
+                                  end
                                   continue
                               end
 
@@ -2949,6 +2992,46 @@ in
                                   echo \
                                       "Notice: Could not download release asset: $release_asset_name"
                               end
+                      end
+                  end
+              end
+
+              # A named ZIP is used only after neither the release nor the
+              # repository has supplied a usable theme core payload.
+              set release_theme_payload_available 0
+              if test -s "$extracted/manifest.json"
+                  if test -s "$extracted/theme.css"; or \
+                          test -s "$extracted/obsidian.css"
+                      set release_theme_payload_available 1
+                  end
+              end
+
+              if test "$release_theme_payload_available" -eq 0
+                  for deferred_theme_archive in $deferred_theme_archives
+                      set deferred_theme_archive_parts \
+                          (string split \t "$deferred_theme_archive")
+
+                      if test (count $deferred_theme_archive_parts) -lt 2
+                          continue
+                      end
+
+                      set deferred_theme_archive_name \
+                          "$deferred_theme_archive_parts[1]"
+                      set deferred_theme_archive_url \
+                          "$deferred_theme_archive_parts[2]"
+
+                      command mkdir -p "$extracted/release-assets"
+
+                      if not command curl \
+                              --fail \
+                              --location \
+                              --silent \
+                              --show-error \
+                              --output "$extracted/release-assets/$deferred_theme_archive_name" \
+                              "$deferred_theme_archive_url"
+
+                          echo \
+                              "Notice: Could not download release asset: $deferred_theme_archive_name"
                       end
                   end
               end
@@ -4535,9 +4618,12 @@ in
 
               if __obsidian_is_named_release_archive \
                   "$release_asset_name" \
-                  (basename "$library_entry")
-                set --append deferred_library_archives \
-                  "$release_asset"
+                  (basename "$library_entry") \
+                  (basename "$repository")
+                if string match -ri '\\.zip$' "$release_asset_name"
+                  set --append deferred_library_archives \
+                    "$release_asset"
+                end
                 continue
               end
 

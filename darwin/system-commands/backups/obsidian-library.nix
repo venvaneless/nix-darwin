@@ -66,6 +66,7 @@ let
       from datetime import datetime
       from pathlib import Path
       from typing import Any
+      from urllib.parse import quote
 
 
       DEFAULT_PLUGINS_DIR = Path(
@@ -88,12 +89,30 @@ let
 
       BLOCKED_DOWNLOAD_NAMES = {
           "agents",
+          "algorithm",
+          "architecture",
           "claude",
           "license",
           "changelog",
           "contributing",
+          "continent_design",
+          "continent-design",
+          "codex_task",
+          "codex-task",
+          "decisions",
+          "design_system",
+          "design-system",
+          "implementation_plan",
+          "implementation-plan",
+          "manual_test_plan",
+          "manual-test-plan",
           "security",
           "privacy",
+          "release_checklist",
+          "release-checklist",
+          "usage_examples",
+          "usage-examples",
+          "validation",
       }
 
       BLOCKED_DOWNLOAD_FILES = {
@@ -120,6 +139,8 @@ let
           return any(
               filename == blocked_name
               or filename.startswith(f"{blocked_name}.")
+              or filename.startswith(f"{blocked_name}-")
+              or filename.startswith(f"{blocked_name}_")
               for blocked_name in BLOCKED_DOWNLOAD_NAMES
           )
 
@@ -266,6 +287,12 @@ let
           if not isinstance(response, list) or not all(isinstance(item, dict) for item in response):
               raise RuntimeError(f"GitHub returned an unexpected response for {endpoint}")
           return response
+
+
+      def repository_contents_endpoint(repository: str, repository_path: str) -> str:
+          # GitHub API endpoints require reserved path characters to be encoded,
+          # while directory separators must remain literal path separators.
+          return f"repos/{repository}/contents/{quote(repository_path, safe='/')}"
 
 
       def repository_field(library_type: LibraryType) -> str:
@@ -575,7 +602,7 @@ let
 
       def download_repository_file(repository: str, repository_path: str, destination: Path) -> None:
           metadata = gh_json(
-              f"repos/{repository}/contents/{repository_path}"
+              repository_contents_endpoint(repository, repository_path)
           )
 
           download_url = metadata.get("download_url")
@@ -802,6 +829,9 @@ let
                   if not isinstance(remote_size, int):
                       continue
 
+                  if remote_size <= 0:
+                      continue
+
                   if is_blocked_download_name(repository_path):
                       continue
     
@@ -812,8 +842,8 @@ let
                       for part in path.parts
                   )
 
-                  # Ignore hidden repository folders and dependencies.
-                  if any(
+                  # Ignore hidden repository files/folders and dependencies.
+                  if path.name.startswith(".") or any(
                       part.startswith(".")
                       for part in path.parts[:-1]
                   ):
@@ -1219,7 +1249,10 @@ let
                       if isinstance(item, dict)
                       and item.get("type") == "blob"
                       and isinstance(item.get("path"), str)
+                      and isinstance(item.get("size"), int)
+                      and item["size"] > 0
                       and not is_blocked_download_name(item["path"])
+                      and not Path(item["path"]).name.startswith(".")
                       and "node_modules" not in {
                           part.casefold()
                           for part in Path(item["path"]).parts[:-1]
@@ -1576,7 +1609,10 @@ let
 
           elif remote_file.repository_path is not None:
               metadata = gh_json(
-                  f"repos/{repository}/contents/{remote_file.repository_path}"
+                  repository_contents_endpoint(
+                      repository,
+                      remote_file.repository_path,
+                  )
               )
 
               repository_size = metadata.get("size")
@@ -3052,8 +3088,14 @@ let
 
               print_heading(action)
               if action == "Check for updates":
-                  results = show_checks(entries, release_cache, manifest_cache, repository_contents_cache)
-                  offer_updates(results, release_cache, manifest_cache, repository_contents_cache)
+                  results = check_results(entries, release_cache, manifest_cache, repository_contents_cache)
+                  update_selected_results(
+                      results,
+                      library_type,
+                      release_cache,
+                      manifest_cache,
+                      repository_contents_cache,
+                  )
               elif action == "Download another version":
                   for entry in entries:
                       download_another_version(entry, release_cache, repository_contents_cache)
