@@ -115,6 +115,20 @@ let
       -f "${composeFile}" \
       run --rm archivebox add "$@"
   '';
+
+  persona = pkgs.writeShellScriptBin "${appName}-persona" ''
+    set -euo pipefail
+
+    ${ensureEnvironment}
+    echo ">>> [${appName}] Waiting for Docker engine"
+    ${dockerWait}
+
+    exec "${dockerComposeBin}" \
+      --env-file ${lib.escapeShellArg cfg.envFile} \
+      -p ${appName} \
+      -f "${composeFile}" \
+      run --rm archivebox persona "$@"
+  '';
 in
 {
   options.services.archivebox = {
@@ -146,7 +160,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ runner initializer add ];
+    environment.systemPackages = [ runner initializer add persona ];
 
     launchd.agents.${appName} = {
       serviceConfig = {
