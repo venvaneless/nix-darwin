@@ -173,8 +173,8 @@ let
     data = "${volume}/data-backups";
     apps = "${data}/app-backups";
     obsidian = "${apps}/obsidian";
-    obsidianExtensions = "${obsidian}/obsidian_extensions";
-    obsidianThemes = "${obsidian}/obsidian_themes";
+    obsidianExtensions = "${obsidian}/obsidian-extensions";
+    obsidianThemes = "${obsidian}/obsidian-themes";
   };
 
   # ------------------------------------------------------------
@@ -655,8 +655,8 @@ in
     # ---- Obsidian library
     # Permanent plugin and theme library kept beside the app backups.
     obsidian = "${apps}/obsidian";
-    obsidianExtensions = "${obsidian}/obsidian_extensions";
-    obsidianThemes = "${obsidian}/obsidian_themes";
+    obsidianExtensions = "${obsidian}/obsidian-extensions";
+    obsidianThemes = "${obsidian}/obsidian-themes";
 
     # ---- Local staging
     # Archives are built in Downloads and only moved to the volume once
