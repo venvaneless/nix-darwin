@@ -25,7 +25,14 @@ let
     }
   ];
   configEntries = [
-    # { relativePath = "iterm2"; destinationPath = "user-config/iterm2"; }
+    {
+      relativePath = "iterm2/sessions";
+      destinationPath = "sessions";
+    }
+    {
+      relativePath = "iterm2/sockets";
+      destinationPath = "sockets";
+    }
   ];
   additionalSources = [
     # { sourcePath = "/Users/ven/Library/Somewhere/iTerm2"; destinationPath = "additional/iTerm2"; }

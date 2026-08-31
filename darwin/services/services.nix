@@ -26,9 +26,6 @@
 
   imports = [
 
-  	# Background services
-   	./startpage-launchd.nix
-    
     # Docker + containers + tooling
     ./docker/docker.nix
     ./docker/browsertrix.nix

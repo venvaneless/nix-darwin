@@ -23,6 +23,10 @@
 
       # ---- SHARED TERMINAL CONFIGURATION ---- #
       imports = [
+        # ---- SHARED SERVICE OPTIONS ---- #
+        # Services remain disabled until this host enables them explicitly.
+        ../options/services/default.nix
+
         ../shared/terminal
         ../shared/terminal/nvim
         ../shared/terminal/cli-tuis

@@ -16,6 +16,8 @@
   imports = [
    ./unison.nix
    ./obsidian-sync.nix
+   ./documents-sync.nix
+   ./startpage-logic.nix
   ];
 
   # ------------------------------------------------------------
@@ -39,5 +41,19 @@
       ".githooks"
       ".gitignore"
     ];
+  };
+
+  ven.services.documentsSync = {
+    enable = lib.mkDefault false;
+    runAtLoad = lib.mkDefault true;
+    watchPaths = lib.mkDefault true;
+    createRemoteDirectory = lib.mkDefault true;
+  };
+
+  ven.services.startpage = {
+    enable = lib.mkDefault false;
+    runAtLoad = lib.mkDefault true;
+    keepAlive = lib.mkDefault true;
+    throttleInterval = lib.mkDefault 10;
   };
 }

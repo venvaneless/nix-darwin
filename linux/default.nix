@@ -11,6 +11,10 @@
 
 {
   imports = [
+    # ---- SHARED SERVICE OPTIONS ---- #
+    # Services remain disabled until this host enables them explicitly.
+    ../options/services/default.nix
+
     # ---- SHARED TERMINAL CONFIGURATION ---- #
     inputs.self.homeModules.sharedTerminal
 

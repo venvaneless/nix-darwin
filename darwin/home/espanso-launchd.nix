@@ -1,4 +1,4 @@
-# /Users/ven/.config/nix/nix-config/darwin/services/espanso-launchd.nix
+# darwin/home/espanso-launchd.nix
 #
 # ESPANSO: LAUNCHD ENV OVERRIDE
 # ============================================================

@@ -118,6 +118,7 @@ let
     };
 
     # ---- Other
+    documents = "${home}/Documents";
     downloads = "${home}/Downloads";
     localBin = "${home}/.local/bin";
   };
@@ -302,6 +303,11 @@ in
     realDrive = iCloudDrive;
     realContainers = mobileDocuments;
 
+    # Documents synchronized from the local ~/Documents tree. Use the
+    # user-owned iCloudDocs symlink so service configuration never has
+    # to repeat the Mobile Documents path with spaces.
+    documents = "${docs}/Documents";
+
     # ---- Application containers
     obsidianVaults = obsidianVaultsRoot;
 
@@ -337,6 +343,18 @@ in
     vault = "${root}/Ven";
     logs = "${root}/logs";
     iCloudVault = "${obsidianVaultsRoot}/Ven";
+  };
+
+  # ------------------------------------------------------------
+  # ------ USER SERVICES ------ #
+  #
+  # Mutable logs for Home Manager user services. The service modules
+  # create only these exact directories before writing their own logs.
+
+  darwin.services = rec {
+    root = "${darwinHomePaths.state}/services";
+    documentsSyncLogs = "${root}/documents-sync";
+    tartarusStartpageLogs = "${root}/tartarus-startpage";
   };
 
   # ------------------------------------------------------------
