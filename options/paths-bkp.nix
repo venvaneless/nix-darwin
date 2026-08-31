@@ -354,8 +354,7 @@ in
 
   darwin.documents = rec {
     root = darwinHomePaths.documents;
-    system = "${root}/system";
-    services = "${system}/services";
+    services = "${root}/services";
     tartarusStartpage = "${services}/tartarus-startpage";
   };
 

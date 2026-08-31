@@ -20,13 +20,9 @@
 # ** their own torrents, their own session state, and their own ports.
 # =====================================================================
 
-{ lib, options, pkgs, ... }:
+{ lib, packageOptions, paths, platforms, pkgs, ... }:
 
 let
-  helpers = import ../../options { inherit lib options pkgs; };
-
-  inherit (helpers) paths platforms;
-
   # The same relative layout on both platforms, so the selector only
   # decides which home prefix is used.
   homePaths = paths.forPlatform platforms.isDarwin;
@@ -221,7 +217,7 @@ let
 in
 lib.mkMerge [
   # ---- Installation and the Darwin application link
-  (helpers.packageOptions.mkPackageModule {
+  (packageOptions.mkPackageModule {
     name = "qbittorrent";
     packages = qbittorrentPackages;
   })

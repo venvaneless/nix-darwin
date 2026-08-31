@@ -15,6 +15,9 @@ let
   # override it still matches the rest. Bound under a different name
   # than the constructor arguments below, which would shadow it.
   sharedNixpkgsConfig = (import ../options { }).nixpkgsConfig;
+
+  paths = import ../options/paths.nix { };
+
 in
 {
   # ---- HOME MANAGER FLAKE-PARTS OPTIONS ---- #
@@ -45,7 +48,9 @@ in
           specialArgs ? { },
         }:
         inputs.darwin.lib.darwinSystem {
-          inherit system specialArgs;
+          inherit system;
+
+          inherit specialArgs;
 
           modules = [
             # Provides SOPS secret management.
@@ -68,9 +73,18 @@ in
             config = nixpkgsConfig;
           };
 
+          platforms = import ../options/platforms.nix { inherit pkgs; };
+          packageOptions = import ../options/package-options.nix {
+            lib = inputs.nixpkgs.lib;
+            inherit paths platforms pkgs;
+            installTarget = "home";
+          };
+
           # Lets imported Home Manager modules use the same package set
           # without resolving it indirectly through the module fixpoint.
-          homeSpecialArgs = extraSpecialArgs // { inherit pkgs; };
+          homeSpecialArgs = extraSpecialArgs // {
+            inherit packageOptions paths pkgs platforms;
+          };
         in
         inputs.home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
@@ -96,7 +110,8 @@ in
         }:
         inputs.nixpkgs.lib.nixosSystem {
           inherit system;
-          specialArgs = extraSpecialArgs;
+
+          inherit extraSpecialArgs;
 
           modules =
             [

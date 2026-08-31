@@ -1,10 +1,10 @@
 # darwin/packages/agents-pkgs.nix
 
-{ inputs, lib, options, pkgs, ... }:
+{ inputs, lib, options, packageOptions, pkgs, ... }:
 
 let
   # ------------------------------------------------------------
-  # ------ SHARED PACKAGE HELPERS ------ #
+  # ------ SHARED SETTINGS ------ #
   # ------------------------------------------------------------
 
   # ---- Variables from options/default.nix
@@ -57,9 +57,8 @@ in
     # Codex backup command and LaunchAgent
     ./codex/codex-backup.nix
   ];
-
-  config = helpers.packageOptions.mkPackageModule {
-    name = "darwin-agents";
-    packages = agentPackages;
-  };
+}
+// packageOptions.mkPackageModule {
+  name = "darwin-agents";
+  packages = agentPackages;
 }

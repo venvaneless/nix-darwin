@@ -7,15 +7,9 @@
 # selected entries and manage their guarded /Applications/Tools links.
 # =====================================================================
 
-{ lib, options, pkgs, ... }:
+{ packageOptions, pkgs, ... }:
 
 let
-  # ------------------------------------------------------------
-  # ------ SHARED PACKAGE HELPERS ------ #
-  # ------------------------------------------------------------
-
-  helpers = import ../../options { inherit lib options pkgs; };
-
   # ------------------------------------------------------------
   # ------ TOOL PACKAGE DEFINITIONS ------ #
   # ------------------------------------------------------------
@@ -90,7 +84,7 @@ let
     };
   };
 in
-helpers.packageOptions.mkPackageModule {
+packageOptions.mkPackageModule {
   name = "darwin-tools";
   packages = toolPackages;
 }

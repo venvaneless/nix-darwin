@@ -7,12 +7,27 @@
 # System ownership remains in nixos/default.nix.
 # =====================================================================
 
-{ ... }:
+{ inputs, lib, pkgs, ... }:
 
+let
+  paths = import ../options/paths.nix { };
+  platforms = import ../options/platforms.nix { inherit pkgs; };
+  packageOptions = import ../options/package-options.nix {
+    inherit lib paths platforms pkgs;
+    installTarget = "home";
+  };
+in
 {
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
+
+    # Shared package modules receive these directly, without reading the
+    # Home Manager or NixOS configuration fixpoint.
+    extraSpecialArgs = {
+      inherit inputs packageOptions paths platforms;
+    };
+
     users.ven = {
       # ---- HOME MANAGER IDENTITY ---- #
       home = {
@@ -35,6 +50,7 @@
         # User-scoped packages and session variables belong to Home Manager.
         # Every category lives in one file; each entry keeps its own
         # enable flag and per-platform installOn toggle.
+        # The package helper arrives through flake-level special arguments.
         ../shared/packages.nix
       ];
 

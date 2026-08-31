@@ -16,9 +16,17 @@
 # declarations work at system level and inside Home Manager.
 # =====================================================================
 
-{ inputs, lib, packageOptions, pkgs, ... }:
+{ inputs, lib, options, pkgs, ... }:
 
 let
+  # ------------------------------------------------------------
+  # ------ SHARED PACKAGE HELPERS ------ #
+  # Provides mkPackageModule, byPlatform, and the Darwin
+  # application-link manager. Defined once in options/.
+  # ------------------------------------------------------------
+
+  helpers = import ../options { inherit lib options pkgs; };
+
   # ------------------------------------------------------------
   # ------ CUSTOM TEX LIVE ENVIRONMENT ------ #
   # Only the schemes actually used, which keeps the closure small.
@@ -647,7 +655,7 @@ let
     kiwix = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      packageByPlatform = {
+      package = helpers.packageOptions.byPlatform {
         darwin = pkgs.kiwix-apple;
         linux = pkgs.kiwix;
       };
@@ -676,7 +684,7 @@ let
     vlc = {
       enable = true;
       installOn = { darwin = true; linux = true; };
-      packageByPlatform = {
+      package = helpers.packageOptions.byPlatform {
         darwin = pkgs.vlc-bin;
         linux = pkgs.vlc;
       };
@@ -700,23 +708,6 @@ let
   # ------------------------------------------------------------
 
   productivityPackages = {
-    # ---- Notesnook
-    # End-to-end encrypted note-taking application.
-    notesnook = {
-      enable = true;
-      installOn = { darwin = true; linux = true; };
-      packageByPlatform = {
-        # nixos-26.05 expects Notesnook.app at the archive root, but the
-        # current macOS DMG places it below Install Notesnook instead.
-        darwin = pkgs.notesnook.overrideAttrs (_: {
-          sourceRoot = "Install Notesnook/Notesnook.app";
-        });
-        linux = pkgs.notesnook;
-      };
-      appName = "Notesnook.app";
-      symlinkProductivity = true;
-    };
-
     # ---- Obsidian
     # Knowledge base and note-taking application with Markdown support.
     obsidian = {
@@ -789,42 +780,43 @@ in
     ./packages/vscode.nix
     ./packages/qbittorrent.nix
   ];
+
+  # ------------------------------------------------------------
+  # ------ PACKAGE MODULE ASSEMBLY ------ #
+  # One call per category, merged into a single config. Each call keeps
+  # its own name so the Darwin application-link manager it generates
+  # stays separate, exactly as it was when these were five files.
+  # ------------------------------------------------------------
+
+  config = lib.mkMerge [
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-apps";
+      packages = appPackages;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-development";
+      packages = developmentPackages // darwinDevelopmentApplications // developmentApplications;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-cli";
+      packages = cliPackages;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-media";
+      packages = mediaPackages;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-productivity";
+      packages = productivityPackages;
+    })
+
+    (helpers.packageOptions.mkPackageModule {
+      name = "shared-tools";
+      packages = toolPackages;
+    })
+  ];
 }
-// lib.mkMerge [
-
-  # ------------------------------------------------------------
-  # ------ PACKAGE GROUP INSTALLATION ------ #
-  # The shared helper installs each group and keeps its Darwin
-  # application-link manager separate by group name.
-  # ------------------------------------------------------------
-
-  (packageOptions.mkPackageModule {
-    name = "shared-apps";
-    packages = appPackages;
-  })
-
-  (packageOptions.mkPackageModule {
-    name = "shared-development";
-    packages = developmentPackages // darwinDevelopmentApplications // developmentApplications;
-  })
-
-  (packageOptions.mkPackageModule {
-    name = "shared-cli";
-    packages = cliPackages;
-  })
-
-  (packageOptions.mkPackageModule {
-    name = "shared-media";
-    packages = mediaPackages;
-  })
-
-  (packageOptions.mkPackageModule {
-    name = "shared-productivity";
-    packages = productivityPackages;
-  })
-
-  (packageOptions.mkPackageModule {
-    name = "shared-tools";
-    packages = toolPackages;
-  })
-]

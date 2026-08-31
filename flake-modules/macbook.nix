@@ -33,6 +33,16 @@ let
     config = nixpkgsConfig;
     overlays = [ macbookOverlay ];
   };
+
+  paths = import ../options/paths.nix { };
+  platforms = import ../options/platforms.nix { pkgs = macbookPkgs; };
+  packageOptions = import ../options/package-options.nix {
+    lib = inputs.nixpkgs.lib;
+    paths = paths;
+    platforms = platforms;
+    pkgs = macbookPkgs;
+    installTarget = "system";
+  };
 in
 {
   # =====================================================================
@@ -52,6 +62,7 @@ in
         specialArgs = {
           inherit inputs;
           pkgs = macbookPkgs;
+          inherit packageOptions paths platforms;
           home-manager = inputs.home-manager;
           nix-homebrew = inputs.nix-homebrew;
 

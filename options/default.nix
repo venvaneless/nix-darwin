@@ -11,7 +11,6 @@
 #
 #   (import ../options { }).nixpkgsConfig
 #   (import ../options { inherit inputs pkgs; }).unstablePkgs
-#   helpers = import ../options { inherit lib options pkgs; };
 #
 # Every argument defaults to null, and Nix is lazy, so a value is only
 # built when something actually reads it.
@@ -55,19 +54,7 @@ let
     config = nixpkgsConfig;
   };
 
-  # ------------------------------------------------------------
-  # ------ PACKAGE MODULE HELPERS ------ #
-  #
-  # Used by the package declaration modules. These need lib, options,
-  # and pkgs, so they are only readable from inside a module.
-  # ------------------------------------------------------------
-
   paths = import ./paths.nix { };
-  platforms = import ./platforms.nix { inherit pkgs; };
-  symlinks = import ./symlinks.nix { inherit lib paths pkgs; };
-  packageOptions = import ./package-options.nix {
-    inherit lib options platforms symlinks;
-  };
 
   # ------------------------------------------------------------
   # ------ SERVICE OPTION MODULE ------ #
@@ -83,9 +70,6 @@ in
     nixpkgsConfig
     unstablePkgs
     paths
-    platforms
-    symlinks
-    packageOptions
     serviceOptions
     ;
 }

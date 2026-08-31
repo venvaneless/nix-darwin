@@ -32,11 +32,20 @@
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    # nix-homebrew (FIXED)
+    # nix-homebrew
     nix-homebrew.url = "github:zhaofengli/nix-homebrew";
 
     # Flake module framework
     flake-parts.url = "github:hercules-ci/flake-parts";
+
+    # Shared composition dependencies. Flake syntax requires source inputs
+    # here; flake-modules/hosts.nix exposes them to every host module.
+    haumea = {
+      url = "github:nix-community/haumea/v0.2.2";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    den.url = "github:denful/den";
 
     # AstroNvim (managed as config)
     astronvim = {

@@ -16,13 +16,9 @@
 # ** installs normally, only into the relocated extensions directory.
 # =====================================================================
 
-{ lib, options, pkgs, ... }:
+{ lib, packageOptions, paths, platforms, pkgs, ... }:
 
 let
-  helpers = import ../../options { inherit lib options pkgs; };
-
-  inherit (helpers) paths platforms;
-
   # The same relative location on both platforms, so the selector only
   # decides which home prefix is used.
   vscodePaths = (paths.forPlatform platforms.isDarwin).vscode;
@@ -93,7 +89,7 @@ let
 in
 lib.mkMerge [
   # ---- Installation and the Darwin application link
-  (helpers.packageOptions.mkPackageModule {
+  (packageOptions.mkPackageModule {
     name = "vscode";
     packages = { inherit vscode; };
   })

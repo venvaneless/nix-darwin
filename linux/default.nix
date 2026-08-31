@@ -21,6 +21,7 @@
     # ---- SHARED PACKAGE DECLARATIONS ---- #
     # Every category lives in one file; each entry keeps its own
     # enable flag and per-platform installOn toggle.
+    # The package helper arrives through flake-level special arguments.
     ../shared/packages.nix
 
     # ---- SHARED SYSTEM COMMANDS ---- #

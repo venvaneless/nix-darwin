@@ -205,6 +205,7 @@
     # The nixpkgs policy comes from options/default.nix, applied in
     # flake-modules/macbook.nix. Modules needing the unstable set read
     # unstablePkgs from options/default.nix directly.
+    # The package helper arrives through flake-level special arguments.
     ../shared/packages.nix
 
     # Homebrew
