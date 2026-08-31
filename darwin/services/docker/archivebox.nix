@@ -113,7 +113,7 @@ let
       --env-file ${lib.escapeShellArg cfg.envFile} \
       -p ${appName} \
       -f "${composeFile}" \
-      run --rm archivebox add "$@"
+      exec -T archivebox archivebox add "$@"
   '';
 
   persona = pkgs.writeShellScriptBin "${appName}-persona" ''
@@ -127,7 +127,7 @@ let
       --env-file ${lib.escapeShellArg cfg.envFile} \
       -p ${appName} \
       -f "${composeFile}" \
-      run --rm archivebox persona "$@"
+      exec -T archivebox archivebox persona "$@"
   '';
 in
 {
