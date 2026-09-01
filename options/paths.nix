@@ -311,24 +311,6 @@ in
     # ---- Application containers
     obsidianVaults = obsidianVaultsRoot;
 
-    # ---- Locally served content
-    # Content a local service reads out of iCloud Drive.
-    #
-    # ** These are user-owned files. A service may read them and must
-    # ** never create, move, or delete anything beside them. iCloud can
-    # ** report a path as missing while it is still downloading, so a
-    # ** service has to fail loudly instead of recreating the directory.
-    #
-    # ** The real drive path is used here rather than the docs symlink,
-    # ** because this content is served by a LaunchAgent that starts at
-    # ** login, before a home-directory symlink is worth depending on.
-    services = rec {
-      root = "${realDrive}/Documents/system/services";
-
-      # ** The trailing slash is deliberate: it is part of the path this
-      # ** service has always used.
-      tartarusStartpage = "${root}/tartarus-startpage/";
-    };
   };
 
   # ------------------------------------------------------------
