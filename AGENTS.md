@@ -18,24 +18,34 @@ both: - macOS through nix-darwin - Linux through NixOS
 - Make sure you always utilise flakeParts when creating and editing my nix-config.
 - Make sure you always add short descriptions to each code block (grouping them in sections) and short comments, the way I'm doing it till now.
 - Do not run any Nix evaluation, rebuild, check, test, or other validation command that evaluates the config unless I tell you to
+- When instructions conflict, the file closest to the edited file wins.
+- Safety rules in this root file always remain in force.
+- Please never delete comments I already added, unless they no longer reflect what you changed or are wrong
+- Only change comments if they wrongly describe what they're supposed to describe and correct them instead
+- Use formatting the same way I do
 
 Primary repository: `/Users/ven/.config/nix/nix-config`
 
 The configuration should stay portable and should avoid macOS-only
 assumptions unless a module is explicitly platform-specific.
 
-## Scope and precedence
+## File ownership
 
 This file applies to the entire repository.
 
 More specific `AGENTS.md` files extend these rules for their directory tree. In particular:
+`darwin/AGENTS.md` contains mandatory nix-darwin, Home Manager, launchd, Docker, and macOS rules.
 
-- `darwin/AGENTS.md` contains mandatory nix-darwin, Home Manager, launchd, Docker, and macOS rules.
-- When instructions conflict, the file closest to the edited file wins.
-- Safety rules in this root file always remain in force.
-- Please never delete comments I already added
-- Only change comments if they wrongly describe what they're supposed to describe and correct them instead
-- Use formatting the same way I do
+Toggles and settings for Home-Manager services exist in:
+```text
+/Users/ven/.config/nix/nix-config/darwin/home/services.nix
+```
+
+- If a service absolutely must live in the system (not HM), then it should be in:
+```text
+options/services/
+```
+
 - For any existing paths, use the variables set in paths.nix. If a path doesn't exist yet, add them with their variable to paths.nix and then use paths.nix to add these variables in the file you're just working on.
 
 ```text
@@ -48,22 +58,37 @@ Current nix-darwin host:
 macbook
 ```
 
-Primary entry points:
-
+- Primary entry points:
 ```text
 flake.nix
 darwin/default.nix
-darwin/home/home-manager.nix
+darwin/home/default.nix
 ```
 
-Primary Darwin configuration:
-
+- Primary Darwin configuration:
 ```text
-/Users/ven/.config/nix/nix-config/darwin/default.nix
+darwin/default.nix
+```
+
+- Packages go to:
+```text
+shared/packages.nix
+```
+
+semantics and logic for packages go to:
+```text
+options/package-options.nix
+```
+
+Remember to do modularisation for semantics and logic in a way that doesn't then require importing the .nix files directly.
+See more in documentation:
+```text
+/Users/ven/Documents/Obsidian/Ven/nix-config/
 ```
 
 Main workflow: - modular nix-darwin; - Home Manager integration; -
 Docker-based services; - fish shell; - CLI-focused environment.
+When you give or write commands or scripts, remember fish is my main shell and they must be compatible with it
 
 ---
 
@@ -81,21 +106,26 @@ flake.nix
     └── apps/apps.nix
 ```
 
-- All installed apps are in:
-
-```
-nix/nix-config/darwin/packages/agents-pkgs.nix
-```
-
 Keep aggregators simple:
-
 - imports grouped by purpose;
 - explicit enable flags near the top when needed;
 - no generated scripts in an aggregator;
 - no package implementation in an aggregator;
 - no hidden service startup in an import list.
+- avoid activationScripts when there's better alternatives
+- Don't hardcode paths directly in the file you're creating or editing. All paths go to:
+```
+paths.nix
+```
 
-When adding a module, update the nearest aggregator. Do not add the same module through multiple import paths.
+... but when you create a feature, option or suboption requiring a path, like this:
+```text
+localVault = paths.darwin.obsidian.vault;
+```
+... make sure user can use both the path from paths.nix but also it's own direct path:
+```text
+localVault = "/Users/ven/Documents/Obsidian/Ven/"
+```
 
 ---
 
@@ -142,8 +172,61 @@ maintenance.
 
 ## Standard module shape
 
-Use this shape when the feature is configurable:
+If a:
+- Package, service, command or tool
+- App
+- Service
+- Command
+- Tool
+- TUI
+- flake-app
+- activation script
+- Docker container
 
+... need more than just one simple option like:
+```nix
+ package = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.alejandra;
+    };
+```
+
+... and more than just simple options inside:
+```
+package = pkgs.alejandra;
+```
+
+They should get their own file in the fitting folder. Or, if it these have more than one purpose (say plugins, themes, commands, more than one or two settings), they should get their own folder, with main file being `default.nix`
+
+Remember that the semantics and logic live in options/
+
+
+If any of the mentioned things from that list:
+```text
+- Package, service, command or tool
+- App
+- Service
+- Command
+- Tool
+- TUI
+- flake-app
+- activation script
+- Docker container
+```
+
+of which logic and semantics don't exist yet need it they should be added to fitting file in options/ or if they don't fit in any of the existing files or aren't part of the purpose (say, a package feature wouldn't fit into paths.nix, symlinks.nix, etc.), they should get their own file or folder (if there's more concerns regarding the app, say additional settings, plugins, features, themes, extensions, scripts were to be added. Good example you can look at is espanso)
+
+Logic and semantics should always live in options/ folder
+
+paths.nix is for paths if any of those tools need it
+platforms.nix is for platform detection (all kinds of it)
+package-options.nix is for logic and semantics of features and options for things living in packages.nix
+
+and "what that toggle means", meaning all logic, semantics that hide behind the options, toggles, etc. live in options/ in their fitting file or folder
+
+
+I know the general shape when the feature is configurable should look like this:
 ```nix
 { config, lib, pkgs, ... }:
 
@@ -174,6 +257,16 @@ in
     # implementation
   };
 }
+```
+
+... but if it's possible, make sure I don't have the options looking like this:
+```
+enable = lib.mkDefault false;
+```
+
+but more like this:
+```
+enable = false;
 ```
 
 Use a simpler module when no option surface is needed. Do not create options solely to make a tiny constant look abstract.
@@ -277,44 +370,71 @@ Always consider:
 - Does it need Darwin/Linux separation?
 - Can it be used on both platforms?
 - Is it a GUI-based program or tool for darwin, which means it needs a symlink to /Applications or other folders?
+- To ensure that feature modules do not recreate shared helpers locally, construct shared values once at the nearest host or composition boundary and pass them through module arguments.
+- System-level modules receive shared values through `specialArgs`.
+- Home Manager modules receive shared values through `home-manager.extraSpecialArgs`; system `specialArgs` do not automatically cross into Home Manager.
+- A child module must declare the supplied values in its argument set, for example:
+
+```nix
+{ paths, packageOptions, platforms, ... }:
+```
 
 ### nix-darwin system layer
-
 Use nix-darwin for:
+- `system.defaults.*` and `system.*`; options only existing for macOS, if there's no equivalent for other machines or when I state we're working on darwin only.
+- nixpkgs packages, apps and tools that only exist on macOS
+- System activation scripts that either can only work on macOS, I say explicitly they're only for macOS or there's no equivalent of the same feature on the other systems. For example wifi exists on both machines, so its more wise to add that option to shared.
+- nix-darwin-only launchd jobs;
+- Homebrew and nix-homebrew packages and settings;
+- macOS-only application bundle handling.
+- Anything about symlinking apps from Applications/
 
-- `system.*`;
-- `system.defaults.*`;
-- `networking.*`;
-- `nix.*`;
-- `nixpkgs.*`;
-- `environment.systemPackages`;
-- `environment.systemPath`;
-- `environment.variables`;
-- `environment.etc`;
-- system activation scripts;
-- nix-darwin launchd jobs;
-- Homebrew and nix-homebrew;
-- machine-level application bundle handling.
+### Home Manager and system configuration layers
 
-### Home Manager
+Home Manager is the user-configuration layer. It can be used through nix-darwin, through NixOS, or as a standalone Home Manager configuration where that is intentionally supported.
 
-Home Manager is integrated through nix-darwin. There is no standalone Home Manager switch for this repository.
+System-level configuration belongs to the platform’s system module layer:
+
+- nix-darwin for macOS system configuration;
+- NixOS for Linux system configuration.
+
+Home Manager must be used for configuration that belongs to one user rather than to the whole machine.
 
 Use Home Manager for:
 
-- `home.packages` when the package is intentionally user-scoped;
+- `home.packages` when a package is intentionally user-scoped;
 - `home.file`;
 - `xdg.configFile`;
 - `home.sessionVariables` and `home.sessionPath`;
-- `programs.fish`;
-- user aliases and functions;
-- terminal program settings;
-- `targets.darwin.defaults` for user-scoped defaults unavailable at system level;
-- Home Manager launchd jobs.
+- `programs.*` configuration, including Fish;
+- user aliases and shell functions;
+- terminal, editor, and other user application configuration;
+- user-level background services;
+- user-scoped platform settings exposed by Home Manager.
 
-Do not use the nix-darwin launchd schema inside a Home Manager module or vice versa.
+Use the system layer for:
 
-Nix-darwin user agent:
+- system packages required by all users;
+- Nix daemon and Nix settings;
+- networking, host name, boot, hardware, and filesystem configuration;
+- system-wide environment variables and paths;
+- machine-level services;
+- macOS system defaults, Homebrew, and application bundle handling;
+- NixOS system services and system-wide service configuration.
+
+`targets.darwin.defaults` is a Home Manager namespace for Darwin-specific user defaults. `darwin` is the platform name, not the machine hostname, and must not be replaced with a host name.
+
+```nix
+targets.darwin.defaults = {
+  NSGlobalDomain = {
+    AppleLocale = "en_DE";
+  };
+};
+```
+
+Darwin launchd configuration uses different schemas at system and Home Manager level.
+
+Nix-darwin system LaunchAgent:
 
 ```nix
 launchd.agents.example = {
@@ -326,7 +446,7 @@ launchd.agents.example = {
 };
 ```
 
-Home Manager user agent:
+Home Manager LaunchAgent on Darwin:
 
 ```nix
 launchd.agents.example = {
@@ -337,6 +457,10 @@ launchd.agents.example = {
   };
 };
 ```
+
+On NixOS, system services use `systemd.services`, while Home Manager user services use `systemd.user.services`.
+
+Do not use a nix-darwin launchd schema inside a Home Manager module, a Home Manager launchd schema inside a nix-darwin system module, or Darwin-only options in shared Linux-compatible modules without an explicit platform guard.
 
 ---
 

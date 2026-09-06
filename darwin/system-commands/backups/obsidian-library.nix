@@ -106,6 +106,8 @@ let
           "implementation-plan",
           "manual_test_plan",
           "manual-test-plan",
+          "policies",
+          "policy",
           "security",
           "privacy",
           "release_checklist",
@@ -126,14 +128,41 @@ let
           "readme-cn.md",
           "readme-tw.md",
       }
+      # Compare document titles without punctuation or separators so every
+      # casing, hyphen, underscore, and space variant is excluded.
+      BLOCKED_DOCUMENT_STEMS = {
+          "aiassistance",
+          "codeofconduct",
+          "roadmap",
+          "readmeakutagawaja",
+          "readmeja",
+          "readmesherlock",
+          "thirdpartynotices",
+      }
+      LOCALIZED_PATH_PART = re.compile(
+          r"(?:^|[._-])(zh|ko|jp)(?:$|[._-])",
+          re.IGNORECASE,
+      )
 
       BATCH_FAILURES: list[str] = []
 
 
       def is_blocked_download_name(value: str) -> bool:
           filename = Path(value).name.casefold()
+          filename_stem = filename.rsplit(".", 1)[0]
+          normalized_filename_stem = re.sub(r"[^a-z0-9]+", "", filename_stem)
+
+          if any(
+              part.casefold() in {"zh", "ko", "jp"}
+              or LOCALIZED_PATH_PART.search(part) is not None
+              for part in Path(value).parts
+          ):
+              return True
 
           if filename in BLOCKED_DOWNLOAD_FILES:
+              return True
+
+          if normalized_filename_stem in BLOCKED_DOCUMENT_STEMS:
               return True
 
           return any(
@@ -1115,6 +1144,203 @@ let
               return path.is_file() and path.stat().st_size > 0
           except OSError:
               return False
+
+
+      # Normalize selected documentation and preview downloads after every
+      # source has been staged, without replacing files that already exist.
+      def normalize_download_layout(directory: Path) -> list[str]:
+          image_suffixes = {".gif", ".jpeg", ".jpg", ".png", ".webp"}
+          moves: list[tuple[Path, Path]] = []
+          markdown_origins: dict[Path, Path] = {}
+
+          def entries(path: Path) -> list[Path]:
+              return sorted(
+                  (
+                      child
+                      for child in path.iterdir()
+                      if not child.is_symlink()
+                  ),
+                  key=lambda child: child.name.casefold(),
+              )
+
+          def files_below(path: Path) -> list[Path]:
+              return sorted(
+                  (
+                      child
+                      for child in path.rglob("*")
+                      if child.is_file() and not child.is_symlink()
+                  ),
+                  key=lambda child: str(child),
+              )
+
+          def directories_below(path: Path) -> list[Path]:
+              return sorted(
+                  (
+                      child
+                      for child in path.rglob("*")
+                      if child.is_dir() and not child.is_symlink()
+                  ),
+                  key=lambda child: len(child.parts),
+                  reverse=True,
+              )
+
+          def move(source: Path, destination: Path) -> bool:
+              if destination.exists() or destination.is_symlink():
+                  return False
+
+              source_files = files_below(source) if source.is_dir() else [source]
+              for source_file in source_files:
+                  if source_file.suffix.casefold() != ".md":
+                      continue
+                  relative = source_file.relative_to(source) if source.is_dir() else Path()
+                  markdown_origins[destination / relative] = markdown_origins.get(
+                      source_file,
+                      source_file,
+                  )
+
+              source.rename(destination)
+              moves.append((source, destination))
+              return True
+
+          # Image aliases are normalized before wrapper folders are flattened.
+          for candidate in directories_below(directory):
+              contained_files = files_below(candidate)
+              name = candidate.name.casefold()
+              is_images_folder = name == "images"
+              is_image_only_af = (
+                  name == "af"
+                  and bool(contained_files)
+                  and all(
+                      file.suffix.casefold() in image_suffixes
+                      for file in contained_files
+                  )
+              )
+              if is_images_folder or is_image_only_af:
+                  move(candidate, candidate.with_name("assets"))
+
+          # Flatten only disposable one-file wrappers; assets and docs retain
+          # their useful semantic folder names.
+          for candidate in directories_below(directory):
+              if candidate.name.casefold() in {"assets", "docs"}:
+                  continue
+              content = entries(candidate)
+              if len(content) != 1 or not content[0].is_file():
+                  continue
+              if move(content[0], candidate.parent / content[0].name):
+                  candidate.rmdir()
+
+          repository_directory = directory / "repo"
+          if repository_directory.is_dir() and not repository_directory.is_symlink():
+              repository_content = entries(repository_directory)
+              wrapper_directories = [
+                  child for child in repository_content if child.is_dir()
+              ]
+              wrapper_files = [
+                  child for child in repository_content if child.is_file()
+              ]
+              if (
+                  len(wrapper_directories) == 1
+                  and wrapper_files
+                  and all("readme" in child.name.casefold() for child in wrapper_files)
+              ):
+                  wrapper = wrapper_directories[0]
+                  wrapper_content = entries(wrapper)
+                  if all(
+                      not (repository_directory / child.name).exists()
+                      for child in wrapper_content
+                  ):
+                      for child in wrapper_content:
+                          move(child, repository_directory / child.name)
+                      wrapper.rmdir()
+
+              repository_content = entries(repository_directory)
+              if (
+                  len(repository_content) <= 3
+                  and all(child.is_file() for child in repository_content)
+                  and all(
+                      not (directory / child.name).exists()
+                      for child in repository_content
+                  )
+              ):
+                  for child in repository_content:
+                      move(child, directory / child.name)
+                  repository_directory.rmdir()
+
+          def remap(source: Path) -> Path:
+              current = source
+              changed = True
+              while changed:
+                  changed = False
+                  for old, new in moves:
+                      try:
+                          relative = current.relative_to(old)
+                      except ValueError:
+                          continue
+                      next_path = new / relative
+                      if next_path != current:
+                          current = next_path
+                          changed = True
+              return current
+
+          def rewrite_reference(reference: str, markdown_file: Path) -> str:
+              if re.match(r"(?:[a-z]+:|#|/)", reference, re.IGNORECASE):
+                  return reference
+              match = re.fullmatch(r"([^?#]*)([?#].*)?", reference)
+              if match is None or not match.group(1):
+                  return reference
+              origin = markdown_origins.get(markdown_file, markdown_file)
+              source = (origin.parent / match.group(1)).resolve()
+              try:
+                  source.relative_to(directory.resolve())
+              except ValueError:
+                  return reference
+              target = remap(source)
+              if target == source:
+                  return reference
+              return (
+                  os.path.relpath(target, markdown_file.parent)
+                  .replace(os.sep, "/")
+                  + (match.group(2) or "")
+              )
+
+          markdown_image = re.compile(
+              r"(!\[[^\]]*\]\(\s*<?)([^\s)>]+)(?=[\s)>])"
+          )
+          html_image = re.compile(
+              r"(<img\b[^>]*?\bsrc=[\"'])([^\"']+)(?=[\"'])",
+              re.IGNORECASE,
+          )
+          for markdown_file in files_below(directory):
+              relative_parts = markdown_file.relative_to(directory).parts
+              in_docs = any(
+                  part.casefold() == "docs"
+                  for part in relative_parts[:-1]
+              )
+              is_readme = "readme" in markdown_file.name.casefold()
+              if markdown_file.suffix.casefold() != ".md" or not (in_docs or is_readme):
+                  continue
+              source = markdown_file.read_text(encoding="utf-8")
+              rewritten = markdown_image.sub(
+                  lambda match: match.group(1) + rewrite_reference(
+                      match.group(2),
+                      markdown_file,
+                  ),
+                  source,
+              )
+              rewritten = html_image.sub(
+                  lambda match: match.group(1) + rewrite_reference(
+                      match.group(2),
+                      markdown_file,
+                  ),
+                  rewritten,
+              )
+              if rewritten != source:
+                  markdown_file.write_text(rewritten, encoding="utf-8")
+
+          return [
+              str(file.relative_to(directory))
+              for file in files_below(directory)
+          ]
 
 
       def manifest_is_valid(manifest_file: Path) -> bool:
@@ -2176,6 +2402,8 @@ let
                       keep_readme_at_root=release_readme_exists,
                   )
 
+                  downloaded = normalize_download_layout(temporary_path)
+
                   set_manifest_repository(temporary_path / MANIFEST_FILE, entry.library_type, entry.repository)
 
                   downloaded_version = manifest_version(temporary_path / MANIFEST_FILE)
@@ -2292,7 +2520,7 @@ let
                   repository,
               )
 
-          return downloaded
+          return normalize_download_layout(directory)
 
 
       def update_theme_entry(
@@ -2460,6 +2688,8 @@ let
                           use_repository_subfolder,
                           keep_readme_at_root=release_readme_exists,
                       )
+
+                      downloaded = normalize_download_layout(staging)
 
                       set_manifest_repository(staging / MANIFEST_FILE, entry.library_type, entry.repository)
 
@@ -2806,6 +3036,8 @@ let
                       use_repository_subfolder,
                       keep_readme_at_root=release_readme_exists,
                   )
+
+                  downloaded = normalize_download_layout(staging)
 
                   set_manifest_repository(staging / MANIFEST_FILE, library_type, repository)
 

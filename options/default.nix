@@ -6,11 +6,12 @@
 # Cross-machine settings that are not package declarations. Every value
 # here is written once and read by every machine that needs it.
 #
-# Read whichever values a caller needs, supplying only the arguments
-# those values require:
+# This shared options helper exposes repository-owned values for host
+# construction to pass into modules as custom arguments. Paths remain defined
+# in paths.nix; this file only re-exports that existing value.
 #
-#   (import ../options { }).nixpkgsConfig
-#   (import ../options { inherit inputs pkgs; }).unstablePkgs
+# Feature modules receive those values through specialArgs or
+# home-manager.extraSpecialArgs instead of evaluating this helper themselves.
 #
 # Every argument defaults to null, and Nix is lazy, so a value is only
 # built when something actually reads it.
@@ -43,10 +44,7 @@ let
   # ------ UNSTABLE PACKAGE SET ------ #
   #
   # Built for the current system under the same policy as the stable
-  # set. Read it in any module that needs an unstable package:
-  #
-  #   helpers = import ../options { inherit inputs lib options pkgs; };
-  #   inherit (helpers) unstablePkgs;
+  # set. The host passes it through specialArgs to modules that need it.
   # ------------------------------------------------------------
 
   unstablePkgs = import inputs.nixpkgs-unstable {
@@ -59,11 +57,12 @@ let
   # ------------------------------------------------------------
   # ------ SERVICE OPTION MODULE ------ #
   #
-  # Keeps the service option tree discoverable through the same helper
-  # interface without turning this helper file into a Nix module itself.
+  # Exposes the service option module path to host construction. The path is
+  # then passed to the Home Manager graph rather than imported by a feature.
   # ------------------------------------------------------------
 
   serviceOptions = ./services/default.nix;
+
 in
 {
   inherit

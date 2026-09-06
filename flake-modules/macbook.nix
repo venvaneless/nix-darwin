@@ -34,7 +34,14 @@ let
     overlays = [ macbookOverlay ];
   };
 
-  paths = import ../options/paths.nix { };
+  # Shared option values are loaded once by host construction and supplied
+  # to the system and Home Manager module graphs as module arguments.
+  sharedOptions = import ../options {
+    inherit inputs;
+    pkgs = macbookPkgs;
+  };
+  inherit (sharedOptions) paths serviceOptions unstablePkgs;
+
   platforms = import ../options/platforms.nix { pkgs = macbookPkgs; };
   packageOptions = import ../options/package-options.nix {
     lib = inputs.nixpkgs.lib;
@@ -62,7 +69,7 @@ in
         specialArgs = {
           inherit inputs;
           pkgs = macbookPkgs;
-          inherit packageOptions paths platforms;
+          inherit packageOptions paths platforms serviceOptions unstablePkgs;
           home-manager = inputs.home-manager;
           nix-homebrew = inputs.nix-homebrew;
 

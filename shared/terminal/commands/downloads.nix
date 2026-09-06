@@ -87,6 +87,8 @@ in
               implementation-plan \
               manual_test_plan \
               manual-test-plan \
+              policies \
+              policy \
               security \
               privacy \
               release_checklist \
@@ -115,14 +117,39 @@ in
               readme-cn.md \
               readme-tw.md
 
+          # ---- BLOCKED DOCUMENT TITLE STEMS ---- #
+          #
+          # Strip extensions and separator punctuation before comparing these
+          # document titles. This excludes variants such as CODE_OF_CONDUCT.md,
+          # Code of Conduct.md, and code-of-conduct.md alike.
+          set --local blocked_document_stems \
+              aiassistance \
+              codeofconduct \
+              roadmap \
+              readmeakutagawaja \
+              readmeja \
+              readmesherlock \
+              thirdpartynotices
+
           # ---- FILE NAME ---- #
           set --local filename \
               (string lower -- (basename "$argv[1]"))
+          set --local filename_stem \
+              (string replace -r '\.[^.]*$' "" -- "$filename")
+          set --local normalized_filename_stem \
+              (string replace -ra '[^[:alnum:]]+' "" -- "$filename_stem")
+
+          # ---- MATCH BLOCKED DOCUMENT TITLE STEMS ---- #
+          if contains "$normalized_filename_stem" $blocked_document_stems
+            return 0
+          end
 
           # ---- MATCH BLOCKED BASE NAMES ---- #
           for blocked_name in $blocked_names
             if test "$filename" = "$blocked_name"; or \
-                string match -q "$blocked_name.*" "$filename"
+                string match -q "$blocked_name.*" "$filename"; or \
+                string match -q "$blocked_name-*" "$filename"; or \
+                string match -q "$blocked_name_*" "$filename"
 
               return 0
             end
@@ -134,6 +161,193 @@ in
           end
 
           return 1
+        '';
+      };
+
+      # -----------------------------------------------------------------
+      # ---- Obsidian -> Download path rules ---- #
+      #
+      # Reject localized files and folders before a repository path can be
+      # considered for a permanent plugin or theme download.
+      # -----------------------------------------------------------------
+      __obsidian_download_path_blocked = {
+        description = "Check whether an Obsidian download path is blocked";
+
+        body = ''
+          set --local download_path "$argv[1]"
+
+          if __obsidian_download_name_blocked (basename "$download_path")
+            return 0
+          end
+
+          # Locale markers must be a complete filename segment. This keeps
+          # ordinary words intact while excluding README_KO.md, docs.zh, and
+          # folders named zh, ko, or jp regardless of capitalization.
+          for path_part in (string split / -- "$download_path")
+            if string match -rqi \
+                '(^|[._-])(zh|ko|jp)([._-]|$)' \
+                "$path_part"
+              return 0
+            end
+          end
+
+          return 1
+        '';
+      };
+
+      # -----------------------------------------------------------------
+      # ---- Obsidian -> Download layout normalization ---- #
+      #
+      # Keep compact documentation and preview downloads readable without
+      # retaining one-file wrapper folders or image-folder aliases.
+      # -----------------------------------------------------------------
+      __obsidian_normalize_download_layout = {
+        description = "Normalize downloaded Obsidian documentation and image layouts";
+
+        body = ''
+          set --local library_entry "$argv[1]"
+
+          if not test -d "$library_entry"; or test -L "$library_entry"
+            return 0
+          end
+
+          command node -e '
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const root = path.resolve(process.argv[1]);
+            const imageExtensions = new Set([".gif", ".jpeg", ".jpg", ".png", ".webp"]);
+            const mappings = [];
+            const markdownOrigins = new Map();
+
+            function entries(directory) {
+              return fs.readdirSync(directory, { withFileTypes: true })
+                .filter((entry) => !entry.isSymbolicLink())
+                .sort((left, right) => left.name.localeCompare(right.name));
+            }
+
+            function filesBelow(directory) {
+              const files = [];
+              for (const entry of entries(directory)) {
+                const candidate = path.join(directory, entry.name);
+                if (entry.isDirectory()) files.push(...filesBelow(candidate));
+                else if (entry.isFile()) files.push(candidate);
+              }
+              return files;
+            }
+
+            function directoriesBelow(directory) {
+              const directories = [];
+              for (const entry of entries(directory)) {
+                if (!entry.isDirectory()) continue;
+                const candidate = path.join(directory, entry.name);
+                directories.push(...directoriesBelow(candidate), candidate);
+              }
+              return directories;
+            }
+
+            function rememberMarkdownOrigins(source, destination) {
+              const sourceFiles = fs.statSync(source).isDirectory() ? filesBelow(source) : [source];
+              for (const sourceFile of sourceFiles) {
+                if (path.extname(sourceFile).toLowerCase() !== ".md") continue;
+                const relative = fs.statSync(source).isDirectory() ? path.relative(source, sourceFile) : "";
+                markdownOrigins.set(path.join(destination, relative), markdownOrigins.get(sourceFile) || sourceFile);
+              }
+            }
+
+            function move(source, destination) {
+              if (fs.existsSync(destination)) return false;
+              rememberMarkdownOrigins(source, destination);
+              fs.renameSync(source, destination);
+              mappings.push([source, destination]);
+              return true;
+            }
+
+            function isImage(file) {
+              return imageExtensions.has(path.extname(file).toLowerCase());
+            }
+
+            for (const directory of directoriesBelow(root)) {
+              const name = path.basename(directory).toLowerCase();
+              const containedFiles = filesBelow(directory);
+              const isImageFolder = name === "images";
+              const isImageOnlyAf = name === "af" && containedFiles.length > 0 && containedFiles.every(isImage);
+              if (!isImageFolder && !isImageOnlyAf) continue;
+              move(directory, path.join(path.dirname(directory), "assets"));
+            }
+
+            for (const directory of directoriesBelow(root)) {
+              const name = path.basename(directory).toLowerCase();
+              if (name === "assets" || name === "docs") continue;
+              const content = entries(directory);
+              if (content.length !== 1 || !content[0].isFile()) continue;
+              move(path.join(directory, content[0].name), path.join(path.dirname(directory), content[0].name));
+              if (entries(directory).length === 0) fs.rmdirSync(directory);
+            }
+
+            const repositoryDirectory = path.join(root, "repo");
+            if (fs.existsSync(repositoryDirectory) && fs.statSync(repositoryDirectory).isDirectory()) {
+              const repositoryContent = entries(repositoryDirectory);
+              const wrapperDirectories = repositoryContent.filter((entry) => entry.isDirectory());
+              const wrapperFiles = repositoryContent.filter((entry) => entry.isFile());
+              if (wrapperDirectories.length === 1 && wrapperFiles.length > 0 && wrapperFiles.every((entry) => entry.name.toLowerCase().includes("readme"))) {
+                const wrapper = path.join(repositoryDirectory, wrapperDirectories[0].name);
+                const wrapperContent = entries(wrapper);
+                if (wrapperContent.every((entry) => !fs.existsSync(path.join(repositoryDirectory, entry.name)))) {
+                  for (const entry of wrapperContent) move(path.join(wrapper, entry.name), path.join(repositoryDirectory, entry.name));
+                  fs.rmdirSync(wrapper);
+                }
+              }
+
+              const finalRepositoryContent = entries(repositoryDirectory);
+              if (finalRepositoryContent.length <= 3 && finalRepositoryContent.every((entry) => entry.isFile()) && finalRepositoryContent.every((entry) => !fs.existsSync(path.join(root, entry.name)))) {
+                for (const entry of finalRepositoryContent) move(path.join(repositoryDirectory, entry.name), path.join(root, entry.name));
+                fs.rmdirSync(repositoryDirectory);
+              }
+            }
+
+            function remap(source) {
+              let current = source;
+              for (let changed = true; changed;) {
+                changed = false;
+                for (const [from, to] of mappings) {
+                  if (current === from || current.startsWith(from + path.sep)) {
+                    const next = to + current.slice(from.length);
+                    if (next !== current) {
+                      current = next;
+                      changed = true;
+                    }
+                  }
+                }
+              }
+              return current;
+            }
+
+            function rewriteReference(reference, markdownFile) {
+              if (/^(?:[a-z]+:|#|\/)/i.test(reference)) return reference;
+              const match = reference.match(/^([^?#]*)([?#].*)?$/);
+              if (!match || !match[1]) return reference;
+              const origin = markdownOrigins.get(markdownFile) || markdownFile;
+              const source = path.resolve(path.dirname(origin), match[1]);
+              if (source !== root && !source.startsWith(root + path.sep)) return reference;
+              const target = remap(source);
+              if (target === source) return reference;
+              return path.relative(path.dirname(markdownFile), target).split(path.sep).join("/") + (match[2] || "");
+            }
+
+            for (const markdownFile of filesBelow(root)) {
+              const relative = path.relative(root, markdownFile).split(path.sep);
+              const inDocs = relative.slice(0, -1).some((part) => part.toLowerCase() === "docs");
+              const isReadme = path.basename(markdownFile).toLowerCase().includes("readme");
+              if (!inDocs || path.extname(markdownFile).toLowerCase() !== ".md") {
+                if (!isReadme || path.extname(markdownFile).toLowerCase() !== ".md") continue;
+              }
+              const source = fs.readFileSync(markdownFile, "utf8");
+              const rewritten = source
+                .replace(/(!\[[^\]]*\]\(\s*<?)([^\s)>]+)(?=[\s)>])/g, (whole, prefix, reference) => prefix + rewriteReference(reference, markdownFile))
+                .replace(/(<img\b[^>]*?\bsrc=["\x27])([^"\x27]+)(?=["\x27])/gi, (whole, prefix, reference) => prefix + rewriteReference(reference, markdownFile));
+              if (rewritten !== source) fs.writeFileSync(markdownFile, rewritten, "utf8");
+            }
+          ' "$library_entry"
         '';
       };
 
@@ -465,6 +679,8 @@ in
 
             functions \
               __obsidian_download_name_blocked \
+              __obsidian_download_path_blocked \
+              __obsidian_normalize_download_layout \
               __obsidian_repository_fallback_name \
               __obsidian_is_named_release_archive \
               "$downloader_function" \
@@ -1658,17 +1874,14 @@ in
               set filtered_repository_paths
 
               for repository_path in $repository_paths
-                  set repository_file_name \
-                      (basename "$repository_path")
-
                   if string match -rq \
                           '(^|/)\.[^/]+' \
                           "$repository_path"; or \
                           string match -rq \
                           '(^|/)node_modules/' \
                           "$repository_path"; or \
-                          __obsidian_download_name_blocked \
-                              "$repository_file_name"
+                          __obsidian_download_path_blocked \
+                              "$repository_path"
 
                       continue
                   end
@@ -1710,7 +1923,7 @@ in
                       set release_asset_name "$release_asset_parts[1]"
                       set release_asset_url "$release_asset_parts[2]"
 
-                      if __obsidian_download_name_blocked \
+                      if __obsidian_download_path_blocked \
                               "$release_asset_name"
 
                           continue
@@ -2035,7 +2248,7 @@ in
                       set release_asset_name "$release_asset_parts[1]"
                       set release_asset_url "$release_asset_parts[2]"
 
-                      if __obsidian_download_name_blocked \
+                      if __obsidian_download_path_blocked \
                               "$release_asset_name"
 
                           continue
@@ -2445,6 +2658,8 @@ in
                   continue
               end
 
+              __obsidian_normalize_download_layout "$plugin_stage"
+
               if test "$plugin_directory_exists" -eq 1
                   echo "Updated:"
                   echo "  $plugin_directory"
@@ -2721,17 +2936,14 @@ in
               set filtered_repository_paths
 
               for repository_path in $repository_paths
-                  set repository_file_name \
-                      (basename "$repository_path")
-
                   if string match -rq \
                           '(^|/)\.[^/]+' \
                           "$repository_path"; or \
                           string match -rq \
                           '(^|/)node_modules/' \
                           "$repository_path"; or \
-                          __obsidian_download_name_blocked \
-                              "$repository_file_name"
+                          __obsidian_download_path_blocked \
+                              "$repository_path"
 
                       continue
                   end
@@ -2774,7 +2986,7 @@ in
                       set release_asset_name "$release_asset_parts[1]"
                       set release_asset_url "$release_asset_parts[2]"
 
-                      if __obsidian_download_name_blocked \
+                      if __obsidian_download_path_blocked \
                               "$release_asset_name"
 
                           continue
@@ -3805,6 +4017,8 @@ in
                   continue
               end
 
+              __obsidian_normalize_download_layout "$theme_stage"
+
               if test "$theme_directory_exists" -eq 1
                   echo "Updated:"
                   echo "  $theme_directory"
@@ -4158,6 +4372,10 @@ in
           # are intentionally outside the permanent Obsidian library scope.
           function __obsidian_missing_path_is_unsupported --argument-names repository_path
             if not string match -rq '^[\x00-\x7F]+$' "$repository_path"
+              return 0
+            end
+
+            if __obsidian_download_path_blocked "$repository_path"
               return 0
             end
 
@@ -4882,8 +5100,8 @@ in
                   "$auxiliary_path"; or \
                   __obsidian_missing_path_is_unsupported \
                       "$auxiliary_path"; or \
-                  __obsidian_download_name_blocked \
-                      "$auxiliary_name"
+                  __obsidian_download_path_blocked \
+                      "$auxiliary_path"
 
                 continue
               end
@@ -5149,6 +5367,8 @@ in
             else
               echo "Notice: The restored manifest remains invalid: $library_entry/manifest.json"
             end
+
+            __obsidian_normalize_download_layout "$library_entry"
 
 
           end

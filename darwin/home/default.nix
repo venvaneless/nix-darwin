@@ -4,20 +4,14 @@
 # DARWIN: HOME MANAGER (INTEGRATED)
 # =====================================================================
 
-{ inputs, pkgs, ... }:
-
-let
-  # Service option modules stay available through the shared options helper.
-  helpers = import ../../options { };
-in
+{ inputs, paths, pkgs, serviceOptions, ... }:
 
 {
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
     extraSpecialArgs = {
-      inherit inputs;
-      inherit (helpers) paths;
+      inherit inputs paths serviceOptions;
     };
 
     # Provides the Home Manager sops.* options used by shared/secrets.nix.
@@ -115,7 +109,7 @@ in
         ../../shared/home/sops.nix
 
         # Shared service options and per-machine settings
-        helpers.serviceOptions
+        serviceOptions
         ./services.nix
       ];
     };

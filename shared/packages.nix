@@ -66,6 +66,13 @@ let
       package = pkgs.comma;
     };
 
+    # Command-line client for Cachix binary caches.
+    cachix = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.cachix;
+    };
+
     # Rebuilds the active nix-darwin system configuration.
     # This command is only available on Darwin.
     darwinRebuild = {
@@ -109,6 +116,13 @@ let
       package = pkgs.nix-direnv;
     };
 
+    # Explains why two Nix derivations differ.
+    nixDiff = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.nix-diff;
+    };
+
     # Alternative Nix language server with flake awareness.
     nixd = {
       enable = true;
@@ -130,6 +144,13 @@ let
       package = pkgs.nix-index;
     };
 
+    # Interactive viewer for flake.lock dependency graphs.
+    nixMelt = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.nix-melt;
+    };
+
     # Renders build output as a live dependency tree.
     nixOutputMonitor = {
       enable = true;
@@ -149,6 +170,13 @@ let
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.nix-tree;
+    };
+
+    # Unit test runner for Nix expressions.
+    nixUnit = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.nix-unit;
     };
 
     # Updates package versions and their hashes.
@@ -526,6 +554,13 @@ let
       enable = true;
       installOn = { darwin = true; linux = true; };
       package = pkgs.imagemagick;
+    };
+
+    # Interactive disk usage analyzer.
+    ncdu = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.ncdu;
     };
 
     # 7-Zip-compatible archive tools.
