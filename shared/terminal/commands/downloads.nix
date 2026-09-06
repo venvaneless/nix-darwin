@@ -146,10 +146,17 @@ in
 
           # ---- MATCH BLOCKED BASE NAMES ---- #
           for blocked_name in $blocked_names
+            set --local blocked_dot_pattern \
+              (string join "" -- "$blocked_name" ".*")
+            set --local blocked_hyphen_pattern \
+              (string join "" -- "$blocked_name" "-*")
+            set --local blocked_underscore_pattern \
+              (string join "" -- "$blocked_name" "_*")
+
             if test "$filename" = "$blocked_name"; or \
-                string match -q "$blocked_name.*" "$filename"; or \
-                string match -q "$blocked_name-*" "$filename"; or \
-                string match -q "$blocked_name_*" "$filename"
+                string match -q "$blocked_dot_pattern" "$filename"; or \
+                string match -q "$blocked_hyphen_pattern" "$filename"; or \
+                string match -q "$blocked_underscore_pattern" "$filename"
 
               return 0
             end
