@@ -4,49 +4,79 @@
 # NIX GARBAGE COLLECTION & GENERATION HELPERS
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ nixAliasValues, ... }:
 
-let
-  # ---- Variables from platforms.nix
-  # Platform detection is defined once in options/platforms.nix,
-  # so every module tests the current system the same way.
-  platforms = import ../../../options/platforms.nix { inherit pkgs; };
-  inherit (platforms) isDarwin isLinux;
-
-  # Nix profile and garbage collection helpers.
-  installOn = {
-    darwin = true;
-    linux = true;
-  };
-
-  enabledForCurrentSystem =
-    (isDarwin && installOn.darwin) || (isLinux && installOn.linux);
-in
 {
-  config = lib.mkIf enabledForCurrentSystem {
-    programs.fish.shellAliases = {
+  ven.features.terminal.aliases = {
+    shell = {
       # List all generations of the system profile
-      drg = "sudo -H nix-env --list-generations --profile /nix/var/nix/profiles/system";
+      drg = {
+        command = {
+          darwin = "sudo -H nix-env --list-generations --profile ${nixAliasValues.systemProfile.darwin}";
+          linux = "sudo -H nix-env --list-generations --profile ${nixAliasValues.systemProfile.linux}";
+        };
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
     };
 
-    programs.fish.functions = {
+    functions = {
       # Delete old generations of the system profile
-      ddg = ''
-        sudo -H nix-env --delete-generations $argv --profile /nix/var/nix/profiles/system
-      '';
+      ddg = {
+        command = {
+          darwin = ''
+            sudo -H nix-env --delete-generations $argv --profile ${nixAliasValues.systemProfile.darwin}
+          '';
+          linux = ''
+            sudo -H nix-env --delete-generations $argv --profile ${nixAliasValues.systemProfile.linux}
+          '';
+        };
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
 
       # Delete old generations and collect garbage after the requested number of days
-      ndg = ''
-        sudo nix-collect-garbage --delete-older-than "$argv[1]"d
-      '';
+      ndg = {
+        command = {
+          darwin = "sudo nix-collect-garbage --delete-older-than \"$days\"d";
+          linux = "sudo nix-collect-garbage --delete-older-than \"$days\"d";
+        };
+        days = 3;
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
 
       # Delete old generations and collect garbage older than 30 days
-      ndgcg30 = ''
-        echo "Deleting old generations (+5) and collecting garbage older than 30 days..."
-        sudo -H nix-env --delete-generations +5 --profile /nix/var/nix/profiles/system
-        sudo nix-collect-garbage --delete-older-than 30d
-        echo "Cleanup complete."
-      '';
+      ndgcg30 = {
+        command = {
+          darwin = ''
+            echo "Deleting old generations (+5) and collecting garbage older than 30 days..."
+            sudo -H nix-env --delete-generations +5 --profile ${nixAliasValues.systemProfile.darwin}
+            sudo nix-collect-garbage --delete-older-than 30d
+            echo "Cleanup complete."
+          '';
+          linux = ''
+            echo "Deleting old generations (+5) and collecting garbage older than 30 days..."
+            sudo -H nix-env --delete-generations +5 --profile ${nixAliasValues.systemProfile.linux}
+            sudo nix-collect-garbage --delete-older-than 30d
+            echo "Cleanup complete."
+          '';
+        };
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
     };
   };
 }

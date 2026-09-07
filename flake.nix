@@ -110,9 +110,14 @@
 
     }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      # Governs current per-system Darwin package outputs. Linux and NixOS
-      # host outputs and modules are defined separately in flake-modules/.
-      systems = [ "aarch64-darwin" ];
+      # Governs the per-system package outputs. Darwin builds the local
+      # macOS application packages, and x86_64-linux is required before
+      # the Linux and NixOS host outputs in flake-modules/ can be
+      # evaluated or built from any machine.
+      systems = [
+        "aarch64-darwin"
+        "x86_64-linux"
+      ];
 
       imports = [
         # ---- SHARED BUILDING BLOCKS ---- #

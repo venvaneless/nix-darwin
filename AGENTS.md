@@ -80,6 +80,11 @@ semantics and logic for packages go to:
 options/package-options.nix
 ```
 
+So in short:
+- Files in options/ folder define only their configurable feature shape, defaults, paths, and platform behavior.
+- Implementations of those are implemented outside options/ in either shared/ if for all devices or I choose to add them there, and implementations for each machine in darwin/, nixos/ or imac/
+- Implementations, like paths should be flexible
+
 Remember to do modularisation for semantics and logic in a way that doesn't then require importing the .nix files directly.
 See more in documentation:
 ```text

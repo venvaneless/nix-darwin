@@ -55,13 +55,14 @@ let
   paths = import ./paths.nix { };
 
   # ------------------------------------------------------------
-  # ------ SERVICE OPTION MODULE ------ #
+  # ------ HOME MANAGER OPTION MODULES ------ #
   #
-  # Exposes the service option module path to host construction. The path is
-  # then passed to the Home Manager graph rather than imported by a feature.
+  # Exposes option-module paths to host construction. The paths are then
+  # passed to the Home Manager graph rather than imported by a feature.
   # ------------------------------------------------------------
 
   serviceOptions = ./services/default.nix;
+  terminalOptions = ./terminal-aliases.nix;
 
 in
 {
@@ -70,5 +71,6 @@ in
     unstablePkgs
     paths
     serviceOptions
+    terminalOptions
     ;
 }

@@ -7,10 +7,9 @@
 # file. Each entry keeps its own enable flag, its per-platform installOn
 # toggle, and its Darwin application-link category.
 #
-# This file is imported once per host:
-#   darwin/default.nix       -> environment.systemPackages
-#   linux/default.nix        -> environment.systemPackages
-#   nixos/home-manager.nix   -> home.packages
+# darwin/default.nix imports this at system scope. The standalone Linux
+# Home Manager modules do not import it yet: its Linux entries were
+# flagged while only macOS existed and need an item-by-item audit first.
 #
 # The shared helpers choose that destination automatically, so the same
 # declarations work at system level and inside Home Manager.

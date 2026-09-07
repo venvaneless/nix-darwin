@@ -8,14 +8,8 @@
 #   maintenance helpers out of the shared Fish module
 # =====================================================================
 
-{ config, pkgs, ... }:
+{ config, paths, pkgs, ... }:
 
-let
-  # ---- SHARED PATHS ---- #
-  # Reuse the centralized macOS application, Library, and iCloud paths
-  # instead of repeating literal /Applications and $HOME locations.
-  paths = import ../../options/paths.nix { };
-in
 {
   # ---- MAN PAGE CACHE ---- #
   # macOS uses its built-in `man`; Home Manager's GNU man package is null.

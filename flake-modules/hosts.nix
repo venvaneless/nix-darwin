@@ -73,6 +73,14 @@ in
             config = nixpkgsConfig;
           };
 
+          # Shared option values are loaded once by host construction and
+          # supplied to the module graph as custom arguments, the way
+          # flake-modules/macbook.nix supplies them on Darwin.
+          sharedOptions = import ../options {
+            inherit inputs pkgs;
+          };
+          inherit (sharedOptions) serviceOptions terminalOptions unstablePkgs;
+
           platforms = import ../options/platforms.nix { inherit pkgs; };
           packageOptions = import ../options/package-options.nix {
             lib = inputs.nixpkgs.lib;
@@ -83,7 +91,15 @@ in
           # Lets imported Home Manager modules use the same package set
           # without resolving it indirectly through the module fixpoint.
           homeSpecialArgs = extraSpecialArgs // {
-            inherit packageOptions paths pkgs platforms;
+            inherit
+              packageOptions
+              paths
+              pkgs
+              platforms
+              serviceOptions
+              terminalOptions
+              unstablePkgs
+              ;
           };
         in
         inputs.home-manager.lib.homeManagerConfiguration {
@@ -99,19 +115,57 @@ in
         };
 
       # Creates a NixOS system for a future host with only caller-supplied facts.
-      # Set homeManagerModule when that machine integrates Home Manager as NixOS.
+      # Standalone Home Manager remains a separate flake output.
       mkNixosHost =
         {
           system,
           modules,
-          extraSpecialArgs ? { },
+          specialArgs ? { },
           nixpkgsConfig ? sharedNixpkgsConfig,
-          homeManagerModule ? null,
         }:
+        let
+          # Built here only so the shared helpers below can be evaluated
+          # before the module fixpoint exists. The host's own package set is
+          # still built by the NixOS module system from the same policy.
+          hostPkgs = import inputs.nixpkgs {
+            inherit system;
+            config = nixpkgsConfig;
+          };
+
+          # Shared option values are loaded once by host construction and
+          # supplied to the module graph as custom arguments.
+          sharedOptions = import ../options {
+            inherit inputs;
+            pkgs = hostPkgs;
+          };
+          inherit (sharedOptions) serviceOptions unstablePkgs;
+
+          platforms = import ../options/platforms.nix { pkgs = hostPkgs; };
+          packageOptions = import ../options/package-options.nix {
+            lib = inputs.nixpkgs.lib;
+            inherit paths platforms;
+            pkgs = hostPkgs;
+            installTarget = "system";
+          };
+
+          # nixosSystem accepts specialArgs and silently ignores every
+          # argument it does not know, so anything a module expects has to
+          # be merged in here. pkgs is deliberately absent: NixOS supplies
+          # it from the module system, built with the policy below.
+          hostSpecialArgs = specialArgs // {
+            inherit
+              packageOptions
+              paths
+              platforms
+              serviceOptions
+              unstablePkgs
+              ;
+          };
+        in
         inputs.nixpkgs.lib.nixosSystem {
           inherit system;
 
-          inherit extraSpecialArgs;
+          specialArgs = hostSpecialArgs;
 
           modules =
             [
@@ -125,10 +179,7 @@ in
                 nixpkgs.config = lib.mkDefault nixpkgsConfig;
               })
             ]
-            ++ inputs.nixpkgs.lib.optional (
-              homeManagerModule != null
-            ) inputs.home-manager.nixosModules.home-manager
-            ++ inputs.nixpkgs.lib.optional (homeManagerModule != null) homeManagerModule;
+            ;
         };
     };
   };

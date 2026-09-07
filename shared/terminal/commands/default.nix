@@ -9,7 +9,6 @@
 {
   imports = [
     ./chmod.nix
-    ./files-folders.nix
     ./downloads.nix
   ];
 

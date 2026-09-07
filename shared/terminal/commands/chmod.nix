@@ -7,13 +7,9 @@
 # Makes one script executable, or all scripts in a folder
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ config, lib, platforms, ... }:
 
 let
-  # ---- Variables from platforms.nix
-  # Platform detection is defined once in options/platforms.nix,
-  # so every module tests the current system the same way.
-  platforms = import ../../../options/platforms.nix { inherit pkgs; };
   inherit (platforms) isDarwin isLinux;
 
   # Makes selected scripts executable.

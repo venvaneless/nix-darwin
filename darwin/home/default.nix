@@ -4,14 +4,14 @@
 # DARWIN: HOME MANAGER (INTEGRATED)
 # =====================================================================
 
-{ inputs, paths, pkgs, serviceOptions, ... }:
+{ inputs, paths, pkgs, platforms, serviceOptions, terminalOptions, ... }:
 
 {
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
     extraSpecialArgs = {
-      inherit inputs paths serviceOptions;
+      inherit inputs paths platforms serviceOptions terminalOptions;
     };
 
     # Provides the Home Manager sops.* options used by shared/secrets.nix.

@@ -1,103 +1,171 @@
-# darwin/terminal/aliases/git-aliases.nix
+# shared/terminal/aliases/git-aliases.nix
 #
 # =====================================================================
 # GIT: ALIASES
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ ... }:
 
-let
-  # ---- Variables from platforms.nix
-  # Platform detection is defined once in options/platforms.nix,
-  # so every module tests the current system the same way.
-  platforms = import ../../../options/platforms.nix { inherit pkgs; };
-  inherit (platforms) isDarwin isLinux;
-
-  # Git aliases and functions shared by the two platforms.
-  installOn = {
-    darwin = true;
-    linux = true;
-  };
-
-  enabledForCurrentSystem =
-    (isDarwin && installOn.darwin) || (isLinux && installOn.linux);
-in
 {
-  config = lib.mkIf enabledForCurrentSystem {
-    programs.fish.shellAliases = {
+  ven.features.terminal.aliases = {
+    shell = {
       # ---------- Git Aliases ---------- #
 
       # ---------------------------------------------------------
       # ---- Stage selected files manually ---- #
       # --- gd -> git add
-      gd = "git add";
+      gd = {
+        command = "git add";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # ---- Stage all new, modified, and deleted files ---- #
-      gda = "git add -A";
+      gda = {
+        command = "git add -A";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # ---- List or manage branches ---- #
-      gb = "git branch";
+      gb = {
+        command = "git branch";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # --- gc -> git commit
       ## Start a git commit
-      gc = "git commit";
+      gc = {
+        command = "git commit";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # ---- # Commit tracked file changes without staging each file ---- #
-      gca = "git commit -a";
+      gca = {
+        command = "git commit -a";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # --- # Start a commit with inline message ---- #
-      gcm = "git commit -m";
+      gcm = {
+        command = "git commit -m";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # ---  Switch branch or restore files with checkout ---- #
-      gco = "git checkout";
+      gco = {
+        command = "git checkout";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # --- # Show git diff ---- #
-      gff = "git diff";
+      gff = {
+        command = "git diff";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # --- guu -> git pull
       #
-      gpu = "git pull";
+      gpu = {
+        command = "git pull";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # --- ghh -> git push
       ## Push commits to remote
-      gph = "git push";
+      gph = {
+        command = "git push";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # --- gss -> git status
       ## Show git status
-      gss = "git status";
+      gss = {
+        command = "git status";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
       # --- l-g -> Open lazygit ----
       #
-      "l-g" = "lazygit";
+      "l-g" = {
+        command = "lazygit";
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
 
       # ---------------------------------------------------------
     };
 
-    programs.fish.functions = {
+    functions = {
       # ---------- Git Functions ---------- #
-  
+
       # ---------------------------------------------------------
       # ---- gm -> Stage all repo changes with drs ---- #
       # Create a git commit using the provided message
@@ -106,39 +174,39 @@ in
       # Example:
       # gm "Adding fzf trash and iCloud functions"
       # ---------------------------------------------------------
-      gm = ''
-        set message (string join " " $argv)
-  
-        if test -z "$message"
-          echo "Usage: gm <commit-message>"
-          return 1
-        end
-  
-        git add -A
-  
-        if git diff --cached --quiet
-          echo "Nothing to commit."
-          return 0
-        end
-  
-        git commit -m "$message"
-        and drs
-      '';
+      gm = {
+        command.commit = {
+          date.enable = true;
+          date.format = "+%Y-%m-%d-%H:%M";
+          rebuild = true;
+        };
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
-      
 
       # ---------------------------------------------------------
       # ---- gaa -> Stage all repo changes ---- #
       #
       # Create a git commit using the provided message
       # ---------------------------------------------------------
-      gaa = ''
-        git add -A
-        and git commit -m "$argv"
-      '';
+      gaa = {
+        command.commit = {
+          date.enable = true;
+          date.format = "+%Y-%m-%d-%H:%M";
+          rebuild = false;
+        };
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
-  
-  
+
       # ---------------------------------------------------------
       # ---- gsd -> Git commit with timestamp + drs ---- #
       # Stage all repository changes
@@ -150,13 +218,18 @@ in
       # gsd "Fixing nginx"
       # -> "Fixing nginx 2026-05-23 19:42"
       # ---------------------------------------------------------
-      gsd = ''
-        set timestamp (date "+%Y-%m-%d %H:%M")
-        set message (string join " " $argv)
-  
-        gaa "$message $timestamp"
-        and drs
-      '';
+      gsd = {
+        command.commit = {
+          date.enable = true;
+          date.format = "+%Y-%m-%d %H:%M";
+          rebuild = true;
+        };
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
@@ -168,7 +241,8 @@ in
       # Example:
       # sbranch
       # ---------------------------------------------------------
-      sbranch = ''
+      sbranch = {
+        command = ''
         if not command -q fzf
           echo "fzf is required for sbranch."
           return 1
@@ -194,7 +268,13 @@ in
         end
 
         git switch "$selected_branch"
-      '';
+        '';
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
@@ -220,7 +300,8 @@ in
       # Example:
       # fbranch
       # ---------------------------------------------------------
-      fbranch = ''
+      fbranch = {
+        command = ''
         if not command -q fzf
           echo "fzf is required for fbranch."
           return 1
@@ -320,7 +401,13 @@ in
         end
 
         git switch "$selected_branch"
-      '';
+        '';
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
@@ -350,7 +437,8 @@ in
       # repo-date https://github.com/user/repo.git
       # repo-date https://gist.github.com/jshmllr/dce62a4c67bb10592c82370a985dd3e4
       # ---------------------------------------------------------
-      repo-date = ''
+      repo-date = {
+        command = ''
         if test (count $argv) -lt 1
           echo "Usage: repo-date <repo-path-or-url>"
           return 1
@@ -392,7 +480,13 @@ in
         if test "$cleanup" -eq 1
           rm -rf "$repo"
         end
-      '';
+        '';
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
       # ---------------------------------------------------------
     };
   };

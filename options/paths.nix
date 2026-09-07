@@ -252,9 +252,11 @@ in
 
   relative = rec {
     config = ".config";
+    downloads = "Downloads";
     localBin = ".local/bin";
     nixConfig = ".config/nix/nix-config";
     nixScripts = ".config/nix/nix-scripts";
+    nixFlakeInputGCRoots = ".local/state/nix/gcroots/flake-inputs";
 
     espanso = rec {
       root = "${config}/espanso";

@@ -32,7 +32,12 @@ in
       # directly through this flake.
       _module.args.pkgs = pkgs;
 
-      packages = {
+      # ---- DARWIN-ONLY APPLICATION PACKAGES ---- #
+      # Every derivation below packages a macOS application bundle, so it
+      # is exposed on the Darwin system only. x86_64-linux is listed in
+      # flake.nix for the NixOS host outputs, and would fail to evaluate
+      # these.
+      packages = inputs.nixpkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
         assetsnap = pkgs.callPackage ../darwin/packages/assetsnap.nix { };
 
         better-finder-attributes = pkgs.callPackage ../darwin/packages/better-finder-attributes.nix { };

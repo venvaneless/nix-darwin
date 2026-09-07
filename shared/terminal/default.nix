@@ -11,41 +11,41 @@
   config,
   lib,
   pkgs,
+  paths,
+  platforms,
+  terminalOptions,
   ...
 }:
 
 let
-  # ---- SHARED PATHS ---- #
-  # Only the home-relative fragments are used here; this module runs on
-  # Darwin and Linux, so the home prefix stays dynamic.
-  paths = import ../../options/paths.nix { };
-
-  # ---- Variables from platforms.nix
-  # Platform detection is defined once in options/platforms.nix,
-  # so every module tests the current system the same way.
-  platforms = import ../../options/platforms.nix { inherit pkgs; };
-  inherit (platforms) isDarwin isLinux;
-
+  # ---- PLATFORM DETECTION ---- #
+  # Host construction supplies the shared platform helper, so this module
+  # uses options/platforms.nix without importing it directly.
   fish = {
     # Ghost text shown from Fish history and completions.
-    autosuggestions.installOn = {
-      darwin = true;
-      linux = true;
+    autosuggestions = {
+      enable = true;
+      installOn = {
+        darwin = true;
+        linux = true;
+      };
     };
 
     # Pairs brackets and quotes while typing.
-    plugins.autopair.installOn = {
-      darwin = true;
-      linux = true;
+    plugins.autopair = {
+      enable = true;
+      installOn = {
+        darwin = true;
+        linux = true;
+      };
     };
   };
 
-  enabledForCurrentSystem =
-    feature:
-    (isDarwin && feature.installOn.darwin) || (isLinux && feature.installOn.linux);
+  enabledForCurrentSystem = platforms.enabledForCurrentPlatform;
 in
 {
   imports = [
+    terminalOptions
     ./aliases
     ./commands
     ./fish-themes.nix

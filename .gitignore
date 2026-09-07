@@ -5,6 +5,7 @@
 # -------- nix build outputs (local) --------
 result
 result-*
+.nix-validation/
 
 
 .flake.lock.override
