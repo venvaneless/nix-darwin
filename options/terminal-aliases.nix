@@ -273,6 +273,16 @@ let
 
       enable = lib.mkEnableOption "terminal entry";
 
+      # ** Fish's own help text for the function: what tab-completion and
+      # ** `type <name>` show beside it. Functions only, since a shell alias
+      # ** and an abbreviation have nowhere to carry one.
+      help = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "Evaluate and build the Nix system configuration";
+        description = "Fish description shown for this function in completions.";
+      };
+
       installOn = {
         darwin = lib.mkOption {
           type = lib.types.bool;
@@ -354,51 +364,49 @@ let
       derivationTarget = platforms.valueForCurrentPlatform command.system.derivationTarget;
     in
     ''
-      function nvalidate --description "Evaluate and build the Nix system configuration with a Downloads log"
-        set -l flake_path "${flakePath}"
-        set -l flake_host "${flakeHost}"
-        set -l downloads_dir "${downloadsDirectory}"
-        set -l timestamp (command date "${command.date.format}")
-        set -l log_file "$downloads_dir/${command.log.file}"
+      set -l flake_path "${flakePath}"
+      set -l flake_host "${flakeHost}"
+      set -l downloads_dir "${downloadsDirectory}"
+      set -l timestamp (command date "${command.date.format}")
+      set -l log_file "$downloads_dir/${command.log.file}"
 
-        if not test -d "$downloads_dir"
-          echo "Downloads folder does not exist: $downloads_dir" >&2
-          return 1
-        end
-
-        set -l configuration_type "${configurationType}"
-        set -l build_target "${buildTarget}"
-
-        echo "Writing validation output to:"
-        echo "$log_file"
-
-        begin
-          echo "Nix system validation"
-          echo "Started: "(command date "+%Y-%m-%d %H:%M:%S %Z")
-          echo "Flake: $flake_path#$flake_host"
-          echo "Configuration: $configuration_type.$flake_host"
-          echo
-          echo "=== Evaluating the system configuration ==="
-
-          if not nix eval "$flake_path#${derivationTarget}"
-            echo "Evaluation failed. The system build was not started."
-            false
-          else
-            echo
-            echo "=== Building the system configuration without activation ==="
-            sudo -H nix build "$flake_path#$build_target" --no-link
-          end
-        end 2>&1 | command tee "$log_file"
-
-        set -l pipeline_status $pipestatus
-
-        if test $pipeline_status[2] -ne 0
-          echo "Could not save the validation output to: $log_file" >&2
-          return 1
-        end
-
-        return $pipeline_status[1]
+      if not test -d "$downloads_dir"
+        echo "Downloads folder does not exist: $downloads_dir" >&2
+        return 1
       end
+
+      set -l configuration_type "${configurationType}"
+      set -l build_target "${buildTarget}"
+
+      echo "Writing validation output to:"
+      echo "$log_file"
+
+      begin
+        echo "Nix system validation"
+        echo "Started: "(command date "+%Y-%m-%d %H:%M:%S %Z")
+        echo "Flake: $flake_path#$flake_host"
+        echo "Configuration: $configuration_type.$flake_host"
+        echo
+        echo "=== Evaluating the system configuration ==="
+
+        if not nix eval "$flake_path#${derivationTarget}"
+          echo "Evaluation failed. The system build was not started."
+          false
+        else
+          echo
+          echo "=== Building the system configuration without activation ==="
+          sudo -H nix build "$flake_path#$build_target" --no-link
+        end
+      end 2>&1 | command tee "$log_file"
+
+      set -l pipeline_status $pipestatus
+
+      if test $pipeline_status[2] -ne 0
+        echo "Could not save the validation output to: $log_file" >&2
+        return 1
+      end
+
+      return $pipeline_status[1]
     '';
 
   renderPinflakeCommand = command:
@@ -1083,30 +1091,37 @@ let
     let
       dateCommand = if command.commit.date.enable then ''
         set -l timestamp (command date "${command.commit.date.format}")
-        set message "$message $timestamp"
+
+        # Git reads the first line as the subject, so a one-line message
+        # keeps the timestamp on that line. A message with a body gets it on
+        # a line of its own at the end, leaving the subject and the body as
+        # they were written.
+        if string match --quiet --regex '\n' -- "$message"
+          set message "$message"\n\n"$timestamp"
+        else
+          set message "$message $timestamp"
+        end
       '' else "";
       rebuildCommand = if command.commit.rebuild then "and drs" else "";
     in
     ''
-      function ${name}
-        set -l message (string join " " $argv)
+      set -l message "$argv"
 
-        if test -z "$message"
-          echo "Usage: ${name} <commit-message>"
-          return 1
-        end
-
-        ${dateCommand}
-        git add -A
-
-        if git diff --cached --quiet
-          echo "Nothing to commit."
-          return 0
-        end
-
-        git commit -m "$message"
-        ${rebuildCommand}
+      if test -z "$message"
+        echo "Usage: ${name} <commit-message>"
+        return 1
       end
+
+      ${dateCommand}
+      git add -A
+
+      if git diff --cached --quiet
+        echo "Nothing to commit."
+        return 0
+      end
+
+      git commit -m "$message"
+      ${rebuildCommand}
     '';
 
   commandForCurrentPlatform = name: entry:
@@ -1152,6 +1167,24 @@ let
     lib.mapAttrs (name: entry: commandForCurrentPlatform name entry) (lib.filterAttrs
       (_: entry: platforms.enabledForCurrentPlatform entry)
       entries);
+
+  # Home Manager accepts either a body string or an attribute set carrying
+  # that body and Fish's description, so an entry with help becomes the
+  # second form and every other entry stays exactly as it was.
+  enabledFunctions = entries:
+    lib.mapAttrs
+      (name: entry:
+        let
+          body = commandForCurrentPlatform name entry;
+        in
+        if entry.help == null then
+          body
+        else
+          {
+            inherit body;
+            description = entry.help;
+          })
+      (lib.filterAttrs (_: entry: platforms.enabledForCurrentPlatform entry) entries);
 
   # ------------------------------------------------------------
   # ------ NIX ALIAS VALUES ------ #
@@ -1235,8 +1268,8 @@ in
     programs.fish = {
       shellAliases = enabledCommands config.ven.features.terminal.aliases.shell;
       functions =
-        enabledCommands config.ven.features.terminal.aliases.functions
-        // enabledCommands config.ven.features.terminal.commands;
+        enabledFunctions config.ven.features.terminal.aliases.functions
+        // enabledFunctions config.ven.features.terminal.commands;
       shellAbbrs = enabledCommands config.ven.features.terminal.aliases.abbreviations;
     };
 

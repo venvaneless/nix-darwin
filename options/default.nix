@@ -63,6 +63,18 @@ let
 
   serviceOptions = ./services/default.nix;
   terminalOptions = ./terminal-aliases.nix;
+  obsidianOptions = ./obsidian/default.nix;
+
+  # ------------------------------------------------------------
+  # ------ SYSTEM OPTION MODULES ------ #
+  #
+  # Exposes system-level option-module paths to host construction. Unlike
+  # the Home Manager paths above, the constructors in
+  # flake-modules/hosts.nix apply these to the system module graph of
+  # every machine.
+  # ------------------------------------------------------------
+
+  nixOptions = ./nix-options.nix;
 
 in
 {
@@ -72,5 +84,7 @@ in
     paths
     serviceOptions
     terminalOptions
+    obsidianOptions
+    nixOptions
     ;
 }

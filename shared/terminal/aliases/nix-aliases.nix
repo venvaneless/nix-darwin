@@ -8,7 +8,7 @@
 # rebuild commands selected automatically for nix-darwin or NixOS.
 # =====================================================================
 
-{ config, nixAliasValues, terminalAliasEntries, ... }:
+{ nixAliasValues, terminalAliasEntries, ... }:
 
 let
   shellAliases = {
@@ -204,6 +204,7 @@ let
 
     nvalidate = {
       enable = true;
+      help = "Evaluate and build the Nix system configuration with a Downloads log";
       installOn = {
         darwin = true;
         linux = true;

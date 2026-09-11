@@ -18,6 +18,23 @@ let
 
   paths = import ../options/paths.nix { };
 
+  # ---- Variables from options/default.nix
+  # Creates the vocabulary for configuring Nix and translates it into
+  # nix.settings. It holds no value of its own and switches nothing on.
+  #
+  # Passed as a module path so the module system supplies its config and
+  # lib arguments instead of this file resolving them.
+  nixOptions = (import ../options { }).nixOptions;
+
+  # ---- SHARED NIX CONFIGURATION ---- #
+  # The values every machine gets. A machine takes precedence over a
+  # scalar, and adds to a list, by naming it in its own default.nix.
+  #
+  # ** Standalone Home Manager receives neither: trusted-users is only
+  # ** honoured in the system-level nix.conf, and flakes have to be enabled
+  # ** before `home-manager switch --flake` can run at all.
+  nixConfiguration = ../shared/nix-options.nix;
+
 in
 {
   # ---- HOME MANAGER FLAKE-PARTS OPTIONS ---- #
@@ -55,6 +72,10 @@ in
           modules = [
             # Provides SOPS secret management.
             inputs.sops-nix.darwinModules.sops
+
+            # Nix's options, then the values every machine gets.
+            nixOptions
+            nixConfiguration
           ] ++ modules;
         };
 
@@ -79,7 +100,7 @@ in
           sharedOptions = import ../options {
             inherit inputs pkgs;
           };
-          inherit (sharedOptions) serviceOptions terminalOptions unstablePkgs;
+          inherit (sharedOptions) serviceOptions terminalOptions obsidianOptions unstablePkgs;
 
           platforms = import ../options/platforms.nix { inherit pkgs; };
           packageOptions = import ../options/package-options.nix {
@@ -98,6 +119,7 @@ in
               platforms
               serviceOptions
               terminalOptions
+              obsidianOptions
               unstablePkgs
               ;
           };
@@ -171,6 +193,10 @@ in
             [
               # Provides SOPS secret management.
               inputs.sops-nix.nixosModules.sops
+
+              # Nix's options, then the values every machine gets.
+              nixOptions
+              nixConfiguration
             ]
             ++ modules
             ++ [

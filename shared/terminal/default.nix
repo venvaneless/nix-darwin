@@ -14,6 +14,7 @@
   paths,
   platforms,
   terminalOptions,
+  obsidianOptions,
   ...
 }:
 
@@ -46,6 +47,7 @@ in
 {
   imports = [
     terminalOptions
+    obsidianOptions
     ./aliases
     ./commands
     ./fish-themes.nix

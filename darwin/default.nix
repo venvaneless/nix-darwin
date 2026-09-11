@@ -14,7 +14,7 @@
 #   - User-level modules live under darwin/modules/home
 # ================================================
 
-{ config, lib, home-manager, pkgs, ... }:
+{ config, lib, home-manager, paths, pkgs, ... }:
 
 {
   # ------------------------------------------------------------
@@ -86,27 +86,24 @@
   # Sets the machine name used by macOS and local networking
   networking.hostName = "Vens-MacBook-Pro";
 
-  # ---- Deduplicate store paths
-  # Automatically optimizes the Nix store by hard-linking duplicates
-  nix.optimise.automatic = true;
-
   # ---- Nix settings
   # Configures flakes, trusted users, build behavior, logs, and caches
-  nix.settings = {
-    experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-
+  #
+  # ** This machine's own values. What is the same on every machine --
+  # ** flakes, the caches, dirty warnings -- is written once in
+  # ** shared/nix-options.nix and is not repeated here.
+  #
+  # ** Any of these may be written as default instead, which takes the
+  # ** value declared in options/nix-options.nix. Written out here so the
+  # ** file says what this Mac actually runs.
+  ven.nix.settings = {
     # System build group
     build-users-group = "nixbld";
 
-    # Use XDG base directories for configuration, state, data, and cache
-    # Moves compatible application files into your preferred ~/.config layout
+    # Use XDG base directories for Nix's own files
+    # ** Only the user profile and channels. Where other tools look is set
+    # ** by the XDG_* variables further down, which are a separate thing.
     use-xdg-base-directories = true;
-
-    # Ignore dirty git tree warnings
-    warn-dirty = false;
 
     # Failure log length
     log-lines = 50;
@@ -121,9 +118,13 @@
     fallback = true;
 
     # Allow trusted users
+    # ** Add a name to this list to trust another account. A trusted user
+    # ** may hand the daemon privileged options, including extra
+    # ** substituters and trusted keys, which is close to root. Never list
+    # ** an account you would not give sudo.
     trusted-users = [
       "root"
-      "ven"
+      paths.user.name
     ];
 
     # Keep build recipes
@@ -132,14 +133,10 @@
     # Keep build results
     keep-outputs = true;
 
-    # ---- Official binary cache ----
-    substituters = [
-      "https://cache.nixos.org"
-    ];
-
-    trusted-public-keys = [
-      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-    ];
+    # Deduplicate store paths by hard-linking duplicates
+    # ** A scheduled service rather than a setting: launchd here, systemd
+    # ** on the NixOS machines.
+    optimise.automatic = true;
   };
 
   # ------------------------------------------------------------

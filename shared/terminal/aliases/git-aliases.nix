@@ -175,6 +175,7 @@
       # gm "Adding fzf trash and iCloud functions"
       # ---------------------------------------------------------
       gm = {
+        help = "Stage everything, commit with a timestamp, then rebuild the system";
         command.commit = {
           date.enable = true;
           date.format = "+%Y-%m-%d-%H:%M";
@@ -194,6 +195,7 @@
       # Create a git commit using the provided message
       # ---------------------------------------------------------
       gaa = {
+        help = "Stage everything and commit with a timestamp";
         command.commit = {
           date.enable = true;
           date.format = "+%Y-%m-%d-%H:%M";
@@ -219,6 +221,7 @@
       # -> "Fixing nginx 2026-05-23 19:42"
       # ---------------------------------------------------------
       gsd = {
+        help = "Stage everything, commit with a timestamp, then rebuild the system";
         command.commit = {
           date.enable = true;
           date.format = "+%Y-%m-%d %H:%M";
