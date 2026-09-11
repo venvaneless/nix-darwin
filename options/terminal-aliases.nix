@@ -255,6 +255,16 @@ let
         default = true;
         description = "Run drs after a successful commit.";
       };
+
+      amend = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Fold the staged changes into the previous commit instead of
+          making a new one. Without a message the previous one is kept
+          untouched; with one it replaces the previous message.
+        '';
+      };
     };
   };
 
@@ -1104,25 +1114,61 @@ let
       '' else "";
       rebuildCommand = if command.commit.rebuild then "and drs" else "";
     in
-    ''
-      set -l message "$argv"
+    if command.commit.amend then
+      ''
+        set -l message "$argv"
 
-      if test -z "$message"
-        echo "Usage: ${name} <commit-message>"
-        return 1
-      end
+        if not git rev-parse --verify --quiet HEAD >/dev/null
+          echo "There is no commit to amend yet."
+          return 1
+        end
 
-      ${dateCommand}
-      git add -A
+        # Amending rewrites the previous commit, so refuse once that commit
+        # has left this machine. Everything before that point is safe.
+        if git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' >/dev/null 2>&1
+          if git merge-base --is-ancestor HEAD '@{upstream}'
+            echo "The last commit is already on the upstream branch."
+            echo "Amending it would rewrite history that has been pushed."
+            return 1
+          end
+        end
 
-      if git diff --cached --quiet
-        echo "Nothing to commit."
-        return 0
-      end
+        git add -A
 
-      git commit -m "$message"
-      ${rebuildCommand}
-    '';
+        if test -z "$message"
+          if git diff --cached --quiet
+            echo "Nothing to add to the last commit."
+            return 0
+          end
+
+          # Keep the previous message exactly as it was, timestamp included.
+          git commit --amend --no-edit
+        else
+          ${dateCommand}
+          git commit --amend -m "$message"
+        end
+        ${rebuildCommand}
+      ''
+    else
+      ''
+        set -l message "$argv"
+
+        if test -z "$message"
+          echo "Usage: ${name} <commit-message>"
+          return 1
+        end
+
+        ${dateCommand}
+        git add -A
+
+        if git diff --cached --quiet
+          echo "Nothing to commit."
+          return 0
+        end
+
+        git commit -m "$message"
+        ${rebuildCommand}
+      '';
 
   commandForCurrentPlatform = name: entry:
     let

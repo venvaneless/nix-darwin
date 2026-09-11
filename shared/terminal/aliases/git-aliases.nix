@@ -190,6 +190,37 @@
       # ---------------------------------------------------------
 
       # ---------------------------------------------------------
+      # ---- gam -> Fold changes into the previous commit ---- #
+      # Stage all repository changes
+      # Add them to the previous commit instead of making a new one
+      # Run darwin-rebuild switch afterwards
+      #
+      # For the "shit, I forgot a file" case right after gm.
+      #
+      # Examples:
+      # gam                       -> keeps the previous message as it is
+      # gam "Fixing nginx again"  -> replaces it, with a fresh timestamp
+      #
+      # ** Refuses once the commit has been pushed, since amending would
+      # ** rewrite history that has left this machine.
+      # ---------------------------------------------------------
+      gam = {
+        help = "Fold staged changes into the previous commit, then rebuild the system";
+        command.commit = {
+          amend = true;
+          date.enable = true;
+          date.format = "+%Y-%m-%d-%H:%M";
+          rebuild = true;
+        };
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+      };
+      # ---------------------------------------------------------
+
+      # ---------------------------------------------------------
       # ---- gaa -> Stage all repo changes ---- #
       #
       # Create a git commit using the provided message
