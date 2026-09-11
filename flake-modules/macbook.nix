@@ -40,7 +40,7 @@ let
     inherit inputs;
     pkgs = macbookPkgs;
   };
-  inherit (sharedOptions) paths serviceOptions terminalOptions obsidianOptions unstablePkgs;
+  inherit (sharedOptions) paths serviceOptions terminalOptions featureOptions obsidianOptions unstablePkgs;
 
   platforms = import ../options/platforms.nix { pkgs = macbookPkgs; };
   packageOptions = import ../options/package-options.nix {
@@ -69,7 +69,7 @@ in
         specialArgs = {
           inherit inputs;
           pkgs = macbookPkgs;
-          inherit packageOptions paths platforms serviceOptions terminalOptions obsidianOptions unstablePkgs;
+          inherit packageOptions paths platforms serviceOptions terminalOptions featureOptions obsidianOptions unstablePkgs;
           home-manager = inputs.home-manager;
           nix-homebrew = inputs.nix-homebrew;
 

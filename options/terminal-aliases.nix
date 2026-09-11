@@ -1114,7 +1114,11 @@ let
       '' else "";
       rebuildCommand = if command.commit.rebuild then "and drs" else "";
     in
-    if command.commit.amend then
+    # ** commitCommandType below is declared but never wired into
+    # ** commandType, so an entry only has the keys it writes out. amend is
+    # ** read defensively for that reason: gm, gaa and gsd do not mention
+    # ** it, and only gam does.
+    if command.commit.amend or false then
       ''
         set -l message "$argv"
 

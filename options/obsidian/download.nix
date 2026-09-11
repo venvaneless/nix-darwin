@@ -1,7 +1,7 @@
-# shared/terminal/commands/obsidian-download-core.nix
+# options/obsidian/download-core.nix
 #
 # =====================================================================
-# FISH FUNCTIONS: INDEPENDENT OBSIDIAN DOWNLOAD CORE
+# OBSIDIAN: DOWNLOAD IMPLEMENTATION
 #
 # Private plugin, theme, and missing-file helpers for `obsidian`.
 # =====================================================================
@@ -25,11 +25,11 @@ let
   # ** selector is applied per entry. Handing it cfg.paths whole returns
   # ** null, because that set has no darwin attribute of its own.
   commandPaths = lib.mapAttrs (_: platforms.valueForCurrentPlatform) cfg.paths;
+  pluginFailureReport = platforms.valueForCurrentPlatform cfg.downloads.plugins.failureReport;
+  themeFailureReport = platforms.valueForCurrentPlatform cfg.downloads.themes.failureReport;
   policy = cfg.policy;
   renderFishList = values:
     lib.concatMapStringsSep " \\\n              " lib.escapeShellArg values;
-  commandEnabled = platforms.enabledForCurrentPlatform cfg;
-
   legacyTrashCommand =
     if isDarwin then
       ''
@@ -52,9 +52,9 @@ let
       '';
 in
 {
-  config = lib.mkIf commandEnabled {
-    # Linux and NixOS use the pinned trash-cli main program in the safe
-    # legacy-file cleanup branch below.
+  # Linux uses the pinned trash-cli program in the safe legacy-file cleanup
+  # branch. The single shared command module decides when to install it.
+  config = lib.mkIf (platforms.enabledForCurrentPlatform cfg) {
     home.packages = lib.optionals (isLinux && cfg.policy.interaction.useLinuxTrash) [ pkgs.trash-cli ];
 
     programs.fish.functions = {
@@ -473,26 +473,21 @@ in
       };
 
       # -----------------------------------------------------------------
-      # ---- gitdll -> Download Git repositories or rebuild Obsidian libraries ---- #
+      # ---- obsidian-dll -> Download or rebuild Obsidian libraries ---- #
       #
       # Existing repository download modes:
-      # gitdll "https://github.com/owner/repository"
-      # gitdll "https://github.com/owner/one" "https://github.com/owner/two"
-      # gitdll links.txt
-      #
       # Obsidian download modes:
-      # gitdll --plugin "https://github.com/owner/plugin" [...]
-      # gitdll --theme links.txt [...]
-      # gitdll-plugins "https://github.com/owner/plugin" [...]
-      # gitdll-themes links.txt [...]
+      # obsidian-dll --plugins "https://github.com/owner/plugin" [...]
+      # obsidian-dll --themes links.txt [...]
       #
       # In the Obsidian modes, source directories are checked one level deep.
-      # A saved manifest URL is reused immediately. When it is absent, gitdll
+      # A saved manifest URL is reused immediately. When it is absent, the
+      # independent downloader
       # resolves only matching repository metadata; the downloaded manifest is
       # the sole place where the resolved URL is retained.
       # -----------------------------------------------------------------
       __obsidian_command_gitdll = {
-        description = "Download Git repositories, Obsidian plugins, or Obsidian themes";
+        description = "Download independent Obsidian plugins or themes";
 
         body = ''
           if test (count $argv) -gt 0; and \
@@ -561,8 +556,8 @@ in
               echo "Error: At least one repository URL, source folder, or link file is required."
               echo
               echo "Usage:"
-              echo '  gitdll --plugin "https://github.com/owner/plugin" [...]'
-              echo '  gitdll --theme links.txt [...]'
+              echo '  obsidian-dll --plugins "https://github.com/owner/plugin" [...]'
+              echo '  obsidian-dll --themes links.txt [...]'
               return 1
             end
 
@@ -600,7 +595,8 @@ in
             set --local library_type
             set --local downloader_function
             set --local manifest_url_field
-            set --local failed_report_name
+            set --local save_failure_report
+            set --local failure_report_path
 
             if test "$mode" = "--plugins"
               if not functions -q __obsidian_command_gitdll_plugins
@@ -611,8 +607,8 @@ in
               set library_type plugins
               set downloader_function __obsidian_command_gitdll_plugins
               set manifest_url_field pluginUrl
-              set failed_report_name \
-                failed-plugin-downloads.txt
+              set save_failure_report ${if cfg.downloads.plugins.saveFailureReport then "true" else "false"}
+              set failure_report_path ${lib.escapeShellArg pluginFailureReport}
               if test -z "$destination"
                 set destination "${commandPaths.pluginDownloads}"
               end
@@ -625,8 +621,8 @@ in
               set library_type themes
               set downloader_function __obsidian_command_gitdll_themes
               set manifest_url_field themeUrl
-              set failed_report_name \
-                failed-theme-downloads.txt
+              set save_failure_report ${if cfg.downloads.themes.saveFailureReport then "true" else "false"}
+              set failure_report_path ${lib.escapeShellArg themeFailureReport}
               if test -z "$destination"
                 set destination "${commandPaths.themeDownloads}"
               end
@@ -662,7 +658,7 @@ in
               "$temporary_directory/failed.txt"
 
             set --local failed_report \
-              "$destination/$failed_report_name"
+              "$failure_report_path"
 
             set --local function_file \
               "$temporary_directory/downloader.fish"
@@ -681,14 +677,29 @@ in
             function __obsidian_command_gitdll_write_failure_report \
                 --no-scope-shadowing
 
+              if test "$save_failure_report" != true
+                return 0
+              end
+
               set --local staged_report "$temporary_directory/failed-report.txt"
               command cat "$missing_file" "$failed_file" | \
                 command sort -u >"$staged_report"
 
               if test -s "$staged_report"
+                set --local report_parent (dirname "$failed_report")
+                if not command mkdir -p -- "$report_parent"
+                  echo "Notice: Could not create failure-report directory: $report_parent"
+                  command rm -f -- "$staged_report"
+                  return 0
+                end
+                if test -L "$failed_report"
+                  echo "Notice: Refusing to replace symlinked failure report: $failed_report"
+                  command rm -f -- "$staged_report"
+                  return 0
+                end
                 command mv -- "$staged_report" "$failed_report"
               else
-                command rm -f -- "$staged_report" "$failed_report"
+                command rm -f -- "$staged_report"
               end
             end
 
@@ -1221,7 +1232,11 @@ in
               __obsidian_command_gitdll_write_failure_report
 
               functions -e __obsidian_command_gitdll_write_failure_report
-              echo "Failed. Details: $failed_report"
+              if test "$save_failure_report" = true
+                echo "Failed. Details: $failed_report"
+              else
+                echo "Failed. Failure-report saving is disabled."
+              end
               command rm -rf -- "$temporary_directory"
               command rm -rf -- "$downloader_temporary_directory"
 
@@ -1383,7 +1398,11 @@ in
 
             if test "$downloader_status" -ne 0; or test "$missing_count" -gt 0; or \
                 test "$failed_count" -gt 0
-              echo "Failed. Details: $failed_report"
+              if test "$save_failure_report" = true
+                echo "Failed. Details: $failed_report"
+              else
+                echo "Failed. Failure-report saving is disabled."
+              end
               return 1
             end
 
@@ -1607,7 +1626,7 @@ in
 
         body = ''
           # Parse repository URLs and an optional destination path.
-          set --local destination "$HOME/Downloads/gitdll-plugins"
+          set --local destination "${commandPaths.pluginDownloads}"
           # Required safety files stay mandatory; configured files extend the
           # release and repository recovery set.
           set --local plugin_required_files manifest.json main.js \
@@ -1619,9 +1638,9 @@ in
 
           if test (count $argv) -eq 0
               echo "Usage:"
-              echo '  gitdll-plugins <links.txt>'
-              echo '  gitdll-plugins "https://github.com/owner/repository" [...]'
-              echo '  gitdll-plugins <links.txt-or-repository-url> [...] --to "destination path"'
+              echo '  obsidian-dll --plugins <links.txt>'
+              echo '  obsidian-dll --plugins "https://github.com/owner/repository" [...]'
+              echo '  obsidian-dll --plugins <links.txt-or-repository-url> [...] --to "destination path"'
               return 1
           end
 
@@ -2717,7 +2736,7 @@ in
 
         body = ''
           # Parse repository URLs and an optional destination path.
-          set --local destination "$HOME/Downloads/gitdll-themes"
+          set --local destination "${commandPaths.themeDownloads}"
           # Required safety files stay mandatory; configured files extend the
           # release and repository recovery set.
           set --local theme_required_files manifest.json theme.css \
@@ -2729,9 +2748,9 @@ in
 
           if test (count $argv) -eq 0
               echo "Usage:"
-              echo '  gitdll-themes <links.txt>'
-              echo '  gitdll-themes "https://github.com/owner/repository" [...]'
-              echo '  gitdll-themes <links.txt-or-repository-url> [...] --to "destination path"'
+              echo '  obsidian-dll --themes <links.txt>'
+              echo '  obsidian-dll --themes "https://github.com/owner/repository" [...]'
+              echo '  obsidian-dll --themes <links.txt-or-repository-url> [...] --to "destination path"'
               return 1
           end
 

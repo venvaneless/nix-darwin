@@ -92,7 +92,7 @@ let
   '';
 in
 {
-  config = lib.mkIf (cfg.enable && cfg.appearance.theme == "otto") {
+  config = lib.mkIf (cfg.enable && cfg.themes.default == "otto") {
     home.file.".config/wezterm/themes/otto.lua".source = luaConfig;
   };
 }

@@ -51,6 +51,7 @@ in
         ../shared/terminal
         ../shared/terminal/nvim
         ../shared/terminal/cli-tuis
+        ../shared/terminal/wezterm
       ];
     };
 
@@ -100,7 +101,7 @@ in
           sharedOptions = import ../options {
             inherit inputs pkgs;
           };
-          inherit (sharedOptions) serviceOptions terminalOptions obsidianOptions unstablePkgs;
+          inherit (sharedOptions) serviceOptions terminalOptions featureOptions obsidianOptions unstablePkgs;
 
           platforms = import ../options/platforms.nix { inherit pkgs; };
           packageOptions = import ../options/package-options.nix {
@@ -119,6 +120,7 @@ in
               platforms
               serviceOptions
               terminalOptions
+              featureOptions
               obsidianOptions
               unstablePkgs
               ;

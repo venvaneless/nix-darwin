@@ -63,6 +63,7 @@ let
 
   serviceOptions = ./services/default.nix;
   terminalOptions = ./terminal-aliases.nix;
+  featureOptions = ./terminal-features.nix;
   obsidianOptions = ./obsidian/default.nix;
 
   # ------------------------------------------------------------
@@ -84,6 +85,7 @@ in
     paths
     serviceOptions
     terminalOptions
+    featureOptions
     obsidianOptions
     nixOptions
     ;

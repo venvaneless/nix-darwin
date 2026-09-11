@@ -65,10 +65,15 @@ let
 
     # ---- Build the system configuration without activating it
     ## Builds the system without switching generations
+    ##
+    ## ** --no-link keeps the build from dropping a result symlink in
+    ## ** whichever directory it was run from. The build still lands in the
+    ## ** store; only the symlink, which is a garbage-collection root, is
+    ## ** skipped. nvalidate builds the same way.
     drb = {
       command = {
-        darwin = "sudo -H darwin-rebuild build --flake ${nixAliasValues.flakePath.darwin}#${nixAliasValues.flakeHost}";
-        linux = "sudo -H nixos-rebuild build --flake ${nixAliasValues.flakePath.linux}#${nixAliasValues.flakeHost}";
+        darwin = "sudo -H darwin-rebuild build --no-link --flake ${nixAliasValues.flakePath.darwin}#${nixAliasValues.flakeHost}";
+        linux = "sudo -H nixos-rebuild build --no-link --flake ${nixAliasValues.flakePath.linux}#${nixAliasValues.flakeHost}";
       };
       enable = true;
       installOn = {

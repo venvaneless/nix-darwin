@@ -17,19 +17,24 @@ in
     ./themes/wez-otto.nix
   ];
 
-  options.ven.features.terminal.wezterm.appearance.theme = lib.mkOption {
-    type = lib.types.enum [
-      "none"
-      "gruvbox"
-      "nord"
-      "nord-otto"
-      "otto"
-    ];
-    default = "gruvbox";
-    description = "WezTerm colour theme to load. Set to none for no custom palette.";
-  };
-
   config = lib.mkIf cfg.enable {
+    # ---- THEMES ---- #
+    # The names are the Lua files imported above. Adding a theme means
+    # adding its file to ./themes, importing it, and listing it here.
+    #
+    # ** default is what every machine uses. A machine sets its own in
+    # ** its home file, and none leaves WezTerm's palette alone.
+    ven.features.terminal.wezterm.themes = {
+      list = [
+        "gruvbox"
+        "nord"
+        "nord-otto"
+        "otto"
+      ];
+
+      default = "gruvbox";
+    };
+
     programs.wezterm.settings = {
       # Window
       window_close_confirmation = "NeverPrompt";

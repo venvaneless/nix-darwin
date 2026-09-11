@@ -82,7 +82,7 @@ let
   '';
 in
 {
-  config = lib.mkIf (cfg.enable && cfg.appearance.theme == "gruvbox") {
+  config = lib.mkIf (cfg.enable && cfg.themes.default == "gruvbox") {
     home.file.".config/wezterm/themes/gruvbox.lua".source = luaConfig;
   };
 }

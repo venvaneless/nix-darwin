@@ -1,7 +1,7 @@
-# shared/terminal/commands/obsidian-library-core.nix
+# options/obsidian/library-core.nix
 #
 # =====================================================================
-# INTERNAL COMMAND: OBSIDIAN LIBRARY CORE
+# OBSIDIAN: LIBRARY TUI IMPLEMENTATION
 #
 # Implements the independent `obsidian` library TUI. The original
 # `obsidian-library` command remains an unchanged fallback.
@@ -22,10 +22,10 @@ let
   # ** null, because that set has no darwin attribute of its own.
   commandPaths = lib.mapAttrs (_: platforms.valueForCurrentPlatform) cfg.paths;
   policy = cfg.policy;
+  reuseMovedOptionalFiles = platforms.valueForCurrentPlatform policy.updates.reuseMovedOptionalFiles;
+  actionEnabled = name: platforms.valueForCurrentPlatform cfg.actions.${name};
   pythonBool = value: if value then "True" else "False";
   pythonValue = value: builtins.toJSON value;
-  commandEnabled = platforms.enabledForCurrentPlatform cfg;
-  libraryEnabled = platforms.enabledForCurrentPlatform cfg.modes.library;
   trashCommand =
     if isDarwin || !cfg.policy.interaction.useLinuxTrash then
       ""
@@ -54,6 +54,7 @@ let
       export OBSIDIAN_LIBRARY_FZF_HEIGHT="${cfg.policy.fzfHeight}"
       export OBSIDIAN_LIBRARY_ERROR_REPORT="${commandPaths.libraryErrorReport}"
       export OBSIDIAN_LIBRARY_FAILURE_REPORT_DIR="${commandPaths.libraryFailureReport}"
+      export OBSIDIAN_LIBRARY_PARTIAL_DOWNLOADS_DIR="${commandPaths.partialDownloads}"
 
       # Keep standard input attached to the terminal for the interactive
       # menus; feeding Python through stdin makes every input() raise EOF.
@@ -97,6 +98,8 @@ let
       THEME_URL_FIELD = "themeUrl"
       ABANDONED_FIELD = "abandoned"
       ARCHIVED_FIELD = "archived"
+      SOURCE_REVISION_FIELD = "obsidianSourceRevision"
+      OPTIONAL_CONTENT_FIELD = "obsidianOptionalContent"
       README_FILE = "README.md"
       DEFAULT_DOWNLOADS_DIR = Path("${commandPaths.libraryReports}")
       GH_BIN = os.environ["OBSIDIAN_LIBRARY_GH"]
@@ -109,6 +112,9 @@ let
       FZF_HEIGHT = os.environ["OBSIDIAN_LIBRARY_FZF_HEIGHT"]
       ERROR_REPORT = Path(os.environ["OBSIDIAN_LIBRARY_ERROR_REPORT"])
       FAILURE_REPORT_DIR = Path(os.environ["OBSIDIAN_LIBRARY_FAILURE_REPORT_DIR"])
+      PARTIAL_DOWNLOADS_DIR = Path(os.environ["OBSIDIAN_LIBRARY_PARTIAL_DOWNLOADS_DIR"])
+      MISSING_REQUEST_FILE = os.environ.get("OBSIDIAN_LIBRARY_MISSING_REQUEST_FILE", "")
+      MISSING_ENABLED = os.environ.get("OBSIDIAN_LIBRARY_MISSING_ENABLED", "0") == "1"
 
       # The independent command renders its complete policy tree here. The
       # original obsidian-library remains a separate, unchanged fallback.
@@ -122,6 +128,21 @@ let
       KEEP_NESTED_CONTENT = ${pythonBool policy.content.keepNestedContent}
       PROMPT_ARCHIVE_STATUS = ${pythonBool policy.interaction.promptForArchiveStatus}
       CONFIRM_SELECTED_UPDATES = ${pythonBool policy.interaction.confirmSelectedUpdates}
+      REUSE_MOVED_OPTIONAL_FILES = ${pythonBool reuseMovedOptionalFiles}
+      REPAIR_INCOMPLETE = ${pythonBool policy.updates.repairIncomplete}
+      SKIP_CURRENT = ${pythonBool policy.updates.skipCurrent}
+      BROWSE_PLUGINS_ENABLED = ${pythonBool (actionEnabled "browsePlugins")}
+      BROWSE_THEMES_ENABLED = ${pythonBool (actionEnabled "browseThemes")}
+      CHECK_UPDATES_ENABLED = ${pythonBool (actionEnabled "checkUpdates")}
+      ALTERNATE_VERSION_ENABLED = ${pythonBool (actionEnabled "alternateVersion")}
+      REMOVE_ENABLED = ${pythonBool (actionEnabled "remove")}
+      ARCHIVE_STATUS_ENABLED = ${pythonBool (actionEnabled "archiveStatus")}
+      AUDIT_LOCAL_ENABLED = ${pythonBool (actionEnabled "auditLocal")}
+      AUDIT_REMOTE_ENABLED = ${pythonBool (actionEnabled "auditRemote")}
+      DOWNLOAD_PLUGIN_ENABLED = ${pythonBool (actionEnabled "downloadPlugin")}
+      DOWNLOAD_THEME_ENABLED = ${pythonBool (actionEnabled "downloadTheme")}
+      DOWNLOAD_PLUGIN_PATHS_ENABLED = ${pythonBool (actionEnabled "downloadPluginPaths")}
+      DOWNLOAD_THEME_PATHS_ENABLED = ${pythonBool (actionEnabled "downloadThemePaths")}
       PLUGIN_REQUIRED_FILES = tuple(${pythonValue policy.content.pluginRequiredFiles})
       PLUGIN_OPTIONAL_FILES = tuple(${pythonValue policy.content.pluginOptionalFiles})
       THEME_REQUIRED_FILES = tuple(${pythonValue policy.content.themeRequiredFiles})
@@ -134,60 +155,6 @@ let
       BLOCKED_PATH_SEGMENTS = set(${pythonValue policy.exclusions.pathSegments})
       LOCALE_MARKERS = set(${pythonValue policy.exclusions.localeMarkers})
 
-      # Legacy literals below are intentionally removed: the values above are
-      # the single source of truth for this independent implementation.
-      _UNUSED_BLOCKED_DOWNLOAD_NAMES = {
-          "agents",
-          "algorithm",
-          "architecture",
-          "claude",
-          "license",
-          "changelog",
-          "contributing",
-          "continent_design",
-          "continent-design",
-          "codex_task",
-          "codex-task",
-          "decisions",
-          "design_system",
-          "design-system",
-          "implementation_plan",
-          "implementation-plan",
-          "manual_test_plan",
-          "manual-test-plan",
-          "policies",
-          "policy",
-          "security",
-          "privacy",
-          "release_checklist",
-          "release-checklist",
-          "usage_examples",
-          "usage-examples",
-          "validation",
-      }
-
-      _UNUSED_BLOCKED_DOWNLOAD_FILES = {
-          "agents.md",
-          "changelog.md",
-		  "contributing.md",
-		  "claude.md",
-          "readme-zh_cn.md",
-          "readme-zh_tw.md",
-          "readme-zh.md",
-          "readme-cn.md",
-          "readme-tw.md",
-      }
-      # Compare document titles without punctuation or separators so every
-      # casing, hyphen, underscore, and space variant is excluded.
-      _UNUSED_BLOCKED_DOCUMENT_STEMS = {
-          "aiassistance",
-          "codeofconduct",
-          "roadmap",
-          "readmeakutagawaja",
-          "readmeja",
-          "readmesherlock",
-          "thirdpartynotices",
-      }
       LOCALIZED_PATH_PART = re.compile(
           r"(?:^|[._-])(" + "|".join(re.escape(marker) for marker in LOCALE_MARKERS) + r")(?:$|[._-])",
           re.IGNORECASE,
@@ -430,7 +397,7 @@ let
           return manifest.get(ABANDONED_FIELD) == "yes", manifest.get(ARCHIVED_FIELD) == "yes"
 
 
-      def write_manifest_fields(manifest_path: Path, fields: dict[str, str]) -> None:
+      def write_manifest_fields(manifest_path: Path, fields: dict[str, Any]) -> None:
           if manifest_path.is_symlink():
               raise RuntimeError(f"refusing to replace symlinked {MANIFEST_FILE}: {manifest_path}")
           try:
@@ -535,8 +502,19 @@ let
               raise
 
 
-      def set_manifest_repository(manifest_path: Path, library_type: LibraryType, repository: str) -> None:
-          write_manifest_fields(manifest_path, { repository_field(library_type): f"https://github.com/{repository}" })
+      def set_manifest_repository(
+          manifest_path: Path,
+          library_type: LibraryType,
+          repository: str,
+          source_revision: str | None = None,
+          optional_content: dict[str, str] | None = None,
+      ) -> None:
+          fields = {repository_field(library_type): f"https://github.com/{repository}"}
+          if source_revision is not None:
+              fields[SOURCE_REVISION_FIELD] = source_revision
+          if optional_content is not None:
+              fields[OPTIONAL_CONTENT_FIELD] = optional_content
+          write_manifest_fields(manifest_path, fields)
 
 
       def mark_repository_status(entry: LibraryEntry, field: str) -> str:
@@ -556,6 +534,32 @@ let
           return directory / "repo" / MANIFEST_FILE
 
 
+      def manifest_source_revision(directory: Path) -> str | None:
+          try:
+              manifest = json.loads(manifest_file(directory).read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError):
+              return None
+          revision = manifest.get(SOURCE_REVISION_FIELD) if isinstance(manifest, dict) else None
+          return revision if isinstance(revision, str) and revision else None
+
+
+      def manifest_optional_content(directory: Path) -> dict[str, str]:
+          try:
+              manifest = json.loads(manifest_file(directory).read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError):
+              return {}
+          value = manifest.get(OPTIONAL_CONTENT_FIELD) if isinstance(manifest, dict) else None
+          if not isinstance(value, dict):
+              return {}
+          return {
+              key: digest.casefold()
+              for key, digest in value.items()
+              if isinstance(key, str)
+              and isinstance(digest, str)
+              and re.fullmatch(r"[0-9a-fA-F]{64}", digest)
+          }
+
+
       def manifest_metadata(directory: Path) -> tuple[str, str, str, str | None, bool]:
           source = manifest_file(directory)
           try:
@@ -568,10 +572,10 @@ let
 
           identifier = manifest.get("id")
           name = manifest.get("name")
-          if isinstance(name, str) and name.strip():
-              identifier = name.strip()
-          elif isinstance(identifier, str) and identifier.strip():
+          if isinstance(identifier, str) and identifier.strip():
               identifier = identifier.strip()
+          elif isinstance(name, str) and name.strip():
+              identifier = name.strip()
           else:
               identifier = directory.name
 
@@ -646,6 +650,50 @@ let
           return entries
 
 
+      def canonical_repository(repository: str) -> str:
+          return repository.casefold()
+
+
+      def entries_with_identifier(library_type: LibraryType, identifier: str) -> list[LibraryEntry]:
+          identifier_key = identifier.casefold()
+          return [
+              entry
+              for entry in library_entries(library_type)
+              if entry.identifier.casefold() == identifier_key
+          ]
+
+
+      def existing_entry_for_repository(
+          library_type: LibraryType,
+          identifier: str,
+          repository: str,
+      ) -> LibraryEntry | None:
+          matches = entries_with_identifier(library_type, identifier)
+          repository_key = canonical_repository(repository)
+          conflicts = [
+              entry
+              for entry in matches
+              if entry.repository is not None
+              and canonical_repository(entry.repository) != repository_key
+          ]
+          if conflicts:
+              locations = ", ".join(str(entry.path) for entry in conflicts)
+              raise RuntimeError(
+                  f"[CONFLICT] {identifier}: repository {repository} conflicts with "
+                  f"existing repository entries at {locations}; nothing was overwritten"
+              )
+              return None
+          return next(
+              (
+                  entry
+                  for entry in matches
+                  if entry.repository is not None
+                  and canonical_repository(entry.repository) == repository_key
+              ),
+              None,
+          )
+
+
       def latest_release(repository: str, cache: dict[str, dict[str, Any] | Exception]) -> dict[str, Any]:
           cached = cache.get(repository)
           if isinstance(cached, Exception):
@@ -698,6 +746,42 @@ let
               raise RuntimeError(detail or f"could not download release asset {asset.get('name')}")
 
           destination.write_bytes(completed.stdout)
+
+
+      def asset_sha256(asset: dict[str, Any]) -> str | None:
+          """Return GitHub's release-asset SHA-256 when the API supplies it."""
+          digest = asset.get("digest")
+          if not isinstance(digest, str):
+              return None
+          algorithm, separator, value = digest.partition(":")
+          if algorithm.casefold() != "sha256" or not separator or not re.fullmatch(r"[0-9a-fA-F]{64}", value):
+              return None
+          return value.casefold()
+
+
+      def stage_release_asset(
+          repository: str,
+          asset: dict[str, Any],
+          destination: Path,
+          existing_file: Path,
+      ) -> bool:
+          """Stage only an asset GitHub says changed, otherwise copy the verified local payload."""
+          remote_digest = asset_sha256(asset)
+          local_digest = file_digest(existing_file)
+          if (
+              remote_digest is not None
+              and local_digest is not None
+              and local_digest.hex() == remote_digest
+              and is_nonempty_file(existing_file)
+              and not existing_file.is_symlink()
+          ):
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(existing_file, destination)
+              return False
+
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          download_asset(repository, asset, destination)
+          return True
 
 
       def download_repository_file(repository: str, repository_path: str, destination: Path) -> None:
@@ -759,6 +843,115 @@ let
                   continue
 
           return None
+
+
+      def file_digest(path: Path) -> bytes | None:
+          try:
+              digest = hashlib.sha256()
+              with path.open("rb") as source:
+                  while chunk := source.read(1024 * 1024):
+                      digest.update(chunk)
+              return digest.digest()
+          except OSError:
+              return None
+
+
+      def find_matching_content_file(root: Path, source: Path) -> Path | None:
+          if not REUSE_MOVED_OPTIONAL_FILES or not root.is_dir() or source.is_symlink():
+              return None
+          source_digest = file_digest(source)
+          if source_digest is None:
+              return None
+          try:
+              source_size = source.stat().st_size
+          except OSError:
+              return None
+
+          for candidate in root.rglob("*"):
+              try:
+                  if not candidate.is_file() or candidate.is_symlink() or candidate == source:
+                      continue
+                  if candidate.stat().st_size != source_size:
+                      continue
+                  if file_digest(candidate) == source_digest:
+                      return candidate
+              except OSError:
+                  continue
+          return None
+
+
+      def find_content_by_digest(root: Path, digest: str) -> Path | None:
+          if not root.is_dir():
+              return None
+          for candidate in root.rglob("*"):
+              try:
+                  if not candidate.is_file() or candidate.is_symlink():
+                      continue
+                  if candidate.name in {MANIFEST_FILE, "main.js", "theme.css"}:
+                      continue
+                  candidate_digest = file_digest(candidate)
+                  if candidate_digest is not None and candidate_digest.hex() == digest:
+                      return candidate
+              except OSError:
+                  continue
+          return None
+
+
+      def optional_content_index(directory: Path, filenames: list[str], required_names: set[str]) -> dict[str, str]:
+          index: dict[str, str] = {}
+          for filename in filenames:
+              if filename in required_names:
+                  continue
+              source = directory / filename
+              digest = file_digest(source)
+              if digest is not None and is_nonempty_file(source) and not source.is_symlink():
+                  index[filename] = digest.hex()
+          return index
+
+
+      def replace_changed_file(
+          source: Path,
+          destination: Path,
+          existing_root: Path,
+          required: bool,
+          source_key: str | None = None,
+      ) -> bool:
+          if source.is_symlink() or not is_nonempty_file(source):
+              raise RuntimeError(f"staged file is invalid: {source}")
+
+          # A required Obsidian payload must stay in its canonical location.
+          # Optional content may have been renamed or moved by the user; retain
+          # an identical copy wherever it now lives instead of duplicating it.
+          if not required and find_matching_content_file(existing_root, source) is not None:
+              return False
+
+          # The index keeps the previous download identity even if the user
+          # later renamed or moved that optional file beneath this library
+          # entry. When its remote content changed, update that moved file in
+          # place instead of creating a second canonical-path copy.
+          if not required and source_key is not None:
+              previous_digest = manifest_optional_content(existing_root).get(source_key)
+              if previous_digest is not None:
+                  moved_destination = find_content_by_digest(existing_root, previous_digest)
+                  if moved_destination is not None:
+                      destination = moved_destination
+
+          if destination.exists() and not destination.is_symlink():
+              if file_digest(source) == file_digest(destination):
+                  return False
+          elif destination.is_symlink():
+              raise RuntimeError(f"refusing to replace symlinked destination: {destination}")
+
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          staging = destination.with_name(f".{destination.name}.obsidian-library-new")
+          if staging.exists() or staging.is_symlink():
+              raise RuntimeError(f"staging path already exists or is a symlink: {staging}")
+          shutil.copyfile(source, staging)
+          if not is_nonempty_file(staging):
+              staging.unlink(missing_ok=True)
+              raise RuntimeError(f"staged replacement is empty: {destination}")
+          os.replace(staging, destination)
+          return True
 
 
       def download_repository_readme(
@@ -1478,6 +1671,18 @@ let
           )
 
 
+      def entry_payload_is_healthy(entry: LibraryEntry) -> bool:
+          required_files = configured_required_files(entry.library_type)
+          for filename in required_files:
+              candidate = manifest_file(entry.path) if filename == MANIFEST_FILE else entry.path / filename
+              if candidate.is_symlink() or not is_nonempty_file(candidate):
+                  return False
+
+          if entry.library_type.is_theme:
+              return theme_core_is_healthy(entry.path)
+          return plugin_core_is_healthy(entry.path)
+
+
       def image_names(filenames: list[str]) -> list[str]:
           image_suffixes = {".gif", ".jpeg", ".jpg", ".png", ".webp"}
           return sorted(filename for filename in filenames if Path(filename).suffix.casefold() in image_suffixes)
@@ -1938,12 +2143,17 @@ let
                       return False
 
           if remote_file.release_asset is not None:
-              download_asset(
-                  repository,
-                  remote_file.release_asset,
-                  destination,
-              )
+              for search_root in search_roots:
+                  existing_file = search_root / remote_file.destination_name
+                  if existing_file.is_file() and not existing_file.is_symlink():
+                      return stage_release_asset(
+                          repository,
+                          remote_file.release_asset,
+                          destination,
+                          existing_file,
+                      )
 
+              download_asset(repository, remote_file.release_asset, destination)
               return True
 
           if remote_file.repository_path is not None:
@@ -2019,6 +2229,26 @@ let
           return 1 if local[1] else -1
 
 
+      def release_revision(release: dict[str, Any]) -> str:
+          assets = release_assets(release)
+          state = {
+              "tag": release.get("tag_name"),
+              "updated": release.get("updated_at"),
+              "assets": [
+                  {
+                      "name": name,
+                      "size": asset.get("size"),
+                      "updated": asset.get("updated_at"),
+                      "digest": asset_sha256(asset),
+                  }
+                  for name, asset in sorted(assets.items())
+              ],
+          }
+          return hashlib.sha256(
+              json.dumps(state, sort_keys=True, separators=(",", ":")).encode("utf-8")
+          ).hexdigest()
+
+
       def check_plugin_entry(
           entry: LibraryEntry,
           release_cache: dict[str, dict[str, Any] | Exception],
@@ -2035,6 +2265,24 @@ let
 
           comparison = compare_versions(entry.local_version, remote_version)
           if comparison == 0:
+              remote_revision = release_revision(release)
+              local_revision = manifest_source_revision(entry.path)
+              if local_revision is not None and local_revision != remote_revision:
+                  return CheckResult(
+                      entry,
+                      "UPDATE AVAILABLE",
+                      remote_version,
+                      "release payload revision changed",
+                      release,
+                  )
+              if local_revision is None:
+                  return CheckResult(
+                      entry,
+                      "VERSION DIFFERENT",
+                      remote_version,
+                      "release payload revision has not been recorded yet",
+                      release,
+                  )
               return CheckResult(entry, "UP TO DATE", remote_version, release=release)
           if comparison == -1:
               return CheckResult(entry, "UPDATE AVAILABLE", remote_version, release=release)
@@ -2109,6 +2357,33 @@ let
               )
 
           if source_result.status != "UNAVAILABLE":
+              if not entry_payload_is_healthy(entry):
+                  if not REPAIR_INCOMPLETE:
+                      return CheckResult(
+                          entry,
+                          "INCOMPLETE",
+                          source_result.remote_version,
+                          "required payload is incomplete; repair is disabled by configuration",
+                          source_result.release,
+                          source_result.theme_source,
+                      )
+                  return CheckResult(
+                      entry,
+                      "RECOVERY REQUIRED",
+                      source_result.remote_version,
+                      "required payload is missing, empty, malformed, or incomplete",
+                      source_result.release,
+                      source_result.theme_source,
+                  )
+              if source_result.status == "UP TO DATE" and not SKIP_CURRENT:
+                  return CheckResult(
+                      entry,
+                      "UPDATE AVAILABLE",
+                      source_result.remote_version,
+                      "current-copy skipping is disabled by configuration",
+                      source_result.release,
+                      source_result.theme_source,
+                  )
               return source_result
 
           completed = run([GH_BIN, "api", f"repos/{entry.repository}"])
@@ -2129,7 +2404,11 @@ let
               suffix = mark_repository_status(entry, ARCHIVED_FIELD)
               return CheckResult(entry, "ARCHIVED", message=f"GitHub marks this repository as archived{suffix}")
 
-          return source_result
+          return CheckResult(
+              entry,
+              "UNAVAILABLE",
+              message="remote check could not run; keeping the local copy unchanged",
+          )
 
 
       def show_checks(
@@ -2191,7 +2470,7 @@ let
                   results[index] = result
                   progress = (
                       f"Checked {completed_count}/{len(entries)}: "
-                      f"{entry.library_type.label}: {entry.label} — {result.status}"
+                      "building the selectable update list…"
                   )
                   print(f"\r{progress[:180]:<180}", end="", flush=True)
 
@@ -2206,7 +2485,7 @@ let
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> None:
           updateable = [
-              result.entry
+              result
               for result in results
               if result.status in {"UPDATE AVAILABLE", "VERSION DIFFERENT", "RECOVERY REQUIRED"}
           ]
@@ -2221,13 +2500,13 @@ let
           if answer not in {"y", "yes"}:
               return
 
-          for entry in updateable:
-              update_entry(entry, release_cache, manifest_cache, repository_contents_cache)
+          for result in updateable:
+              update_entry(result, release_cache, manifest_cache, repository_contents_cache)
 
 
       def updateable_results(results: list[CheckResult], library_type: LibraryType) -> list[CheckResult]:
           if library_type.is_theme:
-              allowed_statuses = {"UPDATE AVAILABLE"}
+              allowed_statuses = {"UPDATE AVAILABLE", "RECOVERY REQUIRED"}
           else:
               allowed_statuses = {"UPDATE AVAILABLE", "VERSION DIFFERENT", "RECOVERY REQUIRED"}
 
@@ -2274,7 +2553,7 @@ let
               return
 
           for result in selected_results:
-              update_entry(result.entry, release_cache, manifest_cache, repository_contents_cache)
+              update_entry(result, release_cache, manifest_cache, repository_contents_cache)
 
 
       def update_all_results(
@@ -2302,7 +2581,7 @@ let
               return
 
           for result in updateable:
-              update_entry(result.entry, release_cache, manifest_cache, repository_contents_cache)
+              update_entry(result, release_cache, manifest_cache, repository_contents_cache)
 
 
       def check_library_type(
@@ -2327,13 +2606,11 @@ let
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> None:
-          actions = [
-              "Plugins",
-              "Themes",
-              "Update all plugins",
-              "Update all themes",
-              "Back",
-          ]
+          actions = ["Back"]
+          if BROWSE_THEMES_ENABLED:
+              actions[0:0] = ["Themes", "Update all themes"]
+          if BROWSE_PLUGINS_ENABLED:
+              actions[0:0] = ["Plugins", "Update all plugins"]
           selection = fzf_select(
               actions,
               "updates> ",
@@ -2400,8 +2677,9 @@ let
           entry: LibraryEntry,
           release_cache: dict[str, dict[str, Any] | Exception],
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
+          checked_result: CheckResult | None = None,
       ) -> None:
-          result = check_plugin_entry(entry, release_cache, manifest_cache)
+          result = checked_result or check_entry(entry, release_cache, manifest_cache, {})
           if result.status not in {"UPDATE AVAILABLE", "VERSION DIFFERENT", "RECOVERY REQUIRED"} or result.release is None:
               suffix = f": {result.message}" if result.message else ""
               print(f"[SKIP] {entry.label}: {result.status}{suffix}")
@@ -2414,15 +2692,6 @@ let
               print(f"[SKIP] {entry.label}: latest release is missing {', '.join(missing_files)}")
               return
 
-          if not manifest_is_valid(manifest_file(entry.path)):
-              answer = input(
-                  f"{entry.label}: manifest.json is invalid. "
-                  "Re-download this plugin now? [y/N]: "
-              ).strip().casefold()
-              if answer not in {"y", "yes"}:
-                  print(f"[SKIP] {entry.label}: manifest repair was not confirmed")
-                  return
-
           allowed_files = tuple(assets)
           with tempfile.TemporaryDirectory(prefix="obsidian-library-update-") as temporary_directory:
               temporary_path = Path(temporary_directory)
@@ -2433,7 +2702,17 @@ let
                       if asset is None:
                           continue
                       destination = temporary_path / filename
-                      download_asset(entry.repository, asset, destination)
+                      existing_file = (
+                          manifest_file(entry.path)
+                          if filename == MANIFEST_FILE
+                          else entry.path / filename
+                      )
+                      stage_release_asset(
+                          entry.repository,
+                          asset,
+                          destination,
+                          existing_file,
+                      )
                       downloaded.append(filename)
 
                   readme_path = temporary_path / README_FILE
@@ -2487,7 +2766,15 @@ let
 
                   downloaded = normalize_download_layout(temporary_path)
 
-                  set_manifest_repository(temporary_path / MANIFEST_FILE, entry.library_type, entry.repository)
+                  required_names = set(configured_required_files(entry.library_type))
+
+                  set_manifest_repository(
+                      temporary_path / MANIFEST_FILE,
+                      entry.library_type,
+                      entry.repository,
+                      release_revision(result.release),
+                      optional_content_index(temporary_path, downloaded, required_names),
+                  )
 
                   downloaded_version = manifest_version(temporary_path / MANIFEST_FILE)
                   if downloaded_version != result.remote_version:
@@ -2495,18 +2782,24 @@ let
                           f"downloaded manifest version {downloaded_version} does not match checked release version {result.remote_version}"
                       )
 
+                  replaced: list[str] = []
                   for filename in downloaded:
                       source = temporary_path / filename
                       destination = manifest_file(entry.path) if filename == MANIFEST_FILE else entry.path / filename
-                      destination.parent.mkdir(parents=True, exist_ok=True)
-                      staging = destination.with_name(f".{destination.name}.obsidian-library-new")
-                      shutil.copyfile(source, staging)
-                      os.replace(staging, destination)
+                      if replace_changed_file(
+                          source,
+                          destination,
+                          entry.path,
+                          filename in required_names,
+                          filename,
+                      ):
+                          replaced.append(filename)
               except (OSError, RuntimeError) as error:
                   report_error(f"[FAILED] {entry.label}: {error}")
                   return
 
-          print(f"[UPDATED] {entry.label}: {entry.version_label} -> {result.remote_version} ({', '.join(downloaded)})")
+          changed = ", ".join(replaced) if replaced else "no payload changes"
+          print(f"[UPDATED] {entry.label}: {entry.version_label} -> {result.remote_version} ({changed})")
 
 
       def write_theme_source(
@@ -2596,23 +2889,25 @@ let
                   directory.name,
               )
               downloaded.append(MANIFEST_FILE)
-          else:
-              set_manifest_repository(
-                  manifest_path,
-                  library_type,
-                  repository,
-              )
-
-          return normalize_download_layout(directory)
+          downloaded = normalize_download_layout(directory)
+          required_names = set(configured_required_files(library_type))
+          set_manifest_repository(
+              manifest_path,
+              library_type,
+              repository,
+              optional_content=optional_content_index(directory, downloaded, required_names),
+          )
+          return downloaded
 
 
       def update_theme_entry(
           entry: LibraryEntry,
           release_cache: dict[str, dict[str, Any] | Exception],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
+          checked_result: CheckResult | None = None,
       ) -> None:
-          result = check_theme_entry(entry, release_cache, repository_contents_cache)
-          if result.status != "UPDATE AVAILABLE" or result.theme_source is None:
+          result = checked_result or check_entry(entry, release_cache, {}, repository_contents_cache)
+          if result.status not in {"UPDATE AVAILABLE", "RECOVERY REQUIRED"} or result.theme_source is None:
               suffix = f": {result.message}" if result.message else ""
               print(f"[SKIP] {entry.label}: {result.status}{suffix}")
               return
@@ -2627,30 +2922,38 @@ let
                       result.theme_source,
                       entry.path,
                   )
+                  replaced: list[str] = []
+                  required_names = set(configured_required_files(entry.library_type))
                   for filename in downloaded:
                       source = temporary_path / filename
                       destination = manifest_file(entry.path) if filename == MANIFEST_FILE else entry.path / filename
-                      destination.parent.mkdir(parents=True, exist_ok=True)
-                      staging = destination.with_name(f".{destination.name}.obsidian-library-new")
-                      shutil.copyfile(source, staging)
-                      os.replace(staging, destination)
+                      if replace_changed_file(
+                          source,
+                          destination,
+                          entry.path,
+                          filename in required_names,
+                          filename,
+                      ):
+                          replaced.append(filename)
           except (OSError, RuntimeError) as error:
               report_error(f"[FAILED] {entry.label}: {error}")
               return
 
-          print(f"[UPDATED] {entry.label}: {entry.version_label} -> {result.remote_version} ({', '.join(downloaded)})")
+          changed = ", ".join(replaced) if replaced else "no payload changes"
+          print(f"[UPDATED] {entry.label}: {entry.version_label} -> {result.remote_version} ({changed})")
 
 
       def update_entry(
-          entry: LibraryEntry,
+          result: CheckResult,
           release_cache: dict[str, dict[str, Any] | Exception],
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> None:
+          entry = result.entry
           if entry.library_type.is_theme:
-              update_theme_entry(entry, release_cache, repository_contents_cache)
+              update_theme_entry(entry, release_cache, repository_contents_cache, result)
               return
-          update_plugin_entry(entry, release_cache, manifest_cache)
+          update_plugin_entry(entry, release_cache, manifest_cache, result)
 
 
       def select_release(repository: str) -> dict[str, Any] | None:
@@ -2774,17 +3077,30 @@ let
 
                       downloaded = normalize_download_layout(staging)
 
-                      set_manifest_repository(staging / MANIFEST_FILE, entry.library_type, entry.repository)
+                      set_manifest_repository(
+                          staging / MANIFEST_FILE,
+                          entry.library_type,
+                          entry.repository,
+                          release_revision(release),
+                          optional_content_index(
+                              staging,
+                              downloaded,
+                              set(configured_required_files(entry.library_type)),
+                          ),
+                      )
 
                   if choice == "Replace selected entry":
-                      for source_file in staging.rglob("*"):
-                          if not source_file.is_file():
-                              continue
-                          target = entry.path / source_file.relative_to(staging)
-                          target.parent.mkdir(parents=True, exist_ok=True)
-                          staged = target.with_name(f".{target.name}.obsidian-library-new")
-                          shutil.copyfile(source_file, staged)
-                          os.replace(staged, target)
+                      required_names = set(configured_required_files(entry.library_type))
+                      for filename in downloaded:
+                          source_file = staging / filename
+                          target = manifest_file(entry.path) if filename == MANIFEST_FILE else entry.path / filename
+                          replace_changed_file(
+                              source_file,
+                              target,
+                              entry.path,
+                              filename in required_names,
+                              filename,
+                          )
                   else:
                       os.replace(staging, destination)
           except (OSError, RuntimeError) as error:
@@ -3022,6 +3338,29 @@ let
                       manifest_path,
                       repository,
                   )
+
+                  existing_entry = existing_entry_for_repository(
+                      library_type,
+                      folder_name,
+                      repository,
+                  )
+                  if existing_entry is not None:
+                      result = check_entry(
+                          existing_entry,
+                          release_cache,
+                          {},
+                          repository_contents_cache,
+                      )
+                      if result.status == "UP TO DATE":
+                          print(f"[SKIP] Plugin: {existing_entry.path} is already current")
+                          return
+                      if result.status in {"UPDATE AVAILABLE", "VERSION DIFFERENT", "RECOVERY REQUIRED"}:
+                          update_plugin_entry(existing_entry, release_cache, {}, result)
+                          return
+                      detail = f": {result.message}" if result.message else ""
+                      print(f"[SKIP] Plugin: {existing_entry.path}: {result.status}{detail}")
+                      return
+
                   destination = library_type.root / folder_name
                   refresh_existing_plugin = False
                   if destination.exists():
@@ -3128,16 +3467,30 @@ let
 
                   downloaded = normalize_download_layout(staging)
 
-                  set_manifest_repository(staging / MANIFEST_FILE, library_type, repository)
+                  set_manifest_repository(
+                      staging / MANIFEST_FILE,
+                      library_type,
+                      repository,
+                      release_revision(release) if release is not None else None,
+                      optional_content_index(
+                          staging,
+                          downloaded,
+                          set(configured_required_files(library_type)),
+                      ),
+                  )
 
                   if refresh_existing_plugin:
+                      required_names = set(configured_required_files(library_type))
                       for filename in downloaded:
                           source = staging / filename
                           refreshed_file = destination / filename
-                          refreshed_file.parent.mkdir(parents=True, exist_ok=True)
-                          staging_file = refreshed_file.with_name(f".{refreshed_file.name}.obsidian-library-new")
-                          shutil.copyfile(source, staging_file)
-                          os.replace(staging_file, refreshed_file)
+                          replace_changed_file(
+                              source,
+                              refreshed_file,
+                              destination,
+                              filename in required_names,
+                              filename,
+                          )
                   else:
                       os.replace(staging, destination)
           except (OSError, RuntimeError) as error:
@@ -3162,6 +3515,37 @@ let
               report_error(f"[FAILED] Theme: {error}")
               return
 
+          if not library_type.root.is_dir():
+              report_error(f"[FAILED] Theme: library directory does not exist: {library_type.root}")
+              return
+
+          try:
+              existing_entry = existing_entry_for_repository(
+                  library_type,
+                  folder_name,
+                  repository,
+              )
+          except RuntimeError as error:
+              report_error(f"[SKIP] Theme: {error}")
+              return
+
+          if existing_entry is not None:
+              result = check_entry(
+                  existing_entry,
+                  release_cache,
+                  {},
+                  repository_contents_cache,
+              )
+              if result.status == "UP TO DATE":
+                  print(f"[SKIP] Theme: {existing_entry.path} is already current")
+                  return
+              if result.status in {"UPDATE AVAILABLE", "RECOVERY REQUIRED"}:
+                  update_theme_entry(existing_entry, release_cache, repository_contents_cache, result)
+                  return
+              detail = f": {result.message}" if result.message else ""
+              print(f"[SKIP] Theme: {existing_entry.path}: {result.status}{detail}")
+              return
+
           destination = library_type.root / folder_name
           refresh_existing_theme = False
           if destination.exists():
@@ -3179,10 +3563,6 @@ let
                   print(f"[SKIP] Theme: repair was not confirmed for {folder_name}")
                   return
               refresh_existing_theme = True
-          if not library_type.root.is_dir():
-              report_error(f"[FAILED] Theme: library directory does not exist: {library_type.root}")
-              return
-
           try:
               with tempfile.TemporaryDirectory(prefix=".obsidian-library-theme-", dir=library_type.root) as temporary_directory:
                   staging = Path(temporary_directory) / folder_name
@@ -3194,13 +3574,17 @@ let
                   if existing_root is None:
                       os.replace(staging, destination)
                   else:
+                      required_names = set(configured_required_files(library_type))
                       for filename in downloaded:
                           source_file = staging / filename
                           target = destination / filename
-                          target.parent.mkdir(parents=True, exist_ok=True)
-                          staged = target.with_name(f".{target.name}.obsidian-library-new")
-                          shutil.copyfile(source_file, staged)
-                          os.replace(staged, target)
+                          replace_changed_file(
+                              source_file,
+                              target,
+                              destination,
+                              filename in required_names,
+                              filename,
+                          )
           except (OSError, RuntimeError) as error:
               report_error(f"[FAILED] Theme: {error}")
               return
@@ -3303,6 +3687,169 @@ let
               write_batch_failure_report(library_type)
 
 
+      def selectable_repository_paths(repository: str) -> tuple[list[str], list[str]]:
+          tree_response = gh_json(f"repos/{repository}/git/trees/HEAD?recursive=1")
+          tree = tree_response.get("tree")
+          if not isinstance(tree, list):
+              raise RuntimeError("repository tree is unavailable")
+
+          files: list[str] = []
+          folders: set[str] = set()
+          for item in tree:
+              if not isinstance(item, dict) or item.get("type") != "blob":
+                  continue
+              path = item.get("path")
+              size = item.get("size")
+              if not isinstance(path, str) or not isinstance(size, int) or size <= 0:
+                  continue
+              if is_blocked_repository_path(path):
+                  continue
+              files.append(path)
+              parent = Path(path).parent
+              while parent != Path("."):
+                  folders.add(parent.as_posix() + "/")
+                  parent = parent.parent
+
+          return sorted(folders, key=str.casefold), sorted(files, key=str.casefold)
+
+
+      def partial_download_root(library_type: LibraryType, repository: str) -> Path:
+          root = PARTIAL_DOWNLOADS_DIR
+          if root.is_symlink():
+              raise RuntimeError(f"refusing symlinked partial-download root: {root}")
+          root.mkdir(parents=True, exist_ok=True)
+          root = root.resolve()
+
+          type_root = root / library_type.label.casefold()
+          if type_root.is_symlink():
+              raise RuntimeError(f"refusing symlinked partial-download type directory: {type_root}")
+          type_root.mkdir(parents=True, exist_ok=True)
+
+          destination = type_root / repository_fallback_name(repository)
+          if destination.is_symlink():
+              raise RuntimeError(f"refusing symlinked partial-download destination: {destination}")
+          destination.mkdir(parents=True, exist_ok=True)
+          try:
+              destination.resolve().relative_to(root)
+          except ValueError as error:
+              raise RuntimeError("partial-download destination escapes its configured root") from error
+          return destination
+
+
+      def download_selected_repository_paths(library_type: LibraryType, value: str) -> None:
+          try:
+              repositories = repositories_from_value(value, library_type)
+          except (OSError, RuntimeError) as error:
+              report_error(f"[FAILED] {library_type.label}: {error}")
+              return
+
+          for repository in repositories:
+              try:
+                  folders, files = selectable_repository_paths(repository)
+              except RuntimeError as error:
+                  report_error(f"[FAILED] {repository}: {error}")
+                  continue
+
+              rows = [f"{folder}\t(folder)" for folder in folders] + files
+              selected_rows = fzf_select(
+                  rows,
+                  f"{library_type.label.casefold()} files> ",
+                  f"{repository}: TAB selects permitted files or folders; ENTER downloads the selection.",
+                  multi=True,
+              )
+              selected = [row.split("\t", 1)[0] for row in selected_rows]
+              if not selected:
+                  print(f"[SKIP] {repository}: no files or folders were selected")
+                  continue
+
+              requested: set[str] = set()
+              for item in selected:
+                  if item.endswith("/"):
+                      requested.update(path for path in files if path.startswith(item))
+                  else:
+                      requested.add(item)
+
+              try:
+                  destination_root = partial_download_root(library_type, repository)
+              except RuntimeError as error:
+                  report_error(f"[FAILED] {repository}: {error}")
+                  continue
+
+              saved = 0
+              for repository_path in sorted(requested, key=str.casefold):
+                  if is_blocked_repository_path(repository_path):
+                      continue
+                  destination = destination_root / repository_path
+                  try:
+                      destination.relative_to(destination_root)
+                  except ValueError:
+                      report_error(f"[SKIP] {repository}: unsafe repository path: {repository_path}")
+                      continue
+                  if destination.exists() or destination.is_symlink():
+                      print(f"[SKIP] {repository}: destination exists or is a symlink: {repository_path}")
+                      continue
+                  destination_parent = destination_root
+                  unsafe_parent = False
+                  for path_part in Path(repository_path).parent.parts:
+                      destination_parent = destination_parent / path_part
+                      if destination_parent.is_symlink():
+                          unsafe_parent = True
+                          break
+                      destination_parent.mkdir(exist_ok=True)
+                      try:
+                          destination_parent.resolve().relative_to(destination_root.resolve())
+                      except ValueError:
+                          unsafe_parent = True
+                          break
+                  if unsafe_parent:
+                      report_error(f"[SKIP] {repository}: destination parent is unsafe: {repository_path}")
+                      continue
+                  staging = destination.with_name(f".{destination.name}.obsidian-library-new")
+                  if staging.exists() or staging.is_symlink():
+                      report_error(f"[SKIP] {repository}: staging path already exists: {repository_path}")
+                      continue
+                  try:
+                      download_repository_file(repository, repository_path, staging)
+                      if not is_nonempty_file(staging):
+                          raise RuntimeError("downloaded payload is empty")
+                      os.replace(staging, destination)
+                      saved += 1
+                  except (OSError, RuntimeError) as error:
+                      staging.unlink(missing_ok=True)
+                      report_error(f"[FAILED] {repository}: {repository_path}: {error}")
+
+              print(f"[DOWNLOADED] {repository}: {saved} selected file(s) -> {destination_root}")
+
+
+      def request_missing_repair() -> bool:
+          if not MISSING_ENABLED:
+              print("[SKIP] Missing-file repair is disabled for this independent command.")
+              return False
+          if not MISSING_REQUEST_FILE:
+              print("[FAILED] Missing-file repair is unavailable outside the public obsidian dispatcher.")
+              return False
+
+          requested_path = input("Plugin or theme library path to repair: ").strip()
+          library_path = Path(requested_path).expanduser()
+          if not requested_path or not library_path.is_dir() or library_path.is_symlink():
+              print("[SKIP] Enter a real, existing library directory.")
+              return False
+
+          request_file = Path(MISSING_REQUEST_FILE)
+          if request_file.is_symlink():
+              print("[FAILED] Missing-file request path is a symlink.")
+              return False
+          staging = request_file.with_name(f".{request_file.name}.obsidian-library-new")
+          try:
+              staging.write_text(str(library_path.resolve()) + "\n", encoding="utf-8")
+              os.replace(staging, request_file)
+          except OSError as error:
+              staging.unlink(missing_ok=True)
+              print(f"[FAILED] Could not prepare missing-file repair: {error}")
+              return False
+          return True
+
+
       def remove_entry(entry: LibraryEntry) -> None:
           expected_root = entry.library_type.root.resolve()
           try:
@@ -3387,13 +3934,15 @@ let
 
 
       def choose_action(library_type: LibraryType) -> str | None:
-          actions = [
-              "Check for updates",
-              "Download another version",
-              "Remove",
-              "Check archived status",
-              "Back",
-          ]
+          actions = ["Back"]
+          if ARCHIVE_STATUS_ENABLED:
+              actions.insert(0, "Check archived status")
+          if REMOVE_ENABLED:
+              actions.insert(0, "Remove")
+          if ALTERNATE_VERSION_ENABLED:
+              actions.insert(0, "Download another version")
+          if CHECK_UPDATES_ENABLED:
+              actions.insert(0, "Check for updates")
           selection = fzf_select(actions, f"{library_type.label.lower()} action> ", "Choose what to do with the selected entries.")
           return selection[0] if selection else None
 
@@ -3571,7 +4120,28 @@ let
                   audit_library(library_types, arguments.audit == "remote")
                   return 0
 
-              menu_items = ["Check for updates", "Audit local library", "Audit remote library", "Plugins", "Themes", "Download a plugin", "Download a theme", "Quit"]
+              menu_items = []
+              if CHECK_UPDATES_ENABLED:
+                  menu_items.append("Check for updates")
+              if AUDIT_LOCAL_ENABLED:
+                  menu_items.append("Audit local library")
+              if AUDIT_REMOTE_ENABLED:
+                  menu_items.append("Audit remote library")
+              if BROWSE_PLUGINS_ENABLED:
+                  menu_items.append("Plugins")
+              if BROWSE_THEMES_ENABLED:
+                  menu_items.append("Themes")
+              if DOWNLOAD_PLUGIN_ENABLED:
+                  menu_items.append("Download a plugin")
+              if DOWNLOAD_THEME_ENABLED:
+                  menu_items.append("Download a theme")
+              if DOWNLOAD_PLUGIN_PATHS_ENABLED:
+                  menu_items.append("Download plugin files/folders")
+              if DOWNLOAD_THEME_PATHS_ENABLED:
+                  menu_items.append("Download theme files/folders")
+              if MISSING_ENABLED:
+                  menu_items.append("Repair missing library files")
+              menu_items.append("Quit")
               while True:
                   selection = fzf_select(menu_items, "obsidian-library> ", "Choose a library or check every installed item.")
                   choice = selection[0] if selection else "Quit"
@@ -3584,17 +4154,32 @@ let
                   elif choice == "Audit remote library":
                       audit_library(library_types, True)
                   elif choice == "Download a plugin":
-                      repository = input("GitHub repository URL, owner/repository, or text containing a GitHub link: ").strip()
+                      repository = input("GitHub repository URL, owner/repository, source folder, or .txt link list: ").strip()
                       if repository:
                           download_values(library_types[0], [repository], release_cache, repository_contents_cache)
                       else:
                           print("[SKIP] Plugin: no repository was provided")
                   elif choice == "Download a theme":
-                      repository = input("GitHub repository URL or owner/repository: ").strip()
+                      repository = input("GitHub repository URL, owner/repository, source folder, or .txt link list: ").strip()
                       if repository:
                           download_values(library_types[1], [repository], release_cache, repository_contents_cache)
                       else:
                           print("[SKIP] Theme: no repository was provided")
+                  elif choice == "Download plugin files/folders":
+                      source = input("GitHub link, owner/repository, source folder, or .txt link list: ").strip()
+                      if source:
+                          download_selected_repository_paths(library_types[0], source)
+                      else:
+                          print("[SKIP] Plugin: no source was provided")
+                  elif choice == "Download theme files/folders":
+                      source = input("GitHub link, owner/repository, source folder, or .txt link list: ").strip()
+                      if source:
+                          download_selected_repository_paths(library_types[1], source)
+                      else:
+                          print("[SKIP] Theme: no source was provided")
+                  elif choice == "Repair missing library files":
+                      if request_missing_repair():
+                          return 42
                   elif choice == "Check for updates":
                       manage_updates(
                           library_types,
@@ -3619,15 +4204,18 @@ PY
 in
 {
   # ---- Internal library core ---- #
-  # The public `obsidian` dispatcher is the only installed command. This
-  # private Fish function preserves the full original library interface.
-  config = lib.mkIf (commandEnabled && libraryEnabled) {
+  # The public shared command module installs this private function only when
+  # the independent library mode is enabled.
+  config = lib.mkIf (
+    (platforms.enabledForCurrentPlatform cfg)
+    && (platforms.valueForCurrentPlatform cfg.modes.library)
+  ) {
     programs.fish.functions.__obsidian_command_library = {
-      description = "Run the independent Obsidian library TUI core";
+    description = "Run the independent Obsidian library TUI core";
 
-      body = ''
-        command ${obsidianLibrary}/bin/obsidian-library-core $argv
-      '';
+    body = ''
+      command ${obsidianLibrary}/bin/obsidian-library-core $argv
+    '';
     };
   };
 }

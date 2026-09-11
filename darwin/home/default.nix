@@ -4,14 +4,14 @@
 # DARWIN: HOME MANAGER (INTEGRATED)
 # =====================================================================
 
-{ inputs, paths, pkgs, platforms, serviceOptions, terminalOptions, obsidianOptions, ... }:
+{ inputs, paths, pkgs, platforms, serviceOptions, terminalOptions, featureOptions, obsidianOptions, ... }:
 
 {
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
     extraSpecialArgs = {
-      inherit inputs paths platforms serviceOptions terminalOptions obsidianOptions;
+      inherit inputs paths platforms serviceOptions terminalOptions featureOptions obsidianOptions;
     };
 
     # Provides the Home Manager sops.* options used by shared/secrets.nix.
@@ -76,7 +76,6 @@
 
       ven.features.terminal.wezterm = {
         enable = true;
-        appearance.theme = "gruvbox";
       };
 
       # ------------------------------------------------------------

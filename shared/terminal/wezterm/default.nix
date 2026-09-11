@@ -113,38 +113,15 @@ in
 
       extraConfig = ''
         -- Appearance theme
-        -- Select one theme with wezterm.appearance.theme.
+        -- The theme chosen with wezterm.themes.default, loaded from the
+        -- Lua file of the same name.
 
-        ${lib.optionalString (cfg.appearance.theme == "gruvbox") ''
-          local gruvbox = dofile(
-              wezterm.config_dir .. "/themes/gruvbox.lua"
+        ${lib.optionalString (cfg.themes.default != "none") ''
+          local theme = dofile(
+              wezterm.config_dir .. "/themes/${cfg.themes.default}.lua"
           )
 
-          gruvbox.apply(config)
-        ''}
-
-        ${lib.optionalString (cfg.appearance.theme == "nord") ''
-          local nord = dofile(
-              wezterm.config_dir .. "/themes/nord.lua"
-          )
-
-          nord.apply(config)
-        ''}
-
-        ${lib.optionalString (cfg.appearance.theme == "nord-otto") ''
-          local nord_otto = dofile(
-              wezterm.config_dir .. "/themes/nord-otto.lua"
-          )
-
-          nord_otto.apply(config)
-        ''}
-
-        ${lib.optionalString (cfg.appearance.theme == "otto") ''
-          local otto = dofile(
-              wezterm.config_dir .. "/themes/otto.lua"
-          )
-
-          otto.apply(config)
+          theme.apply(config)
         ''}
 
         -- Plugins

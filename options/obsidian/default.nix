@@ -4,18 +4,19 @@
 # OPTIONS: OBSIDIAN COMMAND
 # =====================================================================
 #
-# Defines the portable, user-scoped `obsidian` command. The original
-# gitdll, obsidian-missing, and obsidian-library commands are deliberately
-# not configured here: they remain independent fallbacks.
+# Defines the typed vocabulary and semantics for the independent portable
+# `obsidian` command. Concrete settings belong in
+# shared/terminal/commands/obsidian.nix, so hosts have one visible place to
+# adjust every knob. The original gitdll, obsidian-missing, and
+# obsidian-library commands remain independent fallbacks.
 # =====================================================================
 
-{ lib, paths, ... }:
+{ lib, ... }:
 
 let
-  # ---- Reusable mode switch ---- #
-  # Every independent command mode can be enabled and installed on either
-  # supported platform without hiding individual actions from the library TUI.
-  mode = description: {
+  # ---- Reusable feature switch ---- #
+  # The independent command has one feature switch and platform selection.
+  feature = description: {
     enable = lib.mkEnableOption description;
 
     installOn = lib.mkOption {
@@ -23,290 +24,190 @@ let
         options = {
           darwin = lib.mkOption {
             type = lib.types.bool;
-            default = true;
             description = "Install ${description} on Darwin.";
           };
 
           linux = lib.mkOption {
             type = lib.types.bool;
-            default = true;
             description = "Install ${description} on Linux.";
           };
         };
       };
-      default = { };
       description = "Platforms on which ${description} is available.";
     };
   };
 
   # ---- Per-platform path ---- #
-  # A host may keep the matching paths.nix default or override one platform
-  # directly without changing the other platform's location.
-  platformPath = darwinDefault: linuxDefault: description:
-    lib.mkOption {
-      type = lib.types.submodule {
-        options = {
-          darwin = lib.mkOption {
-            type = lib.types.str;
-            default = darwinDefault;
-            description = "${description} on Darwin.";
-          };
+  # Values are selected by the option-owned command semantics for the host
+  # that renders the Fish functions.
+  platformPath = description: lib.mkOption {
+    type = lib.types.submodule {
+      options = {
+        darwin = lib.mkOption {
+          type = lib.types.str;
+          description = "${description} on Darwin.";
+        };
 
-          linux = lib.mkOption {
-            type = lib.types.str;
-            default = linuxDefault;
-            description = "${description} on Linux.";
-          };
+        linux = lib.mkOption {
+          type = lib.types.str;
+          description = "${description} on Linux.";
         };
       };
-      default = { };
-      description = "Per-platform ${description}.";
     };
+    description = "Per-platform ${description}.";
+  };
 
-  stringList = default: description: lib.mkOption {
+  # ---- Per-platform setting ---- #
+  # TUI actions are behavior settings, not installable features. A host can
+  # make a menu action available on one platform without an `enable` or
+  # `installOn` wrapper.
+  platformBool = description: lib.mkOption {
+    type = lib.types.submodule {
+      options = {
+        darwin = lib.mkOption {
+          type = lib.types.bool;
+          description = "${description} on Darwin.";
+        };
+
+        linux = lib.mkOption {
+          type = lib.types.bool;
+          description = "${description} on Linux.";
+        };
+      };
+    };
+    description = "Per-platform ${description}.";
+  };
+
+  stringList = description: lib.mkOption {
     type = lib.types.listOf lib.types.str;
-    inherit default description;
+    inherit description;
+  };
+
+  bool = description: lib.mkOption {
+    type = lib.types.bool;
+    inherit description;
   };
 in
 {
-  options.ven.features.obsidian = {
-    # ---- Main command ---- #
-    enable = lib.mkEnableOption "the independent Obsidian command";
+  # ---- Obsidian implementation modules ---- #
+  # This is the sole option-owned entry point. The module graph supplies
+  # shared arguments to each concern; no helper is called through `import`.
+  imports = [
+    ./download.nix
+    ./library.nix
+    ./dispatcher.nix
+  ];
 
-    installOn = lib.mkOption {
-      type = lib.types.submodule {
-        options = {
-          darwin = lib.mkOption {
-            type = lib.types.bool;
-            default = true;
-            description = "Install the command on Darwin.";
-          };
-
-          linux = lib.mkOption {
-            type = lib.types.bool;
-            default = true;
-            description = "Install the command on Linux.";
-          };
-        };
-      };
-      default = { };
-      description = "Platforms on which the independent Obsidian command is installed.";
+  options.ven.features.obsidian = feature "the independent Obsidian command" // {
+    # ---- Command modes ---- #
+    # The library mode owns its full familiar TUI. These are per-platform
+    # command settings; only the root command itself has installOn.
+    modes = {
+      library = platformBool "Enable the Obsidian library TUI";
+      plugins = platformBool "Enable the Obsidian plugin downloader mode";
+      themes = platformBool "Enable the Obsidian theme downloader mode";
+      missing = platformBool "Enable Obsidian missing-file recovery";
+      checkAll = platformBool "Enable the Obsidian full-library update check";
+      audit = platformBool "Enable the Obsidian library audit mode";
     };
 
-    # ---- Command modes ---- #
-    # The library mode owns its full, familiar TUI. These switches control
-    # whole entry points rather than removing individual TUI actions.
-    modes = {
-      library = mode "the Obsidian library TUI";
-      plugins = mode "the Obsidian plugin downloader mode";
-      themes = mode "the Obsidian theme downloader mode";
-      missing = mode "the Obsidian missing-file recovery mode";
+    # ---- Direct downloader reporting ---- #
+    # These settings belong to `obsidian --plugins|--themes` and
+    # `obsidian-dll`, not the library TUI.
+    downloads = {
+      plugins = {
+        saveFailureReport = bool "Save a plugin direct-download failure report.";
+        failureReport = platformPath "Plugin direct-download failure-report path";
+      };
+      themes = {
+        saveFailureReport = bool "Save a theme direct-download failure report.";
+        failureReport = platformPath "Theme direct-download failure-report path";
+      };
+    };
+
+    # ---- Library TUI actions ---- #
+    # Each setting controls one action in the independent TUI. It leaves the
+    # separate legacy obsidian-library fallback unchanged.
+    actions = {
+      browsePlugins = platformBool "Browse installed plugins in the Obsidian TUI";
+      browseThemes = platformBool "Browse installed themes in the Obsidian TUI";
+      checkUpdates = platformBool "Check and update entries in the Obsidian TUI";
+      alternateVersion = platformBool "Download alternate versions in the Obsidian TUI";
+      remove = platformBool "Remove an entry through the Obsidian TUI";
+      archiveStatus = platformBool "Check archive status in the Obsidian TUI";
+      auditLocal = platformBool "Write local audits from the Obsidian TUI";
+      auditRemote = platformBool "Write remote audits from the Obsidian TUI";
+      downloadPlugin = platformBool "Download a plugin from the Obsidian TUI";
+      downloadTheme = platformBool "Download a theme from the Obsidian TUI";
+      downloadPluginPaths = platformBool "Download selected plugin files and folders from the Obsidian TUI";
+      downloadThemePaths = platformBool "Download selected theme files and folders from the Obsidian TUI";
     };
 
     # ---- Default and overridable paths ---- #
-    # Download modes keep gitdll's destinations. Permanent library paths and
-    # reports preserve obsidian-library and obsidian-missing defaults.
     paths = {
-      pluginDownloads = platformPath
-        "${paths.darwin.home.downloads}/gitdll-plugins"
-        "${paths.linux.home.downloads}/gitdll-plugins"
-        "Default plugin download destination";
-
-      themeDownloads = platformPath
-        "${paths.darwin.home.downloads}/gitdll-themes"
-        "${paths.linux.home.downloads}/gitdll-themes"
-        "Default theme download destination";
-
-      pluginsLibrary = platformPath
-        paths.darwin.backups.obsidianExtensions
-        paths.linux.backups.obsidianExtensions
-        "Permanent plugin-library root";
-
-      themesLibrary = platformPath
-        paths.darwin.backups.obsidianThemes
-        paths.linux.backups.obsidianThemes
-        "Permanent theme-library root";
-
-      missingReport = platformPath
-        "${paths.darwin.home.downloads}/obsidian-missing.txt"
-        "${paths.linux.home.downloads}/obsidian-missing.txt"
-        "Missing-file recovery report";
-
-      libraryReports = platformPath
-        paths.darwin.home.downloads
-        paths.linux.home.downloads
-        "Library audit-report directory";
-
-      libraryErrorReport = platformPath
-        "${paths.darwin.home.downloads}/obsidian-library-errors.log"
-        "${paths.linux.home.downloads}/obsidian-library-errors.log"
-        "Library error-report path";
-
-      libraryFailureReport = platformPath
-        paths.darwin.home.downloads
-        paths.linux.home.downloads
-        "Library batch-failure report directory";
+      pluginDownloads = platformPath "Default plugin download destination";
+      themeDownloads = platformPath "Default theme download destination";
+      pluginsLibrary = platformPath "Permanent plugin-library root";
+      themesLibrary = platformPath "Permanent theme-library root";
+      missingReport = platformPath "Missing-file recovery report";
+      libraryReports = platformPath "Library audit-report directory";
+      partialDownloads = platformPath "TUI-selected repository file and folder download directory";
+      libraryErrorReport = platformPath "Library error-report path";
+      libraryFailureReport = platformPath "Library batch-failure report directory";
     };
 
     # ---- Shared download and recovery policy ---- #
-    # Both independent download entry points and the reimplemented library
-    # manager render these values. They are deliberately not shared with the
-    # legacy fallback commands.
+    # The option-owned core renders these settings identically for the TUI,
+    # `obsidian --plugins|--themes`, and `obsidian-dll`.
     policy = {
       recovery = {
-        preferReleaseAssets = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Prefer GitHub release assets before repository-file recovery.";
-        };
-
-        allowRepositoryFallback = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Recover an individually missing core file from its repository.";
-        };
-
+        preferReleaseAssets = bool "Prefer GitHub release assets before repository-file recovery.";
+        allowRepositoryFallback = bool "Recover an individually missing core file from its repository.";
       };
 
       content = {
-        pluginRequiredFiles = stringList [ "manifest.json" "main.js" ]
-          "Required plugin payload files.";
-        pluginOptionalFiles = stringList [ "styles.css" "README.md" ]
-          "Optional plugin payload files.";
-        themeRequiredFiles = stringList [ "manifest.json" "theme.css" ]
-          "Required theme payload files.";
-        themeOptionalFiles = stringList [ "obsidian.css" "README.md" ]
-          "Optional theme payload files.";
-
-        normalizeLayout = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Normalize safe documentation and image layouts after download.";
-        };
-        keepDocumentation = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Keep permitted documentation files.";
-        };
-        keepImages = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Keep permitted image assets.";
-        };
-        keepSnippets = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Keep permitted snippet assets.";
-        };
-        keepReadme = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Keep a permitted README file.";
-        };
-        keepNestedContent = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Keep permitted nested content.";
-        };
+        pluginRequiredFiles = stringList "Required plugin payload files.";
+        pluginOptionalFiles = stringList "Optional plugin payload files.";
+        themeRequiredFiles = stringList "Required theme payload files.";
+        themeOptionalFiles = stringList "Optional theme payload files.";
+        normalizeLayout = bool "Normalize safe documentation and image layouts after download.";
+        keepDocumentation = bool "Keep permitted documentation files.";
+        keepImages = bool "Keep permitted image assets.";
+        keepSnippets = bool "Keep permitted snippet assets.";
+        keepReadme = bool "Keep a permitted README file.";
+        keepNestedContent = bool "Keep permitted nested content.";
       };
 
       exclusions = {
-        basenameFamilies = stringList [
-          "agents"
-          "algorithm"
-          "architecture"
-          "claude"
-          "license"
-          "changelog"
-          "contributing"
-          "continent_design"
-          "continent-design"
-          "codex_task"
-          "codex-task"
-          "decisions"
-          "design_system"
-          "design-system"
-          "implementation_plan"
-          "implementation-plan"
-          "manual_test_plan"
-          "manual-test-plan"
-          "policies"
-          "policy"
-          "security"
-          "privacy"
-          "release_checklist"
-          "release-checklist"
-          "usage_examples"
-          "usage-examples"
-          "validation"
-        ] "Case-insensitive basename families excluded from downloaded content.";
+        basenameFamilies = stringList "Case-insensitive basename families excluded from downloaded content.";
+        exactFiles = stringList "Exact case-insensitive filenames excluded from downloaded content.";
+        normalizedTitleStems = stringList "Punctuation-normalized document title stems excluded from downloads.";
+        hiddenPaths = stringList "Hidden path segments excluded from downloaded content.";
+        pathSegments = stringList "Non-hidden path segments excluded from downloaded content.";
+        localeMarkers = stringList "Case-insensitive locale path markers excluded from downloads.";
+      };
 
-        exactFiles = stringList [
-          "agents.md"
-          "claude.md"
-          "changelog.md"
-          "contributing.md"
-          "list of urls.md"
-          "main-debug.js"
-          "publishing.md"
-          "release.md"
-          "third_party_notices.md"
-          "wechat-渐读介绍.md"
-          "readme_ko.md"
-          "readme_jp.md"
-          "readme.zh.md"
-          "readme.zh-cn.md"
-          "readme-zh_cn.md"
-          "readme-zh_tw.md"
-          "readme-zh.md"
-          "readme-cn.md"
-          "readme-tw.md"
-        ] "Exact case-insensitive filenames excluded from downloaded content.";
-
-        normalizedTitleStems = stringList [
-          "aiassistance"
-          "codeofconduct"
-          "roadmap"
-          "readmeakutagawaja"
-          "readmeja"
-          "readmesherlock"
-          "thirdpartynotices"
-        ] "Punctuation-normalized document title stems excluded from downloads.";
-
-        hiddenPaths = stringList [ ".git" ".github" ]
-          "Hidden path segments excluded from downloaded content.";
-        pathSegments = stringList [ "node_modules" ]
-          "Non-hidden path segments excluded from downloaded content.";
-        localeMarkers = stringList [ "zh" "ko" "jp" ]
-          "Case-insensitive locale path markers excluded from downloads.";
+      # ---- Library update policy ---- #
+      # These values govern only the independent library TUI's update and
+      # repair workflow. They do not alter legacy fallback commands.
+      updates = {
+        reuseMovedOptionalFiles = platformBool "Track and update moved or renamed optional files during a library update";
+        repairIncomplete = bool "Offer repair when a required library payload is incomplete";
+        skipCurrent = bool "Skip a healthy entry whose canonical repository is already current";
       };
 
       interaction = {
-        promptForArchiveStatus = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Offer archived or abandoned manifest markers after remote checks.";
-        };
-        confirmSelectedUpdates = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Require confirmation before selected updates replace files.";
-        };
+        promptForArchiveStatus = bool "Offer archived or abandoned manifest markers after remote checks.";
+        confirmSelectedUpdates = bool "Require confirmation before selected updates replace files.";
         parallelChecks = lib.mkOption {
           type = lib.types.ints.between 1 32;
-          default = 6;
           description = "Maximum parallel remote update checks.";
         };
         fzfHeight = lib.mkOption {
           type = lib.types.str;
-          default = "80%";
           description = "Height passed to interactive fzf menus.";
         };
-        useLinuxTrash = lib.mkOption {
-          type = lib.types.bool;
-          default = true;
-          description = "Use trash-cli for confirmed Linux library removals.";
-        };
+        useLinuxTrash = bool "Use trash-cli for confirmed Linux library removals.";
       };
     };
   };

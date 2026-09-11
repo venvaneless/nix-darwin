@@ -14,6 +14,7 @@
   paths,
   platforms,
   terminalOptions,
+  featureOptions,
   obsidianOptions,
   ...
 }:
@@ -47,6 +48,7 @@ in
 {
   imports = [
     terminalOptions
+    featureOptions
     obsidianOptions
     ./aliases
     ./commands
