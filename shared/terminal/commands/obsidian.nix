@@ -234,6 +234,7 @@
       policy.exclusions = {
         # Excludes these exact basenames anywhere, case-insensitively.
         exactFiles = [
+          "260724_style context插件调研与需求确认.md"
           "agents.md"
           "claude.md"
           "changelog.md"
@@ -279,8 +280,10 @@
           "policy"
           "security"
           "privacy"
+          "readme.ru"
           "release_checklist"
           "release-checklist"
+          "260724_style context插件调研与需求确认"
           "usage_examples"
           "usage-examples"
           "validation"

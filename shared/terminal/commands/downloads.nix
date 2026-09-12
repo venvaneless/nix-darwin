@@ -59,10 +59,12 @@ in
               manual-test-plan \
               policies \
               policy \
+              readme.ru \
               security \
               privacy \
               release_checklist \
               release-checklist \
+              260724_style\ context插件调研与需求确认 \
               validation
 
           # ---- BLOCKED EXACT FILE NAMES ---- #
@@ -71,6 +73,7 @@ in
           set --local blocked_files \
               agents.md \
               claude.md \
+              "260724_style context插件调研与需求确认.md" \
               list of urls.md \
               main-debug.js \
               publishing.md \
@@ -313,6 +316,10 @@ in
               return containedFiles.length > 0 && containedFiles.every(isImage);
             }
 
+            function isDesktopMetadata(entry) {
+              return entry.isFile() && entry.name === ".DS_Store";
+            }
+
             function merge(source, destination) {
               if (source === destination || !fs.existsSync(source)) return;
               if (!fs.existsSync(destination)) {
@@ -335,26 +342,77 @@ in
 
             const imageWrapperNames = new Set(["af", "img", "imgs", "image", "images"]);
             const assetNames = new Set(["asset", "assets", "_asset", "_assets"]);
+            const essentialRootFiles = new Set([
+              "manifest.json", "data.json", "styles.css", "theme.css", "obsidian.css", "main.js",
+            ]);
             const repositoryDirectory = path.join(root, "repo");
+
+            function isReadme(entry) {
+              return entry.isFile() && /^readme(?:\.[a-z0-9]+)?$/i.test(entry.name);
+            }
+
+            function isReadmeAndTwoImages(content) {
+              const readmes = content.filter(isReadme);
+              const images = content.filter((entry) => entry.isFile() && isImage(entry.name));
+              return readmes.length === 1 && images.length === 2 &&
+                readmes.length + images.length === content.length;
+            }
+
+            function rootHasOnlyCoreFilesReadmeAndImages() {
+              const content = entries(root).filter((entry) => entry.name.toLowerCase() !== "repo");
+              return content.some(isReadme) && content.every((entry) =>
+                entry.isFile() && (isReadme(entry) || isImage(entry.name) || essentialRootFiles.has(entry.name.toLowerCase()))
+              );
+            }
+
+            function repositoryHasOnlyReadmeAndFewerThanThreeImages() {
+              if (!fs.existsSync(repositoryDirectory)) return false;
+              const content = entries(repositoryDirectory);
+              const files = filesBelow(repositoryDirectory);
+              const images = files.filter(isImage);
+              return content.filter(isReadme).length === 1 && images.length > 0 && images.length < 3 &&
+                files.length === 1 + images.length;
+            }
+
+            function repositoryHasFewerThanThreeImagesOnly() {
+              if (!fs.existsSync(repositoryDirectory)) return false;
+              const files = filesBelow(repositoryDirectory);
+              return files.length > 0 && files.length < 3 && files.every(isImage);
+            }
 
             function isMinimalRepositoryImageDirectory(directory) {
               if (path.dirname(directory) !== repositoryDirectory || !fs.existsSync(repositoryDirectory)) return false;
               return entries(repositoryDirectory).every((entry) => {
                 const candidate = path.join(repositoryDirectory, entry.name);
-                return candidate === directory || (entry.isFile() && /^readme(?:\.[a-z0-9]+)?$/i.test(entry.name));
+                return candidate === directory || isReadme(entry);
               });
             }
 
-            // A nested assets/ directory under imgs/ is a redundant wrapper.
-            // Merge it first so imgs/screenshots and imgs/assets become the
-            // compact assets/screenshots and assets layouts requested by the
-            // downloader contract.
+            function isAssetOnlyWrapper(directory) {
+              const content = entries(directory).filter((entry) => !isDesktopMetadata(entry));
+              return content.length === 1 && content[0].isDirectory() &&
+                assetNames.has(content[0].name.toLowerCase()) &&
+                isImageOnlyDirectory(path.join(directory, content[0].name));
+            }
+
+            function canonicalAssetsDirectory(wrapper) {
+              const parent = path.dirname(wrapper);
+              return assetNames.has(path.basename(parent).toLowerCase())
+                ? parent
+                : path.join(parent, "assets");
+            }
+
+            // A nested assets/ directory under an image alias or an otherwise
+            // empty wrapper such as src/ is redundant. Merge it first so
+            // imgs/assets and src/assets become the compact assets/ layout.
             for (const directory of directoriesBelow(root).sort((left, right) => right.length - left.length)) {
               if (!fs.existsSync(directory)) continue;
               const name = path.basename(directory).toLowerCase();
               const parent = path.dirname(directory);
-              if (!assetNames.has(name) || !imageWrapperNames.has(path.basename(parent).toLowerCase())) continue;
-              if (isImageOnlyDirectory(directory)) merge(directory, path.join(path.dirname(parent), "assets"));
+              if (!assetNames.has(name) || !isImageOnlyDirectory(directory)) continue;
+              if (imageWrapperNames.has(path.basename(parent).toLowerCase()) || (path.basename(parent).toLowerCase() !== "repo" && isAssetOnlyWrapper(parent))) {
+                merge(directory, canonicalAssetsDirectory(parent));
+              }
             }
 
             // Keep image-only folders beneath a stable assets/ root. Known
@@ -370,7 +428,11 @@ in
               const assetParent = imageWrapperNames.has(path.basename(parent).toLowerCase()) || assetNames.has(path.basename(parent).toLowerCase())
                 ? path.dirname(parent)
                 : parent;
-              const destination = imageWrapperNames.has(name) || assetNames.has(name) || isMinimalRepositoryImageDirectory(directory)
+              const destination = parent === repositoryDirectory && repositoryHasFewerThanThreeImagesOnly() && rootHasOnlyCoreFilesReadmeAndImages()
+                ? root
+                : repositoryHasOnlyReadmeAndFewerThanThreeImages()
+                  ? repositoryDirectory
+                : imageWrapperNames.has(name) || assetNames.has(name) || isMinimalRepositoryImageDirectory(directory)
                 ? path.join(assetParent, "assets")
                 : path.join(assetParent, "assets", path.basename(directory));
               merge(directory, destination);
@@ -378,12 +440,25 @@ in
 
             for (const directory of directoriesBelow(root).sort((left, right) => right.length - left.length)) {
               if (!fs.existsSync(directory)) continue;
-              if (entries(directory).length === 0) fs.rmdirSync(directory);
+              const content = entries(directory);
+              if (content.length === 0) {
+                fs.rmdirSync(directory);
+                continue;
+              }
+              // Finder metadata must not preserve an otherwise empty wrapper.
+              // Keep the metadata by moving it alongside the canonical assets
+              // folder when its destination does not already own a copy.
+              if (content.every(isDesktopMetadata)) {
+                for (const entry of content) {
+                  move(path.join(directory, entry.name), path.join(path.dirname(directory), entry.name));
+                }
+                if (fs.existsSync(directory) && entries(directory).length === 0) fs.rmdirSync(directory);
+              }
             }
 
             // A small non-asset wrapper inside repo/ only obscures the files.
-            // Leave docs/ and assets/ intact because their names carry layout
-            // meaning and Markdown links are intentionally rooted there.
+            // Keep docs/ and assets/ intact during this intermediate pass;
+            // docs/ is deliberately unwrapped into repo/ below.
             if (fs.existsSync(repositoryDirectory) && fs.statSync(repositoryDirectory).isDirectory()) {
               for (const directory of directoriesBelow(repositoryDirectory).sort((left, right) => right.length - left.length)) {
                 if (!fs.existsSync(directory)) continue;
@@ -396,11 +471,53 @@ in
                 if (entries(directory).length === 0) fs.rmdirSync(directory);
               }
 
-              // A README and up to one other optional file are clearer beside
-              // the core payload than in an otherwise empty repo/ wrapper.
+              // Documentation is useful beside the repository files, not
+              // behind an otherwise redundant repo/docs/ wrapper. Merge
+              // rather than overwrite when a destination already exists.
+              const docsDirectory = path.join(repositoryDirectory, "docs");
+              if (fs.existsSync(docsDirectory) && fs.statSync(docsDirectory).isDirectory()) {
+                for (const entry of entries(docsDirectory)) {
+                  const source = path.join(docsDirectory, entry.name);
+                  const destination = path.join(repositoryDirectory, entry.name);
+                  if (!fs.existsSync(destination)) move(source, destination);
+                  else if (entry.isDirectory() && fs.statSync(destination).isDirectory()) merge(source, destination);
+                }
+                if (fs.existsSync(docsDirectory) && entries(docsDirectory).length === 0) fs.rmdirSync(docsDirectory);
+              }
+
+              // assets/screenshots/ and assets/previews/ are only wrappers:
+              // image files belong directly in assets/. Only a lone image is
+              // simpler beside its README than in a one-file assets/ folder.
+              const assetsDirectory = path.join(repositoryDirectory, "assets");
+              if (fs.existsSync(assetsDirectory) && fs.statSync(assetsDirectory).isDirectory()) {
+                for (const entry of entries(assetsDirectory)) {
+                  const candidate = path.join(assetsDirectory, entry.name);
+                  if (entry.isDirectory() && isImageOnlyDirectory(candidate)) merge(candidate, assetsDirectory);
+                }
+                const assetContent = entries(assetsDirectory);
+                const imagesOnly = assetContent.length === 1 && assetContent[0].isFile() && isImage(assetContent[0].name);
+                const imageDestination = repositoryHasOnlyReadmeAndFewerThanThreeImages()
+                  ? repositoryDirectory
+                  : repositoryHasFewerThanThreeImagesOnly() && rootHasOnlyCoreFilesReadmeAndImages()
+                    ? root
+                    : assetContent.length === 1 && imagesOnly
+                      ? repositoryDirectory
+                      : "";
+                if (imagesOnly && imageDestination && assetContent.every((entry) => !fs.existsSync(path.join(imageDestination, entry.name)))) {
+                  for (const entry of assetContent) move(path.join(assetsDirectory, entry.name), path.join(imageDestination, entry.name));
+                  if (entries(assetsDirectory).length === 0) fs.rmdirSync(assetsDirectory);
+                }
+              }
+
+              // One Markdown file and up to two non-image files are clearer
+              // beside the core payload than in an otherwise empty repo/.
+              // A README plus two images stays together in repo/.
               const finalRepositoryContent = entries(repositoryDirectory);
-              if (finalRepositoryContent.length <= 2 && finalRepositoryContent.every((entry) => entry.isFile()) && finalRepositoryContent.every((entry) => !fs.existsSync(path.join(root, entry.name)))) {
+              const markdownCount = finalRepositoryContent.filter((entry) => entry.isFile() && path.extname(entry.name).toLowerCase() === ".md").length;
+              if (finalRepositoryContent.length <= 3 && markdownCount === 1 && !isReadmeAndTwoImages(finalRepositoryContent) && finalRepositoryContent.every((entry) => entry.isFile()) && finalRepositoryContent.every((entry) => !fs.existsSync(path.join(root, entry.name)))) {
                 for (const entry of finalRepositoryContent) move(path.join(repositoryDirectory, entry.name), path.join(root, entry.name));
+                fs.rmdirSync(repositoryDirectory);
+              } else if (entries(repositoryDirectory).length === 0) {
                 fs.rmdirSync(repositoryDirectory);
               }
             }
@@ -2620,6 +2737,13 @@ in
                   set auxiliary_size "$auxiliary_parts[1]"
                   set auxiliary_url (__obsidian_download_url_encode "$auxiliary_parts[2]")
 
+                  # Empty optional repository files have a valid raw URL but no
+                  # content to save. Avoid treating the required non-empty check
+                  # below as a failed download.
+                  if not string match -rq '^[1-9][0-9]*$' "$auxiliary_size"
+                      continue
+                  end
+
                   if test -s "$auxiliary_destination"; or \
                       __obsidian_download_file_is_present \
                           "$plugin_stage" \
@@ -3936,6 +4060,13 @@ in
 
                   set auxiliary_size "$auxiliary_parts[1]"
                   set auxiliary_url (__obsidian_download_url_encode "$auxiliary_parts[2]")
+
+                  # Empty optional repository files have a valid raw URL but no
+                  # content to save. Avoid treating the required non-empty check
+                  # below as a failed download.
+                  if not string match -rq '^[1-9][0-9]*$' "$auxiliary_size"
+                      continue
+                  end
 
                   if test -s "$auxiliary_destination"; or \
                           __obsidian_download_file_is_present \
@@ -5705,6 +5836,12 @@ in
 
               set --local auxiliary_size \
                 "$auxiliary_parts[1]"
+
+              # Empty optional repository files have a valid raw URL but no
+              # content to save. Avoid a false download failure below.
+              if not string match -rq '^[1-9][0-9]*$' "$auxiliary_size"
+                continue
+              end
 
               set --local auxiliary_url \
                 "$auxiliary_parts[2]"

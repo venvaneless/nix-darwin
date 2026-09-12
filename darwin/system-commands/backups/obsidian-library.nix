@@ -110,14 +110,17 @@ let
           "policy",
           "security",
           "privacy",
+          "readme.ru",
           "release_checklist",
           "release-checklist",
+          "260724_style context插件调研与需求确认",
           "usage_examples",
           "usage-examples",
           "validation",
       }
 
       BLOCKED_DOWNLOAD_FILES = {
+          "260724_style context插件调研与需求确认.md",
           "agents.md",
           "changelog.md",
           "claude.md",
@@ -1260,6 +1263,9 @@ let
       # source has been staged, without replacing files that already exist.
       def normalize_download_layout(directory: Path) -> list[str]:
           image_suffixes = {".gif", ".jpeg", ".jpg", ".png", ".webp"}
+          essential_root_files = {
+              "manifest.json", "data.json", "styles.css", "theme.css", "obsidian.css", "main.js",
+          }
           moves: list[tuple[Path, Path]] = []
           markdown_origins: dict[Path, Path] = {}
 
@@ -1295,6 +1301,8 @@ let
               )
 
           def move(source: Path, destination: Path) -> bool:
+              if not source.exists() or source.is_symlink():
+                  return False
               if destination.exists() or destination.is_symlink():
                   return False
 
@@ -1308,30 +1316,180 @@ let
                       source_file,
                   )
 
+              # Moving screenshots into a new assets/ folder requires the
+              # immediate destination parent to exist before rename().
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              if not source.exists() or destination.exists() or destination.is_symlink():
+                  return False
               source.rename(destination)
               moves.append((source, destination))
               return True
 
-          # Image aliases are normalized before wrapper folders are flattened.
-          for candidate in directories_below(directory):
-              contained_files = files_below(candidate)
-              name = candidate.name.casefold()
-              is_images_folder = name == "images"
-              is_image_only_af = (
-                  name == "af"
-                  and bool(contained_files)
-                  and all(
-                      file.suffix.casefold() in image_suffixes
-                      for file in contained_files
-                  )
-              )
-              if is_images_folder or is_image_only_af:
-                  move(candidate, candidate.with_name("assets"))
+          def merge(source: Path, destination: Path) -> None:
+              if source == destination or not source.exists() or source.is_symlink():
+                  return
+              if not destination.exists():
+                  move(source, destination)
+                  return
+              if not source.is_dir() or not destination.is_dir():
+                  return
+              for child in entries(source):
+                  target = destination / child.name
+                  if not target.exists() and not target.is_symlink():
+                      move(child, target)
+                  elif child.is_dir() and target.is_dir():
+                      merge(child, target)
+              if not entries(source):
+                  source.rmdir()
 
-          # Flatten only disposable one-file wrappers; assets and docs retain
-          # their useful semantic folder names.
+          def is_image_only(path: Path) -> bool:
+              contained_files = files_below(path)
+              return bool(contained_files) and all(
+                  file.suffix.casefold() in image_suffixes
+                  for file in contained_files
+              )
+
+          def is_readme(path: Path) -> bool:
+              return path.is_file() and re.fullmatch(
+                  r"readme(?:\.[a-z0-9]+)?",
+                  path.name,
+                  re.IGNORECASE,
+              ) is not None
+
+          def is_readme_and_two_images(content: list[Path]) -> bool:
+              readmes = [child for child in content if is_readme(child)]
+              images = [
+                  child
+                  for child in content
+                  if child.is_file() and child.suffix.casefold() in image_suffixes
+              ]
+              return (
+                  len(readmes) == 1
+                  and len(images) == 2
+                  and len(readmes) + len(images) == len(content)
+              )
+
+          def root_has_only_core_files_readme_and_images() -> bool:
+              content = [
+                  child
+                  for child in entries(directory)
+                  if child.name.casefold() != "repo"
+              ]
+              return any(is_readme(child) for child in content) and all(
+                  child.is_file()
+                  and (
+                      is_readme(child)
+                      or child.suffix.casefold() in image_suffixes
+                      or child.name.casefold() in essential_root_files
+                  )
+                  for child in content
+              )
+
+          def repository_has_only_readme_and_fewer_than_three_images() -> bool:
+              repository_directory = directory / "repo"
+              if not repository_directory.is_dir():
+                  return False
+              content = entries(repository_directory)
+              contained_files = files_below(repository_directory)
+              images = [
+                  child
+                  for child in contained_files
+                  if child.suffix.casefold() in image_suffixes
+              ]
+              return (
+                  len([child for child in content if is_readme(child)]) == 1
+                  and 0 < len(images) < 3
+                  and len(contained_files) == 1 + len(images)
+              )
+
+          def repository_has_fewer_than_three_images_only() -> bool:
+              repository_directory = directory / "repo"
+              if not repository_directory.is_dir():
+                  return False
+              contained_files = files_below(repository_directory)
+              return (
+                  0 < len(contained_files) < 3
+                  and all(child.suffix.casefold() in image_suffixes for child in contained_files)
+              )
+
+          def is_asset_only_wrapper(path: Path) -> bool:
+              content = [child for child in entries(path) if child.name != ".DS_Store"]
+              return (
+                  len(content) == 1
+                  and content[0].is_dir()
+                  and content[0].name.casefold() in {"asset", "assets", "_asset", "_assets"}
+                  and is_image_only(content[0])
+              )
+
+          def canonical_assets_directory(wrapper: Path) -> Path:
+              parent = wrapper.parent
+              if parent.name.casefold() in {"asset", "assets", "_asset", "_assets"}:
+                  return parent
+              return parent / "assets"
+
+          def is_minimal_repository_image_directory(path: Path) -> bool:
+              repository_directory = directory / "repo"
+              if path.parent != repository_directory or not repository_directory.is_dir():
+                  return False
+              return all(
+                  child == path
+                  or is_readme(child)
+                  for child in entries(repository_directory)
+              )
+
+          # An otherwise empty wrapper such as src/assets/ is redundant.
+          # Merge its image files into the nearest canonical assets/ folder.
           for candidate in directories_below(directory):
-              if candidate.name.casefold() in {"assets", "docs"}:
+              if candidate.name.casefold() not in {"asset", "assets", "_asset", "_assets"}:
+                  continue
+              parent_name = candidate.parent.name.casefold()
+              if (
+                  parent_name in {"af", "img", "imgs", "image", "images"}
+                  or (parent_name != "repo" and is_asset_only_wrapper(candidate.parent))
+              ) and is_image_only(candidate):
+                  merge(candidate, canonical_assets_directory(candidate.parent))
+
+          # Every image-only folder belongs beneath assets/. Image aliases and
+          # a README-plus-image-folder repository collapse into assets/ itself.
+          for candidate in directories_below(directory):
+              name = candidate.name.casefold()
+              if name in {"repo", "docs", "assets"} or not is_image_only(candidate):
+                  continue
+              parent = candidate.parent
+              parent_name = parent.name.casefold()
+              asset_parent = (
+                  parent.parent
+                  if parent_name in {"af", "img", "imgs", "image", "images", "asset", "assets", "_asset", "_assets"}
+                  else parent
+              )
+              destination = (
+                  directory
+                  if (
+                      parent == directory / "repo"
+                      and repository_has_fewer_than_three_images_only()
+                      and root_has_only_core_files_readme_and_images()
+                  )
+                  else directory / "repo"
+                  if repository_has_only_readme_and_fewer_than_three_images()
+                  else asset_parent / "assets"
+                  if (
+                      name in {"af", "img", "imgs", "image", "images", "asset", "assets", "_asset", "_assets"}
+                      or is_minimal_repository_image_directory(candidate)
+                  )
+                  else asset_parent / "assets" / candidate.name
+              )
+              merge(candidate, destination)
+
+          # Flatten only disposable one-file wrappers. Keep assets/ and docs/
+          # intact for now; docs/ is deliberately unwrapped into repo/ below.
+          for candidate in directories_below(directory):
+              if (
+                  candidate.name.casefold() in {"assets", "docs"}
+                  or any(
+                      parent.name.casefold() in {"asset", "assets", "_asset", "_assets"}
+                      for parent in candidate.parents
+                  )
+              ):
                   continue
               content = entries(candidate)
               if len(content) != 1 or not content[0].is_file():
@@ -1339,8 +1497,65 @@ let
               if move(content[0], candidate.parent / content[0].name):
                   candidate.rmdir()
 
+          # Merging nested asset folders can leave an empty intermediate
+          # wrapper such as assets/src/. It has no layout meaning to retain.
+          for candidate in directories_below(directory):
+              if not entries(candidate):
+                  candidate.rmdir()
+
           repository_directory = directory / "repo"
           if repository_directory.is_dir() and not repository_directory.is_symlink():
+              docs_directory = repository_directory / "docs"
+              if docs_directory.is_dir() and not docs_directory.is_symlink():
+                  for child in entries(docs_directory):
+                      destination = repository_directory / child.name
+                      if not destination.exists() and not destination.is_symlink():
+                          move(child, destination)
+                      elif child.is_dir() and destination.is_dir():
+                          merge(child, destination)
+                  if not entries(docs_directory):
+                      docs_directory.rmdir()
+
+              # Image subfolders below assets/ are redundant wrappers. Fold
+              # them into assets/, then fold a lone image into repo/.
+              assets_directory = repository_directory / "assets"
+              if assets_directory.is_dir() and not assets_directory.is_symlink():
+                  for child in entries(assets_directory):
+                      if child.is_dir() and is_image_only(child):
+                          merge(child, assets_directory)
+                  asset_content = entries(assets_directory)
+                  images_only = (
+                      len(asset_content) == 1
+                      and all(
+                          child.is_file() and child.suffix.casefold() in image_suffixes
+                          for child in asset_content
+                      )
+                  )
+                  image_destination = (
+                      repository_directory
+                      if repository_has_only_readme_and_fewer_than_three_images()
+                      else directory
+                      if (
+                          repository_has_fewer_than_three_images_only()
+                          and root_has_only_core_files_readme_and_images()
+                      )
+                      else repository_directory
+                      if len(asset_content) == 1 and images_only
+                      else None
+                  )
+                  if (
+                      images_only
+                      and image_destination is not None
+                      and all(
+                          not (image_destination / child.name).exists()
+                          for child in asset_content
+                      )
+                  ):
+                      for child in asset_content:
+                          move(child, image_destination / child.name)
+                      if not entries(assets_directory):
+                          assets_directory.rmdir()
+
               repository_content = entries(repository_directory)
               wrapper_directories = [
                   child for child in repository_content if child.is_dir()
@@ -1352,6 +1567,7 @@ let
                   len(wrapper_directories) == 1
                   and wrapper_files
                   and all("readme" in child.name.casefold() for child in wrapper_files)
+                  and wrapper_directories[0].name.casefold() not in {"assets", "docs"}
               ):
                   wrapper = wrapper_directories[0]
                   wrapper_content = entries(wrapper)
@@ -1367,6 +1583,8 @@ let
               if (
                   len(repository_content) <= 3
                   and all(child.is_file() for child in repository_content)
+                  and sum(child.suffix.casefold() == ".md" for child in repository_content) == 1
+                  and not is_readme_and_two_images(repository_content)
                   and all(
                       not (directory / child.name).exists()
                       for child in repository_content
@@ -1374,6 +1592,8 @@ let
               ):
                   for child in repository_content:
                       move(child, directory / child.name)
+                  repository_directory.rmdir()
+              elif not entries(repository_directory):
                   repository_directory.rmdir()
 
           def remap(source: Path) -> Path:
@@ -1399,9 +1619,11 @@ let
               if match is None or not match.group(1):
                   return reference
               origin = markdown_origins.get(markdown_file, markdown_file)
-              source = (origin.parent / match.group(1)).resolve()
+              # Keep macOS's /var spelling stable: resolve() changes it to
+              # /private/var, which would no longer match recorded moves.
+              source = Path(os.path.abspath(origin.parent / match.group(1)))
               try:
-                  source.relative_to(directory.resolve())
+                  source.relative_to(Path(os.path.abspath(directory)))
               except ValueError:
                   return reference
               target = remap(source)
@@ -1421,13 +1643,7 @@ let
               re.IGNORECASE,
           )
           for markdown_file in files_below(directory):
-              relative_parts = markdown_file.relative_to(directory).parts
-              in_docs = any(
-                  part.casefold() == "docs"
-                  for part in relative_parts[:-1]
-              )
-              is_readme = "readme" in markdown_file.name.casefold()
-              if markdown_file.suffix.casefold() != ".md" or not (in_docs or is_readme):
+              if markdown_file.suffix.casefold() != ".md":
                   continue
               source = markdown_file.read_text(encoding="utf-8")
               rewritten = markdown_image.sub(
