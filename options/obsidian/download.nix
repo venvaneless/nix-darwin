@@ -245,7 +245,7 @@ in
             }
 
             function move(source, destination) {
-              if (fs.existsSync(destination)) return false;
+              if (!fs.existsSync(source) || fs.existsSync(destination)) return false;
               rememberMarkdownOrigins(source, destination);
               fs.renameSync(source, destination);
               mappings.push([source, destination]);
@@ -257,6 +257,7 @@ in
             }
 
             for (const directory of directoriesBelow(root)) {
+              if (!fs.existsSync(directory)) continue;
               const name = path.basename(directory).toLowerCase();
               const containedFiles = filesBelow(directory);
               const isImageFolder = name === "images";
@@ -266,6 +267,7 @@ in
             }
 
             for (const directory of directoriesBelow(root)) {
+              if (!fs.existsSync(directory)) continue;
               const name = path.basename(directory).toLowerCase();
               if (name === "assets" || name === "docs") continue;
               const content = entries(directory);
@@ -4129,6 +4131,62 @@ in
             printf 'https://github.com/%s\n' "$repository"
           end
 
+          # A saved URL can outlive a GitHub repository rename. Only trust it
+          # when its remote manifest still identifies the local library.
+          function __obsidian_command_missing_repository_matches_manifest \
+              --argument-names repository_url manifest_file
+            set --local repository (
+              string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
+              string replace -r '\\.git/?$' "" |
+              string trim --chars=/
+            )
+            if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
+              return 1
+            end
+
+            set --local local_fields (
+              command jq -r '[.id // "", .author // ""] | @tsv' "$manifest_file" 2>/dev/null
+            )
+            set --local remote_fields (
+              command gh api "repos/$repository/contents/manifest.json" --jq .content 2>/dev/null |
+              command tr -d '\n' |
+              command base64 -D 2>/dev/null |
+              command jq -r '[.id // "", .author // ""] | @tsv' 2>/dev/null
+            )
+            set --local local_parts (string split \t "$local_fields")
+            set --local remote_parts (string split \t "$remote_fields")
+
+            if test (count $local_parts) -ne 2; or test (count $remote_parts) -ne 2; or \
+                test -z "$local_parts[1]"; or test "$local_parts[1]" != "$remote_parts[1]"
+              return 1
+            end
+
+            if test -n "$local_parts[2]"; and test "$local_parts[2]" != "$remote_parts[2]"
+              return 1
+            end
+          end
+
+          # GitHub resolves renamed repositories to their current owner/name.
+          # Store that canonical URL so a successful repair also updates the
+          # manifest instead of preserving an obsolete redirect.
+          function __obsidian_command_missing_current_repository_url --argument-names repository_url
+            set --local repository (
+              string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
+              string replace -r '\\.git/?$' "" |
+              string trim --chars=/
+            )
+            if not string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
+              return 1
+            end
+
+            set repository (
+              command gh api "repos/$repository" --jq .full_name 2>/dev/null | string trim
+            )
+            if string match -rq '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' "$repository"
+              printf 'https://github.com/%s\n' "$repository"
+            end
+          end
+
           # Write only a verified GitHub URL to the relevant manifest field. A
           # temporary sibling file prevents a failed lookup from truncating it.
           function __obsidian_command_missing_save_repository_url \
@@ -5409,6 +5467,14 @@ in
             set manifest_url_field pluginUrl
           end
 
+          # Accept either a library root or one plugin/theme folder. This keeps
+          # a targeted repair from interpreting repo/ or assets/ as entries.
+          set --local library_entries "$library_root"/*
+          if test -f "$library_root/manifest.json"; or \
+              test -f "$library_root/repo/manifest.json"
+            set library_entries "$library_root"
+          end
+
           # List every entry before looking for a repository URL. Incomplete
           # manifests still appear, and only affect automatic URL resolution.
           printf '%-28s %-20s %-56s %s\n' \
@@ -5417,7 +5483,7 @@ in
             "DESCRIPTION" \
             "VERSION"
 
-          for library_entry in "$library_root"/*
+          for library_entry in $library_entries
             if not test -d "$library_entry"
               continue
             end
@@ -5524,12 +5590,29 @@ in
               end
             end
             if test -n "$manifest_repository_url"
-              __obsidian_command_missing_restore_standard_files \
-                "$library_entry" \
-                "$manifest_repository_url" \
-                "$requires_plugin_payload"
+              set --local current_repository_url (
+                __obsidian_command_missing_current_repository_url "$manifest_repository_url"
+              )
+              if test -n "$current_repository_url"; and \
+                  __obsidian_command_missing_repository_matches_manifest \
+                  "$current_repository_url" "$manifest_file"
+                if test "$current_repository_url" != "$manifest_repository_url"; and \
+                    not __obsidian_command_missing_save_repository_url \
+                    "$manifest_file" "$manifest_url_field" "$current_repository_url"
+                  set --append missing_entries \
+                    "$entry_name — could not update renamed repository URL"
+                  continue
+                end
+                __obsidian_command_missing_restore_standard_files \
+                  "$library_entry" \
+                  "$current_repository_url" \
+                  "$requires_plugin_payload"
 
-              continue
+                continue
+              end
+
+              echo "Notice: Manifest repository URL no longer matches $entry_name; resolving it again."
+              set manifest_repository_url
             end
 
             set --append missing_repository_entries "$entry_name"
@@ -5902,7 +5985,7 @@ in
           end
 
           set --local unresolved_repository_entries
-          for library_entry in "$library_root"/*
+          for library_entry in $library_entries
             if not test -d "$library_entry"
               continue
             end
