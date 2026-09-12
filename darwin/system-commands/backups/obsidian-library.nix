@@ -106,6 +106,7 @@ let
           "implementation-plan",
           "manual_test_plan",
           "manual-test-plan",
+          "mejores-practicas",
           "policies",
           "policy",
           "security",
@@ -120,11 +121,13 @@ let
       }
 
       BLOCKED_DOWNLOAD_FILES = {
+          "260612.md",
           "260724_style context插件调研与需求确认.md",
           "agents.md",
           "changelog.md",
           "claude.md",
           "contributing.md",
+          "import-code-integration-plan.md",
           "list of urls.md",
           "main-debug.js",
           "publishing.md",
