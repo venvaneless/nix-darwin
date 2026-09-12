@@ -926,7 +926,7 @@ in
                 return 1
               end
 
-              printf '' >"$staged_source"
+              printf ''' >"$staged_source"
               set --local source_changed 0
 
               while read --local source_line
@@ -943,7 +943,7 @@ in
 
                 set --local source_without_link (
                   string trim -- \
-                    (string replace -a -- "$source_link" '' "$source_line")
+                    (string replace -a -- "$source_link" ''' "$source_line")
                 )
 
                 # Remove a bare, bullet, angle-bracket, or Markdown link line
