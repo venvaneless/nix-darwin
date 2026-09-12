@@ -173,6 +173,32 @@ in
       };
 
       # -----------------------------------------------------------------
+      # ---- Obsidian -> Download URL normalization ---- #
+      #
+      # GitHub can return raw download URLs containing Unicode repository
+      # paths. Normalize those URLs before curl sees them.
+      # -----------------------------------------------------------------
+      __obsidian_download_url_encode = {
+        description = "Encode a GitHub download URL for curl";
+
+        body = ''
+          set --local download_url "$argv[1]"
+
+          if test -z "$download_url"
+            return 1
+          end
+
+          command node -e '
+            try {
+              process.stdout.write(new URL(process.argv[1]).href);
+            } catch {
+              process.exit(1);
+            }
+          ' "$download_url" 2>/dev/null
+        '';
+      };
+
+      # -----------------------------------------------------------------
       # ---- Obsidian -> Download deduplication ---- #
       #
       # A matching filename and GitHub-reported size is sufficient to reuse a
@@ -268,6 +294,11 @@ in
               // stale path as already handled instead of aborting the repair.
               if (!fs.existsSync(source) || fs.existsSync(destination)) return false;
               rememberMarkdownOrigins(source, destination);
+              // renameSync does not create a nested destination such as
+              // repo/assets/screenshots. Create only its direct parent so an
+              // image-folder normalization cannot fail on a missing assets/.
+              fs.mkdirSync(path.dirname(destination), { recursive: true });
+              if (!fs.existsSync(source) || fs.existsSync(destination)) return false;
               fs.renameSync(source, destination);
               mappings.push([source, destination]);
               return true;
@@ -303,7 +334,16 @@ in
             }
 
             const imageWrapperNames = new Set(["af", "img", "imgs", "image", "images"]);
-            const assetNames = new Set(["asset", "assets"]);
+            const assetNames = new Set(["asset", "assets", "_asset", "_assets"]);
+            const repositoryDirectory = path.join(root, "repo");
+
+            function isMinimalRepositoryImageDirectory(directory) {
+              if (path.dirname(directory) !== repositoryDirectory || !fs.existsSync(repositoryDirectory)) return false;
+              return entries(repositoryDirectory).every((entry) => {
+                const candidate = path.join(repositoryDirectory, entry.name);
+                return candidate === directory || (entry.isFile() && /^readme(?:\.[a-z0-9]+)?$/i.test(entry.name));
+              });
+            }
 
             // A nested assets/ directory under imgs/ is a redundant wrapper.
             // Merge it first so imgs/screenshots and imgs/assets become the
@@ -318,17 +358,19 @@ in
             }
 
             // Keep image-only folders beneath a stable assets/ root. Known
-            // wrapper names collapse into assets itself; descriptive folders
-            // such as screenshots remain as assets/screenshots.
+            // wrapper names collapse into assets itself. A direct repo/
+            // screenshot folder beside no files other than an optional README
+            // is also just an assets/ wrapper; descriptive folders remain
+            // nested everywhere else.
             for (const directory of directoriesBelow(root).sort((left, right) => right.length - left.length)) {
               if (!fs.existsSync(directory)) continue;
               const name = path.basename(directory).toLowerCase();
-              if (name === "repo" || name === "docs" || assetNames.has(name) || !isImageOnlyDirectory(directory)) continue;
+              if (name === "repo" || name === "docs" || name === "assets" || !isImageOnlyDirectory(directory)) continue;
               const parent = path.dirname(directory);
-              const assetParent = imageWrapperNames.has(path.basename(parent).toLowerCase())
+              const assetParent = imageWrapperNames.has(path.basename(parent).toLowerCase()) || assetNames.has(path.basename(parent).toLowerCase())
                 ? path.dirname(parent)
                 : parent;
-              const destination = imageWrapperNames.has(name)
+              const destination = imageWrapperNames.has(name) || assetNames.has(name) || isMinimalRepositoryImageDirectory(directory)
                 ? path.join(assetParent, "assets")
                 : path.join(assetParent, "assets", path.basename(directory));
               merge(directory, destination);
@@ -342,7 +384,6 @@ in
             // A small non-asset wrapper inside repo/ only obscures the files.
             // Leave docs/ and assets/ intact because their names carry layout
             // meaning and Markdown links are intentionally rooted there.
-            const repositoryDirectory = path.join(root, "repo");
             if (fs.existsSync(repositoryDirectory) && fs.statSync(repositoryDirectory).isDirectory()) {
               for (const directory of directoriesBelow(repositoryDirectory).sort((left, right) => right.length - left.length)) {
                 if (!fs.existsSync(directory)) continue;
@@ -398,7 +439,11 @@ in
               const source = fs.readFileSync(markdownFile, "utf8");
               const rewritten = source
                 .replace(/(!\[[^\]]*\]\(\s*<?)([^\s)>]+)(?=[\s)>])/g, (whole, prefix, reference) => prefix + rewriteReference(reference, markdownFile))
-                .replace(/(<img\b[^>]*?\bsrc=["\x27])([^"\x27]+)(?=["\x27])/gi, (whole, prefix, reference) => prefix + rewriteReference(reference, markdownFile));
+                .replace(/(<img\b[^>]*?\bsrc=["\x27])([^"\x27]+)(?=["\x27])/gi, (whole, prefix, reference) => prefix + rewriteReference(reference, markdownFile))
+                // An image may also be referenced by an Obsidian embed or
+                // wikilink. Only moved targets are changed, so regular note
+                // links remain untouched.
+                .replace(/(!?\[\[)([^\]|#]+)(?=(?:[|#][^\]]*)?\]\])/g, (whole, prefix, reference) => prefix + rewriteReference(reference, markdownFile));
               if (rewritten !== source) fs.writeFileSync(markdownFile, rewritten, "utf8");
             }
           ' "$library_entry"
@@ -734,6 +779,7 @@ in
             functions \
               __obsidian_download_name_blocked \
               __obsidian_download_path_blocked \
+              __obsidian_download_url_encode \
               __obsidian_normalize_download_layout \
               __obsidian_repository_fallback_name \
               __obsidian_is_named_release_archive \
@@ -1329,6 +1375,7 @@ in
                       --jq .download_url \
                       2>/dev/null
                   )
+                  set download_url (__obsidian_download_url_encode "$download_url")
                   if test -z "$download_url"; or not command curl \
                       --fail --location --silent --show-error \
                       --output "$destination_file" "$download_url"
@@ -1496,9 +1543,10 @@ in
               end
               for generic_file in $generic_matches
                 set --local generic_url (command gh api "repos/$generic_repository/contents/$generic_file" --jq .download_url 2>/dev/null)
+                set generic_url (__obsidian_download_url_encode "$generic_url")
                 set --local generic_target "$generic_destination/$generic_file"
                 command mkdir -p (dirname "$generic_target")
-                if not command curl --fail --location --silent --show-error --output "$generic_target" "$generic_url"
+                if test -z "$generic_url"; or not command curl --fail --location --silent --show-error --output "$generic_target" "$generic_url"
                   command rm -f -- "$generic_target"
                   echo "Error: Could not download $generic_file"
                   return 1
@@ -2552,7 +2600,7 @@ in
                   end
 
                   set auxiliary_size "$auxiliary_parts[1]"
-                  set auxiliary_url "$auxiliary_parts[2]"
+                  set auxiliary_url (__obsidian_download_url_encode "$auxiliary_parts[2]")
 
                   if test -s "$auxiliary_destination"; or \
                       __obsidian_download_file_is_present \
@@ -3718,7 +3766,7 @@ in
                   end
 
                   set repository_image_size "$repository_image_parts[1]"
-                  set repository_image_url "$repository_image_parts[2]"
+                  set repository_image_url (__obsidian_download_url_encode "$repository_image_parts[2]")
                   set image_destination "$repository_asset_root/$repository_image_path"
                   if test -s "$image_destination"; or \
                           __obsidian_download_file_is_present \
@@ -3730,7 +3778,7 @@ in
 
                   command mkdir -p (dirname "$image_destination")
 
-                  if command curl \
+                  if test -n "$repository_image_url"; and command curl \
                           --fail \
                           --location \
                           --silent \
@@ -3767,7 +3815,7 @@ in
                   end
 
                   set snippet_size "$snippet_parts[1]"
-                  set snippet_url "$snippet_parts[2]"
+                  set snippet_url (__obsidian_download_url_encode "$snippet_parts[2]")
 
                   set snippet_destination \
                       "$repository_asset_root/$snippet_path"
@@ -3783,7 +3831,7 @@ in
                   command mkdir -p \
                       (dirname "$snippet_destination")
 
-                  if command curl \
+                  if test -n "$snippet_url"; and command curl \
                           --fail \
                           --location \
                           --silent \
@@ -3867,7 +3915,7 @@ in
                   end
 
                   set auxiliary_size "$auxiliary_parts[1]"
-                  set auxiliary_url "$auxiliary_parts[2]"
+                  set auxiliary_url (__obsidian_download_url_encode "$auxiliary_parts[2]")
 
                   if test -s "$auxiliary_destination"; or \
                           __obsidian_download_file_is_present \
@@ -3883,7 +3931,7 @@ in
                   set auxiliary_staging "$auxiliary_destination.gitdll-new"
                   command rm -f -- "$auxiliary_staging"
 
-                  if command curl \
+                  if test -n "$auxiliary_url"; and command curl \
                           --fail \
                           --location \
                           --silent \
@@ -4438,6 +4486,14 @@ in
           function __obsidian_missing_download_url \
               --argument-names destination download_url description replace_existing
 
+            set --local encoded_download_url \
+              (__obsidian_download_url_encode "$download_url")
+
+            if test -z "$encoded_download_url"
+              echo "Notice: Could not encode download URL for $description"
+              return 1
+            end
+
             if test -L "$destination"
               echo "Notice: Refusing to replace symlinked file: $destination"
               return 1
@@ -4471,7 +4527,7 @@ in
                 --silent \
                 --show-error \
                 --output "$staging_file" \
-                "$download_url"; or \
+                "$encoded_download_url"; or \
                 not test -s "$staging_file"; or \
                 not command mv -- "$staging_file" "$destination"
 
@@ -4581,8 +4637,31 @@ in
               set readme_name (basename "$readme_path")
               set readme_url "https://raw.githubusercontent.com/$repository/HEAD/$readme_path"
             else
-              echo "Notice: Repository has no downloadable README: $repository"
-              return 1
+              # A truncated or temporarily unavailable recursive tree must not
+              # be mistaken for a repository without a README. GitHub's
+              # dedicated endpoint is the final fallback and still provides a
+              # downloadable URL for the repository's default README.
+              set readme_metadata (
+                command gh api \
+                  "repos/$repository/readme" \
+                  --jq '[.name, .size, .download_url] | @tsv' \
+                  2>/dev/null
+              )
+
+              if test -z "$readme_metadata"
+                echo "Notice: Could not retrieve README metadata: $repository"
+                return 1
+              end
+
+              set readme_parts (string split \t "$readme_metadata")
+              if test (count $readme_parts) -ne 3
+                echo "Notice: Could not read repository README metadata: $repository"
+                return 1
+              end
+
+              set readme_name "$readme_parts[1]"
+              set readme_size "$readme_parts[2]"
+              set readme_url "$readme_parts[3]"
             end
 
             # Repository auxiliary files have already been normalized before this

@@ -247,6 +247,8 @@ in
             function move(source, destination) {
               if (!fs.existsSync(source) || fs.existsSync(destination)) return false;
               rememberMarkdownOrigins(source, destination);
+              fs.mkdirSync(path.dirname(destination), { recursive: true });
+              if (!fs.existsSync(source) || fs.existsSync(destination)) return false;
               fs.renameSync(source, destination);
               mappings.push([source, destination]);
               return true;
