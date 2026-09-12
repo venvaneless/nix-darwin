@@ -5568,7 +5568,7 @@ in
               command jq -r \
                 --arg field "$manifest_url_field" \
                 'if (.[$field] | type) == "string" then .[$field] else empty end' \
-                "$manifest_file" |
+                "$manifest_file" 2>/dev/null |
               string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?'
             )
             if test -n "$manifest_repository_url"
@@ -5594,6 +5594,17 @@ in
                 __obsidian_command_missing_current_repository_url "$manifest_repository_url"
               )
               if test -n "$current_repository_url"; and \
+                  not __obsidian_command_missing_manifest_is_healthy "$manifest_file"
+                # A malformed manifest cannot be identity-compared. Its saved
+                # URL is still a recovery lead, and normal restoration replaces
+                # the corrupt manifest before saving the canonical URL again.
+                __obsidian_command_missing_restore_standard_files \
+                  "$library_entry" \
+                  "$current_repository_url" \
+                  "$requires_plugin_payload"
+
+                continue
+              else if test -n "$current_repository_url"; and \
                   __obsidian_command_missing_repository_matches_manifest \
                   "$current_repository_url" "$manifest_file"
                 if test "$current_repository_url" != "$manifest_repository_url"; and \
@@ -5624,21 +5635,21 @@ in
                 else
                   empty
                 end' \
-                "$manifest_file" |
+                "$manifest_file" 2>/dev/null |
               string trim
             )
 
             set --local author (
               command jq -r \
                 'if (.author | type) == "string" then .author else empty end' \
-                "$manifest_file" |
+                "$manifest_file" 2>/dev/null |
               string trim
             )
 
             set --local author_url (
               command jq -r \
                 'if (.authorUrl | type) == "string" then .authorUrl else empty end' \
-                "$manifest_file" |
+                "$manifest_file" 2>/dev/null |
               string trim
             )
 
