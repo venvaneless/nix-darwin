@@ -780,6 +780,7 @@ in
               __obsidian_download_name_blocked \
               __obsidian_download_path_blocked \
               __obsidian_download_url_encode \
+              __obsidian_download_file_is_present \
               __obsidian_normalize_download_layout \
               __obsidian_repository_fallback_name \
               __obsidian_is_named_release_archive \
@@ -1823,6 +1824,11 @@ in
           end
 
           function __gitdll_replace_plugin_core_from_url --argument-names destination_file download_url
+              set download_url (__obsidian_download_url_encode "$download_url")
+              if test -z "$download_url"
+                  return 1
+              end
+
               set --local staging_file "$destination_file.gitdll-new"
               command rm -f -- "$staging_file"
               if command curl --fail --location --silent --show-error \
@@ -1900,6 +1906,16 @@ in
               echo "Repository:"
               echo "  $canonical_repository_url"
 
+              # Validate the repository before asking for releases or raw
+              # assets. A removed or misspelled link must not become a series
+              # of unrelated curl and missing-core errors.
+              if not command gh api \
+                      "repos/$repository_owner/$repository_name" \
+                      >/dev/null 2>&1
+                  echo "Notice: GitHub repository was not found."
+                  continue
+              end
+
               command mkdir -p -- "$TMPDIR"
 
               set temporary_directory (
@@ -1976,7 +1992,7 @@ in
                       end
 
                       set release_asset_name "$release_asset_parts[1]"
-                      set release_asset_url "$release_asset_parts[2]"
+                      set release_asset_url (__obsidian_download_url_encode "$release_asset_parts[2]")
                       set release_asset_size "$release_asset_parts[3]"
 
                       if __obsidian_download_path_blocked \
@@ -2018,8 +2034,9 @@ in
                       command gh api \
                           "repos/$repository_owner/$repository_name/contents/$repository_file_path" \
                           --jq .download_url \
-                          2>/dev/null
+                      2>/dev/null
                   )
+                  set repository_file_url (__obsidian_download_url_encode "$repository_file_url")
 
                   if test -z "$repository_file_url"; or \
                           not command curl \
@@ -2051,8 +2068,9 @@ in
                       command gh api \
                           "repos/$repository_owner/$repository_name/contents/$readme_path" \
                           --jq .download_url \
-                          2>/dev/null
+                      2>/dev/null
                   )
+                  set readme_url (__obsidian_download_url_encode "$readme_url")
 
                   if test -n "$readme_url"
                       command curl \
@@ -2320,7 +2338,7 @@ in
                       end
 
                       set release_asset_name "$release_asset_parts[1]"
-                      set release_asset_url "$release_asset_parts[2]"
+                      set release_asset_url (__obsidian_download_url_encode "$release_asset_parts[2]")
                       set release_asset_size "$release_asset_parts[3]"
 
                       if __obsidian_download_path_blocked \
@@ -3033,7 +3051,7 @@ in
                       end
 
                       set release_asset_name "$release_asset_parts[1]"
-                      set release_asset_url "$release_asset_parts[2]"
+                      set release_asset_url (__obsidian_download_url_encode "$release_asset_parts[2]")
                       set release_asset_size "$release_asset_parts[3]"
 
                       if __obsidian_download_path_blocked \
@@ -3104,8 +3122,9 @@ in
                       command gh api \
                           "repos/$repository_owner/$repository_name/contents/$repository_file_path" \
                           --jq .download_url \
-                          2>/dev/null
+                      2>/dev/null
                   )
+                  set repository_file_url (__obsidian_download_url_encode "$repository_file_url")
 
                   if test -z "$repository_file_url"; or \
                           not command curl \
@@ -3137,8 +3156,9 @@ in
                       command gh api \
                           "repos/$repository_owner/$repository_name/contents/$readme_path" \
                           --jq .download_url \
-                          2>/dev/null
+                      2>/dev/null
                   )
+                  set readme_url (__obsidian_download_url_encode "$readme_url")
 
                   if test -n "$readme_url"
                       command curl \
@@ -3203,7 +3223,7 @@ in
                       end
 
                       set release_asset_name "$release_asset_parts[1]"
-                      set release_asset_url "$release_asset_parts[2]"
+                      set release_asset_url (__obsidian_download_url_encode "$release_asset_parts[2]")
 
                       if __obsidian_download_name_blocked \
                               "$release_asset_name"
