@@ -856,6 +856,12 @@ in
             set --local source_map_file \
               "$temporary_directory/source-map.tsv"
 
+            # Record successful entries from text-file inputs separately so the
+            # originating list can be updated without touching direct URLs or
+            # existing library folders passed to gitdll.
+            set --local completed_source_links_file \
+              "$temporary_directory/completed-source-links.tsv"
+
             set --local missing_file \
               "$temporary_directory/missing.txt"
 
@@ -876,6 +882,7 @@ in
             command touch \
               "$repositories_file" \
               "$source_map_file" \
+              "$completed_source_links_file" \
               "$missing_file" \
               "$failed_file"
 
@@ -893,6 +900,110 @@ in
               end
             end
 
+            # Rewrite only a source text file that was explicitly passed to
+            # gitdll. A sibling staging file makes the update atomic.
+            function __gitdll_remove_completed_source_link \
+                --argument-names source_file source_link
+
+              if test -z "$source_file"; or test -z "$source_link"
+                return 0
+              end
+
+              if test -L "$source_file"; or not test -f "$source_file"
+                echo "Notice: Could not safely update source list: $source_file"
+                return 1
+              end
+
+              set --local source_parent (dirname "$source_file")
+              set --local staged_source (
+                command mktemp "$source_parent/.gitdll-links.XXXXXXXXXX"
+              )
+
+              if test -z "$staged_source"; or \
+                  not command cp -p "$source_file" "$staged_source"
+                command rm -f -- "$staged_source"
+                echo "Notice: Could not stage source-list update: $source_file"
+                return 1
+              end
+
+              printf '' >"$staged_source"
+              set --local source_changed 0
+
+              while read --local source_line
+                set --local source_links (
+                  string match -r -a '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' -- "$source_line"
+                )
+
+                if not contains -- "$source_link" $source_links
+                  printf '%s\n' "$source_line" >>"$staged_source"
+                  continue
+                end
+
+                set source_changed 1
+
+                set --local source_without_link (
+                  string trim -- \
+                    (string replace -a -- "$source_link" '' "$source_line")
+                )
+
+                # Remove a bare, bullet, angle-bracket, or Markdown link line
+                # completely. Keep accompanying descriptive text, and retain
+                # any other repository links on a shared line.
+                set --local remove_entire_line 0
+                if test (count $source_links) -eq 1
+                  if string match -rq '^[[:space:]<>()*+_-]*$' -- "$source_without_link"; or \
+                      string match -rq '^[[:space:]]*(?:[-*+][[:space:]]*)?\[[^]]+\]\([^)]*\)[[:space:]]*$' -- "$source_line"
+                    set remove_entire_line 1
+                  end
+                end
+
+                if test "$remove_entire_line" -eq 1
+                  continue
+                end
+
+                printf '%s\n' \
+                  "$source_without_link" \
+                  >>"$staged_source"
+              end <"$source_file"
+
+              if test "$source_changed" -eq 0
+                command rm -f -- "$staged_source"
+                return 0
+              end
+
+              if not command mv -- "$staged_source" "$source_file"
+                command rm -f -- "$staged_source"
+                echo "Notice: Could not save source-list update: $source_file"
+                return 1
+              end
+            end
+
+            # The downloaded functions receive this map as an environment
+            # variable, allowing each completed entry to be removed before a
+            # later repository can be interrupted.
+            function __gitdll_remove_completed_source_links_for_repository \
+                --argument-names repository_url
+
+              if not set -q GITDLL_REMOVE_COMPLETED_SOURCE_LINKS; or \
+                  test "$GITDLL_REMOVE_COMPLETED_SOURCE_LINKS" != 1; or \
+                  not test -f "$GITDLL_SOURCE_MAP_FILE"
+                return 0
+              end
+
+              while read --local source_mapping
+                set --local source_parts (string split \t "$source_mapping")
+
+                if test (count $source_parts) -ne 4; or \
+                    test "$source_parts[2]" != "$repository_url"
+                  continue
+                end
+
+                __gitdll_remove_completed_source_link \
+                  "$source_parts[3]" \
+                  "$source_parts[4]"
+              end <"$GITDLL_SOURCE_MAP_FILE"
+            end
+
             functions \
               __obsidian_download_name_blocked \
               __obsidian_download_path_blocked \
@@ -901,6 +1012,8 @@ in
               __obsidian_normalize_download_layout \
               __obsidian_repository_fallback_name \
               __obsidian_is_named_release_archive \
+              __gitdll_remove_completed_source_link \
+              __gitdll_remove_completed_source_links_for_repository \
               "$downloader_function" \
               >"$function_file"
 
@@ -1260,7 +1373,10 @@ in
                 )
 
                 printf '%s\n' "$repository_url" >>"$repositories_file"
-                printf '%s\t%s\n' "$source_input" "$repository_url" >>"$source_map_file"
+                printf '%s\t%s\t\t\n' \
+                  "$source_input" \
+                  "$repository_url" \
+                  >>"$source_map_file"
                 set source_count (math "$source_count + 1")
                 set repository_count (math "$repository_count + 1")
                 continue
@@ -1296,6 +1412,8 @@ in
                   end
 
                   for repository_url in (string match -r -a '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' "$line")
+
+                  set --local source_repository_url "$repository_url"
 
                   if not string match -rq '^https?://' "$repository_url"
                     set repository_url "https://$repository_url"
@@ -1343,9 +1461,11 @@ in
                     "$repository_url" \
                     >>"$repositories_file"
 
-                  printf '%s\t%s\n' \
+                  printf '%s\t%s\t%s\t%s\n' \
                     "$repository_url" \
                     "$repository_url" \
+                    "$source_input" \
+                    "$source_repository_url" \
                     >>"$source_map_file"
 
                   set repository_count (
@@ -1409,7 +1529,7 @@ in
                 "$repository_url" \
                 >>"$repositories_file"
 
-              printf '%s\t%s\n' \
+              printf '%s\t%s\t\t\n' \
                 "$source_name" \
                 "$repository_url" \
                 >>"$source_map_file"
@@ -1431,8 +1551,15 @@ in
               return 1
             end
 
+            set --local source_link_removal_enabled 0
+            if test (count $include_paths) -eq 0
+              set source_link_removal_enabled 1
+            end
+
             env \
               TMPDIR="$downloader_temporary_directory" \
+              GITDLL_SOURCE_MAP_FILE="$source_map_file" \
+              GITDLL_REMOVE_COMPLETED_SOURCE_LINKS="$source_link_removal_enabled" \
               fish \
               --no-config \
               --command '
@@ -1468,6 +1595,8 @@ in
                 return 1
               end
 
+              set --local include_failed 0
+
               for include_path in $include_paths
                 set --local matched_paths (
                   printf '%s\n' $repository_files | \
@@ -1475,12 +1604,14 @@ in
                 )
                 if test (count $matched_paths) -eq 0
                   printf '%s — requested path not found: %s\n' "$repository_url" "$include_path" >>"$failed_file"
+                  set include_failed 1
                   continue
                 end
                 for repository_path in $matched_paths
                   set --local destination_file "$destination_directory/$repository_path"
                   if test -L "$destination_file"
                     printf '%s — refusing to replace symlinked include: %s\n' "$repository_url" "$repository_path" >>"$failed_file"
+                    set include_failed 1
                     continue
                   end
                   if test -s "$destination_file"
@@ -1499,9 +1630,12 @@ in
                       --output "$destination_file" "$download_url"
                     command rm -f -- "$destination_file"
                     printf '%s — could not download requested path: %s\n' "$repository_url" "$repository_path" >>"$failed_file"
+                    set include_failed 1
                   end
                 end
               end
+
+              return $include_failed
             end
 
             set --local downloaded_count 0
@@ -1524,6 +1658,13 @@ in
 
               set --local original_url \
                 "$mapping_parts[2]"
+
+              set --local source_file
+              set --local source_link
+              if test (count $mapping_parts) -ge 4
+                set source_file "$mapping_parts[3]"
+                set source_link "$mapping_parts[4]"
+              end
 
               set --local matching_manifest_file
               for manifest_candidate in (command find "$destination" \
@@ -1558,14 +1699,39 @@ in
                     >>"$failed_file"
                 end
               else
-                __gitdll_download_includes \
-                  "$original_url" \
-                  (dirname "$matching_manifest_file")
+                if not __gitdll_download_includes \
+                    "$original_url" \
+                    (dirname "$matching_manifest_file")
+                  continue
+                end
+
+                if test -n "$source_file"; and test -n "$source_link"
+                  printf '%s\t%s\n' \
+                    "$source_file" \
+                    "$source_link" \
+                    >>"$completed_source_links_file"
+                end
+
                 set downloaded_count (
                   math "$downloaded_count + 1"
                 )
               end
             end <"$source_map_file"
+
+            command sort -u "$completed_source_links_file" | while read --local completed_source_mapping
+              set --local completed_source_parts (
+                string split \t "$completed_source_mapping"
+              )
+
+              if test (count $completed_source_parts) -ne 2; or \
+                  not __gitdll_remove_completed_source_link \
+                    "$completed_source_parts[1]" \
+                    "$completed_source_parts[2]"
+                printf '%s — could not remove completed link from source list\n' \
+                  "$completed_source_mapping" \
+                  >>"$failed_file"
+              end
+            end
 
             if test "$downloader_status" -ne 0; and not test -s "$failed_file"
               echo "The downloader stopped before reporting a specific reason" >>"$failed_file"
@@ -1584,6 +1750,7 @@ in
 
             functions -e __gitdll_write_failure_report
             functions -e __gitdll_download_includes
+            functions -e __gitdll_remove_completed_source_link
 
             if test "$downloader_status" -ne 0; or test "$missing_count" -gt 0; or \
                 test "$failed_count" -gt 0
@@ -2915,6 +3082,9 @@ in
               for saved_file in $saved_files
                   echo "  $saved_file"
               end
+
+              __gitdll_remove_completed_source_links_for_repository \
+                  "$canonical_repository_url"
 
               command rm -rf -- "$temporary_directory"
           end
@@ -4310,6 +4480,9 @@ in
               for saved_file in $saved_files
                   echo "  $saved_file"
               end
+
+              __gitdll_remove_completed_source_links_for_repository \
+                  "$canonical_repository_url"
 
               command rm -rf -- "$temporary_directory"
           end
