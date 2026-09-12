@@ -79,10 +79,6 @@ in
           {
             nixpkgs.overlays = [ macbookOverlay ];
 
-            # The same imported policy, also set as a module option so
-            # anything reading config.nixpkgs.* sees it too. This is what
-            # shared/hosts.nix used to provide.
-            nixpkgs.config = nixpkgsConfig;
           }
 
           ../darwin/default.nix

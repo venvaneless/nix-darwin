@@ -9,7 +9,6 @@
 {
   config,
   lib,
-  pkgs,
   platforms,
   ...
 }:
@@ -17,38 +16,12 @@
 let
   cfg = config.ven.features.terminal.fish.downloads;
 
-  inherit (platforms) isDarwin isLinux;
-
-  legacyTrashCommand =
-    if isDarwin then
-      ''
-        set --local apple_path (
-          string replace -a '\\' '\\\\' -- "$legacy_file" |
-          string replace -a '"' '\\"'
-        )
-        if not /usr/bin/osascript \
-            -e "tell application \"Finder\" to delete POSIX file \"$apple_path\""
-          echo "Notice: Manifest was migrated, but legacy cleanup needs attention: $legacy_file"
-          return 1
-        end
-      ''
-    else
-      ''
-        if not ${pkgs.trash-cli}/bin/trash "$legacy_file"
-          echo "Notice: Manifest was migrated, but legacy cleanup needs attention: $legacy_file"
-          return 1
-        end
-      '';
 in
 {
   options.ven.features.terminal.fish.downloads.enable =
     lib.mkEnableOption "portable Fish download helpers";
 
   config = lib.mkIf cfg.enable {
-    # Linux and NixOS use the pinned trash-cli main program in the safe
-    # legacy-file cleanup branch below.
-    home.packages = lib.optionals isLinux [ pkgs.trash-cli ];
-
     programs.fish.functions = {
 
       # -----------------------------------------------------------------
@@ -200,6 +173,37 @@ in
       };
 
       # -----------------------------------------------------------------
+      # ---- Obsidian -> Download deduplication ---- #
+      #
+      # A matching filename and GitHub-reported size is sufficient to reuse a
+      # previously downloaded optional file regardless of its older layout.
+      # Core payload files remain root-owned and are deliberately not checked
+      # through this helper.
+      # -----------------------------------------------------------------
+      __obsidian_download_file_is_present = {
+        description = "Check whether an optional Obsidian download already exists";
+
+        body = ''
+          set --local library_entry "$argv[1]"
+          set --local filename "$argv[2]"
+          set --local remote_size "$argv[3]"
+
+          if not test -d "$library_entry"; or \
+              not string match -rq '^[0-9]+$' "$remote_size"
+            return 1
+          end
+
+          command find "$library_entry" \
+            -type f \
+            -iname "$filename" \
+            -size "$remote_size"c \
+            -print \
+            -quit \
+            2>/dev/null | read --local existing_file
+        '';
+      };
+
+      # -----------------------------------------------------------------
       # ---- Obsidian -> Download layout normalization ---- #
       #
       # Keep compact documentation and preview downloads readable without
@@ -270,40 +274,84 @@ in
               return imageExtensions.has(path.extname(file).toLowerCase());
             }
 
-            for (const directory of directoriesBelow(root)) {
-              const name = path.basename(directory).toLowerCase();
+            function isImageOnlyDirectory(directory) {
               const containedFiles = filesBelow(directory);
-              const isImageFolder = name === "images";
-              const isImageOnlyAf = name === "af" && containedFiles.length > 0 && containedFiles.every(isImage);
-              if (!isImageFolder && !isImageOnlyAf) continue;
-              move(directory, path.join(path.dirname(directory), "assets"));
+              return containedFiles.length > 0 && containedFiles.every(isImage);
             }
 
-            for (const directory of directoriesBelow(root)) {
+            function merge(source, destination) {
+              if (source === destination || !fs.existsSync(source)) return;
+              if (!fs.existsSync(destination)) {
+                move(source, destination);
+                return;
+              }
+              if (!fs.statSync(source).isDirectory() || !fs.statSync(destination).isDirectory()) return;
+
+              for (const entry of entries(source)) {
+                const sourceEntry = path.join(source, entry.name);
+                const destinationEntry = path.join(destination, entry.name);
+                if (!fs.existsSync(destinationEntry)) {
+                  move(sourceEntry, destinationEntry);
+                } else if (entry.isDirectory() && fs.statSync(destinationEntry).isDirectory()) {
+                  merge(sourceEntry, destinationEntry);
+                }
+              }
+              if (entries(source).length === 0) fs.rmdirSync(source);
+            }
+
+            const imageWrapperNames = new Set(["af", "img", "imgs", "image", "images"]);
+            const assetNames = new Set(["asset", "assets"]);
+
+            // A nested assets/ directory under imgs/ is a redundant wrapper.
+            // Merge it first so imgs/screenshots and imgs/assets become the
+            // compact assets/screenshots and assets layouts requested by the
+            // downloader contract.
+            for (const directory of directoriesBelow(root).sort((left, right) => right.length - left.length)) {
               const name = path.basename(directory).toLowerCase();
-              if (name === "assets" || name === "docs") continue;
-              const content = entries(directory);
-              if (content.length !== 1 || !content[0].isFile()) continue;
-              move(path.join(directory, content[0].name), path.join(path.dirname(directory), content[0].name));
+              const parent = path.dirname(directory);
+              if (!assetNames.has(name) || !imageWrapperNames.has(path.basename(parent).toLowerCase())) continue;
+              if (isImageOnlyDirectory(directory)) merge(directory, path.join(path.dirname(parent), "assets"));
+            }
+
+            // Keep image-only folders beneath a stable assets/ root. Known
+            // wrapper names collapse into assets itself; descriptive folders
+            // such as screenshots remain as assets/screenshots.
+            for (const directory of directoriesBelow(root).sort((left, right) => right.length - left.length)) {
+              const name = path.basename(directory).toLowerCase();
+              if (name === "repo" || name === "docs" || assetNames.has(name) || !isImageOnlyDirectory(directory)) continue;
+              const parent = path.dirname(directory);
+              const assetParent = imageWrapperNames.has(path.basename(parent).toLowerCase())
+                ? path.dirname(parent)
+                : parent;
+              const destination = imageWrapperNames.has(name)
+                ? path.join(assetParent, "assets")
+                : path.join(assetParent, "assets", path.basename(directory));
+              merge(directory, destination);
+            }
+
+            for (const directory of directoriesBelow(root).sort((left, right) => right.length - left.length)) {
               if (entries(directory).length === 0) fs.rmdirSync(directory);
             }
 
+            // A small non-asset wrapper inside repo/ only obscures the files.
+            // Leave docs/ and assets/ intact because their names carry layout
+            // meaning and Markdown links are intentionally rooted there.
             const repositoryDirectory = path.join(root, "repo");
             if (fs.existsSync(repositoryDirectory) && fs.statSync(repositoryDirectory).isDirectory()) {
-              const repositoryContent = entries(repositoryDirectory);
-              const wrapperDirectories = repositoryContent.filter((entry) => entry.isDirectory());
-              const wrapperFiles = repositoryContent.filter((entry) => entry.isFile());
-              if (wrapperDirectories.length === 1 && wrapperFiles.length > 0 && wrapperFiles.every((entry) => entry.name.toLowerCase().includes("readme"))) {
-                const wrapper = path.join(repositoryDirectory, wrapperDirectories[0].name);
-                const wrapperContent = entries(wrapper);
-                if (wrapperContent.every((entry) => !fs.existsSync(path.join(repositoryDirectory, entry.name)))) {
-                  for (const entry of wrapperContent) move(path.join(wrapper, entry.name), path.join(repositoryDirectory, entry.name));
-                  fs.rmdirSync(wrapper);
-                }
+              for (const directory of directoriesBelow(repositoryDirectory).sort((left, right) => right.length - left.length)) {
+                const name = path.basename(directory).toLowerCase();
+                if (name === "assets" || name === "docs" || directory.includes(path.sep + "assets" + path.sep)) continue;
+                const content = entries(directory);
+                if (content.length === 0 || content.length >= 3 || !content.every((entry) => entry.isFile())) continue;
+                if (content.some((entry) => fs.existsSync(path.join(path.dirname(directory), entry.name)))) continue;
+                for (const entry of content) move(path.join(directory, entry.name), path.join(path.dirname(directory), entry.name));
+                if (entries(directory).length === 0) fs.rmdirSync(directory);
               }
 
+              // A README and up to one other optional file are clearer beside
+              // the core payload than in an otherwise empty repo/ wrapper.
               const finalRepositoryContent = entries(repositoryDirectory);
-              if (finalRepositoryContent.length <= 3 && finalRepositoryContent.every((entry) => entry.isFile()) && finalRepositoryContent.every((entry) => !fs.existsSync(path.join(root, entry.name)))) {
+              if (finalRepositoryContent.length <= 2 && finalRepositoryContent.every((entry) => entry.isFile()) && finalRepositoryContent.every((entry) => !fs.existsSync(path.join(root, entry.name)))) {
                 for (const entry of finalRepositoryContent) move(path.join(repositoryDirectory, entry.name), path.join(root, entry.name));
                 fs.rmdirSync(repositoryDirectory);
               }
@@ -339,12 +387,7 @@ in
             }
 
             for (const markdownFile of filesBelow(root)) {
-              const relative = path.relative(root, markdownFile).split(path.sep);
-              const inDocs = relative.slice(0, -1).some((part) => part.toLowerCase() === "docs");
-              const isReadme = path.basename(markdownFile).toLowerCase().includes("readme");
-              if (!inDocs || path.extname(markdownFile).toLowerCase() !== ".md") {
-                if (!isReadme || path.extname(markdownFile).toLowerCase() !== ".md") continue;
-              }
+              if (path.extname(markdownFile).toLowerCase() !== ".md") continue;
               const source = fs.readFileSync(markdownFile, "utf8");
               const rewritten = source
                 .replace(/(!\[[^\]]*\]\(\s*<?)([^\s)>]+)(?=[\s)>])/g, (whole, prefix, reference) => prefix + rewriteReference(reference, markdownFile))
@@ -879,6 +922,30 @@ in
                 return 1
               end
 
+              # Saved libraries declare their source in the manifest. Prefer
+              # that explicit URL before deriving a repository from metadata.
+              set --local manifest_url_field themeUrl
+              if test "$library_type" = plugins
+                set manifest_url_field pluginUrl
+              end
+              set --local manifest_repository_url (
+                command jq -r \
+                  --arg field "$manifest_url_field" \
+                  'if (.[$field] | type) == "string" then .[$field] else empty end' \
+                  "$manifest_file" | string trim
+              )
+              set manifest_repository_url (
+                string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "https://github.com/" -- "$manifest_repository_url" |
+                string replace -r '\\.git/?$' "" |
+                string replace -r '/$' ""
+              )
+              if string match -rq \
+                  '^https://github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' \
+                  "$manifest_repository_url"
+                printf '%s\n' "$manifest_repository_url"
+                return 0
+              end
+
               set --local library_id (
                 command jq -r \
                   'if (.id | type) == "string" then .id else empty end' \
@@ -1132,35 +1199,11 @@ in
                 basename "$source_folder"
               )
 
-              set --local repository_file \
-                "$source_folder/repository-url.txt"
-
-              if not test -f "$repository_file"
-                set repository_file \
-                  "$source_folder/repo/repository-url.txt"
-              end
-
-              set --local repository_url
-
-              if test -f "$repository_file"
-                set repository_url (
-                  string match -r -m 1 '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' <"$repository_file" |
-                  string trim
-                )
-              end
-
-              if test -n "$repository_url"; and \
-                  not string match -rq \
-                    '^https?://github\\.com/[^/]+/[^/]+/?$' \
-                    "$repository_url"
-                set repository_url
-              end
-
-              if test -z "$repository_url"
-                set repository_url (
-                  __gitdll_resolve_repository "$source_folder" "$library_type"
-                )
-              end
+              # The manifest is the only repository URL source for a saved
+              # Obsidian entry, including entries in an older repo/ layout.
+              set --local repository_url (
+                __gitdll_resolve_repository "$source_folder" "$library_type"
+              )
 
               set repository_url (
                 string replace -r \
@@ -1180,7 +1223,7 @@ in
                   '^https?://github\.com/[^/]+/[^/]+$' \
                   "$repository_url"
 
-                printf '%s — missing or invalid repository-url.txt\n' \
+                printf '%s — missing or invalid manifest repository URL\n' \
                   "$source_name" \
                   >>"$missing_file"
 
@@ -1798,53 +1841,6 @@ in
               set canonical_repository_url \
                   "https://github.com/$repository_owner/$repository_name"
 
-              # Skip completed destinations before making any network requests.
-              set existing_repository_file (
-                  command find "$destination" \
-                      -mindepth 2 \
-                      -maxdepth 2 \
-                      -type f \
-                      -name repository-url.txt \
-                      -exec grep -lF "$canonical_repository_url" {} \; \
-                      2>/dev/null |
-                  command head -n 1
-              )
-
-              if test -n "$existing_repository_file"
-                  set existing_plugin_directory (
-                      dirname "$existing_repository_file"
-                  )
-                  set existing_plugin_readme 0
-
-                  if command find "$existing_plugin_directory" \
-                          -maxdepth 1 \
-                          -type f \
-                          \( -iname "README" -o -iname "README.md" -o -iname "README.markdown" -o -iname "README.txt" \) \
-                          -size +0c \
-                          -print \
-                          -quit | read --local existing_readme
-                      set existing_plugin_readme 1
-                  end
-
-                  if test -r "$existing_plugin_directory/manifest.json"; and \
-                          test -s "$existing_plugin_directory/manifest.json"; and \
-                          command jq -e . \
-                              "$existing_plugin_directory/manifest.json" \
-                              >/dev/null 2>&1; and \
-                          command jq --indent 2 . \
-                              "$existing_plugin_directory/manifest.json" | \
-                              command cmp -s - "$existing_plugin_directory/manifest.json"; and \
-                          test -r "$existing_plugin_directory/main.js"; and \
-                          test -s "$existing_plugin_directory/main.js"; and \
-                          test "$existing_plugin_readme" -eq 1
-
-                      echo
-                      echo "Skipping:"
-                      echo "  $existing_plugin_directory (already complete)"
-                      continue
-                  end
-              end
-
               echo
               echo "Repository:"
               echo "  $canonical_repository_url"
@@ -1911,7 +1907,7 @@ in
                       printf "%s" "$release_json" |
                       command jq -r \
                           '.assets[]?
-                          | [.name, .browser_download_url]
+                          | [.name, .browser_download_url, .size]
                           | @tsv'
                   )
 
@@ -1926,6 +1922,7 @@ in
 
                       set release_asset_name "$release_asset_parts[1]"
                       set release_asset_url "$release_asset_parts[2]"
+                      set release_asset_size "$release_asset_parts[3]"
 
                       if __obsidian_download_path_blocked \
                               "$release_asset_name"
@@ -2207,6 +2204,24 @@ in
                   command mkdir -p -- "$plugin_stage"
               end
 
+              # A core refresh replaces manifest.json, so retain the URL already
+              # declared by the saved manifest instead of replacing it with a
+              # derived repository URL.
+              set manifest_plugin_url "$canonical_repository_url"
+              if test -f "$plugin_stage/manifest.json"
+                  set existing_plugin_url (
+                      command jq -r \
+                          'if (.pluginUrl | type) == "string" then .pluginUrl else empty end' \
+                          "$plugin_stage/manifest.json" \
+                          2>/dev/null | string trim
+                  )
+                  if string match -rq \
+                          '(?i)^https?://(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?/?$' \
+                          "$existing_plugin_url"
+                      set manifest_plugin_url "$existing_plugin_url"
+                  end
+              end
+
               if not test -r "$plugin_stage/manifest.json"; or \
                       not test -s "$plugin_stage/manifest.json"; or \
                       test "$refresh_plugin_manifest" -eq 1; or \
@@ -2236,7 +2251,7 @@ in
                       printf "%s" "$release_json" |
                       command jq -r \
                           '.assets[]?
-                          | [.name, .browser_download_url]
+                          | [.name, .browser_download_url, .size]
                           | @tsv'
                   )
 
@@ -2251,6 +2266,7 @@ in
 
                       set release_asset_name "$release_asset_parts[1]"
                       set release_asset_url "$release_asset_parts[2]"
+                      set release_asset_size "$release_asset_parts[3]"
 
                       if __obsidian_download_path_blocked \
                               "$release_asset_name"
@@ -2259,7 +2275,7 @@ in
                       end
 
                       switch "$release_asset_name"
-                          case main.js styles.css manifest.json
+                          case main.js data.json styles.css manifest.json
                               if test -r "$plugin_stage/$release_asset_name"; and \
                                       test -s "$plugin_stage/$release_asset_name"; and \
                                       test "$refresh_plugin_manifest" -eq 0
@@ -2298,7 +2314,11 @@ in
                               # Every actual GitHub release asset stays at the
                               # plugin root. GitHub's generated source archives are
                               # not included in the release assets API.
-                              if test -e "$plugin_stage/$release_asset_name"
+                              if test -e "$plugin_stage/$release_asset_name"; or \
+                                      __obsidian_download_file_is_present \
+                                          "$plugin_stage" \
+                                          "$release_asset_name" \
+                                          "$release_asset_size"
                                   continue
                               end
 
@@ -2323,7 +2343,7 @@ in
                   echo "Notice: No GitHub release was found."
               end
 
-              for expected_file in main.js styles.css
+              for expected_file in main.js data.json styles.css
                   if test -r "$plugin_stage/$expected_file"; and \
                           test -s "$plugin_stage/$expected_file"; and \
                           test "$refresh_plugin_manifest" -eq 0
@@ -2508,22 +2528,35 @@ in
                           "$plugin_stage/repo/$auxiliary_path"
                   end
 
-                  if test -s "$auxiliary_destination"
+                  # GitHub CLI's raw response transform can fail for binary
+                  # images and GIFs. Resolve the raw URL as metadata, then
+                  # use curl to download a staged file before replacing it.
+                  set auxiliary_metadata (
+                      command gh api \
+                          "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
+                          --jq '[.size, .download_url] | @tsv' \
+                          2>/dev/null
+                  )
+
+                  set auxiliary_parts (string split \t "$auxiliary_metadata")
+                  if test (count $auxiliary_parts) -ne 2
+                      echo "Notice: Could not resolve plugin repository file: $auxiliary_path"
+                      continue
+                  end
+
+                  set auxiliary_size "$auxiliary_parts[1]"
+                  set auxiliary_url "$auxiliary_parts[2]"
+
+                  if test -s "$auxiliary_destination"; or \
+                      __obsidian_download_file_is_present \
+                          "$plugin_stage" \
+                          (basename "$auxiliary_path") \
+                          "$auxiliary_size"
                       continue
                   end
 
                   command mkdir -p \
                       (dirname "$auxiliary_destination")
-
-                  # GitHub CLI's raw response transform can fail for binary
-                  # images and GIFs. Resolve the raw URL as metadata, then
-                  # use curl to download a staged file before replacing it.
-                  set auxiliary_url (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
-                          --jq .download_url \
-                          2>/dev/null
-                  )
 
                   set auxiliary_staging "$auxiliary_destination.gitdll-new"
                   command rm -f -- "$auxiliary_staging"
@@ -2648,7 +2681,7 @@ in
               end
 
               if not command jq \
-                      --arg url "$canonical_repository_url" \
+                      --arg url "$manifest_plugin_url" \
                       '.pluginUrl = $url' \
                       "$plugin_stage/manifest.json" \
                       >"$plugin_stage/manifest.json.gitdll-new"; or \
@@ -2865,49 +2898,6 @@ in
               # Keep the repository name as the final, filesystem-safe fallback.
               set fallback_folder_name "$repository_name"
 
-              # Skip completed destinations before making any network requests.
-              set existing_repository_file (
-                  command find "$destination" \
-                      -mindepth 2 \
-                      -maxdepth 2 \
-                      -type f \
-                      -name repository-url.txt \
-                      -exec grep -lF "$canonical_repository_url" {} \; \
-                      2>/dev/null |
-                  command head -n 1
-              )
-
-              if test -n "$existing_repository_file"
-                  set existing_theme_directory (
-                      dirname "$existing_repository_file"
-                  )
-
-                  set existing_theme_manifest_ok 1
-                  set existing_theme_readme_ok 0
-
-                  if command find "$existing_theme_directory" \
-                          -maxdepth 1 \
-                          -type f \
-                          \( -iname "README" -o -iname "README.md" -o -iname "README.markdown" -o -iname "README.txt" \) \
-                          -size +0c \
-                          -print \
-                          -quit | read --local existing_theme_readme
-                      set existing_theme_readme_ok 1
-                  end
-
-                  if test -e "$existing_theme_directory/manifest.json"; and \
-                          not test -r "$existing_theme_directory/manifest.json"; or \
-                          test -e "$existing_theme_directory/manifest.json"; and \
-                          not test -s "$existing_theme_directory/manifest.json"; or \
-                          test -e "$existing_theme_directory/manifest.json"; and \
-                          not command jq -e . \
-                              "$existing_theme_directory/manifest.json" \
-                              >/dev/null 2>&1
-                      set existing_theme_manifest_ok 0
-                  end
-
-              end
-
               echo
               echo "Repository:"
               echo "  $canonical_repository_url"
@@ -2974,7 +2964,7 @@ in
                       printf "%s" "$release_json" |
                       command jq -r \
                           '.assets[]?
-                          | [.name, .browser_download_url]
+                          | [.name, .browser_download_url, .size]
                           | @tsv'
                   )
 
@@ -2989,6 +2979,7 @@ in
 
                       set release_asset_name "$release_asset_parts[1]"
                       set release_asset_url "$release_asset_parts[2]"
+                      set release_asset_size "$release_asset_parts[3]"
 
                       if __obsidian_download_path_blocked \
                               "$release_asset_name"
@@ -3034,9 +3025,9 @@ in
                   set repository_primary_stylesheets 0
               end
 
-              for expected_file in manifest.json theme.css obsidian.css
+              for expected_file in manifest.json main.js theme.css obsidian.css
                   if test "$repository_primary_stylesheets" -eq 0; and \
-                          test "$expected_file" != manifest.json
+                          contains -- "$expected_file" theme.css obsidian.css
                       continue
                   end
                   if test -f "$extracted/$expected_file"
@@ -3440,9 +3431,10 @@ in
                       set refresh_theme_core 1
                   end
 
-                  # Existing themes are refreshed so newly supported repository
-                  # screenshots and asset folders are added on later runs.
+                  # Existing themes are refreshed as one payload, so supported
+                  # repository assets and every available core file stay in sync.
                   set theme_directory_exists 1
+                  set refresh_theme_core 1
               end
 
               set theme_stage "$temporary_directory/theme"
@@ -3451,6 +3443,23 @@ in
                   set theme_stage "$theme_directory"
               else
                   command mkdir -p -- "$theme_stage"
+              end
+
+              # A refresh replaces manifest.json. Preserve its prior themeUrl
+              # when it is a valid GitHub repository URL.
+              set manifest_theme_url "$canonical_repository_url"
+              if test -f "$theme_stage/manifest.json"
+                  set existing_theme_url (
+                      command jq -r \
+                          'if (.themeUrl | type) == "string" then .themeUrl else empty end' \
+                          "$theme_stage/manifest.json" \
+                          2>/dev/null | string trim
+                  )
+                  if string match -rq \
+                          '(?i)^https?://(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?/?$' \
+                          "$existing_theme_url"
+                      set manifest_theme_url "$existing_theme_url"
+                  end
               end
 
               set saved_files
@@ -3600,8 +3609,14 @@ in
                   for release_asset in "$extracted/release-assets"/*
                       set release_asset_name \
                           (basename "$release_asset")
+                      set release_asset_size \
+                          (command wc -c <"$release_asset" | string trim)
 
-                      if test -e "$theme_stage/$release_asset_name"
+                      if test -e "$theme_stage/$release_asset_name"; or \
+                              __obsidian_download_file_is_present \
+                                  "$theme_stage" \
+                                  "$release_asset_name" \
+                                  "$release_asset_size"
                           continue
                       end
 
@@ -3657,7 +3672,8 @@ in
 
               if test -f "$source_obsidian_css"
                   if not test -r "$theme_stage/obsidian.css"; or \
-                          not test -s "$theme_stage/obsidian.css"
+                          not test -s "$theme_stage/obsidian.css"; or \
+                          test "$refresh_theme_core" -eq 1
                       command cp -f \
                           "$source_obsidian_css" \
                           "$theme_stage/obsidian.css"
@@ -3667,7 +3683,8 @@ in
               end
 
               if test -f "$extracted/main.js"
-                  if not test -s "$theme_stage/main.js"
+                  if not test -s "$theme_stage/main.js"; or \
+                          test "$refresh_theme_core" -eq 1
                       command cp -f "$extracted/main.js" "$theme_stage/main.js"
                   end
                   set saved_files $saved_files main.js
@@ -3679,19 +3696,28 @@ in
 
               for repository_image_path in $repository_image_paths
 
-                  set repository_image_url (
+                  set repository_image_metadata (
                       command gh api \
                           "repos/$repository_owner/$repository_name/contents/$repository_image_path" \
-                          --jq .download_url \
+                          --jq '[.size, .download_url] | @tsv' \
                           2>/dev/null
                   )
 
-                  if test -z "$repository_image_url"
+                  set repository_image_parts \
+                      (string split \t "$repository_image_metadata")
+
+                  if test (count $repository_image_parts) -ne 2
                       continue
                   end
 
+                  set repository_image_size "$repository_image_parts[1]"
+                  set repository_image_url "$repository_image_parts[2]"
                   set image_destination "$repository_asset_root/$repository_image_path"
-                  if test -s "$image_destination"
+                  if test -s "$image_destination"; or \
+                          __obsidian_download_file_is_present \
+                              "$theme_stage" \
+                              (basename "$repository_image_path") \
+                              "$repository_image_size"
                       continue
                   end
 
@@ -3721,21 +3747,29 @@ in
                       continue
                   end
 
-                  set snippet_url (
+                  set snippet_metadata (
                       command gh api \
                           "repos/$repository_owner/$repository_name/contents/$snippet_path" \
-                          --jq .download_url \
+                          --jq '[.size, .download_url] | @tsv' \
                           2>/dev/null
                   )
 
-                  if test -z "$snippet_url"
+                  set snippet_parts (string split \t "$snippet_metadata")
+                  if test (count $snippet_parts) -ne 2
                       continue
                   end
+
+                  set snippet_size "$snippet_parts[1]"
+                  set snippet_url "$snippet_parts[2]"
 
                   set snippet_destination \
                       "$repository_asset_root/$snippet_path"
 
-                  if test -s "$snippet_destination"
+                  if test -s "$snippet_destination"; or \
+                          __obsidian_download_file_is_present \
+                              "$theme_stage" \
+                              (basename "$snippet_path") \
+                              "$snippet_size"
                       continue
                   end
 
@@ -3812,26 +3846,52 @@ in
                   set auxiliary_destination \
                       "$repository_asset_root/$auxiliary_path"
 
-                  if test -s "$auxiliary_destination"
+                  set auxiliary_metadata (
+                      command gh api \
+                          "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
+                          --jq '[.size, .download_url] | @tsv' \
+                          2>/dev/null
+                  )
+                  set auxiliary_parts (string split \t "$auxiliary_metadata")
+                  if test (count $auxiliary_parts) -ne 2
+                      echo \
+                          "Notice: Could not resolve theme repository file: $auxiliary_path"
+                      continue
+                  end
+
+                  set auxiliary_size "$auxiliary_parts[1]"
+                  set auxiliary_url "$auxiliary_parts[2]"
+
+                  if test -s "$auxiliary_destination"; or \
+                          __obsidian_download_file_is_present \
+                          "$theme_stage" \
+                          (basename "$auxiliary_path") \
+                          "$auxiliary_size"
                       continue
                   end
 
                   command mkdir -p \
                       (dirname "$auxiliary_destination")
 
-                  if command gh api \
-                          -H "Accept: application/vnd.github.raw+json" \
-                          "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
-                          >"$auxiliary_destination" \
-                          2>/dev/null; and \
-                          test -s "$auxiliary_destination"
+                  set auxiliary_staging "$auxiliary_destination.gitdll-new"
+                  command rm -f -- "$auxiliary_staging"
+
+                  if command curl \
+                          --fail \
+                          --location \
+                          --silent \
+                          --show-error \
+                          --output "$auxiliary_staging" \
+                          "$auxiliary_url"; and \
+                          test -s "$auxiliary_staging"; and \
+                          command mv -- "$auxiliary_staging" "$auxiliary_destination"
 
                       set saved_files \
                           $saved_files \
                           "repo/$auxiliary_path"
                   else
                       command rm -f \
-                          "$auxiliary_destination"
+                          "$auxiliary_staging"
 
                       echo \
                           "Notice: Could not download theme repository file: $auxiliary_path"
@@ -4007,7 +4067,7 @@ in
               end
 
               if not command jq \
-                      --arg url "$canonical_repository_url" \
+                      --arg url "$manifest_theme_url" \
                       '.themeUrl = $url' \
                       "$theme_stage/manifest.json" \
                       >"$theme_stage/manifest.json.gitdll-new"; or \
@@ -4128,10 +4188,10 @@ in
       # -----------------------------------------------------------------
 
       # -----------------------------------------------------------------
-      # ---- obsidian-missing -> Migrate and restore manifest repository URLs ---- #
+      # ---- obsidian-missing -> Restore manifest-backed repository files ---- #
       # -----------------------------------------------------------------
       obsidian-missing = {
-        description = "Migrate and restore Obsidian manifest repository URLs";
+        description = "Restore missing Obsidian files from manifest repository URLs";
 
         body = ''
           if test (count $argv) -ne 1
@@ -4216,17 +4276,6 @@ in
               command rm -f -- "$staging_file"
               return 1
             end
-          end
-
-          # Move legacy metadata to Trash only after the manifest write succeeds.
-          # Finder owns the Darwin path; the feature-installed trash-cli command
-          # owns the Linux/NixOS path. Neither branch falls back to rm.
-          function __obsidian_missing_trash_legacy_url --argument-names legacy_file
-            if not test -e "$legacy_file"; and not test -L "$legacy_file"
-              return 0
-            end
-
-            ${legacyTrashCommand}
           end
 
           # Check whether a manifest remains usable by Obsidian before trusting it.
@@ -4371,14 +4420,11 @@ in
             echo "Saved $destination"
           end
 
-          # Omit localized README variants and non-ASCII repository paths. The
-          # GitHub contents endpoint requires encoded paths, while these files
-          # are intentionally outside the permanent Obsidian library scope.
+          # Omit localized README variants using the same content exclusions as
+          # gitdll. Repository paths remain otherwise portable: GitHub's
+          # contents endpoint accepts encoded non-ASCII paths, and gitdll does
+          # not exclude them merely because their names are non-ASCII.
           function __obsidian_missing_path_is_unsupported --argument-names repository_path
-            if not string match -rq '^[\x00-\x7F]+$' "$repository_path"
-              return 0
-            end
-
             if __obsidian_download_path_blocked "$repository_path"
               return 0
             end
@@ -4391,10 +4437,15 @@ in
               "$filename"
           end
 
-          # Restore or migrate README according to the entry's auxiliary-content
-          # layout. Core Obsidian files remain at root; auxiliary content uses repo/.
+          # Restore or migrate the same README selected by gitdll according to
+          # the entry's auxiliary-content layout. Core Obsidian files remain at
+          # root; auxiliary content uses repo/. The filtered repository-path
+          # list keeps README selection, exclusions, and layout in lockstep
+          # with the plugin and theme downloaders.
           function __obsidian_missing_restore_readme \
               --argument-names library_entry repository_url
+
+            set --local repository_paths $argv[3..]
 
             set --local repository (
               string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "" -- "$repository_url" |
@@ -4409,14 +4460,42 @@ in
               return 1
             end
 
-            set --local readme_metadata (
-              command gh api \
-                "repos/$repository/readme" \
-                --jq '[.name, .size, .download_url] | @tsv' \
-                2>/dev/null
-            )
+            set --local readme_path
+            set --local readme_metadata
 
-            if test $status -ne 0; or test -z "$readme_metadata"
+            # Match gitdll's filename order and its filtered-tree traversal
+            # instead of GitHub's default README endpoint, which may choose a
+            # different file or bypass a configured exclusion.
+            for readme_name in README README.md README.markdown README.org README.txt
+              set readme_path (
+                printf '%s\n' $repository_paths |
+                command awk -F/ \
+                  -v expected_file="$readme_name" \
+                  '$NF == expected_file { print; exit }'
+              )
+
+              if test -z "$readme_path"
+                continue
+              end
+
+              if __obsidian_missing_path_is_unsupported "$readme_path"
+                set readme_path
+                continue
+              end
+
+              set readme_metadata (
+                command gh api \
+                  "repos/$repository/contents/$readme_path" \
+                  --jq '[.name, .size, .download_url] | @tsv' \
+                  2>/dev/null
+              )
+
+              if test -n "$readme_metadata"
+                break
+              end
+            end
+
+            if test -z "$readme_metadata"
               echo "Notice: Repository has no downloadable README: $repository"
               return 1
             end
@@ -4431,14 +4510,8 @@ in
 
             set --local readme_name \
               "$readme_parts[1]"
-
-            if __obsidian_missing_path_is_unsupported "$readme_name"
-              return 0
-            end
-
             set --local readme_size \
               "$readme_parts[2]"
-
             set --local readme_url \
               "$readme_parts[3]"
 
@@ -4552,6 +4625,96 @@ in
               "$readme_name"
           end
 
+          # Keep README image links valid when recovery has preserved an
+          # image's repository-relative path but moved the README beside the
+          # entry's core files. This mirrors gitdll's normalized layout without
+          # downloading arbitrary README-linked files.
+          function __obsidian_missing_rewrite_readme_image_paths \
+              --argument-names library_entry
+
+            set --local repository_paths $argv[2..]
+            set --local readme_path
+
+            for readme_name in README README.md README.markdown README.org README.txt
+              set readme_path (
+                printf '%s\n' $repository_paths |
+                command awk -F/ \
+                  -v expected_file="$readme_name" \
+                  '$NF == expected_file { print; exit }'
+              )
+
+              if test -n "$readme_path"; and \
+                  not __obsidian_missing_path_is_unsupported "$readme_path"
+                break
+              end
+            end
+
+            if test -z "$readme_path"
+              return 0
+            end
+
+            set --local readme_root "$library_entry"
+            if test -d "$library_entry/repo"; and \
+                command find "$library_entry/repo" \
+                  -mindepth 1 \
+                  -print \
+                  -quit | read --local existing_repo_content
+              set readme_root "$library_entry/repo"
+            end
+
+            set --local readme_file \
+              "$readme_root/"(basename "$readme_path")
+
+            if not test -f "$readme_file"; or test -L "$readme_file"
+              return 0
+            end
+
+            command node -e '
+              const fs = require("node:fs");
+              const path = require("node:path");
+              const root = path.resolve(process.argv[1]);
+              const readme = path.resolve(process.argv[2]);
+              const repositoryReadme = process.argv[3];
+
+              if (!readme.startsWith(root + path.sep)) process.exit(0);
+
+              function rewriteReference(reference) {
+                if (/^(?:[a-z]+:|#|\/)/i.test(reference)) return reference;
+                const match = reference.match(/^([^?#]*)([?#].*)?$/);
+                if (!match || !match[1] || /(^|\/)\.\.?(?:\/|$)/.test(match[1])) return reference;
+
+                const repositoryPath = path.posix.normalize(
+                  path.posix.join(path.posix.dirname(repositoryReadme), match[1]),
+                );
+                if (repositoryPath === ".." || repositoryPath.startsWith("../")) return reference;
+
+                const parts = repositoryPath.split("/");
+                const candidates = [
+                  path.join(root, "repo", ...parts),
+                  path.join(root, ...parts),
+                ];
+                const target = candidates.find((candidate) => {
+                  try {
+                    return fs.statSync(candidate).isFile();
+                  } catch {
+                    return false;
+                  }
+                });
+                if (!target) return reference;
+
+                return path.relative(path.dirname(readme), target)
+                  .split(path.sep)
+                  .join("/") + (match[2] || "");
+              }
+
+              const source = fs.readFileSync(readme, "utf8");
+              const rewritten = source
+                .replace(/(!\[[^\]]*\]\(\s*<?)([^\s)>]+)(?=[\s)>])/g, (whole, prefix, reference) => prefix + rewriteReference(reference))
+                .replace(/(<img\b[^>]*?\bsrc=["\x27])([^"\x27]+)(?=["\x27])/gi, (whole, prefix, reference) => prefix + rewriteReference(reference));
+              if (rewritten !== source) fs.writeFileSync(readme, rewritten, "utf8");
+            ' "$library_entry" "$readme_file" "$readme_path"
+          end
+
           # Restore missing theme images using the same root/repo placement rules
           # as gitdll --themes.
           function __obsidian_missing_restore_theme_screenshots \
@@ -4580,6 +4743,32 @@ in
               echo "Notice: Could not inspect theme images for $library_entry"
               return 1
             end
+
+            # Use the downloader's path eligibility before looking up core,
+            # README, documentation, screenshots, snippets, or other optional
+            # files. This prevents recovery from selecting an excluded file
+            # with a matching basename (for example under node_modules).
+            set --local filtered_repository_paths
+
+            for repository_path in $repository_paths
+              if string match -rq \
+                  '(^|/)\\.[^/]+' \
+                  "$repository_path"; or \
+                  string match -rq \
+                  '(^|/)node_modules/' \
+                  "$repository_path"; or \
+                  __obsidian_download_path_blocked \
+                      "$repository_path"
+
+                continue
+              end
+
+              set --append filtered_repository_paths \
+                "$repository_path"
+            end
+
+            set repository_paths \
+              $filtered_repository_paths
 
             set --local repository_image_paths
             set --local use_repository_subfolder 0
@@ -4709,17 +4898,10 @@ in
               set --local image_url \
                 "$image_parts[2]"
 
-              set --local image_name \
-                (basename "$repository_image_path")
-
-              if command find "$library_entry" \
-                  -type f \
-                  -iname "$image_name" \
-                  -size "$image_size"c \
-                  -print \
-                  -quit \
-                  2>/dev/null | read --local existing_image
-
+              if __obsidian_download_file_is_present \
+                  "$library_entry" \
+                  (basename "$repository_image_path") \
+                  "$image_size"
                 continue
               end
 
@@ -4753,6 +4935,31 @@ in
                 2>/dev/null
             )
 
+            # Match gitdll before any core-file lookup or auxiliary-file
+            # selection. Otherwise a blocked path with a familiar basename can
+            # win the first-match lookup used during missing-file recovery.
+            set --local filtered_repository_paths
+
+            for repository_path in $repository_paths
+              if string match -rq \
+                  '(^|/)\\.[^/]+' \
+                  "$repository_path"; or \
+                  string match -rq \
+                  '(^|/)node_modules/' \
+                  "$repository_path"; or \
+                  __obsidian_download_path_blocked \
+                      "$repository_path"
+
+                continue
+              end
+
+              set --append filtered_repository_paths \
+                "$repository_path"
+            end
+
+            set repository_paths \
+              $filtered_repository_paths
+
             set --local use_repository_subfolder 0
 
             if test -d "$library_entry/repo"; and \
@@ -4777,7 +4984,7 @@ in
                 printf '%s' "$release_json" |
                 command jq -r \
                   '.assets[]?
-                  | [.name, .browser_download_url]
+                  | [.name, .browser_download_url, .size]
                   | @tsv'
               )
             end
@@ -4815,6 +5022,25 @@ in
             # exhausted both the release and the main repository.
             set --local deferred_library_archives
 
+            # obsidian.css is a fallback stylesheet only when theme.css is
+            # absent everywhere. Do not retain both names for that fallback.
+            set --local theme_has_named_theme_css 0
+            if test "$requires_plugin_payload" -eq 0
+              for release_asset in $release_assets
+                set --local release_parts (string split \t "$release_asset")
+                if test (count $release_parts) -ge 2; and \
+                    test "$release_parts[1]" = theme.css
+                  set theme_has_named_theme_css 1
+                  break
+                end
+              end
+              if test "$theme_has_named_theme_css" -eq 0; and \
+                  printf '%s\n' $repository_paths | \
+                    command awk -F/ '$NF == "theme.css" { found = 1 } END { exit !found }'
+                set theme_has_named_theme_css 1
+              end
+            end
+
             # GitHub's generated source archives are not members of .assets[].
             for release_asset in $release_assets
               set --local release_parts \
@@ -4829,6 +5055,8 @@ in
 
               set --local release_asset_url \
                 "$release_parts[2]"
+              set --local release_asset_size \
+                "$release_parts[3]"
 
                 if __obsidian_missing_path_is_unsupported \
                     "$release_asset_name"; or \
@@ -4849,10 +5077,38 @@ in
                 continue
               end
 
+              if test "$requires_plugin_payload" -eq 0; and \
+                  test "$release_asset_name" = obsidian.css; and \
+                  test "$theme_has_named_theme_css" -eq 0
+                continue
+              end
+
+              # Optional release assets follow the same cross-layout reuse
+              # rule as repository files. Obsidian's load-bearing files stay
+              # rooted at the entry even when an old copy exists elsewhere.
+              if not contains -- "$release_asset_name" \
+                  manifest.json main.js data.json styles.css theme.css obsidian.css; and \
+                  __obsidian_download_file_is_present \
+                    "$library_entry" \
+                    "$release_asset_name" \
+                    "$release_asset_size"
+                continue
+              end
+
+              # A core repair refreshes every available load-bearing release
+              # file. Optional release assets still retain cross-layout reuse.
+              set --local replace_release_asset no
+              if test "$refresh_core_payload" -eq 1; and \
+                  contains -- "$release_asset_name" \
+                    manifest.json main.js data.json styles.css theme.css obsidian.css
+                set replace_release_asset yes
+              end
+
               __obsidian_missing_download_url \
                 "$library_entry/$release_asset_name" \
                 "$release_asset_url" \
-                "$release_asset_name"
+                "$release_asset_name" \
+                "$replace_release_asset"
             end
 
             if test "$requires_plugin_payload" -eq 1
@@ -5035,6 +5291,59 @@ in
                     "$theme_css_url" \
                     "$theme_css_source" \
                     yes
+                end
+              end
+
+              # main.js and a distinct obsidian.css are also retained for
+              # themes when the repository provides them. When obsidian.css
+              # was the only active stylesheet, it stays solely as theme.css.
+              for expected_file in main.js obsidian.css
+                if test "$expected_file" = obsidian.css; and \
+                    test "$theme_css_source" = obsidian.css
+                  continue
+                end
+
+                set --local destination "$library_entry/$expected_file"
+                if test -s "$destination"; and \
+                    test "$refresh_core_payload" -eq 0
+                  continue
+                end
+
+                set --local release_url
+                for release_asset in $release_assets
+                  set --local release_parts (string split \t "$release_asset")
+                  if test (count $release_parts) -ge 2; and \
+                      test "$release_parts[1]" = "$expected_file"
+                    set release_url "$release_parts[2]"
+                    break
+                  end
+                end
+
+                if test -n "$release_url"
+                  __obsidian_missing_download_url \
+                    "$destination" "$release_url" "$expected_file" yes
+                  continue
+                end
+
+                set --local repository_file_path (
+                  printf '%s\n' $repository_paths |
+                  command awk -F/ \
+                    -v expected_file="$expected_file" \
+                    '$NF == expected_file { print; exit }'
+                )
+                if test -z "$repository_file_path"
+                  continue
+                end
+
+                set --local repository_file_url (
+                  command gh api \
+                    "repos/$repository/contents/$repository_file_path" \
+                    --jq .download_url \
+                    2>/dev/null
+                )
+                if test -n "$repository_file_url"
+                  __obsidian_missing_download_url \
+                    "$destination" "$repository_file_url" "$expected_file" yes
                 end
               end
             end
@@ -5250,27 +5559,13 @@ in
                 continue
               end
 
-              # Reuse an identical existing file instead of downloading it again.
-              set --local existing_auxiliary (
-                command find "$library_entry" \
-                  -type f \
-                  -iname (basename "$auxiliary_path") \
-                  -size "$auxiliary_size"c \
-                  -print \
-                  -quit \
-                  2>/dev/null
-              )
-
-              if test -n "$existing_auxiliary"
-                command mkdir -p \
-                  (dirname "$auxiliary_destination")
-
-                if test "$existing_auxiliary" != "$auxiliary_destination"
-                  command cp \
-                    "$existing_auxiliary" \
-                    "$auxiliary_destination"
-                end
-
+              # A prior matching optional file is already complete regardless
+              # of its old local layout. Do not create a second copy merely to
+              # reproduce its current repository-relative path.
+              if __obsidian_download_file_is_present \
+                  "$library_entry" \
+                  (basename "$auxiliary_path") \
+                  "$auxiliary_size"
                 continue
               end
 
@@ -5282,7 +5577,12 @@ in
 
             __obsidian_missing_restore_readme \
               "$library_entry" \
-              "$repository_url"
+              "$repository_url" \
+              $repository_paths
+
+            __obsidian_missing_rewrite_readme_image_paths \
+              "$library_entry" \
+              $repository_paths
 
             set --local manifest_url_field themeUrl
 
@@ -5417,44 +5717,9 @@ in
             end
 
             if not test -f "$manifest_file"
-              set --local legacy_manifest_repository_url
-
-              for repository_candidate in \
-                  "$library_entry/repository-url.txt" \
-                  "$library_entry/repo/repository-url.txt"
-
-                if not test -s "$repository_candidate"
-                  continue
-                end
-
-                set legacy_manifest_repository_url (
-                  string match -r -m 1 \
-                    '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' \
-                    <"$repository_candidate"
-                )
-
-                if test -n "$legacy_manifest_repository_url"
-                  set legacy_manifest_repository_url \
-                    (__obsidian_missing_canonical_repository_url "$legacy_manifest_repository_url")
-                  break
-                end
-              end
-
-              if test -n "$legacy_manifest_repository_url"
-                __obsidian_missing_restore_standard_files \
-                  "$library_entry" \
-                  "$legacy_manifest_repository_url" \
-                  "$requires_plugin_payload"
-
-                set manifest_file \
-                  "$library_entry/manifest.json"
-              end
-
-              if not test -f "$manifest_file"
-                set --append missing_entries \
-                  "$entry_name — manifest.json missing and repository could not be resolved"
-                continue
-              end
+              set --append missing_entries \
+                "$entry_name — manifest.json missing"
+              continue
             end
 
             # An explicitly abandoned entry remains on disk for inspection or
@@ -5540,75 +5805,10 @@ in
                   (__obsidian_missing_canonical_repository_url "$manifest_repository_url")
               end
             end
-            set --local legacy_repository_file
-            set --local legacy_repository_url
-            for repository_candidate in \
-                "$library_entry/repository-url.txt" \
-                "$library_entry/repo/repository-url.txt"
-              if not test -f "$repository_candidate"; or \
-                  not test -s "$repository_candidate"
-                continue
-              end
-
-              set legacy_repository_url (
-                string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' <"$repository_candidate"
-              )
-              if test -n "$legacy_repository_url"
-                set legacy_repository_url (__obsidian_missing_canonical_repository_url "$legacy_repository_url")
-              end
-              if test -n "$legacy_repository_url"
-                set legacy_repository_file "$repository_candidate"
-                break
-              end
-            end
-
             if test -n "$manifest_repository_url"
-              if test -n "$legacy_repository_url"; and \
-                  test "$manifest_repository_url" != "$legacy_repository_url"
-                echo "Repository URL conflict for $entry_name:"
-                echo "  manifest $manifest_url_field: $manifest_repository_url"
-                echo "  legacy repository-url.txt: $legacy_repository_url"
-                read --prompt-str "Use manifest (m) or legacy (l)? " conflict_choice
-                if test "$conflict_choice" = l; or test "$conflict_choice" = L
-                  if not __obsidian_missing_save_repository_url \
-                      "$manifest_file" \
-                      "$manifest_url_field" \
-                      "$legacy_repository_url"
-                    echo "Notice: Could not save the legacy URL into $manifest_file"
-                    continue
-                  end
-                  set manifest_repository_url "$legacy_repository_url"
-                else if test "$conflict_choice" != m; and test "$conflict_choice" != M
-                  echo "Skipping unresolved URL conflict: $entry_name"
-                  continue
-                end
-              end
-
-              if test -n "$legacy_repository_file"
-                __obsidian_missing_trash_legacy_url "$legacy_repository_file"
-              end
               __obsidian_missing_restore_standard_files \
                 "$library_entry" \
                 "$manifest_repository_url" \
-                "$requires_plugin_payload"
-
-              continue
-            end
-
-            if test -n "$legacy_repository_url"
-              if not __obsidian_missing_save_repository_url \
-                  "$manifest_file" \
-                  "$manifest_url_field" \
-                  "$legacy_repository_url"
-                echo "Notice: Could not migrate $entry_name"
-                set --append missing_repository_entries "$entry_name"
-                continue
-              end
-              __obsidian_missing_trash_legacy_url "$legacy_repository_file"
-
-              __obsidian_missing_restore_standard_files \
-                "$library_entry" \
-                "$legacy_repository_url" \
                 "$requires_plugin_payload"
 
               continue

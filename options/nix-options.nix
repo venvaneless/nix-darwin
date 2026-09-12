@@ -3,9 +3,9 @@
 # =====================================================================
 # OPTIONS: NIX ITSELF
 #
-# The logic behind ven.nix.settings, and the defaults it resolves. This
-# is the only file that holds a value nobody wrote on purpose, and the
-# only one that has to be edited to change what default means.
+# The logic behind the shared ven.nix knobs and the defaults that
+# ven.nix.settings resolves. Concrete shared values live in
+# shared/default.nix.
 #
 # ---- WHAT IT GIVES YOU ----
 #
@@ -20,7 +20,7 @@
 #     build-users-group = "nixbld";
 #   };
 #
-# The same block is valid in shared/nix-options.nix for every machine and
+# The same block is valid in shared/default.nix for every machine and
 # in any machine's own default.nix.
 #
 # ** It is ven.nix.settings and not nix.settings for one reason: nothing
@@ -45,10 +45,12 @@
 # ** behaviour rather than this repository inventing a value.
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, nixSharedSettings, platforms, ... }:
 
 let
   cfg = config.ven.nix;
+
+  sharedNix = nixSharedSettings.ven.nix;
 
   # ------------------------------------------------------------
   # ------ THE DEFAULT MARKER ------ #
@@ -159,6 +161,13 @@ let
         Settings such as build-users-group or trusted-users belong to the
         machine that has them, so write the value instead.
       '';
+
+  unstableEnabledForCurrentPlatform =
+    cfg.nixpkgs.unstable.enable
+    && (
+      (platforms.isDarwin && cfg.nixpkgs.unstable.installOn.darwin)
+      || (platforms.isLinux && cfg.nixpkgs.unstable.installOn.linux)
+    );
 in
 
 {
@@ -209,7 +218,7 @@ in
 
       description = ''
         Nix settings, under their real nix.conf names. Written in
-        shared/nix-options.nix for every machine and in a machine's own
+        shared/default.nix for every machine and in a machine's own
         default.nix for itself. Each value is either a real value or
         default.
 
@@ -220,6 +229,40 @@ in
           extra-trusted-users = [ "builder" ];
       '';
     };
+
+    nixpkgs = {
+      config = lib.mkOption {
+        type = lib.types.attrs;
+        description = "Shared Nixpkgs policy applied to every package set.";
+      };
+
+      unstable = {
+        enable = lib.mkEnableOption "the unstable Nixpkgs package set";
+
+        installOn = lib.mkOption {
+          type = lib.types.submodule {
+            options = {
+              darwin = lib.mkOption {
+                type = lib.types.bool;
+                description = "Make the unstable package set available on Darwin.";
+              };
+
+              linux = lib.mkOption {
+                type = lib.types.bool;
+                description = "Make the unstable package set available on Linux.";
+              };
+            };
+          };
+          description = "Platforms where enabled consumers may use unstablePkgs.";
+        };
+
+        enabledForCurrentPlatform = lib.mkOption {
+          type = lib.types.bool;
+          readOnly = true;
+          description = "Whether unstablePkgs is available on the current platform.";
+        };
+      };
+    };
   };
 
   # ------------------------------------------------------------
@@ -229,6 +272,17 @@ in
   # ------------------------------------------------------------
 
   config = {
+    # ---- Shared knobs ---- #
+    # The one shared profile supplies these values; modules only interpret
+    # them through the typed options above.
+    ven.nix.settings = sharedNix.settings;
+    ven.nix.nixpkgs = lib.recursiveUpdate sharedNix.nixpkgs {
+      unstable.enabledForCurrentPlatform = unstableEnabledForCurrentPlatform;
+    };
+
+    # Applies the same shared policy to the system package set.
+    nixpkgs.config = cfg.nixpkgs.config;
+
     # ---- Deduplicate store paths
     # Declared with the settings for one place to look, applied here to
     # the option that owns it.

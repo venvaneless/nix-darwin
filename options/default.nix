@@ -27,18 +27,25 @@
 
 let
   # ------------------------------------------------------------
+  # ------ SHARED HOST KNOBS ------ #
+  #
+  # This value-only profile is consumed here before a host package set
+  # exists. options/nix-options.nix supplies the module option types and
+  # runtime translation for the same knobs.
+  # ------------------------------------------------------------
+
+  nixSharedSettings = import ../shared/default.nix;
+
+  nixpkgsSettings = nixSharedSettings.ven.nix.nixpkgs;
+
+  # ------------------------------------------------------------
   # ------ SHARED NIXPKGS POLICY ------ #
   #
   # Applied to every nixpkgs instance on every machine, stable and
   # unstable alike.
   # ------------------------------------------------------------
 
-  nixpkgsConfig = {
-    allowUnfree = true;
-
-    permittedInsecurePackages = [
-    ];
-  };
+  nixpkgsConfig = nixpkgsSettings.config;
 
   # ------------------------------------------------------------
   # ------ UNSTABLE PACKAGE SET ------ #
@@ -47,10 +54,25 @@ let
   # set. The host passes it through specialArgs to modules that need it.
   # ------------------------------------------------------------
 
-  unstablePkgs = import inputs.nixpkgs-unstable {
-    system = pkgs.stdenv.hostPlatform.system;
-    config = nixpkgsConfig;
-  };
+  unstableEnabled =
+    nixpkgsSettings.unstable.enable
+    && (
+      (pkgs.stdenv.hostPlatform.isDarwin && nixpkgsSettings.unstable.installOn.darwin)
+      || (pkgs.stdenv.hostPlatform.isLinux && nixpkgsSettings.unstable.installOn.linux)
+    );
+
+  unstablePkgs =
+    if unstableEnabled then
+      import inputs.nixpkgs-unstable {
+        system = pkgs.stdenv.hostPlatform.system;
+        config = nixpkgsConfig;
+      }
+    else
+      throw ''
+        ven.nix.nixpkgs.unstable is disabled for this platform.
+
+        Enable the platform in shared/default.nix before using unstablePkgs.
+      '';
 
   paths = import ./paths.nix { };
 
@@ -82,6 +104,7 @@ in
   inherit
     nixpkgsConfig
     unstablePkgs
+    nixSharedSettings
     paths
     serviceOptions
     terminalOptions

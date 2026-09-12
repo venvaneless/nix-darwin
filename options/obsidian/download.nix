@@ -9,15 +9,12 @@
 {
   config,
   lib,
-  pkgs,
   platforms,
   ...
 }:
 
 let
   cfg = config.ven.features.obsidian;
-
-  inherit (platforms) isDarwin isLinux;
 
   # Select Nix-rendered defaults once; --to remains a one-command override.
   #
@@ -30,33 +27,9 @@ let
   policy = cfg.policy;
   renderFishList = values:
     lib.concatMapStringsSep " \\\n              " lib.escapeShellArg values;
-  legacyTrashCommand =
-    if isDarwin then
-      ''
-        set --local apple_path (
-          string replace -a '\\' '\\\\' -- "$legacy_file" |
-          string replace -a '"' '\\"'
-        )
-        if not /usr/bin/osascript \
-            -e "tell application \"Finder\" to delete POSIX file \"$apple_path\""
-          echo "Notice: Manifest was migrated, but legacy cleanup needs attention: $legacy_file"
-          return 1
-        end
-      ''
-    else
-      ''
-        if not ${if cfg.policy.interaction.useLinuxTrash then "${pkgs.trash-cli}/bin/trash" else "false"} "$legacy_file"
-          echo "Notice: Manifest was migrated, but legacy cleanup needs attention: $legacy_file"
-          return 1
-        end
-      '';
 in
 {
-  # Linux uses the pinned trash-cli program in the safe legacy-file cleanup
-  # branch. The single shared command module decides when to install it.
   config = lib.mkIf (platforms.enabledForCurrentPlatform cfg) {
-    home.packages = lib.optionals (isLinux && cfg.policy.interaction.useLinuxTrash) [ pkgs.trash-cli ];
-
     programs.fish.functions = {
 
       # -----------------------------------------------------------------
@@ -190,8 +163,10 @@ in
             end
 
             for locale_marker in $locale_markers
+              set --local locale_marker_pattern \
+                (string join "" -- "(^|[._-])" "$locale_marker" '([._-]|$)')
               if string match -rqi \
-                  "(^|[._-])$locale_marker([._-]|$)" \
+                  "$locale_marker_pattern" \
                   "$path_part"
                 return 0
               end
@@ -901,6 +876,30 @@ in
                 return 1
               end
 
+              # Saved libraries declare their source in the manifest. Prefer
+              # that explicit URL before deriving a repository from metadata.
+              set --local manifest_url_field themeUrl
+              if test "$library_type" = plugins
+                set manifest_url_field pluginUrl
+              end
+              set --local manifest_repository_url (
+                command jq -r \
+                  --arg field "$manifest_url_field" \
+                  'if (.[$field] | type) == "string" then .[$field] else empty end' \
+                  "$manifest_file" | string trim
+              )
+              set manifest_repository_url (
+                string replace -r '^(?:https?://)?(?:www\\.)?github\\.com/' "https://github.com/" -- "$manifest_repository_url" |
+                string replace -r '\\.git/?$' "" |
+                string replace -r '/$' ""
+              )
+              if string match -rq \
+                  '^https://github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' \
+                  "$manifest_repository_url"
+                printf '%s\n' "$manifest_repository_url"
+                return 0
+              end
+
               set --local library_id (
                 command jq -r \
                   'if (.id | type) == "string" then .id else empty end' \
@@ -1154,35 +1153,11 @@ in
                 basename "$source_folder"
               )
 
-              set --local repository_file \
-                "$source_folder/repository-url.txt"
-
-              if not test -f "$repository_file"
-                set repository_file \
-                  "$source_folder/repo/repository-url.txt"
-              end
-
-              set --local repository_url
-
-              if test -f "$repository_file"
-                set repository_url (
-                  string match -r -m 1 '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' <"$repository_file" |
-                  string trim
-                )
-              end
-
-              if test -n "$repository_url"; and \
-                  not string match -rq \
-                    '^https?://github\\.com/[^/]+/[^/]+/?$' \
-                    "$repository_url"
-                set repository_url
-              end
-
-              if test -z "$repository_url"
-                set repository_url (
-                  __obsidian_command_gitdll_resolve_repository "$source_folder" "$library_type"
-                )
-              end
+              # The manifest is the only repository URL source for a saved
+              # Obsidian entry, including entries in an older repo/ layout.
+              set --local repository_url (
+                __obsidian_command_gitdll_resolve_repository "$source_folder" "$library_type"
+              )
 
               set repository_url (
                 string replace -r \
@@ -1202,7 +1177,7 @@ in
                   '^https?://github\.com/[^/]+/[^/]+$' \
                   "$repository_url"
 
-                printf '%s — missing or invalid repository-url.txt\n' \
+                printf '%s — missing or invalid manifest repository URL\n' \
                   "$source_name" \
                   >>"$missing_file"
 
@@ -1631,7 +1606,7 @@ in
           # release and repository recovery set.
           set --local plugin_required_files manifest.json main.js \
               ${renderFishList policy.content.pluginRequiredFiles}
-          set --local plugin_optional_files styles.css \
+          set --local plugin_optional_files data.json styles.css \
               ${renderFishList policy.content.pluginOptionalFiles}
           set --local repository_inputs
           set --local expecting_destination 0
@@ -1833,53 +1808,6 @@ in
 
               set canonical_repository_url \
                   "https://github.com/$repository_owner/$repository_name"
-
-              # Skip completed destinations before making any network requests.
-              set existing_repository_file (
-                  command find "$destination" \
-                      -mindepth 2 \
-                      -maxdepth 2 \
-                      -type f \
-                      -name repository-url.txt \
-                      -exec grep -lF "$canonical_repository_url" {} \; \
-                      2>/dev/null |
-                  command head -n 1
-              )
-
-              if test -n "$existing_repository_file"
-                  set existing_plugin_directory (
-                      dirname "$existing_repository_file"
-                  )
-                  set existing_plugin_readme 0
-
-                  if command find "$existing_plugin_directory" \
-                          -maxdepth 1 \
-                          -type f \
-                          \( -iname "README" -o -iname "README.md" -o -iname "README.markdown" -o -iname "README.txt" \) \
-                          -size +0c \
-                          -print \
-                          -quit | read --local existing_readme
-                      set existing_plugin_readme 1
-                  end
-
-                  if test -r "$existing_plugin_directory/manifest.json"; and \
-                          test -s "$existing_plugin_directory/manifest.json"; and \
-                          command jq -e . \
-                              "$existing_plugin_directory/manifest.json" \
-                              >/dev/null 2>&1; and \
-                          command jq --indent 2 . \
-                              "$existing_plugin_directory/manifest.json" | \
-                              command cmp -s - "$existing_plugin_directory/manifest.json"; and \
-                          test -r "$existing_plugin_directory/main.js"; and \
-                          test -s "$existing_plugin_directory/main.js"; and \
-                          test "$existing_plugin_readme" -eq 1
-
-                      echo
-                      echo "Skipping:"
-                      echo "  $existing_plugin_directory (already complete)"
-                      continue
-                  end
-              end
 
               echo
               echo "Repository:"
@@ -2243,6 +2171,22 @@ in
                   command mkdir -p -- "$plugin_stage"
               end
 
+              # Preserve the saved manifest URL when a core refresh replaces it.
+              set manifest_plugin_url "$canonical_repository_url"
+              if test -f "$plugin_stage/manifest.json"
+                  set existing_plugin_url (
+                      command jq -r \
+                          'if (.pluginUrl | type) == "string" then .pluginUrl else empty end' \
+                          "$plugin_stage/manifest.json" \
+                          2>/dev/null | string trim
+                  )
+                  if string match -rq \
+                          '(?i)^https?://(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?/?$' \
+                          "$existing_plugin_url"
+                      set manifest_plugin_url "$existing_plugin_url"
+                  end
+              end
+
               if not test -r "$plugin_stage/manifest.json"; or \
                       not test -s "$plugin_stage/manifest.json"; or \
                       test "$refresh_plugin_manifest" -eq 1; or \
@@ -2295,7 +2239,7 @@ in
                       end
 
                       switch "$release_asset_name"
-                          case main.js styles.css manifest.json
+                          case main.js data.json styles.css manifest.json
                               if test -r "$plugin_stage/$release_asset_name"; and \
                                       test -s "$plugin_stage/$release_asset_name"; and \
                                       test "$refresh_plugin_manifest" -eq 0
@@ -2684,7 +2628,7 @@ in
               end
 
               if not command jq \
-                      --arg url "$canonical_repository_url" \
+                      --arg url "$manifest_plugin_url" \
                       '.pluginUrl = $url' \
                       "$plugin_stage/manifest.json" \
                       >"$plugin_stage/manifest.json.gitdll-new"; or \
@@ -2741,7 +2685,7 @@ in
           # release and repository recovery set.
           set --local theme_required_files manifest.json theme.css \
               ${renderFishList policy.content.themeRequiredFiles}
-          set --local theme_optional_files obsidian.css \
+          set --local theme_optional_files main.js obsidian.css \
               ${renderFishList policy.content.themeOptionalFiles}
           set --local repository_inputs
           set --local expecting_destination 0
@@ -2887,49 +2831,6 @@ in
               # Keep the repository name as the final, filesystem-safe fallback.
               set fallback_folder_name "$repository_name"
 
-              # Skip completed destinations before making any network requests.
-              set existing_repository_file (
-                  command find "$destination" \
-                      -mindepth 2 \
-                      -maxdepth 2 \
-                      -type f \
-                      -name repository-url.txt \
-                      -exec grep -lF "$canonical_repository_url" {} \; \
-                      2>/dev/null |
-                  command head -n 1
-              )
-
-              if test -n "$existing_repository_file"
-                  set existing_theme_directory (
-                      dirname "$existing_repository_file"
-                  )
-
-                  set existing_theme_manifest_ok 1
-                  set existing_theme_readme_ok 0
-
-                  if command find "$existing_theme_directory" \
-                          -maxdepth 1 \
-                          -type f \
-                          \( -iname "README" -o -iname "README.md" -o -iname "README.markdown" -o -iname "README.txt" \) \
-                          -size +0c \
-                          -print \
-                          -quit | read --local existing_theme_readme
-                      set existing_theme_readme_ok 1
-                  end
-
-                  if test -e "$existing_theme_directory/manifest.json"; and \
-                          not test -r "$existing_theme_directory/manifest.json"; or \
-                          test -e "$existing_theme_directory/manifest.json"; and \
-                          not test -s "$existing_theme_directory/manifest.json"; or \
-                          test -e "$existing_theme_directory/manifest.json"; and \
-                          not command jq -e . \
-                              "$existing_theme_directory/manifest.json" \
-                              >/dev/null 2>&1
-                      set existing_theme_manifest_ok 0
-                  end
-
-              end
-
               echo
               echo "Repository:"
               echo "  $canonical_repository_url"
@@ -3058,7 +2959,7 @@ in
 
               for expected_file in $theme_required_files $theme_optional_files
                   if test "$repository_primary_stylesheets" -eq 0; and \
-                          test "$expected_file" != manifest.json
+                          contains -- "$expected_file" theme.css obsidian.css
                       continue
                   end
                   if test -f "$extracted/$expected_file"
@@ -3462,9 +3363,10 @@ in
                       set refresh_theme_core 1
                   end
 
-                  # Existing themes are refreshed so newly supported repository
-                  # screenshots and asset folders are added on later runs.
+                  # Existing themes are refreshed as one payload, so supported
+                  # repository assets and every available core file stay in sync.
                   set theme_directory_exists 1
+                  set refresh_theme_core 1
               end
 
               set theme_stage "$temporary_directory/theme"
@@ -3473,6 +3375,22 @@ in
                   set theme_stage "$theme_directory"
               else
                   command mkdir -p -- "$theme_stage"
+              end
+
+              # Preserve the saved manifest URL when a core refresh replaces it.
+              set manifest_theme_url "$canonical_repository_url"
+              if test -f "$theme_stage/manifest.json"
+                  set existing_theme_url (
+                      command jq -r \
+                          'if (.themeUrl | type) == "string" then .themeUrl else empty end' \
+                          "$theme_stage/manifest.json" \
+                          2>/dev/null | string trim
+                  )
+                  if string match -rq \
+                          '(?i)^https?://(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?/?$' \
+                          "$existing_theme_url"
+                      set manifest_theme_url "$existing_theme_url"
+                  end
               end
 
               set saved_files
@@ -3679,7 +3597,8 @@ in
 
               if test -f "$source_obsidian_css"
                   if not test -r "$theme_stage/obsidian.css"; or \
-                          not test -s "$theme_stage/obsidian.css"
+                          not test -s "$theme_stage/obsidian.css"; or \
+                          test "$refresh_theme_core" -eq 1
                       command cp -f \
                           "$source_obsidian_css" \
                           "$theme_stage/obsidian.css"
@@ -3689,7 +3608,8 @@ in
               end
 
               if test -f "$extracted/main.js"
-                  if not test -s "$theme_stage/main.js"
+                  if not test -s "$theme_stage/main.js"; or \
+                          test "$refresh_theme_core" -eq 1
                       command cp -f "$extracted/main.js" "$theme_stage/main.js"
                   end
                   set saved_files $saved_files main.js
@@ -4029,7 +3949,7 @@ in
               end
 
               if not command jq \
-                      --arg url "$canonical_repository_url" \
+                      --arg url "$manifest_theme_url" \
                       '.themeUrl = $url' \
                       "$theme_stage/manifest.json" \
                       >"$theme_stage/manifest.json.gitdll-new"; or \
@@ -4150,10 +4070,10 @@ in
       # -----------------------------------------------------------------
 
       # -----------------------------------------------------------------
-      # ---- obsidian-missing -> Migrate and restore manifest repository URLs ---- #
+      # ---- obsidian-missing -> Restore manifest-backed repository files ---- #
       # -----------------------------------------------------------------
       __obsidian_command_missing = {
-        description = "Migrate and restore Obsidian manifest repository URLs";
+        description = "Restore missing Obsidian files from manifest repository URLs";
 
         body = ''
           if test (count $argv) -ne 1
@@ -4238,17 +4158,6 @@ in
               command rm -f -- "$staging_file"
               return 1
             end
-          end
-
-          # Move legacy metadata to Trash only after the manifest write succeeds.
-          # Finder owns the Darwin path; the feature-installed trash-cli command
-          # owns the Linux/NixOS path. Neither branch falls back to rm.
-          function __obsidian_command_missing_trash_legacy_url --argument-names legacy_file
-            if not test -e "$legacy_file"; and not test -L "$legacy_file"
-              return 0
-            end
-
-            ${legacyTrashCommand}
           end
 
           # Check whether a manifest remains usable by Obsidian before trusting it.
@@ -4837,6 +4746,25 @@ in
             # exhausted both the release and the main repository.
             set --local deferred_library_archives
 
+            # obsidian.css is a fallback stylesheet only when theme.css is
+            # absent everywhere. Do not retain both names for that fallback.
+            set --local theme_has_named_theme_css 0
+            if test "$requires_plugin_payload" -eq 0
+              for release_asset in $release_assets
+                set --local release_parts (string split \t "$release_asset")
+                if test (count $release_parts) -ge 2; and \
+                    test "$release_parts[1]" = theme.css
+                  set theme_has_named_theme_css 1
+                  break
+                end
+              end
+              if test "$theme_has_named_theme_css" -eq 0; and \
+                  printf '%s\n' $repository_paths | \
+                    command awk -F/ '$NF == "theme.css" { found = 1 } END { exit !found }'
+                set theme_has_named_theme_css 1
+              end
+            end
+
             # GitHub's generated source archives are not members of .assets[].
             for release_asset in $release_assets
               set --local release_parts \
@@ -4871,10 +4799,26 @@ in
                 continue
               end
 
+              if test "$requires_plugin_payload" -eq 0; and \
+                  test "$release_asset_name" = obsidian.css; and \
+                  test "$theme_has_named_theme_css" -eq 0
+                continue
+              end
+
+              # A core repair refreshes every available load-bearing release
+              # file instead of leaving a stale mix at the entry root.
+              set --local replace_release_asset no
+              if test "$refresh_core_payload" -eq 1; and \
+                  contains -- "$release_asset_name" \
+                    manifest.json main.js data.json styles.css theme.css obsidian.css
+                set replace_release_asset yes
+              end
+
               __obsidian_command_missing_download_url \
                 "$library_entry/$release_asset_name" \
                 "$release_asset_url" \
-                "$release_asset_name"
+                "$release_asset_name" \
+                "$replace_release_asset"
             end
 
             if test "$requires_plugin_payload" -eq 1
@@ -5057,6 +5001,58 @@ in
                     "$theme_css_url" \
                     "$theme_css_source" \
                     yes
+                end
+              end
+
+              # Keep a distinct main.js and obsidian.css when they exist. If
+              # obsidian.css was the only stylesheet, it remains theme.css.
+              for expected_file in main.js obsidian.css
+                if test "$expected_file" = obsidian.css; and \
+                    test "$theme_css_source" = obsidian.css
+                  continue
+                end
+
+                set --local destination "$library_entry/$expected_file"
+                if test -s "$destination"; and \
+                    test "$refresh_core_payload" -eq 0
+                  continue
+                end
+
+                set --local release_url
+                for release_asset in $release_assets
+                  set --local release_parts (string split \t "$release_asset")
+                  if test (count $release_parts) -ge 2; and \
+                      test "$release_parts[1]" = "$expected_file"
+                    set release_url "$release_parts[2]"
+                    break
+                  end
+                end
+
+                if test -n "$release_url"
+                  __obsidian_command_missing_download_url \
+                    "$destination" "$release_url" "$expected_file" yes
+                  continue
+                end
+
+                set --local repository_file_path (
+                  printf '%s\n' $repository_paths |
+                  command awk -F/ \
+                    -v expected_file="$expected_file" \
+                    '$NF == expected_file { print; exit }'
+                )
+                if test -z "$repository_file_path"
+                  continue
+                end
+
+                set --local repository_file_url (
+                  command gh api \
+                    "repos/$repository/contents/$repository_file_path" \
+                    --jq .download_url \
+                    2>/dev/null
+                )
+                if test -n "$repository_file_url"
+                  __obsidian_command_missing_download_url \
+                    "$destination" "$repository_file_url" "$expected_file" yes
                 end
               end
             end
@@ -5439,44 +5435,9 @@ in
             end
 
             if not test -f "$manifest_file"
-              set --local legacy_manifest_repository_url
-
-              for repository_candidate in \
-                  "$library_entry/repository-url.txt" \
-                  "$library_entry/repo/repository-url.txt"
-
-                if not test -s "$repository_candidate"
-                  continue
-                end
-
-                set legacy_manifest_repository_url (
-                  string match -r -m 1 \
-                    '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' \
-                    <"$repository_candidate"
-                )
-
-                if test -n "$legacy_manifest_repository_url"
-                  set legacy_manifest_repository_url \
-                    (__obsidian_command_missing_canonical_repository_url "$legacy_manifest_repository_url")
-                  break
-                end
-              end
-
-              if test -n "$legacy_manifest_repository_url"
-                __obsidian_command_missing_restore_standard_files \
-                  "$library_entry" \
-                  "$legacy_manifest_repository_url" \
-                  "$requires_plugin_payload"
-
-                set manifest_file \
-                  "$library_entry/manifest.json"
-              end
-
-              if not test -f "$manifest_file"
-                set --append missing_entries \
-                  "$entry_name — manifest.json missing and repository could not be resolved"
-                continue
-              end
+              set --append missing_entries \
+                "$entry_name — manifest.json missing"
+              continue
             end
 
             # An explicitly abandoned entry remains on disk for inspection or
@@ -5562,75 +5523,10 @@ in
                   (__obsidian_command_missing_canonical_repository_url "$manifest_repository_url")
               end
             end
-            set --local legacy_repository_file
-            set --local legacy_repository_url
-            for repository_candidate in \
-                "$library_entry/repository-url.txt" \
-                "$library_entry/repo/repository-url.txt"
-              if not test -f "$repository_candidate"; or \
-                  not test -s "$repository_candidate"
-                continue
-              end
-
-              set legacy_repository_url (
-                string match -r -m 1 '(?i)(?:https?://)?(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\\.git)?' <"$repository_candidate"
-              )
-              if test -n "$legacy_repository_url"
-                set legacy_repository_url (__obsidian_command_missing_canonical_repository_url "$legacy_repository_url")
-              end
-              if test -n "$legacy_repository_url"
-                set legacy_repository_file "$repository_candidate"
-                break
-              end
-            end
-
             if test -n "$manifest_repository_url"
-              if test -n "$legacy_repository_url"; and \
-                  test "$manifest_repository_url" != "$legacy_repository_url"
-                echo "Repository URL conflict for $entry_name:"
-                echo "  manifest $manifest_url_field: $manifest_repository_url"
-                echo "  legacy repository-url.txt: $legacy_repository_url"
-                read --prompt-str "Use manifest (m) or legacy (l)? " conflict_choice
-                if test "$conflict_choice" = l; or test "$conflict_choice" = L
-                  if not __obsidian_command_missing_save_repository_url \
-                      "$manifest_file" \
-                      "$manifest_url_field" \
-                      "$legacy_repository_url"
-                    echo "Notice: Could not save the legacy URL into $manifest_file"
-                    continue
-                  end
-                  set manifest_repository_url "$legacy_repository_url"
-                else if test "$conflict_choice" != m; and test "$conflict_choice" != M
-                  echo "Skipping unresolved URL conflict: $entry_name"
-                  continue
-                end
-              end
-
-              if test -n "$legacy_repository_file"
-                __obsidian_command_missing_trash_legacy_url "$legacy_repository_file"
-              end
               __obsidian_command_missing_restore_standard_files \
                 "$library_entry" \
                 "$manifest_repository_url" \
-                "$requires_plugin_payload"
-
-              continue
-            end
-
-            if test -n "$legacy_repository_url"
-              if not __obsidian_command_missing_save_repository_url \
-                  "$manifest_file" \
-                  "$manifest_url_field" \
-                  "$legacy_repository_url"
-                echo "Notice: Could not migrate $entry_name"
-                set --append missing_repository_entries "$entry_name"
-                continue
-              end
-              __obsidian_command_missing_trash_legacy_url "$legacy_repository_file"
-
-              __obsidian_command_missing_restore_standard_files \
-                "$library_entry" \
-                "$legacy_repository_url" \
                 "$requires_plugin_payload"
 
               continue

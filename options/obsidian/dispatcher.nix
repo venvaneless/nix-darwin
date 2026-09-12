@@ -32,6 +32,18 @@ in
   # option modules. This module owns only the public command dispatcher.
   config = lib.mkIf (platforms.enabledForCurrentPlatform cfg) {
     programs.fish.functions = {
+      # ---- Shared disabled-mode message ---- #
+      # Kept as a private installed function so `obsidian-dll` can reject a
+      # disabled mode even when the main `obsidian` command has not run yet.
+      __obsidian_command_mode_disabled = {
+        description = "Report a disabled independent Obsidian command mode";
+
+        body = ''
+          echo "Error: the Obsidian $argv[1] mode is disabled for this platform."
+          return 1
+        '';
+      };
+
       # ---- Shared plugin/theme entry point ---- #
       # Both public names call the independent downloader core; neither calls
       # the legacy gitdll functions.
@@ -70,11 +82,6 @@ in
       description = "Manage an independent Obsidian plugin and theme library";
 
       body = ''
-        function __obsidian_command_mode_disabled --argument-names mode
-          echo "Error: the Obsidian $mode mode is disabled for this platform."
-          return 1
-        end
-
         function __obsidian_command_run_tui
           set --local missing_request_file (command mktemp -t obsidian-missing.XXXXXXXXXX)
           if test -z "$missing_request_file"

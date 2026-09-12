@@ -91,7 +91,7 @@
   #
   # ** This machine's own values. What is the same on every machine --
   # ** flakes, the caches, dirty warnings -- is written once in
-  # ** shared/nix-options.nix and is not repeated here.
+  # ** shared/default.nix and is not repeated here.
   #
   # ** Any of these may be written as default instead, which takes the
   # ** value declared in options/nix-options.nix. Written out here so the

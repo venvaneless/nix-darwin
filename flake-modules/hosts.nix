@@ -14,26 +14,11 @@ let
   # The nixpkgs policy is defined once there, so a host that does not
   # override it still matches the rest. Bound under a different name
   # than the constructor arguments below, which would shadow it.
-  sharedNixpkgsConfig = (import ../options { }).nixpkgsConfig;
+  sharedOptionValues = import ../options { };
+  inherit (sharedOptionValues) nixpkgsConfig nixOptions nixSharedSettings;
+  sharedNixpkgsConfig = nixpkgsConfig;
 
   paths = import ../options/paths.nix { };
-
-  # ---- Variables from options/default.nix
-  # Creates the vocabulary for configuring Nix and translates it into
-  # nix.settings. It holds no value of its own and switches nothing on.
-  #
-  # Passed as a module path so the module system supplies its config and
-  # lib arguments instead of this file resolving them.
-  nixOptions = (import ../options { }).nixOptions;
-
-  # ---- SHARED NIX CONFIGURATION ---- #
-  # The values every machine gets. A machine takes precedence over a
-  # scalar, and adds to a list, by naming it in its own default.nix.
-  #
-  # ** Standalone Home Manager receives neither: trusted-users is only
-  # ** honoured in the system-level nix.conf, and flakes have to be enabled
-  # ** before `home-manager switch --flake` can run at all.
-  nixConfiguration = ../shared/nix-options.nix;
 
 in
 {
@@ -68,15 +53,14 @@ in
         inputs.darwin.lib.darwinSystem {
           inherit system;
 
-          inherit specialArgs;
+          specialArgs = specialArgs // { inherit nixSharedSettings; };
 
           modules = [
             # Provides SOPS secret management.
             inputs.sops-nix.darwinModules.sops
 
-            # Nix's options, then the values every machine gets.
+            # Nix's typed options render the shared host settings.
             nixOptions
-            nixConfiguration
           ] ++ modules;
         };
 
@@ -183,6 +167,7 @@ in
               platforms
               serviceOptions
               unstablePkgs
+              nixSharedSettings
               ;
           };
         in
@@ -196,17 +181,10 @@ in
               # Provides SOPS secret management.
               inputs.sops-nix.nixosModules.sops
 
-              # Nix's options, then the values every machine gets.
+              # Nix's typed options render the shared host settings.
               nixOptions
-              nixConfiguration
             ]
             ++ modules
-            ++ [
-              # Gives callers a low-priority shared Nixpkgs configuration.
-              ({ lib, ... }: {
-                nixpkgs.config = lib.mkDefault nixpkgsConfig;
-              })
-            ]
             ;
         };
     };
