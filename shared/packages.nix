@@ -367,6 +367,12 @@ let
     # ---- Git tools
 
     # Transparent file encryption inside a Git repository.
+    git = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = pkgs.git;
+    };
+    
     gitCrypt = {
       enable = true;
       installOn = { darwin = true; linux = true; };

@@ -115,6 +115,11 @@ in
           set --local normalized_filename_stem \
               (string replace -ra '[^[:alnum:]]+' "" -- "$filename_stem")
 
+          # Localized blocked documents may carry a language suffix before the
+          # real extension, for example AI-ASSISTANCE.zh-CN.md.
+          set normalized_filename_stem \
+              (string replace -r '(zhcn|zhtw|zh|ko|jp)$' "" -- "$normalized_filename_stem")
+
           # ---- MATCH BLOCKED DOCUMENT TITLE STEMS ---- #
           if contains "$normalized_filename_stem" $blocked_document_stems
             return 0
@@ -478,7 +483,17 @@ in
               // behind an otherwise redundant repo/docs/ wrapper. Merge
               // rather than overwrite when a destination already exists.
               const docsDirectory = path.join(repositoryDirectory, "docs");
+              let documentationAssetsWereMoved = false;
               if (fs.existsSync(docsDirectory) && fs.statSync(docsDirectory).isDirectory()) {
+                // docs/assets/ is never a meaningful second asset root. Merge
+                // it before unwrapping docs/ so a repository that has only
+                // documentation assets still receives repo/assets/.
+                const documentationAssetsDirectory = path.join(docsDirectory, "assets");
+                const repositoryAssetsDirectory = path.join(repositoryDirectory, "assets");
+                if (fs.existsSync(documentationAssetsDirectory) && fs.statSync(documentationAssetsDirectory).isDirectory()) {
+                  merge(documentationAssetsDirectory, repositoryAssetsDirectory);
+                  documentationAssetsWereMoved = true;
+                }
                 for (const entry of entries(docsDirectory)) {
                   const source = path.join(docsDirectory, entry.name);
                   const destination = path.join(repositoryDirectory, entry.name);
@@ -498,15 +513,18 @@ in
                   if (entry.isDirectory() && isImageOnlyDirectory(candidate)) merge(candidate, assetsDirectory);
                 }
                 const assetContent = entries(assetsDirectory);
-                const imagesOnly = assetContent.length === 1 && assetContent[0].isFile() && isImage(assetContent[0].name);
-                const imageDestination = repositoryHasOnlyReadmeAndFewerThanThreeImages()
+                const fewerThanThreeImagesOnly = assetContent.length > 0 && assetContent.length < 3 &&
+                  assetContent.every((entry) => entry.isFile() && isImage(entry.name));
+                const imageDestination = documentationAssetsWereMoved
+                  ? ""
+                  : repositoryHasOnlyReadmeAndFewerThanThreeImages()
                   ? repositoryDirectory
                   : repositoryHasFewerThanThreeImagesOnly() && rootHasOnlyCoreFilesReadmeAndImages()
                     ? root
-                    : assetContent.length === 1 && imagesOnly
+                    : fewerThanThreeImagesOnly
                       ? repositoryDirectory
                       : "";
-                if (imagesOnly && imageDestination && assetContent.every((entry) => !fs.existsSync(path.join(imageDestination, entry.name)))) {
+                if (fewerThanThreeImagesOnly && imageDestination && assetContent.every((entry) => !fs.existsSync(path.join(imageDestination, entry.name)))) {
                   for (const entry of assetContent) move(path.join(assetsDirectory, entry.name), path.join(imageDestination, entry.name));
                   if (entries(assetsDirectory).length === 0) fs.rmdirSync(assetsDirectory);
                 }
@@ -632,6 +650,55 @@ in
       };
 
       # -----------------------------------------------------------------
+      # ---- Obsidian -> Theme display names ---- #
+      # -----------------------------------------------------------------
+      __obsidian_theme_display_name = {
+        description = "Convert a theme name or repository fallback into an Obsidian display name";
+
+        body = ''
+          command node -e '
+            const genericNames = new Set([
+              "main", "manifest", "master", "repo", "dotfiles", "dots",
+              "version", "obsidian",
+            ]);
+            const smallWords = new Set(["a", "an", "and", "for", "in", "of", "on", "the", "to", "with"]);
+            const acronyms = new Set(["obs", "obsd"]);
+
+            function clean(value) {
+              let result = value.trim().replace(/\.(?:md|markdown)$/i, "");
+              result = result.replace(/^obsidian[-_ ]+/i, "");
+              if (!/\bfor[-_ ]+obsidian$/i.test(result)) {
+                result = result.replace(/[-_ ]+obsidian$/i, "");
+              }
+              return result.replace(/^[-_ ]+|[-_ ]+$/g, "").trim();
+            }
+
+            function format(value) {
+              if (!/[-_]/.test(value) && value !== value.toLowerCase()) return value;
+              const words = value.split(/[^0-9A-Za-z]+/).filter(Boolean);
+              return words.map((word, index) => {
+                const lower = word.toLowerCase();
+                if (acronyms.has(lower)) return lower.toUpperCase();
+                if (index > 0 && smallWords.has(lower)) return lower;
+                return lower.slice(0, 1).toUpperCase() + lower.slice(1);
+              }).join(" ");
+            }
+
+            for (const value of process.argv.slice(1)) {
+              const candidate = clean(value || "");
+              if (!candidate || genericNames.has(candidate.toLowerCase())) continue;
+              const displayName = format(candidate);
+              if (displayName) {
+                process.stdout.write(displayName + "\\n");
+                process.exit(0);
+              }
+            }
+            process.exit(1);
+          ' "$argv[1]" "$argv[2]"
+        '';
+      };
+
+      # -----------------------------------------------------------------
       # ---- Obsidian -> Named release archives ---- #
       #
       # A release may include a plugin/theme distribution archive named after
@@ -677,6 +744,261 @@ in
       };
 
       # -----------------------------------------------------------------
+      # ---- gitdll -> Interactive repository package picker ---- #
+      # -----------------------------------------------------------------
+      __gitdll_package = {
+        description = "Interactively download selected repository files without plugin detection";
+
+        body = ''
+          set --local destination "$HOME/Downloads/gitdll"
+          set --local source
+          set --local argument_index 1
+
+          while test "$argument_index" -le (count $argv)
+            switch "$argv[$argument_index]"
+              case --to
+                set argument_index (math "$argument_index + 1")
+                if test "$argument_index" -gt (count $argv)
+                  echo "Error: --to requires a destination path."
+                  return 1
+                end
+                set destination "$argv[$argument_index]"
+              case '--*'
+                echo "Error: Unknown option: $argv[$argument_index]"
+                return 1
+              case '*'
+                if test -n "$source"
+                  echo "Error: --package accepts one GitHub repository or tree URL."
+                  return 1
+                end
+                set source "$argv[$argument_index]"
+            end
+            set argument_index (math "$argument_index + 1")
+          end
+
+          if test -z "$source"; or not command -q gh; or not command -q curl; or not command -q fzf
+            echo "Error: --package requires one GitHub URL plus gh, curl, and fzf."
+            return 1
+          end
+
+          set --local repository (
+            string match -r -i --groups-only \
+              '^https?://(?:www\\.)?github\\.com/([A-Za-z0-9-]+/[A-Za-z0-9._-]+)' \
+              "$source"
+          )
+          if test -z "$repository"
+            echo "Error: --package requires a GitHub repository or tree URL."
+            return 1
+          end
+
+          set --local suffix (string replace -r -i '^https?://(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+/?' "" "$source")
+          set --local reference HEAD
+          set --local package_prefix
+          if string match -rq '^tree/' "$suffix"
+            set --local tree_parts (string split / (string replace -r '^tree/' "" "$suffix"))
+            set reference "$tree_parts[1]"
+            if test (count $tree_parts) -gt 1
+              set package_prefix (string join / $tree_parts[2..-1])
+            end
+          end
+
+          set --local repository_files (
+            command gh api "repos/$repository/git/trees/$reference?recursive=1" \
+              --jq '.tree[]? | select(.type == "blob") | .path' \
+              2>/dev/null
+          )
+          if test $status -ne 0; or test (count $repository_files) -eq 0
+            echo "Error: Could not inspect repository files."
+            return 1
+          end
+
+          set --local selectable_files
+          for repository_file in $repository_files
+            if test -n "$package_prefix"; and \
+                not string match -q "$package_prefix/*" "$repository_file"
+              continue
+            end
+            if __obsidian_download_path_blocked "$repository_file"
+              continue
+            end
+            set --append selectable_files "$repository_file"
+          end
+          if test (count $selectable_files) -eq 0
+            echo "No selectable files were found."
+            return 0
+          end
+
+          set --local selected_files (
+            printf '%s\n' $selectable_files | \
+              command fzf \
+                --multi \
+                --prompt='package> ' \
+                --header='Arrow keys browse repository paths. TAB marks files; CTRL-A marks all; e removes a marked file; ENTER downloads.' \
+                --bind='tab:toggle+down,ctrl-a:select-all,e:toggle'
+          )
+          if test (count $selected_files) -eq 0
+            echo "No files selected."
+            return 0
+          end
+
+          set --local repository_directory "$destination/"(basename "$repository")
+          command mkdir -p -- "$repository_directory"
+          or return 1
+
+          set --local failed 0
+          for selected_file in $selected_files
+            set --local target "$repository_directory/$selected_file"
+            if test -L "$target"
+              echo "Skipping symlinked destination: $target"
+              set failed 1
+              continue
+            end
+            command mkdir -p -- (dirname "$target")
+            set --local download_url (
+              command gh api \
+                "repos/$repository/contents/$selected_file?ref=$reference" \
+                --jq .download_url \
+                2>/dev/null
+            )
+            set download_url (__obsidian_download_url_encode "$download_url")
+            if test -z "$download_url"; or \
+                not command curl --fail --location --silent --show-error \
+                  --output "$target" "$download_url"
+              command rm -f -- "$target"
+              echo "Could not download: $selected_file"
+              set failed 1
+            end
+          end
+
+          return $failed
+        '';
+      };
+
+      # -----------------------------------------------------------------
+      # ---- gitdll -> Multi-plugin repository picker ---- #
+      # -----------------------------------------------------------------
+      __gitdll_plugin_packages = {
+        description = "Select and download separate Obsidian plugins from one repository";
+
+        body = ''
+          set --local destination "$HOME/Downloads/gitdll-plugins"
+          set --local source
+          set --local argument_index 1
+
+          while test "$argument_index" -le (count $argv)
+            switch "$argv[$argument_index]"
+              case --to
+                set argument_index (math "$argument_index + 1")
+                if test "$argument_index" -gt (count $argv)
+                  echo "Error: --to requires a destination path."
+                  return 1
+                end
+                set destination "$argv[$argument_index]"
+              case '--*'
+                echo "Error: Unknown option: $argv[$argument_index]"
+                return 1
+              case '*'
+                if test -n "$source"
+                  echo "Error: --plugin-packages accepts one GitHub repository or tree URL."
+                  return 1
+                end
+                set source "$argv[$argument_index]"
+            end
+            set argument_index (math "$argument_index + 1")
+          end
+
+          if test -z "$source"; or not command -q gh; or not command -q fzf
+            echo "Error: --plugin-packages requires one GitHub URL plus gh and fzf."
+            return 1
+          end
+
+          set --local repository (
+            string match -r -i --groups-only \
+              '^https?://(?:www\\.)?github\\.com/([A-Za-z0-9-]+/[A-Za-z0-9._-]+)' \
+              "$source"
+          )
+          if test -z "$repository"
+            echo "Error: --plugin-packages requires a GitHub repository or tree URL."
+            return 1
+          end
+
+          set --local suffix (string replace -r -i '^https?://(?:www\\.)?github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+/?' "" "$source")
+          set --local reference HEAD
+          set --local package_prefix
+          if string match -rq '^tree/' "$suffix"
+            set --local tree_parts (string split / (string replace -r '^tree/' "" "$suffix"))
+            set reference "$tree_parts[1]"
+            if test (count $tree_parts) -gt 1
+              set package_prefix (string join / $tree_parts[2..-1])
+            end
+          end
+
+          set --local repository_files (
+            command gh api "repos/$repository/git/trees/$reference?recursive=1" \
+              --jq '.tree[]? | select(.type == "blob") | .path' \
+              2>/dev/null
+          )
+          if test $status -ne 0; or test (count $repository_files) -eq 0
+            echo "Error: Could not inspect repository files."
+            return 1
+          end
+
+          set --local package_paths
+          for manifest_path in $repository_files
+            if not string match -q '*/manifest.json' "$manifest_path"
+              continue
+            end
+            set --local candidate_path (dirname "$manifest_path")
+            if test "$candidate_path" = .; or \
+                test -n "$package_prefix"; and \
+                test "$candidate_path" != "$package_prefix"; and \
+                not string match -q "$package_prefix/*" "$candidate_path"
+              continue
+            end
+            if contains -- "$candidate_path/main.js" $repository_files; and \
+                not __obsidian_download_path_blocked "$manifest_path"; and \
+                not __obsidian_download_path_blocked "$candidate_path/main.js"
+              set --append package_paths "$candidate_path"
+            end
+          end
+
+          if test (count $package_paths) -eq 0
+            echo "No folders containing both manifest.json and main.js were found."
+            return 1
+          end
+
+          set --local selected_paths (
+            printf '%s\n' $package_paths | \
+              command fzf \
+                --multi \
+                --prompt='plugin packages> ' \
+                --header='Each entry is an independent plugin. TAB selects folders; ENTER downloads selected plugins.' \
+                --bind='tab:toggle+down'
+          )
+          if test (count $selected_paths) -eq 0
+            echo "No plugin packages selected."
+            return 0
+          end
+
+          set --local package_records (command mktemp "$TMPDIR/gitdll-plugin-packages.XXXXXXXXXX")
+          if test -z "$package_records"
+            echo "Error: Could not create a temporary package list."
+            return 1
+          end
+          for selected_path in $selected_paths
+            printf 'https://github.com/%s\t%s\t%s\n' \
+              "$repository" "$reference" "$selected_path" \
+              >>"$package_records"
+          end
+
+          __gitdll_plugins "$package_records" --to "$destination"
+          set --local download_status $status
+          command rm -f -- "$package_records"
+          return $download_status
+        '';
+      };
+
+      # -----------------------------------------------------------------
       # ---- gitdll -> Download Git repositories or rebuild Obsidian libraries ---- #
       #
       # Existing repository download modes:
@@ -699,6 +1021,18 @@ in
         description = "Download Git repositories, Obsidian plugins, or Obsidian themes";
 
         body = ''
+          if test (count $argv) -gt 0; and \
+              test "$argv[1]" = --package
+            __gitdll_package $argv[2..-1]
+            return $status
+          end
+
+          if test (count $argv) -gt 0; and \
+              contains -- "$argv[1]" --plugin-package --plugin-packages
+            __gitdll_plugin_packages $argv[2..-1]
+            return $status
+          end
+
           if test (count $argv) -gt 0; and \
               contains -- "$argv[1]" --plugin --plugins --theme --themes
 
@@ -1084,6 +1418,7 @@ in
               __obsidian_download_file_is_present \
               __obsidian_normalize_download_layout \
               __obsidian_repository_fallback_name \
+              __obsidian_theme_display_name \
               __obsidian_is_named_release_archive \
               __gitdll_remove_completed_source_link \
               __gitdll_remove_completed_source_links_for_repository \
@@ -2353,6 +2688,13 @@ in
           if test (count $repository_inputs) -eq 1; and \
                   test -f "$repository_inputs[1]"
               while read -l line
+                  # --plugin-packages passes an internal tab-separated record:
+                  # repository URL, Git ref, and the selected package path.
+                  if test (count (string split \t -- "$line")) -eq 3
+                      set --append repositories "$line"
+                      continue
+                  end
+
                   # Lists may contain headings, blank lines, or Markdown links.
                   # Preserve each GitHub repository URL found in the text.
                   set repositories $repositories (string match -r -a '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' "$line")
@@ -2369,6 +2711,25 @@ in
           command mkdir -p -- "$destination"
 
           for repository_url in $repositories
+              set package_reference HEAD
+              set package_path
+              set record_parts (string split \t "$repository_url")
+
+              if test (count $record_parts) -eq 3
+                  set repository_url "$record_parts[1]"
+                  set package_reference "$record_parts[2]"
+                  set package_path "$record_parts[3]"
+
+                  if test -z "$package_reference"; or test -z "$package_path"; or \
+                          string match -rq '(^|/)\.\.?(?:/|$)|^/' "$package_path"
+                      echo "Skipping unsafe plugin package record."
+                      continue
+                  end
+              else if test (count $record_parts) -ne 1
+                  echo "Skipping invalid plugin package record."
+                  continue
+              end
+
               set repository_path (
                   string replace -r '^https?://github\.com/' ''' -- "$repository_url" |
                   string replace -r '\.git/?$' ''' |
@@ -2431,7 +2792,7 @@ in
               # Fetch repository file paths using the original working mechanism.
               set repository_paths (
                   command gh api \
-                      "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
+                      "repos/$repository_owner/$repository_name/git/trees/$package_reference?recursive=1" \
                       --jq '.tree[]? | select(.type == "blob") | .path' \
                       2>/dev/null
               )
@@ -2452,8 +2813,17 @@ in
                       continue
                   end
 
-                  set --append filtered_repository_paths \
-                      "$repository_path"
+                  if test -n "$package_path"
+                      if not string match -q "$package_path/*" "$repository_path"
+                          continue
+                      end
+
+                      set repository_path (
+                          string replace "$package_path/" "" -- "$repository_path"
+                      )
+                  end
+
+                  set --append filtered_repository_paths "$repository_path"
               end
 
               set repository_paths \
@@ -2462,11 +2832,14 @@ in
               # Prefer standard files from the newest release before repository fallback.
               set release_theme_css 0
               set release_obsidian_css 0
-              set release_json (
-                  command gh api \
-                      "repos/$repository_owner/$repository_name/releases/latest" \
-                      2>/dev/null
-              )
+              set release_json
+              if test -z "$package_path"
+                  set release_json (
+                      command gh api \
+                          "repos/$repository_owner/$repository_name/releases/latest" \
+                          2>/dev/null
+                  )
+              end
 
               if test $status -eq 0; and test -n "$release_json"
                   set release_assets (
@@ -2515,19 +2888,28 @@ in
                   end
 
                   set repository_file_path (
-                      printf '%s\n' $repository_paths |
-                      command awk -F/ \
-                          -v expected_file="$expected_file" \
-                          '$NF == expected_file { print; exit }'
+                      if contains -- "$expected_file" $repository_paths
+                          printf '%s\n' "$expected_file"
+                      else
+                          printf '%s\n' $repository_paths |
+                          command awk -F/ \
+                              -v expected_file="$expected_file" \
+                              '$NF == expected_file { print; exit }'
+                      end
                   )
 
                   if test -z "$repository_file_path"
                       continue
                   end
 
+                  set remote_repository_file_path "$repository_file_path"
+                  if test -n "$package_path"
+                      set remote_repository_file_path "$package_path/$repository_file_path"
+                  end
+
                   set repository_file_url (
                       command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$repository_file_path" \
+                          "repos/$repository_owner/$repository_name/contents/$remote_repository_file_path?ref=$package_reference" \
                           --jq .download_url \
                       2>/dev/null
                   )
@@ -2549,19 +2931,28 @@ in
               # Preserve one README when the repository provides one.
               for readme_name in README README.md README.markdown README.org README.txt
                   set readme_path (
-                      printf '%s\n' $repository_paths |
-                      command awk -F/ \
-                          -v readme_name="$readme_name" \
-                          '$NF == readme_name { print; exit }'
+                      if contains -- "$readme_name" $repository_paths
+                          printf '%s\n' "$readme_name"
+                      else
+                          printf '%s\n' $repository_paths |
+                          command awk -F/ \
+                              -v readme_name="$readme_name" \
+                              '$NF == readme_name { print; exit }'
+                      end
                   )
 
                   if test -z "$readme_path"
                       continue
                   end
 
+                  set remote_readme_path "$readme_path"
+                  if test -n "$package_path"
+                      set remote_readme_path "$package_path/$readme_path"
+                  end
+
                   set readme_url (
                       command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$readme_path" \
+                          "repos/$repository_owner/$repository_name/contents/$remote_readme_path?ref=$package_reference" \
                           --jq .download_url \
                       2>/dev/null
                   )
@@ -2600,9 +2991,14 @@ in
                   set generated_plugin_name "$generated_plugin_id"
                   set generated_plugin_version "0.0.0"
                   set generated_plugin_author "$repository_owner"
+                  set remote_package_path package.json
+                  if test -n "$package_path"
+                      set remote_package_path "$package_path/package.json"
+                  end
+
                   set package_url (
                       command gh api \
-                          "repos/$repository_owner/$repository_name/contents/package.json" \
+                          "repos/$repository_owner/$repository_name/contents/$remote_package_path?ref=$package_reference" \
                           --jq .download_url \
                           2>/dev/null
                   )
@@ -2731,6 +3127,7 @@ in
 
               if test -d "$plugin_directory"
                   set plugin_readme_ok 0
+                  set plugin_identity_matches 0
 
                   if command find "$plugin_directory" \
                           -maxdepth 1 \
@@ -2742,12 +3139,26 @@ in
                       set plugin_readme_ok 1
                   end
 
-                  if __gitdll_plugin_core_is_healthy "$plugin_directory"; and \
-                          command jq -e \
+                  if test -n "$package_path"
+                      if command jq -e \
                               --arg url "$canonical_repository_url" \
-                              '.pluginUrl == $url' \
+                              --arg ref "$package_reference" \
+                              --arg path "$package_path" \
+                              '.pluginUrl == $url and .pluginRef == $ref and .pluginPath == $path' \
                               "$plugin_directory/manifest.json" \
-                              >/dev/null 2>&1; and \
+                              >/dev/null 2>&1
+                          set plugin_identity_matches 1
+                      end
+                  else if command jq -e \
+                          --arg url "$canonical_repository_url" \
+                          '.pluginUrl == $url' \
+                          "$plugin_directory/manifest.json" \
+                          >/dev/null 2>&1
+                      set plugin_identity_matches 1
+                  end
+
+                  if __gitdll_plugin_core_is_healthy "$plugin_directory"; and \
+                          test "$plugin_identity_matches" -eq 1; and \
                           test "$plugin_readme_ok" -eq 1
 
                       echo
@@ -2776,7 +3187,7 @@ in
               # declared by the saved manifest instead of replacing it with a
               # derived repository URL.
               set manifest_plugin_url "$canonical_repository_url"
-              if test -f "$plugin_stage/manifest.json"
+              if test -z "$package_path"; and test -f "$plugin_stage/manifest.json"
                   set existing_plugin_url (
                       command jq -r \
                           'if (.pluginUrl | type) == "string" then .pluginUrl else empty end' \
@@ -2808,11 +3219,14 @@ in
                   set saved_files manifest.json
               end
 
-              set release_json (
-                  command gh api \
-                      "repos/$repository_owner/$repository_name/releases/latest" \
-                      2>/dev/null
-              )
+              set release_json
+              if test -z "$package_path"
+                  set release_json (
+                      command gh api \
+                          "repos/$repository_owner/$repository_name/releases/latest" \
+                          2>/dev/null
+                  )
+              end
 
               if test $status -eq 0; and test -n "$release_json"
                   set release_assets (
@@ -2907,7 +3321,7 @@ in
                               end
                       end
                   end
-              else
+              else if test -z "$package_path"
                   echo "Notice: No GitHub release was found."
               end
 
@@ -3099,9 +3513,14 @@ in
                   # GitHub CLI's raw response transform can fail for binary
                   # images and GIFs. Resolve the raw URL as metadata, then
                   # use curl to download a staged file before replacing it.
+                  set remote_auxiliary_path "$auxiliary_path"
+                  if test -n "$package_path"
+                      set remote_auxiliary_path "$package_path/$auxiliary_path"
+                  end
+
                   set auxiliary_metadata (
                       command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
+                          "repos/$repository_owner/$repository_name/contents/$remote_auxiliary_path?ref=$package_reference" \
                           --jq '[.size, .download_url] | @tsv' \
                           2>/dev/null
                   )
@@ -3255,12 +3674,24 @@ in
                   echo "Notice: No README file was found."
               end
 
-              if not command jq \
-                      --arg url "$manifest_plugin_url" \
-                      '.pluginUrl = $url' \
+              if test -n "$package_path"
+                  command jq \
+                      --arg url "$canonical_repository_url" \
+                      --arg ref "$package_reference" \
+                      --arg path "$package_path" \
+                      '.pluginUrl = $url | .pluginRef = $ref | .pluginPath = $path' \
                       "$plugin_stage/manifest.json" \
-                      >"$plugin_stage/manifest.json.gitdll-new"; or \
-                      not command mv \
+                      >"$plugin_stage/manifest.json.gitdll-new"
+              else
+                  command jq \
+                      --arg url "$manifest_plugin_url" \
+                      '.pluginUrl = $url | del(.pluginRef, .pluginPath)' \
+                      "$plugin_stage/manifest.json" \
+                      >"$plugin_stage/manifest.json.gitdll-new"
+              end
+
+              if not test -s "$plugin_stage/manifest.json.gitdll-new"; or \
+                  not command mv \
                       -- \
                       "$plugin_stage/manifest.json.gitdll-new" \
                       "$plugin_stage/manifest.json"
@@ -3870,16 +4301,18 @@ in
               end
 
               # Themes prefer manifest.name, then manifest.id, then the cleaned
-              # GitHub repository name when the manifest supplies neither.
-              set theme_folder_name "$theme_name"
-
-              if test -z "$theme_folder_name"
-                  set theme_folder_name "$theme_id"
-              end
+              # GitHub repository name. The resulting display name is also the
+              # folder name and is written back to manifest.json below.
+              set theme_folder_name (
+                  __obsidian_theme_display_name \
+                      "$theme_name" \
+                      "$theme_id"
+              )
 
               if test -z "$theme_folder_name"
                   set theme_folder_name (
-                      __obsidian_repository_fallback_name \
+                      __obsidian_theme_display_name \
+                          "$fallback_folder_name" \
                           "$fallback_folder_name"
                   )
               end
@@ -4167,6 +4600,23 @@ in
                               "$repository_path"
                       end
                   end
+
+                  # Themes may keep their selectable stylesheet variants in
+                  # styles/ or at the repository root. Preserve those CSS
+                  # files, while the active theme.css and obsidian.css above
+                  # remain core files at the theme root.
+                  if string match -rq '(?i)\.css$' "$repository_path"; and \
+                          not contains -- (basename "$repository_path") \
+                              theme.css obsidian.css
+
+                      if not contains \
+                              "$repository_path" \
+                              $repository_auxiliary_paths
+
+                          set --append repository_auxiliary_paths \
+                              "$repository_path"
+                      end
+                  end
               end
 
               if test (count $repository_auxiliary_paths) -gt 1
@@ -4417,6 +4867,13 @@ in
                           "$auxiliary_name"
 
                       set auxiliary_path_supported 1
+
+                  # Theme variants outside snippets/ are documentation-sized
+                  # optional CSS, not alternate core payloads.
+                  else if string match -rq '(?i)\.css$' "$auxiliary_path"; and \
+                          not contains -- "$auxiliary_name" theme.css obsidian.css
+
+                      set auxiliary_path_supported 1
                   end
 
                   if test "$auxiliary_path_supported" -eq 0
@@ -4654,8 +5111,9 @@ in
               end
 
               if not command jq \
+                      --arg name "$theme_folder_name" \
                       --arg url "$manifest_theme_url" \
-                      '.themeUrl = $url' \
+                      '.name = $name | .themeUrl = $url' \
                       "$theme_stage/manifest.json" \
                       >"$theme_stage/manifest.json.gitdll-new"; or \
                       not command mv \
@@ -6157,11 +6615,11 @@ in
                 end
               end
 
-              # Themes additionally preserve CSS snippets.
+              # Themes additionally preserve CSS variants, including styles/
+              # and a repository-root alternate stylesheet.
               if test "$requires_plugin_payload" -eq 0; and \
-                  string match -rq \
-                  '(?i)^snippets/.+\.css$' \
-                  "$auxiliary_path"
+                  string match -rq '(?i)\.css$' "$auxiliary_path"; and \
+                  not contains -- "$auxiliary_name" theme.css obsidian.css
 
                 set auxiliary_path_supported 1
               end

@@ -167,6 +167,11 @@ let
           filename = Path(value).name.casefold()
           filename_stem = filename.rsplit(".", 1)[0]
           normalized_filename_stem = re.sub(r"[^a-z0-9]+", "", filename_stem)
+          normalized_filename_stem = re.sub(
+              r"(?:zhcn|zhtw|zh|ko|jp)$",
+              "",
+              normalized_filename_stem,
+          )
 
           if any(
               part.casefold() in {"zh", "ko", "jp"}
@@ -501,7 +506,12 @@ let
 
 
       def set_manifest_repository(manifest_path: Path, library_type: LibraryType, repository: str) -> None:
-          write_manifest_fields(manifest_path, { repository_field(library_type): f"https://github.com/{repository}" })
+          fields = {
+              repository_field(library_type): f"https://github.com/{repository}",
+          }
+          if library_type.is_theme:
+              fields["name"] = manifest_path.parent.name
+          write_manifest_fields(manifest_path, fields)
 
 
       def mark_repository_status(entry: LibraryEntry, field: str) -> str:
@@ -1010,18 +1020,20 @@ let
                       )
                   )
 
-                  is_theme_snippet = (
+                  is_theme_stylesheet = (
                       include_theme_snippets
                       and suffix == ".css"
-                      and len(path_parts) > 1
-                      and path_parts[0] == "snippets"
+                      and path.name.casefold() not in {
+                          "theme.css",
+                          "obsidian.css",
+                      }
                   )
     
                   if not (
                       is_documentation
                       or is_documentation_folder_file
                       or is_image
-                      or is_theme_snippet
+                      or is_theme_stylesheet
                   ):
                       continue
     
@@ -1527,8 +1539,8 @@ let
                       if child.is_dir() and is_image_only(child):
                           merge(child, assets_directory)
                   asset_content = entries(assets_directory)
-                  images_only = (
-                      len(asset_content) == 1
+                  fewer_than_three_images_only = (
+                      0 < len(asset_content) < 3
                       and all(
                           child.is_file() and child.suffix.casefold() in image_suffixes
                           for child in asset_content
@@ -1543,11 +1555,11 @@ let
                           and root_has_only_core_files_readme_and_images()
                       )
                       else repository_directory
-                      if len(asset_content) == 1 and images_only
+                      if fewer_than_three_images_only
                       else None
                   )
                   if (
-                      images_only
+                      fewer_than_three_images_only
                       and image_destination is not None
                       and all(
                           not (image_destination / child.name).exists()
@@ -3225,11 +3237,60 @@ let
           return f"{match.group(1)}/{match.group(2).removesuffix('.git')}"
 
 
-      def normalized_theme_name(value: str) -> str:
-          normalized = re.sub(r"[^0-9A-Za-z]+", "-", value.casefold()).strip("-")
-          if not normalized:
-              raise RuntimeError("theme id or name cannot produce a folder name")
-          return normalized
+      def theme_display_name(value: str, fallback: str) -> str:
+          generic_names = {
+              "main",
+              "manifest",
+              "master",
+              "repo",
+              "dotfiles",
+              "dots",
+              "version",
+              "obsidian",
+          }
+          small_words = {
+              "a",
+              "an",
+              "and",
+              "for",
+              "in",
+              "of",
+              "on",
+              "the",
+              "to",
+              "with",
+          }
+
+          def clean(candidate: str) -> str:
+              candidate = re.sub(r"[.](?:md|markdown)$", "", candidate.strip(), flags=re.IGNORECASE)
+              candidate = re.sub(r"^obsidian[-_ ]+", "", candidate, flags=re.IGNORECASE)
+              if re.search(r"\bfor[-_ ]+obsidian$", candidate, flags=re.IGNORECASE) is None:
+                  candidate = re.sub(r"[-_ ]+obsidian$", "", candidate, flags=re.IGNORECASE)
+              return candidate.strip("-_ ").strip()
+
+          for source in (value, fallback):
+              candidate = clean(source)
+              if not candidate or candidate.casefold() in generic_names:
+                  continue
+
+              if "-" not in candidate and "_" not in candidate and candidate != candidate.casefold():
+                  return candidate
+
+              words = re.findall(r"[0-9A-Za-z]+", candidate)
+              display_words: list[str] = []
+              for index, word in enumerate(words):
+                  normalized = word.casefold()
+                  if normalized in {"obs", "obsd"}:
+                      display_words.append(normalized.upper())
+                  elif index > 0 and normalized in small_words:
+                      display_words.append(normalized)
+                  else:
+                      display_words.append(normalized.capitalize())
+
+              if display_words:
+                  return " ".join(display_words)
+
+          raise RuntimeError("theme name cannot produce a folder name")
 
 
       def repository_fallback_name(repository: str) -> str:
@@ -3314,9 +3375,9 @@ let
 
 
       def theme_folder_name(repository: str, source: ThemeSource) -> str:
-          return theme_identifier(
-              repository,
-              source,
+          return theme_display_name(
+              theme_identifier(repository, source),
+              repository_fallback_name(repository),
           )
 
 
