@@ -945,8 +945,14 @@ in
                 set source_changed 1
 
                 set --local source_without_link (
-                  string trim -- \
-                    (string replace -a -- "$source_link" ''' "$source_line")
+                  string replace -a -- \
+                    "$source_link/" \
+                    ''' \
+                    "$source_line" |
+                  string replace -a -- \
+                    "$source_link" \
+                    ''' |
+                  string trim
                 )
 
                 # Remove a bare, bullet, angle-bracket, or Markdown link line
@@ -979,6 +985,70 @@ in
                 echo "Notice: Could not save source-list update: $source_file"
                 return 1
               end
+            end
+
+            # Normalize every GitHub repository spelling before comparing list
+            # entries with each other or with a saved manifest URL.
+            function __gitdll_canonical_repository_url \
+                --argument-names repository_url
+
+              set --local repository (
+                string replace -r -i \
+                  '^(?:https?://)?(?:www\\.)?github\\.com/' \
+                  "" \
+                  -- "$repository_url" |
+                string replace -r -i '\\.git/?$' "" |
+                string trim --chars=/
+              )
+
+              if not string match -rq \
+                  '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' \
+                  "$repository"
+                return 1
+              end
+
+              set --local repository_parts (string split / "$repository")
+              printf 'https://github.com/%s/%s\\n' \
+                (string lower -- "$repository_parts[1]") \
+                (string lower -- "$repository_parts[2]")
+            end
+
+            # A manually downloaded entry is just as complete as one gitdll
+            # created. Reuse its manifest URL before scheduling a download.
+            function __gitdll_destination_has_repository_url \
+                --argument-names repository_url destination_directory url_field
+
+              set --local canonical_repository_url (
+                __gitdll_canonical_repository_url "$repository_url"
+              )
+
+              if test -z "$canonical_repository_url"
+                return 1
+              end
+
+              for manifest_candidate in (command find "$destination_directory" \
+                  -mindepth 2 \
+                  -maxdepth 2 \
+                  -type f \
+                  -name manifest.json \
+                  -print 2>/dev/null)
+                set --local manifest_repository_url (
+                  command jq -r \
+                    --arg field "$url_field" \
+                    'if (.[$field] | type) == "string" then .[$field] else empty end' \
+                    "$manifest_candidate" \
+                    2>/dev/null
+                )
+                set manifest_repository_url (
+                  __gitdll_canonical_repository_url "$manifest_repository_url"
+                )
+
+                if test "$manifest_repository_url" = "$canonical_repository_url"
+                  return 0
+                end
+              end
+
+              return 1
             end
 
             # The downloaded functions receive this map as an environment
@@ -1029,6 +1099,8 @@ in
             set --local source_count 0
             set --local repository_count 0
             set --local missing_count 0
+            set --local skipped_repository_count 0
+            set --local queued_repository_urls
 
             # Check only the small files that establish a usable plugin/theme.
             # This establishes that the manifest-derived direct path is usable;
@@ -1362,24 +1434,32 @@ in
 
               if test -n "$inline_repository_url"
                 set --local repository_url (
-                  string trim -- "$inline_repository_url"
+                  __gitdll_canonical_repository_url "$inline_repository_url"
                 )
 
-                if not string match -rq '^https?://' "$repository_url"
-                  set repository_url "https://$repository_url"
+                if test -z "$repository_url"
+                  echo "Skipping invalid GitHub repository URL: $source_input"
+                  continue
                 end
 
-                set repository_url (
-                  string replace -r '^https?://www\\.' 'https://' "$repository_url" |
-                  string replace -r '\\.git/?$' ''' |
-                  string replace -r '/$' '''
-                )
+                if contains -- "$repository_url" $queued_repository_urls; or \
+                    __gitdll_destination_has_repository_url \
+                      "$repository_url" \
+                      "$destination" \
+                      "$manifest_url_field"
+                  echo "Skipping existing $library_type entry: $repository_url"
+                  set skipped_repository_count (
+                    math "$skipped_repository_count + 1"
+                  )
+                  continue
+                end
 
                 printf '%s\n' "$repository_url" >>"$repositories_file"
                 printf '%s\t%s\t\t\n' \
                   "$source_input" \
                   "$repository_url" \
                   >>"$source_map_file"
+                set --append queued_repository_urls "$repository_url"
                 set source_count (math "$source_count + 1")
                 set repository_count (math "$repository_count + 1")
                 continue
@@ -1390,6 +1470,7 @@ in
                   basename "$source_input"
                 )
                 set --local active_section all
+                set --local listed_repository_urls
 
                 while read --local line
                   # A list may use Markdown headings, blank lines, or
@@ -1418,12 +1499,8 @@ in
 
                   set --local source_repository_url "$repository_url"
 
-                  if not string match -rq '^https?://' "$repository_url"
-                    set repository_url "https://$repository_url"
-                  end
-
                   set repository_url (
-                    string replace -r '^https?://www\.' 'https://' "$repository_url"
+                    __gitdll_canonical_repository_url "$repository_url"
                   )
 
                   set source_count (
@@ -1459,6 +1536,24 @@ in
 
                     continue
                   end
+
+                  if contains -- "$repository_url" $listed_repository_urls; or \
+                      contains -- "$repository_url" $queued_repository_urls; or \
+                      __gitdll_destination_has_repository_url \
+                        "$repository_url" \
+                        "$destination" \
+                        "$manifest_url_field"
+                    __gitdll_remove_completed_source_link \
+                      "$source_input" \
+                      "$source_repository_url"
+                    set skipped_repository_count (
+                      math "$skipped_repository_count + 1"
+                    )
+                    continue
+                  end
+
+                  set --append listed_repository_urls "$repository_url"
+                  set --append queued_repository_urls "$repository_url"
 
                   printf '%s\n' \
                     "$repository_url" \
@@ -1544,9 +1639,25 @@ in
             end
 
             if test "$repository_count" -eq 0
+              if test "$skipped_repository_count" -gt 0; and \
+                  test "$missing_count" -eq 0
+                echo "No new $library_type links to download."
+                command rm -rf -- "$temporary_directory"
+                command rm -rf -- "$downloader_temporary_directory"
+
+                functions -e __gitdll_write_failure_report
+                functions -e __gitdll_remove_completed_source_link
+                functions -e __gitdll_canonical_repository_url
+                functions -e __gitdll_destination_has_repository_url
+                return 0
+              end
+
               __gitdll_write_failure_report
 
               functions -e __gitdll_write_failure_report
+              functions -e __gitdll_remove_completed_source_link
+              functions -e __gitdll_canonical_repository_url
+              functions -e __gitdll_destination_has_repository_url
               echo "Failed. Details: $failed_report"
               command rm -rf -- "$temporary_directory"
               command rm -rf -- "$downloader_temporary_directory"
@@ -1721,6 +1832,100 @@ in
               end
             end <"$source_map_file"
 
+            # A text list is a live queue. Links appended while the first
+            # batch is running are discovered after that batch completes and
+            # are processed once. URLs already declared by a destination
+            # manifest are removed without downloading again.
+            set --local watched_repository_urls $queued_repository_urls
+            set --local watched_download_status 0
+
+            while true
+              set --local new_repository_urls
+              set --local scan_repository_urls
+
+              for source_input in $source_inputs
+                if not test -f "$source_input"
+                  continue
+                end
+
+                set --local active_section all
+
+                while read --local line
+                  set --local section_heading (
+                    string match -r -i -g '^##+[[:space:]]*(?:Obsidian[[:space:]]+)?(Plugins|Themes)[[:space:]]*$' "$line" |
+                    string lower
+                  )
+
+                  if test -n "$section_heading"
+                    set active_section "$section_heading"
+                    continue
+                  end
+
+                  if string match -rq '^##+' "$line"
+                    set active_section none
+                    continue
+                  end
+
+                  if test "$active_section" != all; and \
+                      test "$active_section" != "$library_type"
+                    continue
+                  end
+
+                  for source_repository_url in (string match -r -a '(?i)(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:\.git)?' "$line")
+                    set --local repository_url (
+                      __gitdll_canonical_repository_url "$source_repository_url"
+                    )
+
+                    if test -z "$repository_url"
+                      continue
+                    end
+
+                    if __gitdll_destination_has_repository_url \
+                        "$repository_url" \
+                        "$destination" \
+                        "$manifest_url_field"
+                      __gitdll_remove_completed_source_link \
+                        "$source_input" \
+                        "$source_repository_url"
+                      continue
+                    end
+
+                    if contains -- "$repository_url" $scan_repository_urls
+                      __gitdll_remove_completed_source_link \
+                        "$source_input" \
+                        "$source_repository_url"
+                      continue
+                    end
+
+                    set --append scan_repository_urls "$repository_url"
+
+                    if contains -- "$repository_url" $watched_repository_urls
+                      continue
+                    end
+
+                    set --append watched_repository_urls "$repository_url"
+                    set --append new_repository_urls "$repository_url"
+                  end
+                end <"$source_input"
+              end
+
+              if test (count $new_repository_urls) -eq 0
+                break
+              end
+
+              echo "Found "(count $new_repository_urls)" new $library_type link(s) added while downloading."
+              set --local watched_arguments "$mode" $new_repository_urls
+              for include_path in $include_paths
+                set --append watched_arguments --include "$include_path"
+              end
+              set --append watched_arguments --to "$destination"
+
+              gitdll $watched_arguments
+              if test $status -ne 0
+                set watched_download_status 1
+              end
+            end
+
             command sort -u "$completed_source_links_file" | while read --local completed_source_mapping
               set --local completed_source_parts (
                 string split \t "$completed_source_mapping"
@@ -1754,9 +1959,12 @@ in
             functions -e __gitdll_write_failure_report
             functions -e __gitdll_download_includes
             functions -e __gitdll_remove_completed_source_link
+            functions -e __gitdll_canonical_repository_url
+            functions -e __gitdll_destination_has_repository_url
 
             if test "$downloader_status" -ne 0; or test "$missing_count" -gt 0; or \
-                test "$failed_count" -gt 0
+                test "$failed_count" -gt 0; or \
+                test "$watched_download_status" -ne 0
               echo "Failed. Details: $failed_report"
               return 1
             end
