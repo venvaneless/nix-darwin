@@ -5,7 +5,7 @@
 # =====================================================================
 #
 # The shared knobs for every machine live here. This file deliberately
-# contains values only: options/nix-options.nix owns their option types,
+# contains values only: options/default.nix owns their option types,
 # platform selection, validation, and translation into Nix settings.
 # =====================================================================
 
@@ -54,10 +54,11 @@
         # Makes the unstable package set available to enabled consumers.
         enable = true;
 
-        # Enables unstable packages on Darwin while Linux support is pending.
+        # Enabled on both platforms: VS Code is tracked from unstable
+        # everywhere, and unstablePkgs is a throw on a disabled platform.
         installOn = {
           darwin = true;
-          linux = false;
+          linux = true;
         };
       };
     };
