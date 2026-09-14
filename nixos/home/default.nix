@@ -18,10 +18,10 @@
     serviceOptions
 
     # ---- SHARED TERMINAL CONFIGURATION ---- #
-    inputs.self.homeModules.sharedTerminal
+    inputs.self.homeModules.shared.terminal
 
     # ---- SHARED ENVIRONMENT CONFIGURATION ---- #
-    inputs.self.homeModules.sharedEnvironment
+    inputs.self.homeModules.shared.environment
 
   ];
 

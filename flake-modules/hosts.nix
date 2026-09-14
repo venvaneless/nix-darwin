@@ -72,7 +72,7 @@ in
     # ---- SHARED ENVIRONMENT HOME MODULE ---- #
     # Every Home Manager host gets the common environment option module
     # and its shared knob assignments through this one composition point.
-    homeModules.sharedEnvironment = {
+    homeModules.shared.environment = {
       imports = [
         ../options/env-settings
         ../shared/env-settings.nix
@@ -81,7 +81,7 @@ in
 
     # ---- SHARED TERMINAL HOME MODULE ---- #
     # Every Home Manager host imports this and chooses terminal features locally.
-    homeModules.sharedTerminal = {
+    homeModules.shared.terminal = {
       imports = [
         # CLI option modules define the knobs set by shared/terminal/cli-tuis.
         ../options/cli
