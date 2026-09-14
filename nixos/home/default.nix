@@ -8,21 +8,21 @@
 #
 #   home-manager switch --flake .#zephyrus
 # =====================================================================
-
-{ inputs, paths, serviceOptions, ... }:
-
 {
+  inputs,
+  paths,
+  ...
+}: {
   imports = [
     # ---- SHARED SERVICE OPTIONS ---- #
     # Services remain disabled until this host enables them explicitly.
-    serviceOptions
+    inputs.self.homeModules.shared.services
 
     # ---- SHARED TERMINAL CONFIGURATION ---- #
     inputs.self.homeModules.shared.terminal
 
     # ---- SHARED ENVIRONMENT CONFIGURATION ---- #
     inputs.self.homeModules.shared.environment
-
   ];
 
   # ---- HOME MANAGER IDENTITY ---- #
