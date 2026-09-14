@@ -17,9 +17,9 @@
 let
   system = "aarch64-darwin";
 
-  # ---- Variables from options/default.nix
-  # The nixpkgs policy is defined once there and read by every machine.
-  inherit (import ../options { }) nixpkgsConfig;
+  # ---- SHARED NIXPKGS POLICY ---- #
+  # Host construction exposes the common policy; MacBook only adds overlays.
+  nixpkgsConfig = config.flake.lib.sharedNixpkgsConfig;
 
   # Load the list of overlays from darwin/overlays.
   macbookOverlays = import ../darwin/overlays;
@@ -34,30 +34,6 @@ let
     overlays = [ macbookOverlay ];
   };
 
-  # Shared option values are loaded once by host construction and supplied
-  # to the system and Home Manager module graphs as module arguments.
-  sharedOptions = import ../options {
-    inherit inputs;
-    pkgs = macbookPkgs;
-  };
-  inherit (sharedOptions)
-    paths
-    serviceOptions
-    containerBackupOptions
-    terminalOptions
-    featureOptions
-    obsidianOptions
-    unstablePkgs
-    ;
-
-  platforms = import ../options/platforms.nix { pkgs = macbookPkgs; };
-  packageOptions = import ../options/package-options.nix {
-    lib = inputs.nixpkgs.lib;
-    paths = paths;
-    platforms = platforms;
-    pkgs = macbookPkgs;
-    installTarget = "system";
-  };
 in
 {
   # =====================================================================
@@ -76,17 +52,6 @@ in
       specialArgs = {
         inherit inputs;
         pkgs = macbookPkgs;
-        inherit
-          containerBackupOptions
-          packageOptions
-          paths
-          platforms
-          serviceOptions
-          terminalOptions
-          featureOptions
-          obsidianOptions
-          unstablePkgs
-          ;
         home-manager = inputs.home-manager;
         nix-homebrew = inputs.nix-homebrew;
 

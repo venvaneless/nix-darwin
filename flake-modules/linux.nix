@@ -39,9 +39,9 @@
 let
   system = "x86_64-linux";
 
-  # ---- Variables from options/default.nix
-  # The nixpkgs policy is defined once there and read by every machine.
-  inherit (import ../options { }) nixpkgsConfig;
+  # ---- SHARED NIXPKGS POLICY ---- #
+  # Host construction exposes the common policy for every machine.
+  nixpkgsConfig = config.flake.lib.sharedNixpkgsConfig;
 
   # ---- HARDWARE DESCRIPTION ---- #
   # Generated on the target machine, not stored in this repository until
