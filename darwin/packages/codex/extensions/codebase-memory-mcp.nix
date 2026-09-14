@@ -6,14 +6,13 @@
   inputs,
   lib,
   pkgs,
+  unstablePkgs,
   ...
 }:
 
 let
-  # ---- Variables from options/default.nix
-  # The unstable package set is built once there, under the same
-  # nixpkgs policy as the stable set.
-  inherit (import ../../../../options { inherit inputs pkgs; }) unstablePkgs;
+  # ---- SHARED HOST VALUES ---- #
+  # The Darwin host constructor supplies the platform-selected package set.
 
   userName = "ven";
   homeDir = "/Users/${userName}";
