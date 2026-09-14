@@ -1,30 +1,81 @@
 # shared/home/default.nix
 #
 # =====================================================================
-# SHARED HOME MANAGER
+# ESPANSO
 #
-# Central dispatcher for reusable Home Manager configuration.
+# Selects Espanso's configuration values for every Home Manager host
+# (integrated on Darwin, standalone on Linux).
 #
-# All shared modules are imported here.
-#
-# FUTURE:
-# When multiple machines/platforms exist, pass a machine/platform
-# descriptor through extraSpecialArgs and use mkIf/mkMerge below to
-# enable the same feature with different settings per machine.
-#
-# Platform-specific implementations should normally use:
-#
-#   pkgs.stdenv.hostPlatform.isDarwin
-#   pkgs.stdenv.hostPlatform.isLinux
-#
-# rather than conditional imports based on config.
+# options/pkgs-configs/espanso owns the option shape, generated files,
+# and login startup. Package installation and app linking remain in
+# shared/packages.nix.
 # =====================================================================
+{...}: {
+  # ------------------------------------------------------------
+  # ------ SHARED ESPANSO FEATURE SELECTION ------ #
+  # These values apply to every Home Manager host that imports Espanso.
 
-{ ... }:
+  ven.espanso = {
+    enable = true;
+    autostart.enable = true;
+    showNotifications = true;
 
-{
-  imports = [
-   # ./services
-   ./pkgs-configs
-  ];
+    base.enable = true;
+
+    markdown = {
+      enable = true;
+
+      links = {
+        enable = true;
+
+        standard = {
+          enable = true;
+          trigger = ":mdlink";
+          title = "Title";
+          link = "Link";
+        };
+
+        obsidian = {
+          enable = true;
+          trigger = ":wikilink";
+          text = "Text";
+        };
+
+        obsidianAlias = {
+          enable = false;
+          trigger = ":wikialias";
+          link = "Link";
+          title = "Title";
+        };
+
+        autolink = {
+          enable = false;
+          trigger = ":mdurl";
+          link = "Link";
+        };
+
+        image = {
+          enable = false;
+          trigger = ":mdimage";
+          alt = "Alt text";
+          link = "Image URL";
+        };
+      };
+
+      formatting = {
+        enable = true;
+
+        bold = {
+          enable = true;
+          trigger = ":mdbold";
+          text = "Text";
+        };
+
+        task = {
+          enable = true;
+          trigger = ":mdtask";
+        };
+      };
+    };
+  };
 }
