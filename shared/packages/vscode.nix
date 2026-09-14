@@ -114,7 +114,7 @@ lib.mkMerge [
   # exist; this module never creates or migrates mutable editor state.
   (if platforms.isDarwin then
     {
-      system.activationScripts.vscodeGuiEnvironment.text = lib.mkAfter ''
+      system.activationScripts.extraActivation.text = lib.mkAfter ''
         vscode_user_uid="$(/usr/bin/id -u ${paths.user.name})"
 
         if [ -d "${vscodePaths.root}" ]; then
