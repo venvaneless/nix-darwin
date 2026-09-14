@@ -377,6 +377,43 @@ Do not put macOS paths, `launchctl`, `/Applications`, `defaults`, or Homebrew as
 
 ## Modularization
 
+### Naming module and knob namespaces
+
+Use nested attribute paths to make the category and purpose visible. Do not
+introduce a flat camelCase name when a namespace already expresses the same
+relationship.
+
+```nix
+homeModules.shared.environment = {
+  # Shared Home Manager environment modules.
+};
+
+homeModules.shared.terminal = {
+  # Shared Home Manager terminal modules.
+};
+```
+
+For configurable terminal tools, keep the user-facing values together in the
+shared CLI/TUI knobs file. The option module in `options/cli/` owns what the
+knobs mean; `shared/terminal/cli-tuis/default.nix` only assigns their values.
+
+```nix
+config = {
+  # ------------------------------------------------------------
+  # ------ MICRO SETTINGS ------ #
+  # All values a user may reasonably change stay here. The option module
+  # owns platform selection, validation, JSON rendering, and theme files.
+
+  cli.micro = {
+    # User-facing Micro knobs.
+  };
+};
+```
+
+Use the same `cli.<tool>` path for every CLI/TUI tool, for example
+`cli.atuin` and `cli.gh`. Do not put implementation details or option
+declarations in the shared knobs file.
+
 Always consider:
 
 - Can this become its own module?
