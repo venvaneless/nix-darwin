@@ -7,7 +7,7 @@
 # Makes one script executable, or all scripts in a folder
 # =====================================================================
 
-{ config, lib, platforms, ... }:
+{ lib, platforms, ... }:
 
 let
   inherit (platforms) isDarwin isLinux;

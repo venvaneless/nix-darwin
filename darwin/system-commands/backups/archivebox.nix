@@ -5,6 +5,7 @@
 
 {
   config,
+  paths,
   lib,
   pkgs,
   ...
@@ -15,8 +16,6 @@ let
   # The lock directory root comes from the centralized path definitions;
   # the source and destination roots stay on the container backup options
   # so a host can still override them.
-  paths = import ../../../options/paths.nix { };
-
   appSlug = "archivebox";
 
   # ---- BACKUP PATHS
@@ -47,7 +46,7 @@ let
   preserveSymlinks = true;
   extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
 
-  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
+  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs paths; };
 in
 containerBackupHelper.mkContainerBackup {
   inherit config;

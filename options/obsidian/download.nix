@@ -16,6 +16,20 @@
 let
   cfg = config.ven.features.obsidian;
 
+  # ------------------------------------------------------------
+  # ------ PLATFORM COMMAND FLAGS ------ #
+  # BSD and GNU spell these two flags differently, and getting them
+  # wrong is silent: base64 writes nothing and the caller reads an
+  # empty value, because every call site discards stderr.
+  #
+  # ** macOS ships BSD coreutils, Linux ships GNU, so platforms.nix
+  # ** owns the decision instead of each call site assuming macOS.
+  # ------------------------------------------------------------
+
+  base64DecodeFlag = if platforms.isDarwin then "-D" else "-d";
+
+  statSizeArguments = if platforms.isDarwin then "-f %z" else "-c %s";
+
   # Select Nix-rendered defaults once; --to remains a one-command override.
   #
   # ** Each entry under cfg.paths is its own darwin/linux pair, so the
@@ -801,7 +815,7 @@ in
                     --jq .content \
                     2>/dev/null |
                   command tr -d '\n' |
-                  command base64 -D 2>/dev/null
+                  command base64 ${base64DecodeFlag} 2>/dev/null
                 )
               end
 
@@ -4152,7 +4166,7 @@ in
             set --local remote_fields (
               command gh api "repos/$repository/contents/manifest.json" --jq .content 2>/dev/null |
               command tr -d '\n' |
-              command base64 -D 2>/dev/null |
+              command base64 ${base64DecodeFlag} 2>/dev/null |
               command jq -r '[.id // "", .author // ""] | @tsv' 2>/dev/null
             )
             set --local local_parts (string split \t "$local_fields")
@@ -4460,7 +4474,7 @@ in
               "$readme_root/$readme_name"
 
             if test -f "$readme_destination"; and test -s "$readme_destination"
-              set --local destination_size (command stat -f %z -- "$readme_destination")
+              set --local destination_size (command stat ${statSizeArguments} -- "$readme_destination")
 
               if test "$destination_size" = "$readme_size"
                 return 0
@@ -5381,7 +5395,7 @@ in
               if test "$requires_plugin_payload" -eq 1
                 set --local package_content (
                   command gh api "repos/$repository/contents/package.json" --jq .content 2>/dev/null | \
-                    command tr -d '\n' | command base64 -D 2>/dev/null
+                    command tr -d '\n' | command base64 ${base64DecodeFlag} 2>/dev/null
                 )
                 if test -n "$package_content"
                   set --local package_id (
@@ -5728,7 +5742,7 @@ in
                     --jq .content \
                     2>/dev/null |
                   command tr -d '\n' |
-                  command base64 -D \
+                  command base64 ${base64DecodeFlag} \
                     2>/dev/null |
                   command jq -e \
                     --arg id "$library_id" \
@@ -5857,7 +5871,7 @@ in
                     --jq .content \
                     2>/dev/null |
                   command tr -d '\n' |
-                  command base64 -D \
+                  command base64 ${base64DecodeFlag} \
                     2>/dev/null |
                   command jq -r \
                     'if type == "object" then

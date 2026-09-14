@@ -12,12 +12,11 @@
 # - Safe to run at every activation.
 # =====================================================================
 
-{ config, pkgs, lib, ... }:
+{ paths, pkgs, lib, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # Reads the CA root created by mkcert.nix; never writes rootCA.pem.
-  paths = import ../../../../options/paths.nix { };
 
   # User that must own the exported certificate copies
   userName = paths.user.name;
@@ -78,10 +77,25 @@ let
       -out "${androidDerCrt}" \
       -outform der || {
         echo "!!! [vw-android] openssl DER export failed (continuing with PEM only)"
+
+        # ** This branch leaves the function before the ownership fix
+        # ** below, so the PEM copy is handed over here instead.
+        chown "${userName}:staff" "${androidPemCrt}" || true
         exit 0
       }
     # Set permissions to be readable by user (and others) so Android can read it
     chmod 644 "${androidDerCrt}" || true
+
+    # 3) Ownership
+    #
+    # ** Activation runs as root, so both copies are created root-owned
+    # ** inside Ven's CAROOT. mkcert.nix and vaultwarden-mkcert.nix hand
+    # ** their output back the same way, so the exports can be inspected
+    # ** and replaced without sudo.
+    echo ">>> [vw-android] Fixing ownership of the exports -> ${userName}:staff"
+    chown "${userName}:staff" "${androidPemCrt}" "${androidDerCrt}" || {
+      echo "!!! [vw-android] chown failed (continuing)"
+    }
 
     # Print a message to indicate what files were created and how to use them
     echo ">>> [vw-android] DONE:"

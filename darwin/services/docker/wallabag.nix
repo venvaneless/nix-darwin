@@ -1,13 +1,12 @@
 # darwin/services/docker/wallabag.nix
 
-{ config, pkgs, lib, ... }:
+{ config, paths, pkgs, lib, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # Owner, container data root, Docker Desktop CLI directory, the
   # stable /etc runner location, and the macOS base binaries all come
   # from the centralized path definitions.
-  paths = import ../../../options/paths.nix { };
 
   # Main macOS user that owns the Wallabag data directories
   userName = paths.user.name;

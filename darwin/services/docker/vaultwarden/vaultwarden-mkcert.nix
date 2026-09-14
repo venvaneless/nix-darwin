@@ -23,13 +23,12 @@
 # - Logs only when it issues or repairs something, and on error.
 # =====================================================================
 
-{ config, pkgs, lib, ... }:
+{ paths, pkgs, lib, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # The CA root and the per-service certificate directory are shared
   # with mkcert.nix and vaultwarden-nginx.nix.
-  paths = import ../../../../options/paths.nix { };
 
   # User that must own the generated certificate files
   userName = paths.user.name;

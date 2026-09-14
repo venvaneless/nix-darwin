@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/dash.nix
 # Dash backup command: `dash-backup`.
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -68,7 +68,7 @@ let
   archivePrefix = "dash";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
   dashBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Dash";

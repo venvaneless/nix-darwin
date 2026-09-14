@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/snippetslab.nix
 # SnippetsLab backup command: `snippetslab-backup`.
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -10,8 +10,6 @@ let
   # ** SnippetsLab is sandboxed, so its data lives inside an Apple-managed
   # ** app container. These entries are read-only backup sources; nothing
   # ** here writes into the container.
-  paths = import ../../../options/paths.nix { };
-
   # Sandbox container root for SnippetsLab
   containerData = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library";
 
@@ -55,7 +53,7 @@ let
   archivePrefix = "snippetslab";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
   snippetslabBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "SnippetsLab";

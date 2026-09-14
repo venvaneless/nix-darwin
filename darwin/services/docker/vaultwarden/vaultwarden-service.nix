@@ -11,6 +11,7 @@
 
 {
   config,
+  paths,
   pkgs,
   lib,
   ...
@@ -20,7 +21,6 @@ let
   # ---- SHARED PATHS ---- #
   # Container data root, the Docker Desktop CLI, and the launchd log
   # location come from the centralized path definitions.
-  paths = import ../../../../options/paths.nix { };
 
   # Application name for the Vaultwarden container
   appName = "vaultwarden";

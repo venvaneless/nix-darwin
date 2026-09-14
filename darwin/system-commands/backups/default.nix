@@ -7,20 +7,18 @@
 # toggle only when that container should receive a scheduled LaunchAgent.
 # =====================================================================
 
-{ lib, pkgs, ... }:
+{ paths, lib, pkgs, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # Source roots and the external backup volume layout come from the
   # centralized path definitions.
-  paths = import ../../../options/paths.nix { };
-
   userPaths = paths.darwin.home;
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
-  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
+  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs paths; };
 in
 {
   imports = [

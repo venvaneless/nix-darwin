@@ -23,7 +23,7 @@
 # - Refuses to overwrite existing destination items
 # =====================================================================
 
-{ pkgs, ... }:
+{ paths, pkgs, ... }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -32,7 +32,6 @@ let
   #
   # ** The guard clauses below stay anchored to the running user's own
   # ** $HOME, so only the fragment below it is interpolated.
-  paths = import ../../options/paths.nix { };
   relative = paths.darwin.relative;
   bin = paths.darwin.system.bin;
 

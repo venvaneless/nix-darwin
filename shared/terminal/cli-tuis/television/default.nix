@@ -8,7 +8,7 @@
 # future shared, Linux, or platform-specific channels remain independent.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.cliTuis.television;
@@ -28,7 +28,6 @@ let
   # The generated configuration location stays home-relative, while the
   # active Nix root comes from shared/terminal/default.nix and therefore
   # follows paths.nix on both Darwin and Linux.
-  paths = import ../../../../options/paths.nix { };
   televisionConfig = "${paths.relative.config}/television/config.toml";
   televisionCable = "${paths.relative.config}/television/cable";
   nixConfigDir = config.ven.features.terminal.nixConfigDir;

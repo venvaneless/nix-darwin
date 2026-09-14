@@ -8,7 +8,7 @@
 # Downloads before its completed archive is moved to SystemBackup.
 # =====================================================================
 
-{ lib, pkgs }:
+{ lib, pkgs, paths }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -16,8 +16,6 @@ let
   # LaunchAgent log directory come from the centralized path definitions.
   # default.nix sets the same values explicitly; these defaults keep the
   # option surface usable on its own.
-  paths = import ../../../options/paths.nix { };
-
   userPaths = paths.darwin.home;
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;
@@ -698,8 +696,20 @@ in
 
     automatic = lib.mkOption {
       type = lib.types.bool;
-      default = false;
-      description = "Run the ${appName} backup automatically through its interval-based LaunchAgent schedule when explicitly enabled.";
+      default = automatic;
+      description = "Run the ${appName} backup automatically on its scheduled LaunchAgent time when explicitly enabled.";
+    };
+
+    scheduledHour = lib.mkOption {
+      type = lib.types.ints.between 0 23;
+      default = scheduledHour;
+      description = "Hour at which the automatic ${appName} backup runs.";
+    };
+
+    scheduledMinute = lib.mkOption {
+      type = lib.types.ints.between 0 59;
+      default = scheduledMinute;
+      description = "Minute past the hour at which the automatic ${appName} backup runs.";
     };
 
     notifyOnAutomatic = lib.mkOption {
@@ -797,7 +807,23 @@ in
           ];
           RunAtLoad = false;
           KeepAlive = false;
-          StartInterval = cfg.automaticIntervalSeconds;
+
+          # ** A calendar time, not StartInterval. The container modules
+          # ** that set one mean it: archivebox 01:00, wallabag 05:00,
+          # ** vaultwarden 04:00. StartInterval only counted seconds from
+          # ** whenever the agent was last loaded, so those settings were
+          # ** read by nothing and a rebuild silently moved the backup.
+          # **
+          # ** launchd holds a calendar run missed while the machine was
+          # ** asleep and fires it once at the next wake, so an overnight
+          # ** time still runs on a laptop that sleeps.
+          StartCalendarInterval = [
+            {
+              Hour = cfg.scheduledHour;
+              Minute = cfg.scheduledMinute;
+            }
+          ];
+
           ProcessType = "Background";
           Nice = 20;
           LowPriorityIO = true;

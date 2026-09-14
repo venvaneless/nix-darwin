@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/browsertrix.nix
 # Browsertrix container backup command: `browsertrix-backup`.
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -52,7 +52,7 @@ let
   showProgress = true;
   runOnRebuild = false;
 
-  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
+  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs paths; };
 in
 containerBackupHelper.mkContainerBackup {
   inherit config;

@@ -671,7 +671,11 @@ in
     # ---- Obsidian library
     # Permanent plugin and theme library kept beside the app backups.
     obsidian = "${apps}/obsidian";
+    obsidianDotfiles = "${obsidian}/obsidian-dotfiles";
     obsidianExtensions = "${obsidian}/obsidian-extensions";
+    obsidianRandomFiles = "${obsidian}/obsidian-random_files";
+    obsidianScripts = "${obsidian}/obsidian-scripts";
+    obsidianSnippets = "${obsidian}/obsidian-snippets";
     obsidianThemes = "${obsidian}/obsidian-themes";
 
     # ---- Local staging

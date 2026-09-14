@@ -7,7 +7,7 @@
 # - Does not create a launchd job: crawling must be started deliberately.
 # =====================================================================
 
-{ config, pkgs, lib, ... }:
+{ config, paths, pkgs, lib, ... }:
 
 let
   cfg = config.services.browsertrix;
@@ -17,8 +17,6 @@ let
   # ---- SHARED PATHS ---- #
   # The persistent crawl collection directory comes from the
   # centralized path definitions.
-  paths = import ../../../options/paths.nix { };
-
   dockerBin = "${pkgs.docker}/bin/docker";
 
   dockerWait = ''

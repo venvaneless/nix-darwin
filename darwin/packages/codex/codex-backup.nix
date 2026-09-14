@@ -11,13 +11,12 @@
 # The script is written in a way that it can be used as a Nix package, so that it can be easily installed and managed by the Nix package manager.
 # ================================================================================================
 
-{ pkgs, ... }:
+{ paths, pkgs, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # The Codex backup keeps its verified archive in Downloads only until it
   # can be handed off to the external backup volume.
-  paths = import ../../../options/paths.nix { };
   userPaths = paths.darwin.home;
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;

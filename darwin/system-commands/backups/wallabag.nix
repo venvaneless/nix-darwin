@@ -4,6 +4,7 @@
 
 {
   config,
+  paths,
   lib,
   pkgs,
   ...
@@ -37,7 +38,7 @@ let
   preserveSymlinks = true;
   extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
 
-  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
+  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs paths; };
 in
 containerBackupHelper.mkContainerBackup {
   inherit config;

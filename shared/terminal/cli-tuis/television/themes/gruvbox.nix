@@ -8,7 +8,7 @@
 # - Uses the same Gruvbox Dark colours as the local WezTerm palette
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, paths, lib, ... }:
 
 let
   televisionCfg = config.ven.features.terminal.cliTuis.television;
@@ -16,7 +16,6 @@ let
 
   # ---- Variables from paths.nix ---- #
   # Keep the generated theme under the shared XDG configuration root.
-  paths = import ../../../../../options/paths.nix { };
   themeFile = "${paths.relative.config}/television/themes/ven-gruvbox.toml";
 in
 {

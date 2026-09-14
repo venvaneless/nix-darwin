@@ -7,16 +7,14 @@
 # synchronization service.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   cfg = config.ven.services.obsidianSync;
   unison = config.ven.services.unison;
 
-  # Obsidian remains Darwin-only, but importing paths here keeps the
-  # service option tree safely importable from every Home Manager host.
-  paths = import ../paths.nix { };
-
+  # Obsidian remains Darwin-only. paths arrives as a module argument, so
+  # the service option tree stays importable from every Home Manager host.
   # Each exclusion is a vault-relative Unison Path preference.
   excludeArguments = lib.concatMap (path: [
     "-ignore"

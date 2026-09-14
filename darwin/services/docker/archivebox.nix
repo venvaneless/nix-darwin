@@ -7,7 +7,7 @@
 # - Reads the initial administrator credentials from a user-owned env file.
 # =====================================================================
 
-{ config, pkgs, lib, ... }:
+{ config, paths, pkgs, lib, ... }:
 
 let
   cfg = config.services.archivebox;
@@ -17,8 +17,6 @@ let
   # ---- SHARED PATHS ---- #
   # Persistent data directory, credentials file, and launchd log
   # location come from the centralized path definitions.
-  paths = import ../../../options/paths.nix { };
-
   dockerBin = "${pkgs.docker}/bin/docker";
   dockerComposeBin = "${pkgs.docker-compose}/bin/docker-compose";
 

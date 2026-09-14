@@ -12,7 +12,7 @@
 # Uses ONLY nix-darwin system.defaults options.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ ... }:
 
 {
 	

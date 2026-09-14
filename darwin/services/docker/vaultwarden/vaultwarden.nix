@@ -7,12 +7,10 @@
 # - Service and launchd wiring is in vaultwarden-service.nix
 # =====================================================================
 
-{ lib, ... }:
+{ paths, lib, ... }:
 
 let
   # ---- SHARED PATHS ---- #
-  paths = import ../../../../options/paths.nix { };
-
   # Shared paths for Vaultwarden
   dataDir = paths.darwin.docker.data.vaultwarden;
 

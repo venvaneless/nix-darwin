@@ -195,7 +195,15 @@ let
   };
 
   copyfolderCommandType = lib.types.submodule {
-    options.copyfolder = { };
+    # copyfolder has no settings of its own. The marker key is what
+    # selects this implementation, so it is declared as a real option
+    # instead of an empty option group, which would leave the module
+    # system with nothing to produce.
+    options.copyfolder = lib.mkOption {
+      type = lib.types.attrs;
+      default = { };
+      description = "Marker selecting the copyfolder implementation, which takes no settings.";
+    };
   };
 
   zzCommandType = lib.types.submodule {
@@ -268,11 +276,90 @@ let
     };
   };
 
-  # A structured command can be a per-platform command or one of the
-  # named implementations below. Keeping the attribute branch unified
-  # prevents lib.types.either from selecting the generic platform shape
-  # before it reaches a named implementation such as cdf.
-  commandType = lib.types.either lib.types.str lib.types.attrs;
+  # ------------------------------------------------------------
+  # ------ OBSIDIAN BACKUP COMMIT SETTINGS ------ #
+  # The configured folder list belongs to the user-facing function
+  # declaration. This marker selects the shared Fish workflow below.
+  # ------------------------------------------------------------
+
+  obsidianFilesCommandType = lib.types.submodule {
+    options.obsidianFiles = lib.mkOption {
+      type = lib.types.attrs;
+      default = { };
+      description = "Marker selecting the obsidian-files implementation.";
+    };
+  };
+
+  # ------------------------------------------------------------
+  # ------ COMMAND TYPE DISPATCH ------ #
+  # A structured command is either the generic per-platform shape or
+  # one of the named implementations above.
+  #
+  # ** This is the code path behind the recorded failure "Ambiguous
+  # ** lib.types.either submodule selection", where cdf's command.cdf
+  # ** was rejected with "Did you mean command.darwin or
+  # ** command.linux?". Read this block before changing it.
+  # **
+  # ** Why that happened: either selects the first branch whose check
+  # ** accepts every definition, and a submodule's check is
+  # ** `isAttrs x || isFunction x || path.check x`. Two submodule
+  # ** branches therefore both accepted { cdf = { ... }; }, and the
+  # ** generic platform shape won before cdfCommandType was reached.
+  # **
+  # ** Why it cannot happen below: only ONE branch of this either
+  # ** accepts an attribute set. A plain command takes lib.types.str;
+  # ** every structured one takes structuredCommandType, whose check is
+  # ** builtins.isAttrs. either is therefore never asked to arbitrate
+  # ** between two attribute-set types. Choosing among the eight named
+  # ** submodules happens inside merge, from the marker key the entry
+  # ** actually carries, which is a decision either never takes part in.
+  # **
+  # ** nixpkgs asks for exactly this split: mkOptionType's own comment
+  # ** says check must not look deeper than the root of a value, and
+  # ** that checks of nested values belong in merge.
+  # **
+  # ** That error text can still appear, but only truthfully now: a
+  # ** command carrying none of the marker keys falls back to
+  # ** platformStringType, so a misspelled `darwn` is reported as the
+  # ** typo it is instead of a named command being misrouted.
+  # ------------------------------------------------------------
+
+  # Marker key -> the submodule that validates that implementation.
+  # The order matches the render dispatch in commandForCurrentPlatform.
+  namedCommandTypes = [
+    { key = "flake"; type = validationCommandType; }
+    { key = "pinflake"; type = pinflakeCommandType; }
+    { key = "cdf"; type = cdfCommandType; }
+    { key = "copyf"; type = copyfCommandType; }
+    { key = "copyfolder"; type = copyfolderCommandType; }
+    { key = "zz"; type = zzCommandType; }
+    { key = "unarchive"; type = unarchiveCommandType; }
+    { key = "commit"; type = commitCommandType; }
+    { key = "obsidianFiles"; type = obsidianFilesCommandType; }
+  ];
+
+  # A command carrying none of the marker keys is the generic
+  # per-platform shape. Every definition is inspected, so a host that
+  # overrides one field of a named command still selects that command.
+  structuredCommandTypeFor = values:
+    let
+      carriesMarker = named:
+        lib.any (value: builtins.isAttrs value && builtins.hasAttr named.key value) values;
+
+      matched = lib.filter carriesMarker namedCommandTypes;
+    in
+    if matched == [ ] then platformStringType else (lib.head matched).type;
+
+  structuredCommandType = lib.mkOptionType {
+    name = "terminalStructuredCommand";
+    description = "per-platform command or a named command implementation";
+    descriptionClass = "noun";
+    check = builtins.isAttrs;
+    merge = loc: defs:
+      (structuredCommandTypeFor (map (def: def.value) defs)).merge loc defs;
+  };
+
+  commandType = lib.types.either lib.types.str structuredCommandType;
 
   entryType = lib.types.submodule {
     options = {
@@ -335,6 +422,12 @@ let
         type = lib.types.bool;
         default = false;
         description = "Delete successfully processed files by default for this command.";
+      };
+
+      folders = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Configured folders processed sequentially by this terminal function.";
       };
 
     };
@@ -1114,11 +1207,10 @@ let
       '' else "";
       rebuildCommand = if command.commit.rebuild then "and drs" else "";
     in
-    # ** commitCommandType below is declared but never wired into
-    # ** commandType, so an entry only has the keys it writes out. amend is
-    # ** read defensively for that reason: gm, gaa and gsd do not mention
-    # ** it, and only gam does.
-    if command.commit.amend or false then
+    # ** commitCommandType supplies amend, so an entry that does not
+    # ** mention it still carries its default of false. gm, gaa and gsd
+    # ** rely on that default; only gam sets it.
+    if command.commit.amend then
       ''
         set -l message "$argv"
 
@@ -1174,6 +1266,160 @@ let
         ${rebuildCommand}
       '';
 
+  renderObsidianFilesCommand = entry:
+    let
+      folders = lib.concatMapStringsSep " " lib.escapeShellArg entry.folders;
+    in
+    ''
+      set -lx GIT_PAGER cat
+      set -lx PAGER cat
+      set -l timestamp (command date "+%Y-%m-%d-%H%M%S")
+      set -l downloads_dir "$HOME/Downloads"
+
+      if not test -d "$downloads_dir"
+        echo "Downloads folder does not exist: $downloads_dir" >&2
+        return 1
+      end
+
+      set -l log_file "$downloads_dir/git-obsidian-files-$timestamp.log"
+
+      if not command touch "$log_file"
+        echo "Could not create log file: $log_file" >&2
+        return 1
+      end
+
+      echo "git obsidian-files started: $timestamp" | command tee -a "$log_file"
+      echo "Log: $log_file" | command tee -a "$log_file"
+
+      if test (count $argv) -ne 0
+        echo "FAILED [arguments]: git obsidian-files does not accept arguments." | command tee -a "$log_file"
+        return 1
+      end
+
+      set -l folders ${folders}
+
+      if test (count $folders) -eq 0
+        echo "FAILED [configuration]: no Obsidian folders are configured." | command tee -a "$log_file"
+        return 1
+      end
+
+      set -l repo_root (git rev-parse --show-toplevel 2>/dev/null)
+
+      if test -z "$repo_root"
+        echo "FAILED [preflight]: run git obsidian-files inside the Obsidian backup repository." | command tee -a "$log_file"
+        return 1
+      end
+
+      git -C "$repo_root" diff --cached --quiet 2>&1 | command tee -a "$log_file"
+      set -l staged_pipeline_status $pipestatus
+      set -l staged_status $staged_pipeline_status[1]
+      set -l staged_log_status $staged_pipeline_status[2]
+
+      if test $staged_log_status -ne 0
+        echo "FAILED [preflight]: could not write the Git-index check to the log." | command tee -a "$log_file"
+        return 1
+      else if test $staged_status -eq 1
+        echo "FAILED [preflight]: unstaged workflow requires an empty Git index." | command tee -a "$log_file"
+        echo "Commit or unstage the existing changes before running git obsidian-files." | command tee -a "$log_file"
+        return 1
+      else if test $staged_status -ne 0
+        echo "FAILED [preflight]: could not inspect the Git index." | command tee -a "$log_file"
+        return 1
+      end
+
+      for folder in $folders
+        echo | command tee -a "$log_file"
+        echo "Processing Obsidian folder: $folder" | command tee -a "$log_file"
+
+        if not test -d "$folder"
+          echo "FAILED [folder]: configured folder does not exist: $folder" | command tee -a "$log_file"
+          return 1
+        end
+
+        set -l folder_repo (git -C "$folder" rev-parse --show-toplevel 2>/dev/null)
+
+        if test -z "$folder_repo"; or test "$folder_repo" != "$repo_root"
+          echo "FAILED [folder]: $folder is not inside this Git repository." | command tee -a "$log_file"
+          return 1
+        end
+
+        set -l relative_folder (string replace -- "$repo_root/" "" "$folder")
+
+        if test "$relative_folder" = "$folder"
+          echo "FAILED [folder]: could not resolve $folder relative to $repo_root." | command tee -a "$log_file"
+          return 1
+        end
+
+        echo "Staging $relative_folder..." | command tee -a "$log_file"
+        git -C "$repo_root" add -A -- "$relative_folder" 2>&1 | command tee -a "$log_file"
+        set -l stage_pipeline_status $pipestatus
+        set -l stage_status $stage_pipeline_status[1]
+        set -l stage_log_status $stage_pipeline_status[2]
+
+        if test $stage_status -ne 0; or test $stage_log_status -ne 0
+          echo "FAILED [stage]: $relative_folder" | command tee -a "$log_file"
+          return 1
+        end
+
+        git -C "$repo_root" diff --cached --quiet -- "$relative_folder" 2>&1 | command tee -a "$log_file"
+        set -l folder_changes_pipeline_status $pipestatus
+        set -l folder_changes_status $folder_changes_pipeline_status[1]
+        set -l folder_changes_log_status $folder_changes_pipeline_status[2]
+
+        if test $folder_changes_log_status -ne 0
+          echo "FAILED [verify]: could not write the staged-change check to the log." | command tee -a "$log_file"
+          return 1
+        else if test $folder_changes_status -eq 0
+          echo "No changes in $relative_folder; skipping commit and push." | command tee -a "$log_file"
+          continue
+        else if test $folder_changes_status -ne 1
+          echo "FAILED [verify]: could not inspect staged changes for $relative_folder." | command tee -a "$log_file"
+          return 1
+        end
+
+        git -C "$repo_root" diff --cached --quiet -- . ":(exclude)$relative_folder" 2>&1 | command tee -a "$log_file"
+        set -l outside_changes_pipeline_status $pipestatus
+        set -l outside_changes_status $outside_changes_pipeline_status[1]
+        set -l outside_changes_log_status $outside_changes_pipeline_status[2]
+
+        if test $outside_changes_log_status -ne 0
+          echo "FAILED [verify]: could not write the staged-scope check to the log." | command tee -a "$log_file"
+          return 1
+        else if test $outside_changes_status -ne 0
+          echo "FAILED [verify]: staged changes extend outside $relative_folder." | command tee -a "$log_file"
+          return 1
+        end
+
+        set -l folder_name (command basename "$folder")
+        set -l commit_name (string replace --all -- "-" " " "$folder_name")
+
+        echo "Committing $relative_folder..." | command tee -a "$log_file"
+        git -C "$repo_root" commit -m "Update $commit_name" 2>&1 | command tee -a "$log_file"
+        set -l commit_pipeline_status $pipestatus
+        set -l commit_status $commit_pipeline_status[1]
+        set -l commit_log_status $commit_pipeline_status[2]
+
+        if test $commit_status -ne 0; or test $commit_log_status -ne 0
+          echo "FAILED [commit]: $relative_folder" | command tee -a "$log_file"
+          return 1
+        end
+
+        echo "Pushing $relative_folder..." | command tee -a "$log_file"
+        git -C "$repo_root" push --progress origin main 2>&1 | command tee -a "$log_file"
+        set -l push_pipeline_status $pipestatus
+        set -l push_status $push_pipeline_status[1]
+        set -l push_log_status $push_pipeline_status[2]
+
+        if test $push_status -ne 0; or test $push_log_status -ne 0
+          echo "FAILED [push]: $relative_folder" | command tee -a "$log_file"
+          return 1
+        end
+      end
+
+      echo | command tee -a "$log_file"
+      echo "git obsidian-files completed successfully." | command tee -a "$log_file"
+    '';
+
   commandForCurrentPlatform = name: entry:
     let
       commandValue =
@@ -1195,6 +1441,8 @@ let
           renderUnarchiveCommand entry.command
         else if builtins.isAttrs entry.command && entry.command ? commit then
           renderCommitCommand name entry.command
+        else if builtins.isAttrs entry.command && entry.command ? obsidianFiles then
+          renderObsidianFilesCommand entry
         else
           entry.command;
       command =

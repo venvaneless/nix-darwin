@@ -13,13 +13,12 @@
 # - Logs only when it creates the CA or repairs ownership, and on error.
 # =====================================================================
 
-{ config, pkgs, lib, ... }:
+{ paths, pkgs, lib, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # The CA root is shared with the Vaultwarden certificate modules, so
   # it is defined once in the centralized path definitions.
-  paths = import ../../../options/paths.nix { };
 
   # User that must own the generated CA files
   userName = paths.user.name;

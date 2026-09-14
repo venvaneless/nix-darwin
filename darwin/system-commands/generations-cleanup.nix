@@ -13,7 +13,7 @@
 # - Does not run automatically during darwin activation
 # ============================================================
 
-{ pkgs, ... }:
+{ paths, pkgs, ... }:
 
 let
   # -----------------------------------------------------
@@ -21,8 +21,6 @@ let
   # The system profile and the sudo binary come from the centralized
   # path definitions.
   # -----------------------------------------------------
-
-  paths = import ../../options/paths.nix { };
 
   # -----------------------------------------------------
   # ------ GENERATIONS CLEANUP: SETTINGS ----- #

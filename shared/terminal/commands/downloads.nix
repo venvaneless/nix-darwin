@@ -16,6 +16,20 @@
 let
   cfg = config.ven.features.terminal.fish.downloads;
 
+  # ------------------------------------------------------------
+  # ------ PLATFORM COMMAND FLAGS ------ #
+  # BSD and GNU spell these two flags differently, and getting them
+  # wrong is silent: base64 writes nothing and the caller reads an
+  # empty value, because every call site discards stderr.
+  #
+  # ** macOS ships BSD coreutils, Linux ships GNU, so platforms.nix
+  # ** owns the decision instead of each call site assuming macOS.
+  # ------------------------------------------------------------
+
+  base64DecodeFlag = if platforms.isDarwin then "-D" else "-d";
+
+  statSizeArguments = if platforms.isDarwin then "-f %z" else "-c %s";
+
 in
 {
   options.ven.features.terminal.fish.downloads.enable =
@@ -145,6 +159,19 @@ in
 
           # ---- MATCH BLOCKED EXACT FILE NAMES ---- #
           if contains "$filename" $blocked_files
+            return 0
+          end
+
+          # Full tar archives are source bundles, not installable Obsidian
+          # payloads. Keep them out of every download mode.
+          if string match -rqi '\.(tar|tar\.gz|tgz|tar\.bz2|tbz2|tar\.xz|txz)$' "$filename"
+            return 0
+          end
+
+          # Compiled payloads use main.js; TypeScript sources and source maps
+          # are development material even when a release accidentally attaches
+          # them as assets.
+          if string match -rqi '\.(ts|tsx|map)$' "$filename"
             return 0
           end
 
@@ -1537,7 +1564,7 @@ in
                     --jq .content \
                     2>/dev/null |
                   command tr -d '\n' |
-                  command base64 -D 2>/dev/null
+                  command base64 ${base64DecodeFlag} 2>/dev/null
                 )
               end
 
@@ -3701,6 +3728,15 @@ in
                   continue
               end
 
+              # A refresh works in the existing plugin folder. Remove files
+              # that current global download rules reject so a prior release
+              # mistake such as Linklens's main.ts does not remain forever.
+              for staged_file in (command find "$plugin_stage" -maxdepth 1 -type f -print)
+                  if __obsidian_download_path_blocked (basename "$staged_file")
+                      command rm -f -- "$staged_file"
+                  end
+              end
+
               __obsidian_normalize_download_layout "$plugin_stage"
 
               if test "$plugin_directory_exists" -eq 1
@@ -5314,7 +5350,7 @@ in
             set --local remote_fields (
               command gh api "repos/$repository/contents/manifest.json" --jq .content 2>/dev/null |
               command tr -d '\n' |
-              command base64 -D 2>/dev/null |
+              command base64 ${base64DecodeFlag} 2>/dev/null |
               command jq -r '[.id // "", .author // ""] | @tsv' 2>/dev/null
             )
             set --local local_parts (string split \t "$local_fields")
@@ -5684,7 +5720,7 @@ in
               "$readme_root/$readme_name"
 
             if test -f "$readme_destination"; and test -s "$readme_destination"
-              set --local destination_size (command stat -f %z -- "$readme_destination")
+              set --local destination_size (command stat ${statSizeArguments} -- "$readme_destination")
 
               if test -z "$readme_size"; or test "$destination_size" = "$readme_size"
                 return 0
@@ -6751,7 +6787,7 @@ in
               if test "$requires_plugin_payload" -eq 1
                 set --local package_content (
                   command gh api "repos/$repository/contents/package.json" --jq .content 2>/dev/null | \
-                    command tr -d '\n' | command base64 -D 2>/dev/null
+                    command tr -d '\n' | command base64 ${base64DecodeFlag} 2>/dev/null
                 )
                 if test -n "$package_content"
                   set --local package_id (
@@ -7098,7 +7134,7 @@ in
                     --jq .content \
                     2>/dev/null |
                   command tr -d '\n' |
-                  command base64 -D \
+                  command base64 ${base64DecodeFlag} \
                     2>/dev/null |
                   command jq -e \
                     --arg id "$library_id" \
@@ -7227,7 +7263,7 @@ in
                     --jq .content \
                     2>/dev/null |
                   command tr -d '\n' |
-                  command base64 -D \
+                  command base64 ${base64DecodeFlag} \
                     2>/dev/null |
                   command jq -r \
                     'if type == "object" then

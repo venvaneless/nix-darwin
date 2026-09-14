@@ -8,13 +8,12 @@
 # archives, deletes, or otherwise changes the iCloud-backed source vaults.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # The backup volume layout, the iCloud container root, and the mount
   # check come from the centralized path definitions.
-  paths = import ../../../options/paths.nix { };
   backupPaths = paths.darwin.backups;
   excludeHelper = import ./backup-exclude-helper.nix { inherit lib; };
   showProgress = true;

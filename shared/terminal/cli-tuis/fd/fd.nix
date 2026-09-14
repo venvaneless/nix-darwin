@@ -12,7 +12,7 @@
 # select one directly below. fd imports and enables only that one.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   cfg = config.ven.features.terminal.cliTuis.fd;
@@ -20,8 +20,6 @@ let
   # ---- SHARED PATHS ---- #
   # Reuse the centralized user, Library, and iCloud paths instead of
   # repeating literal home directories inside the ignore list.
-  paths = import ../../../../options/paths.nix { };
-
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Fd's default per platform. Hosts can
   # still override ven.features.terminal.cliTuis.fd.enable directly.

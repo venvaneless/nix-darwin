@@ -20,11 +20,6 @@
     # ---- SHARED TERMINAL CONFIGURATION ---- #
     inputs.self.homeModules.sharedTerminal
 
-    # ---- SHARED SYSTEM COMMANDS ---- #
-    # The portable Obsidian archive checker is user-scoped here.
-    (import ../../shared/system-commands/obsidian-archive-check.nix {
-      installTarget = "home";
-    })
   ];
 
   # ---- HOME MANAGER IDENTITY ---- #

@@ -20,12 +20,9 @@
 # validating it and reloading nginx are all owned by nginx.nix.
 # =====================================================================
 
-{ config, ... }:
+{ config, paths, ... }:
 
 let
-  # Shared path roots
-  paths = import ../../../../options/paths.nix { };
-
   # Vaultwarden nginx app name
   appName = "vaultwarden";
 

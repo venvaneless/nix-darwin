@@ -7,13 +7,11 @@
 # brews, casks, taps, and activation cleanup for nix-darwin.
 # =====================================================================
 
-  { config, lib, pkgs, nix-homebrew, ... }:
+  { config, paths, lib, pkgs, nix-homebrew, ... }:
 
   let
     # Shared macOS application locations, the Homebrew prefix, the
     # Homebrew owner, and the macOS base binaries used during activation.
-    paths = import ../../options/paths.nix { };
-
     # User that owns the Homebrew installation
     userName = paths.user.name;
 

@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/helium.nix
 # Helium browser backup command: `helium-backup`.
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -12,7 +12,6 @@ let
 
   # ---- EDITABLE BACKUP PATHS
   # Browser-specific mutable locations come from the centralized paths.
-  paths = import ../../../options/paths.nix { };
   browserPaths = paths.darwin.home.browsers;
 
   # ---- EDITABLE BACKUP CONTENTS
@@ -65,7 +64,7 @@ let
   archivePrefix = "helium";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
   heliumBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Helium";

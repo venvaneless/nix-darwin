@@ -8,7 +8,7 @@
 # assets, while themes can also use files stored at a repository's root.
 # =====================================================================
 
-{ pkgs, ... }:
+{ paths, pkgs, ... }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -18,7 +18,6 @@ let
   # ** Interpolated into the Python source below. The heredoc is quoted,
   # ** which stops runtime shell expansion, but Nix still substitutes
   # ** ${...} while the derivation is built.
-  paths = import ../../../options/paths.nix { };
   backupPaths = paths.darwin.backups;
 
   # ---- Obsidian library manager
@@ -181,6 +180,16 @@ let
               return True
 
           if filename in BLOCKED_DOWNLOAD_FILES:
+              return True
+
+          # Full tar archives are source bundles, not installable Obsidian
+          # payloads. Keep them out of every download action.
+          if re.search(r"\.(?:tar|tar\.gz|tgz|tar\.bz2|tbz2|tar\.xz|txz)$", filename, re.IGNORECASE):
+              return True
+
+          # Compiled payloads use main.js; TypeScript sources and source maps
+          # are development material even when a release attaches them.
+          if re.search(r"\.(?:ts|tsx|map)$", filename, re.IGNORECASE):
               return True
 
           if normalized_filename_stem in BLOCKED_DOCUMENT_STEMS:

@@ -8,14 +8,12 @@
 # - Starts Docker Desktop as a user LaunchAgent
 # =====================================================================
 
-{ pkgs, lib, ... }:
+{ paths, pkgs, lib, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # Docker Desktop's install directory, bundle, and the macOS `open`
   # helper all come from the centralized path definitions.
-  paths = import ../../../options/paths.nix { };
-
   appDir = paths.darwin.applications.programming;
 in
 {

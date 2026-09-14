@@ -13,15 +13,15 @@
 # Files below this directory own user configuration under $HOME.
 # =====================================================================
 
+{ paths, ... }:
+
 {
   # ------------------------------------------------------------
   # ------ SHARED FEATURE MODULE INPUTS ------ #
-  # Paths are wired once at this shared Home Manager boundary.
+  # paths arrives as a module argument and is handed on to the feature
+  # functions below, which are ordinary functions rather than modules.
 
   imports =
-    let
-      paths = import ../../../options/paths.nix { };
-    in
     [
       # Espanso feature definitions
       ../../../options/pkgs-configs/espanso/default.nix

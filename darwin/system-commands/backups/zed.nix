@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/zed.nix
 # Zed backup command: `zed-backup`.
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -51,7 +51,7 @@ let
   archivePrefix = "zed";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
   zedBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Zed";

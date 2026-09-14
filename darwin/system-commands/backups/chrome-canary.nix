@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/chrome-canary.nix
 # Chrome Canary browser backup command: `chrome-canary-backup`.
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -52,7 +52,7 @@ let
   archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
   archivePrefix = "chrome-canary";
   preserveSymlinks = true;
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
   chromeCanaryBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Chrome Canary";

@@ -27,13 +27,12 @@
 # listening sockets bound.
 # =====================================================================
 
-{ config, pkgs, lib, ... }:
+{ config, paths, pkgs, lib, ... }:
 
 let
   cfg = config.ven.nginx;
 
   # Shared path roots (/etc, /var/log, /var/run, /etc/ven/services).
-  paths = import ../../../options/paths.nix { };
   systemPaths = paths.darwin.system;
 
   # ------------------------------------------------------- #

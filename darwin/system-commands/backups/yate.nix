@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/yate.nix
 # Yate backup command: `yate-backup`.
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -50,7 +50,7 @@ let
   archivePrefix = "yate";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
   yateBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Yate";

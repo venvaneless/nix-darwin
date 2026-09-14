@@ -6,7 +6,7 @@
 # Global screenshot behavior for macOS.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ ... }:
 
 {
   system.defaults.screencapture = {

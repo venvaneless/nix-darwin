@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/vlc.nix
 # VLC backup command: `vlc-backup`.
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -54,7 +54,7 @@ let
   archivePrefix = "vlc";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs; };
+  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
   vlcBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "VLC";

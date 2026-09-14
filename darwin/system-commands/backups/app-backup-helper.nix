@@ -8,7 +8,7 @@
 # exact application files or directories into the archive layout.
 # =====================================================================
 
-{ lib, pkgs }:
+{ lib, pkgs, paths }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -16,8 +16,6 @@ let
   # LaunchAgent log directory come from the centralized path definitions.
   # default.nix sets the same values explicitly; these defaults keep the
   # option surface usable on its own.
-  paths = import ../../../options/paths.nix { };
-
   userPaths = paths.darwin.home;
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;

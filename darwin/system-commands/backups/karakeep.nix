@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/karakeep.nix
 # Karakeep container backup command: `karakeep-backup`.
 
-{ config, lib, pkgs, ... }:
+{ config, paths, lib, pkgs, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -54,7 +54,7 @@ let
   scheduledHour = 6;
   scheduledMinute = 0;
 
-  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs; };
+  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs paths; };
 in
 containerBackupHelper.mkContainerBackup {
   inherit config;
