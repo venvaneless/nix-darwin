@@ -237,6 +237,71 @@ in
       };
 
       # -----------------------------------------------------------------
+      # ---- Obsidian -> GitHub Contents endpoint encoding ---- #
+      #
+      # GitHub tree paths are decoded file names. Encode each component before
+      # giving a Contents endpoint to gh, otherwise spaces, Unicode, #, and ?
+      # can be interpreted as an invalid URL, fragment, or query string.
+      # -----------------------------------------------------------------
+      __obsidian_github_contents_endpoint = {
+        description = "Build an encoded GitHub Contents API endpoint";
+
+        body = ''
+          set --local repository "$argv[1]"
+          set --local repository_path "$argv[2]"
+          set --local reference "$argv[3]"
+
+          if not string match -rq \
+              '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' \
+              "$repository"; or \
+              test -z "$repository_path"; or \
+              string match -rq '(^|/)\.\.?(?:/|$)|^/|/$|//' "$repository_path"
+            return 1
+          end
+
+          command node -e '
+            const [repository, repositoryPath, reference] = process.argv.slice(1);
+            const encodedPath = repositoryPath
+              .split("/")
+              .map((pathPart) => encodeURIComponent(pathPart))
+              .join("/");
+            const encodedReference = reference
+              ? "?ref=" + encodeURIComponent(reference)
+              : "";
+            process.stdout.write(
+              "repos/" + repository + "/contents/" + encodedPath + encodedReference,
+            );
+          ' "$repository" "$repository_path" "$reference" 2>/dev/null
+        '';
+      };
+
+      # Resolve a GitHub repository file only through its encoded Contents
+      # endpoint. The optional reference keeps package records pinned to the
+      # commit or branch that supplied their manifest.
+      __obsidian_github_contents_api = {
+        description = "Query encoded GitHub Contents metadata";
+
+        body = ''
+          set --local endpoint (
+            __obsidian_github_contents_endpoint \
+              "$argv[1]" \
+              "$argv[2]" \
+              "$argv[3]"
+          )
+
+          if test -z "$endpoint"
+            return 1
+          end
+
+          if test (count $argv) -ge 4
+            command gh api "$endpoint" --jq "$argv[4]" 2>/dev/null
+          else
+            command gh api "$endpoint" 2>/dev/null
+          end
+        '';
+      };
+
+      # -----------------------------------------------------------------
       # ---- Obsidian -> Download deduplication ---- #
       #
       # A matching filename and GitHub-reported size is sufficient to reuse a
@@ -882,10 +947,11 @@ in
             end
             command mkdir -p -- (dirname "$target")
             set --local download_url (
-              command gh api \
-                "repos/$repository/contents/$selected_file?ref=$reference" \
-                --jq .download_url \
-                2>/dev/null
+              __obsidian_github_contents_api \
+                "$repository" \
+                "$selected_file" \
+                "$reference" \
+                .download_url
             )
             set download_url (__obsidian_download_url_encode "$download_url")
             if test -z "$download_url"; or \
@@ -1442,6 +1508,8 @@ in
               __obsidian_download_name_blocked \
               __obsidian_download_path_blocked \
               __obsidian_download_url_encode \
+              __obsidian_github_contents_endpoint \
+              __obsidian_github_contents_api \
               __obsidian_download_file_is_present \
               __obsidian_normalize_download_layout \
               __obsidian_repository_fallback_name \
@@ -1522,10 +1590,11 @@ in
                 else
                   for payload_name in theme.css obsidian.css
                     set payload_url (
-                      command gh api \
-                        "repos/$candidate/contents/$payload_name" \
-                        --jq .download_url \
-                        2>/dev/null
+                      __obsidian_github_contents_api \
+                        "$candidate" \
+                        "$payload_name" \
+                        "" \
+                        .download_url
                     )
 
                     if test -n "$payload_url"
@@ -2095,10 +2164,11 @@ in
                   end
                   command mkdir -p (dirname "$destination_file")
                   set --local download_url (
-                    command gh api \
-                      "repos/$repository_name/contents/$repository_path" \
-                      --jq .download_url \
-                      2>/dev/null
+                    __obsidian_github_contents_api \
+                      "$repository_name" \
+                      "$repository_path" \
+                      "" \
+                      .download_url
                   )
                   set download_url (__obsidian_download_url_encode "$download_url")
                   if test -z "$download_url"; or not command curl \
@@ -2400,7 +2470,13 @@ in
                 return 1
               end
               for generic_file in $generic_matches
-                set --local generic_url (command gh api "repos/$generic_repository/contents/$generic_file" --jq .download_url 2>/dev/null)
+                set --local generic_url (
+                  __obsidian_github_contents_api \
+                    "$generic_repository" \
+                    "$generic_file" \
+                    "" \
+                    .download_url
+                )
                 set generic_url (__obsidian_download_url_encode "$generic_url")
                 set --local generic_target "$generic_destination/$generic_file"
                 command mkdir -p (dirname "$generic_target")
@@ -2935,10 +3011,11 @@ in
                   end
 
                   set repository_file_url (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$remote_repository_file_path?ref=$package_reference" \
-                          --jq .download_url \
-                      2>/dev/null
+                      __obsidian_github_contents_api \
+                          "$repository_owner/$repository_name" \
+                          "$remote_repository_file_path" \
+                          "$package_reference" \
+                          .download_url
                   )
                   set repository_file_url (__obsidian_download_url_encode "$repository_file_url")
 
@@ -2978,10 +3055,11 @@ in
                   end
 
                   set readme_url (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$remote_readme_path?ref=$package_reference" \
-                          --jq .download_url \
-                      2>/dev/null
+                      __obsidian_github_contents_api \
+                          "$repository_owner/$repository_name" \
+                          "$remote_readme_path" \
+                          "$package_reference" \
+                          .download_url
                   )
                   set readme_url (__obsidian_download_url_encode "$readme_url")
 
@@ -3024,10 +3102,11 @@ in
                   end
 
                   set package_url (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$remote_package_path?ref=$package_reference" \
-                          --jq .download_url \
-                          2>/dev/null
+                      __obsidian_github_contents_api \
+                          "$repository_owner/$repository_name" \
+                          "$remote_package_path" \
+                          "$package_reference" \
+                          .download_url
                   )
 
                   if test -n "$package_url"; and command curl \
@@ -3426,6 +3505,17 @@ in
                   end
               end
 
+              # A repository without the plugin entrypoint is not a plugin.
+              # Stop before requesting documentation or images, which avoids
+              # downloading an arbitrary repository after an invalid URL was
+              # supplied through a plugin list.
+              if not test -r "$plugin_stage/main.js"; or \
+                      not test -s "$plugin_stage/main.js"
+                  echo "Error: This repository does not provide an Obsidian plugin main.js."
+                  command rm -rf -- "$temporary_directory"
+                  continue
+              end
+
               # Collect repository auxiliary files first so root/repo placement can
               # be decided before anything is written.
               set repository_auxiliary_paths
@@ -3546,10 +3636,11 @@ in
                   end
 
                   set auxiliary_metadata (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$remote_auxiliary_path?ref=$package_reference" \
-                          --jq '[.size, .download_url] | @tsv' \
-                          2>/dev/null
+                      __obsidian_github_contents_api \
+                          "$repository_owner/$repository_name" \
+                          "$remote_auxiliary_path" \
+                          "$package_reference" \
+                          '[.size, .download_url] | @tsv'
                   )
 
                   set auxiliary_parts (string split \t "$auxiliary_metadata")
@@ -3603,13 +3694,6 @@ in
                       echo \
                           "Notice: Could not download plugin repository file: $auxiliary_path"
                   end
-              end
-
-              if not test -r "$plugin_stage/main.js"; or \
-                      not test -s "$plugin_stage/main.js"
-                  echo "Error: main.js was not found in the release or repository."
-                  command rm -rf -- "$temporary_directory"
-                  continue
               end
 
               set readme (
@@ -4091,10 +4175,11 @@ in
                   end
 
                   set repository_file_url (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$repository_file_path" \
-                          --jq .download_url \
-                      2>/dev/null
+                      __obsidian_github_contents_api \
+                          "$repository_owner/$repository_name" \
+                          "$repository_file_path" \
+                          "" \
+                          .download_url
                   )
                   set repository_file_url (__obsidian_download_url_encode "$repository_file_url")
 
@@ -4125,10 +4210,11 @@ in
                   end
 
                   set readme_url (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$readme_path" \
-                          --jq .download_url \
-                      2>/dev/null
+                      __obsidian_github_contents_api \
+                          "$repository_owner/$repository_name" \
+                          "$readme_path" \
+                          "" \
+                          .download_url
                   )
                   set readme_url (__obsidian_download_url_encode "$readme_url")
 
@@ -4763,10 +4849,11 @@ in
               for repository_image_path in $repository_image_paths
 
                   set repository_image_metadata (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$repository_image_path" \
-                          --jq '[.size, .download_url] | @tsv' \
-                          2>/dev/null
+                      __obsidian_github_contents_api \
+                          "$repository_owner/$repository_name" \
+                          "$repository_image_path" \
+                          "" \
+                          '[.size, .download_url] | @tsv'
                   )
 
                   set repository_image_parts \
@@ -4814,10 +4901,11 @@ in
                   end
 
                   set snippet_metadata (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$snippet_path" \
-                          --jq '[.size, .download_url] | @tsv' \
-                          2>/dev/null
+                      __obsidian_github_contents_api \
+                          "$repository_owner/$repository_name" \
+                          "$snippet_path" \
+                          "" \
+                          '[.size, .download_url] | @tsv'
                   )
 
                   set snippet_parts (string split \t "$snippet_metadata")
@@ -4920,10 +5008,11 @@ in
                       "$repository_asset_root/$auxiliary_path"
 
                   set auxiliary_metadata (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/contents/$auxiliary_path" \
-                          --jq '[.size, .download_url] | @tsv' \
-                          2>/dev/null
+                      __obsidian_github_contents_api \
+                          "$repository_owner/$repository_name" \
+                          "$auxiliary_path" \
+                          "" \
+                          '[.size, .download_url] | @tsv'
                   )
                   set auxiliary_parts (string split \t "$auxiliary_metadata")
                   if test (count $auxiliary_parts) -ne 2
@@ -5632,10 +5721,11 @@ in
               end
 
               set readme_metadata (
-                command gh api \
-                  "repos/$repository/contents/$readme_path" \
-                  --jq '[.name, .size, .download_url] | @tsv' \
-                  2>/dev/null
+                __obsidian_github_contents_api \
+                  "$repository" \
+                  "$readme_path" \
+                  "" \
+                  '[.name, .size, .download_url] | @tsv'
               )
 
               if test -n "$readme_metadata"
@@ -6051,10 +6141,11 @@ in
               end
 
               set --local image_metadata (
-                command gh api \
-                  "repos/$repository/contents/$repository_image_path" \
-                  --jq '[.size, .download_url] | @tsv' \
-                  2>/dev/null
+                __obsidian_github_contents_api \
+                  "$repository" \
+                  "$repository_image_path" \
+                  "" \
+                  '[.size, .download_url] | @tsv'
               )
 
               if test -z "$image_metadata"
@@ -6339,10 +6430,11 @@ in
                 end
 
                 set --local repository_file_url (
-                  command gh api \
-                    "repos/$repository/contents/$repository_file_path" \
-                    --jq .download_url \
-                    2>/dev/null
+                  __obsidian_github_contents_api \
+                    "$repository" \
+                    "$repository_file_path" \
+                    "" \
+                    .download_url
                 )
 
                 if test -z "$repository_file_url"
@@ -6392,10 +6484,11 @@ in
 
                   if test -n "$manifest_repository_path"
                     set --local manifest_repository_url (
-                      command gh api \
-                        "repos/$repository/contents/$manifest_repository_path" \
-                        --jq .download_url \
-                        2>/dev/null
+                      __obsidian_github_contents_api \
+                        "$repository" \
+                        "$manifest_repository_path" \
+                        "" \
+                        .download_url
                     )
 
                     if test -n "$manifest_repository_url"
@@ -6450,10 +6543,11 @@ in
                     end
 
                     set theme_css_url (
-                      command gh api \
-                        "repos/$repository/contents/$repository_css_path" \
-                        --jq .download_url \
-                        2>/dev/null
+                      __obsidian_github_contents_api \
+                        "$repository" \
+                        "$repository_css_path" \
+                        "" \
+                        .download_url
                     )
 
                     if test -n "$theme_css_url"
@@ -6514,10 +6608,11 @@ in
                 end
 
                 set --local repository_file_url (
-                  command gh api \
-                    "repos/$repository/contents/$repository_file_path" \
-                    --jq .download_url \
-                    2>/dev/null
+                  __obsidian_github_contents_api \
+                    "$repository" \
+                    "$repository_file_path" \
+                    "" \
+                    .download_url
                 )
                 if test -n "$repository_file_url"
                   __obsidian_missing_download_url \
@@ -6693,10 +6788,11 @@ in
 
             for auxiliary_path in $repository_auxiliary_paths
               set --local auxiliary_metadata (
-                command gh api \
-                  "repos/$repository/contents/$auxiliary_path" \
-                  --jq '[.size, .download_url] | @tsv' \
-                  2>/dev/null
+                __obsidian_github_contents_api \
+                  "$repository" \
+                  "$auxiliary_path" \
+                  "" \
+                  '[.size, .download_url] | @tsv'
               )
 
               if test -z "$auxiliary_metadata"
