@@ -54,7 +54,7 @@ let
   archivePrefix = "vlc";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
+  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   vlcBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "VLC";

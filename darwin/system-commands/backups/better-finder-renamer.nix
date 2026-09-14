@@ -59,7 +59,7 @@ let
   archivePrefix = "better-finder-renamer";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
+  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
 in
 appBackupHelper.mkAppBackup {
   inherit config;

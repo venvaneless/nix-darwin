@@ -1,4 +1,4 @@
-# darwin/system-commands/backups/app-backup-helper.nix
+# options/backups/app-backup-helper.nix
 #
 # =====================================================================
 # APPLICATION BACKUP HELPER

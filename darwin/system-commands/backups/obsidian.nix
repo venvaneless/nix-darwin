@@ -15,7 +15,7 @@ let
   # The backup volume layout, the iCloud container root, and the mount
   # check come from the centralized path definitions.
   backupPaths = paths.darwin.backups;
-  excludeHelper = import ./backup-exclude-helper.nix { inherit lib; };
+  excludeHelper = import ../../../options/backups/backup-exclude-helper.nix { inherit lib; };
   showProgress = true;
   progressEnabled = config.services.appBackups.obsidian.showProgress;
   defaultMetadataExcludes = excludeHelper.mkRsyncExcludeArguments excludeHelper.defaultMetadataExcludePatterns;

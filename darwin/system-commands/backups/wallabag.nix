@@ -1,53 +1,66 @@
 # darwin/system-commands/backups/wallabag.nix
 #
 # Backs up Wallabag container data to SystemBackup.
+#
+# Values only. Every knob below is declared in
+# options/backups/container-backup-helper.nix, which owns what each one
+# means and how the backup is carried out.
+
+{ config, ... }:
 
 {
-  config,
-  paths,
-  lib,
-  pkgs,
-  ...
-}:
+  services.backups.containers.wallabag = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.backups.enabled for this container.
+    enable = true;
 
-let
-  # ---- BACKUP PATHS
-  # ** The source is the directory the Wallabag service itself declares,
-  # ** so the backup follows the service if that data directory moves.
-  #
-  # ** Destination and staging directories are registered under
-  # ** darwin.backups.perContainer in options/paths.nix and resolved by
-  # ** the helper from appSlug. Change them there, not here.
-  wallabagSourceDir = config.services.wallabag.dataDir;
+    # ---- IDENTITY
+    appName = "Wallabag";
 
-  # Additional paths are added only to the staged archive, never live data.
-  additionalSources = [ ];
+    # ---- SOURCE
+    # ** The source is the directory the Wallabag service itself
+    # ** declares, so the backup follows the service if that data
+    # ** directory moves.
+    sourceDir = config.services.wallabag.dataDir;
 
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 35;
-  showProgress = true;
-  runOnRebuild = false;
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "wallabag";
-  preserveSymlinks = true;
-  extraExcludePatterns = [ "sockets/" "private/socket" "*.sock" ];
+    # ---- EDITABLE BACKUP PATHS
+    # Absolute sourcePath entries for data outside sourceDir, staged on top
+    # of the archive. Add as many as required.
+    additionalSources = [
+      # {
+      #   sourcePath = "${config.services.backups.paths.homeDirectory}/Library/Somewhere/Wallabag";
+      #   destinationPath = "additional/Somewhere/Wallabag";
+      # }
+    ];
 
-  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs paths; };
-in
-containerBackupHelper.mkContainerBackup {
-  inherit config;
+    # ---- INDIVIDUAL BACKUP CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "wallabag";
+    preserveSymlinks = true;
 
-  appName = "Wallabag";
-  appSlug = "wallabag";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild additionalSources extraExcludePatterns;
-  inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-  sourceDir = wallabagSourceDir;
-  scheduledHour = 5;
-  scheduledMinute = 0;
+    # ---- EDITABLE EXCLUSIONS
+    extraExcludePatterns = [
+      "sockets/"
+      "private/socket"
+      "*.sock"
+    ];
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 35;
+    minimumCpuLimitPercent = 5;
+    maximumCpuLimitPercent = 50;
+    transferLimitKiBps = 4096;
+    showProgress = true;
+    runOnRebuild = false;
+
+    # ---- SCHEDULE
+    scheduledHour = 5;
+    scheduledMinute = 0;
+  };
 }

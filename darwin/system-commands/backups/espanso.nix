@@ -47,7 +47,7 @@ let
   archivePrefix = "espanso";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
+  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   espansoBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Espanso";

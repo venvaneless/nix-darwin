@@ -105,7 +105,7 @@ let
   archivePrefix = "raycast";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
+  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   raycastBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Raycast";

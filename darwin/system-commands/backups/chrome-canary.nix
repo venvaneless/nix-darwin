@@ -52,7 +52,7 @@ let
   archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
   archivePrefix = "chrome-canary";
   preserveSymlinks = true;
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
+  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   chromeCanaryBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Chrome Canary";

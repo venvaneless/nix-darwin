@@ -1,14 +1,19 @@
 # darwin/system-commands/backups/browsertrix.nix
-# Browsertrix container backup command: `browsertrix-backup`.
+#
+# Backs up Browsertrix container data to SystemBackup.
+#
+# Values only. Every knob below is declared in
+# options/backups/container-backup-helper.nix, which owns what each one
+# means and how the backup is carried out.
 
-{ config, paths, lib, pkgs, ... }:
+{ config, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
   # ** Destination and staging directories are registered under
   # ** darwin.backups.perContainer in options/paths.nix and resolved by
-  # ** the helper from appSlug. Change them there, not here.
-  backupPaths = config.services.containerBackups.paths;
+  # ** the helper from the slug. Change them there, not here.
+  backupPaths = config.services.backups.paths;
   containerDirectory = backupPaths.containerDirectory;
 
   # ---- EDITABLE BACKUP PATHS
@@ -28,41 +33,50 @@ let
     # }
   ];
   sourceEntries = containerEntries;
-
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
-
-  # ---- INDIVIDUAL BACKUP CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "browsertrix";
-  preserveSymlinks = true;
-
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 35;
-  showProgress = true;
-  runOnRebuild = false;
-
-  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs paths; };
 in
-containerBackupHelper.mkContainerBackup {
-  inherit config;
+{
+  services.backups.containers.browsertrix = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.backups.enabled for this container.
+    enable = true;
 
-  appName = "Browsertrix";
-  appSlug = "browsertrix";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild;
-  inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-  inherit sourceEntries additionalSources extraExcludePatterns;
-  sourceRoot = containerDirectory;
-  scheduledHour = 2;
-  scheduledMinute = 0;
+    # ---- IDENTITY
+    appName = "Browsertrix";
+
+    # ---- SOURCE
+    # sourceEntries resolve from sourceRoot (the container-data root);
+    # additionalSources are absolute paths staged on top of them.
+    sourceRoot = containerDirectory;
+    inherit sourceEntries additionalSources;
+
+    # ---- INDIVIDUAL BACKUP CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "browsertrix";
+    preserveSymlinks = true;
+
+    # ---- EDITABLE EXCLUSIONS
+    extraExcludePatterns = [
+      "sockets/"
+      "private/socket"
+      "*.sock"
+    ];
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 35;
+    minimumCpuLimitPercent = 5;
+    maximumCpuLimitPercent = 50;
+    transferLimitKiBps = 4096;
+    showProgress = true;
+    runOnRebuild = false;
+
+    # ---- SCHEDULE
+    scheduledHour = 2;
+    scheduledMinute = 0;
+  };
 }

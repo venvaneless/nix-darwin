@@ -68,7 +68,7 @@ let
   archivePrefix = "dash";
   preserveSymlinks = true;
 
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
+  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   dashBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Dash";

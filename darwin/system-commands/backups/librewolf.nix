@@ -53,7 +53,7 @@ let
   archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
   archivePrefix = "librewolf";
   preserveSymlinks = true;
-  appBackupHelper = import ./app-backup-helper.nix { inherit lib pkgs paths; };
+  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   librewolfBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "LibreWolf";

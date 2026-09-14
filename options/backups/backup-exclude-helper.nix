@@ -1,4 +1,4 @@
-# darwin/system-commands/backups/backup-exclude-helper.nix
+# options/backups/backup-exclude-helper.nix
 # Shared rsync exclusions for every backup runner.
 
 { lib }:

@@ -84,6 +84,7 @@ let
   # ------------------------------------------------------------
 
   serviceOptions = ./services/default.nix;
+  containerBackupOptions = ./backups/container-backup-helper.nix;
   terminalOptions = ./terminal-aliases.nix;
   featureOptions = ./terminal-features.nix;
   obsidianOptions = ./obsidian/default.nix;
@@ -107,6 +108,7 @@ in
     nixSharedSettings
     paths
     serviceOptions
+    containerBackupOptions
     terminalOptions
     featureOptions
     obsidianOptions

@@ -1,15 +1,20 @@
 # darwin/system-commands/backups/karakeep.nix
-# Karakeep container backup command: `karakeep-backup`.
+#
+# Backs up Karakeep container data to SystemBackup.
+#
+# Values only. Every knob below is declared in
+# options/backups/container-backup-helper.nix, which owns what each one
+# means and how the backup is carried out.
 
-{ config, paths, lib, pkgs, ... }:
+{ config, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
-  backupPaths = config.services.containerBackups.paths;
-  containerDirectory = backupPaths.containerDirectory;
   # ** Destination and staging directories are registered under
   # ** darwin.backups.perContainer in options/paths.nix and resolved by
-  # ** the helper from appSlug. Change them there, not here.
+  # ** the helper from the slug. Change them there, not here.
+  backupPaths = config.services.backups.paths;
+  containerDirectory = backupPaths.containerDirectory;
 
   # ---- EDITABLE BACKUP PATHS
   # These entries resolve from containerDirectory. Add every Karakeep data
@@ -20,7 +25,7 @@ let
       destinationPath = "karakeep";
     }
   ];
-  # Add absolute sources outside containerDirectory here.
+  # Use absolute sourcePath entries for data outside containerDirectory.
   additionalSources = [
     # {
     #   sourcePath = "${backupPaths.homeDirectory}/Library/Somewhere/Karakeep";
@@ -28,42 +33,50 @@ let
     # }
   ];
   sourceEntries = containerEntries;
-
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
-
-  # ---- INDIVIDUAL BACKUP CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "karakeep";
-  preserveSymlinks = true;
-
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 35;
-  showProgress = true;
-  runOnRebuild = false;
-  scheduledHour = 6;
-  scheduledMinute = 0;
-
-  containerBackupHelper = import ./container-backup-helper.nix { inherit lib pkgs paths; };
 in
-containerBackupHelper.mkContainerBackup {
-  inherit config;
+{
+  services.backups.containers.karakeep = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.backups.enabled for this container.
+    enable = true;
 
-  appName = "Karakeep";
-  appSlug = "karakeep";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress runOnRebuild;
-  inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-  inherit sourceEntries additionalSources extraExcludePatterns;
-  sourceRoot = containerDirectory;
-  inherit scheduledHour scheduledMinute;
+    # ---- IDENTITY
+    appName = "Karakeep";
+
+    # ---- SOURCE
+    # sourceEntries resolve from sourceRoot (the container-data root);
+    # additionalSources are absolute paths staged on top of them.
+    sourceRoot = containerDirectory;
+    inherit sourceEntries additionalSources;
+
+    # ---- INDIVIDUAL BACKUP CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "karakeep";
+    preserveSymlinks = true;
+
+    # ---- EDITABLE EXCLUSIONS
+    extraExcludePatterns = [
+      "sockets/"
+      "private/socket"
+      "*.sock"
+    ];
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 35;
+    minimumCpuLimitPercent = 5;
+    maximumCpuLimitPercent = 50;
+    transferLimitKiBps = 4096;
+    showProgress = true;
+    runOnRebuild = false;
+
+    # ---- SCHEDULE
+    scheduledHour = 6;
+    scheduledMinute = 0;
+  };
 }
