@@ -1,3 +1,5 @@
+-- /Users/ven/.config/nix/nix-config/AGENTS.md
+
 # AGENTS.md — Nix configuration project instructions
 
 ## Project purpose
@@ -86,6 +88,15 @@ So in short:
 - Implementations, like paths should be flexible
 
 Remember to do modularisation for semantics and logic in a way that doesn't then require importing the .nix files directly.
+
+Semantics and logic belong in an option module: `options/` declares the
+option, the machine file assigns it, and the two are connected by the
+shared `imports` graph rather than by a direct import. A direct import
+is only correct for a shared value module such as `paths.nix` or
+`platforms.nix`, whose contents have to be read rather than set. The
+difference, and how to choose, is in "The two kinds of modularisation"
+under `## Modularization`.
+
 See more in documentation:
 ```text
 /Users/ven/Documents/Obsidian/Ven/nix-config/
@@ -382,6 +393,129 @@ Always consider:
 
 ```nix
 { paths, packageOptions, platforms, ... }:
+```
+
+### The two kinds of modularisation
+
+This repository modularises in two different ways. They are not
+interchangeable. Pick by asking what the file *does* with the thing:
+does it **set** it, or does it **read** it?
+
+#### 1. Option modules — the module system
+
+A file in `options/` declares the shape. A machine file assigns values.
+
+```nix
+# options/services/documents-sync.nix — declares
+options.ven.services.documentsSync = lib.mkOption { ... };
+
+# darwin/home/services.nix — assigns
+ven.services.documentsSync = {
+  enable = true;
+  localDirectory = paths.darwin.home.documents;
+};
+```
+
+- The two files are connected **only** by both being in the same
+  `imports` graph. The assigning file never imports the declaring file.
+- Use this for anything a machine should be able to enable, disable,
+  override, or receive a default for.
+- Wire it by adding the declaring module to the nearest aggregator's
+  `imports` exactly once.
+- A mistyped attribute path fails with "option does not exist". That
+  error is the safety net; do not work around it by declaring a second
+  option with the wrong name.
+- Precedence: `lib.mkDefault` is a weak default, a plain assignment
+  wins over it, and two plain assignments to the same option from
+  different modules are a conflict, not a silent winner.
+
+#### 2. Shared value modules — plain Nix
+
+`options/paths.nix` and `options/platforms.nix` are plain functions that
+return an attribute set. They are **not** modules and declare no options.
+
+- Use this for constant data that every layer needs identically:
+  filesystem locations, platform booleans. Nothing machine-tunable.
+- The value must be in scope where it is read. Three ways, in order of
+  preference:
+  - system modules receive it through `specialArgs`;
+  - Home Manager modules receive it through
+    `home-manager.extraSpecialArgs`, because system `specialArgs` do not
+    cross into Home Manager;
+  - a module outside both graphs imports it directly in its `let` block,
+    for example `paths = import ../../options/paths.nix { };`.
+- A mistyped attribute fails with "attribute missing".
+
+#### Why the difference: writing versus reading
+
+- **Setting an option is output.** It is the left side of `=`. Nothing
+  has to be in scope. The file returns a plain attribute set, and the
+  module system merges it and checks the names afterwards.
+- **Reading a shared value is input.** It is the right side of `=`. It
+  must evaluate where it is written, so the name has to be in scope
+  through an argument, a `let` binding, or an import.
+
+The same rule applies to options themselves: reading `config.*` requires
+taking `config` as an argument, exactly as reading paths requires
+`paths`. Only writing is free.
+
+Both appear in one file in `darwin/home/services.nix`:
+
+```nix
+{ paths, ... }:                  # paths is read, so it must be an argument
+{
+  ven.services.unison = {                 # written: needs no argument
+    enable = true;                        # literal value
+  };
+
+  ven.services.documentsSync = {          # written
+    localDirectory = paths.darwin.home.documents;   # read: needs paths
+  };
+}
+```
+
+If every value in that file were a literal, it would need no arguments
+at all.
+
+#### Choosing between them
+
+- The machine may want it different → option module.
+- It is the same everywhere and structural → shared value module.
+- Do not declare an option whose only purpose is to restate a path that
+  `paths.nix` already owns. Read the path instead.
+- Do not put a machine toggle in `paths.nix`. It holds locations, not
+  decisions.
+
+#### Telling the two apart from an error
+
+A mistyped or unreachable name fails differently for each kind:
+
+```text
+error: The option `ven.services.documentsSink` does not exist.
+```
+
+```text
+error: attribute 'documentsSink' missing
+```
+
+The first means no module in the graph *declares* that option; the usual
+cause is a missing aggregator import, not a typo. The second means
+attribute lookup on a supplied value failed; check that the attribute
+exists in the value that owns it, and that the value reached this module
+graph at all.
+
+Do not resolve the first by declaring the option a second time beside
+the assignment, and do not resolve the second by adding the name to the
+module's function header.
+
+Reference notes, which go further than this summary:
+
+```text
+Nix modularisation methods.md
+Custom features with Nix options.md
+errors/Module argument propagation.md
+errors/Avoid `imports` inside `lib.mkMerge`.md
+errors/Package-set consistency and helper construction.md
 ```
 
 ### nix-darwin system layer
