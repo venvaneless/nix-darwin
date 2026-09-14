@@ -9,54 +9,47 @@
 #   nix build .#<package>
 #   nix-update <package> --flake
 # =====================================================================
+{config, inputs, ...}: let
+  # ---- SHARED NIXPKGS POLICY ---- #
+  # Package outputs need this before any Nix module graph exists.
+  nixpkgsConfig = config.flake.lib.nixpkgsConfig;
+in {
+  perSystem = {system, ...}: let
+    pkgs = import inputs.nixpkgs {
+      inherit system;
 
-{ inputs, ... }:
-
-let
-  # ---- Variables from options/default.nix
-  # The nixpkgs policy is defined once there and read by every machine.
-  inherit (import ../options { }) nixpkgsConfig;
-in
-{
-  perSystem =
-    { system, ... }:
-    let
-      pkgs = import inputs.nixpkgs {
-        inherit system;
-
-        config = nixpkgsConfig;
-      };
-    in
-    {
-      # Uses the same policy as every host when evaluating packages
-      # directly through this flake.
-      _module.args.pkgs = pkgs;
-
-      # ---- DARWIN-ONLY APPLICATION PACKAGES ---- #
-      # Every derivation below packages a macOS application bundle, so it
-      # is exposed on the Darwin system only. x86_64-linux is listed in
-      # flake.nix for the NixOS host outputs, and would fail to evaluate
-      # these.
-      packages = inputs.nixpkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-        assetsnap = pkgs.callPackage ../darwin/packages/assetsnap.nix { };
-
-        better-finder-attributes = pkgs.callPackage ../darwin/packages/better-finder-attributes.nix { };
-
-        better-finder-rename = pkgs.callPackage ../darwin/packages/better-finder-rename.nix { };
-
-        hammerspoon = pkgs.callPackage ../darwin/packages/hammerspoon.nix { };
-
-        update-hammerspoon = pkgs.callPackage ../darwin/packages/hammerspoon-update.nix { };
-
-        iterm2 = pkgs.callPackage ../darwin/packages/iterm2 { };
-
-        iterm-ai-plugin = pkgs.callPackage ../darwin/packages/iterm2/iterm-ai-plugin.nix { };
-
-        iterm-browser-plugin = pkgs.callPackage ../darwin/packages/iterm2/iterm-browser-plugin.nix { };
-
-        the-unarchiver = pkgs.callPackage ../darwin/packages/unarchiver { };
-
-        update-unarchiver = pkgs.callPackage ../darwin/packages/unarchiver/unarchiver-update.nix { };
-      };
+      config = nixpkgsConfig;
     };
+  in {
+    # Uses the same policy as every host when evaluating packages
+    # directly through this flake.
+    _module.args.pkgs = pkgs;
+
+    # ---- DARWIN-ONLY APPLICATION PACKAGES ---- #
+    # Every derivation below packages a macOS application bundle, so it
+    # is exposed on the Darwin system only. x86_64-linux is listed in
+    # flake.nix for the NixOS host outputs, and would fail to evaluate
+    # these.
+    packages = inputs.nixpkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+      assetsnap = pkgs.callPackage ../darwin/packages/assetsnap.nix {};
+
+      better-finder-attributes = pkgs.callPackage ../darwin/packages/better-finder-attributes.nix {};
+
+      better-finder-rename = pkgs.callPackage ../darwin/packages/better-finder-rename.nix {};
+
+      hammerspoon = pkgs.callPackage ../darwin/packages/hammerspoon.nix {};
+
+      update-hammerspoon = pkgs.callPackage ../darwin/packages/hammerspoon-update.nix {};
+
+      iterm2 = pkgs.callPackage ../darwin/packages/iterm2 {};
+
+      iterm-ai-plugin = pkgs.callPackage ../darwin/packages/iterm2/iterm-ai-plugin.nix {};
+
+      iterm-browser-plugin = pkgs.callPackage ../darwin/packages/iterm2/iterm-browser-plugin.nix {};
+
+      the-unarchiver = pkgs.callPackage ../darwin/packages/unarchiver {};
+
+      update-unarchiver = pkgs.callPackage ../darwin/packages/unarchiver/unarchiver-update.nix {};
+    };
+  };
 }
