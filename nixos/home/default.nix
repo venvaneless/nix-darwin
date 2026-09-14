@@ -20,6 +20,9 @@
     # ---- SHARED TERMINAL CONFIGURATION ---- #
     inputs.self.homeModules.sharedTerminal
 
+    # ---- SHARED ENVIRONMENT CONFIGURATION ---- #
+    inputs.self.homeModules.sharedEnvironment
+
   ];
 
   # ---- HOME MANAGER IDENTITY ---- #

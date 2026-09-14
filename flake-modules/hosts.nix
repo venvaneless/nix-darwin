@@ -28,6 +28,16 @@ in
   ];
 
   flake = {
+    # ---- SHARED ENVIRONMENT HOME MODULE ---- #
+    # Every Home Manager host gets the common environment option module
+    # and its shared knob assignments through this one composition point.
+    homeModules.sharedEnvironment = {
+      imports = [
+        ../options/env-settings
+        ../shared/env-settings.nix
+      ];
+    };
+
     # ---- SHARED TERMINAL HOME MODULE ---- #
     # Future host modules import this and choose terminal features locally.
     homeModules.sharedTerminal = {

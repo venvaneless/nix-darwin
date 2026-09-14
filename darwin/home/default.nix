@@ -96,6 +96,7 @@
 
         # Shared Home Manager
         ../../shared/home
+        inputs.self.homeModules.sharedEnvironment
 
         # Shared terminal modules
         ../../shared/terminal

@@ -121,6 +121,11 @@ let
     documents = "${home}/Documents";
     downloads = "${home}/Downloads";
     localBin = "${home}/.local/bin";
+
+    # ---- Markdownlint
+    # The Markdownlint extensions for Zed and VS Code both discover this
+    # home-directory configuration file when they lint any Markdown file.
+    markdownlint = "${home}/.markdownlint.json";
   };
 
   # ------------------------------------------------------------
