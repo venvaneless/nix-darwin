@@ -19,7 +19,7 @@ let
 
   # ---- SHARED NIXPKGS POLICY ---- #
   # Host construction exposes the common policy; MacBook only adds overlays.
-  nixpkgsConfig = config.flake.lib.sharedNixpkgsConfig;
+  nixpkgsConfig = config.flake.lib.nixpkgsConfig;
 
   # Load the list of overlays from darwin/overlays.
   macbookOverlays = import ../darwin/overlays;
@@ -32,6 +32,20 @@ let
     inherit system;
     config = nixpkgsConfig;
     overlays = [ macbookOverlay ];
+  };
+
+  # ---- DARWIN BACKUP HELPERS ---- #
+  # Backup implementation is MacBook-only. The helpers are supplied to the
+  # Darwin module graph once, so backup files do not import them themselves.
+  backupPaths = import ../options/paths.nix {};
+  backupExcludeHelper = import ../options/backups/backup-exclude-helper.nix {
+    lib = inputs.nixpkgs.lib;
+  };
+  appBackupHelper = import ../options/backups/app-backup-helper.nix {
+    lib = inputs.nixpkgs.lib;
+    pkgs = macbookPkgs;
+    paths = backupPaths;
+    inherit backupExcludeHelper;
   };
 
 in
@@ -54,6 +68,7 @@ in
         pkgs = macbookPkgs;
         home-manager = inputs.home-manager;
         nix-homebrew = inputs.nix-homebrew;
+        inherit appBackupHelper backupExcludeHelper;
 
       };
 
@@ -62,6 +77,10 @@ in
           nixpkgs.overlays = [ macbookOverlay ];
 
         }
+
+        # Darwin-only backup option declarations.
+        ../options/backups/container-backup-helper.nix
+        appBackupHelper.settingsModule
 
         ../darwin/default.nix
       ];
