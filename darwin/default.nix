@@ -13,7 +13,6 @@
 #   - No standalone Home Manager mode is used
 #   - User-level modules live under darwin/modules/home
 # ================================================
-
 {
   config,
   lib,
@@ -21,9 +20,7 @@
   paths,
   pkgs,
   ...
-}:
-
-{
+}: {
   # ------------------------------------------------------------
   # Primary user
   # ------------------------------------------------------------
@@ -40,7 +37,7 @@
   };
 
   users = {
-    knownUsers = [ "ven" ];
+    knownUsers = ["ven"];
 
     users.ven = {
       uid = 502;
@@ -85,7 +82,7 @@
 
   # ---- Remote build machines
   # Keeps nix-darwin from reloading the daemon when no remote builders are configured.
-  environment.etc."nix/machines" = lib.mkIf (config.nix.buildMachines == [ ]) {
+  environment.etc."nix/machines" = lib.mkIf (config.nix.buildMachines == []) {
     text = "";
   };
 
@@ -201,10 +198,9 @@
     ./packages/tools-pkgs.nix
 
     # Shared packages
-    # The nixpkgs policy comes from options/default.nix, applied in
-    # flake-modules/macbook.nix. Modules needing the unstable set read
-    # unstablePkgs from options/default.nix directly.
-    # The package helper arrives through flake-level special arguments.
+    # The shared Nix knobs and their option module are imported by the
+    # generic host constructor. The package helper and unstable package set
+    # arrive through its shared special arguments.
     ../shared/packages.nix
 
     # Homebrew
