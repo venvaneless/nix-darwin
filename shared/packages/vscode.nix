@@ -16,7 +16,7 @@
 # ** installs normally, only into the relocated extensions directory.
 # =====================================================================
 
-{ lib, packageOptions, paths, platforms, pkgs, ... }:
+{ lib, packageOptions, paths, platforms, pkgs, unstablePkgs, ... }:
 
 let
   # The same relative location on both platforms, so the selector only
@@ -79,10 +79,20 @@ let
   # ---- Visual Studio Code
   # Installed from nixpkgs on both platforms; the Darwin bundle is
   # linked into /Applications/Programming by the shared link manager.
+  #
+  # ** Tracked from nixpkgs-unstable on both platforms. The 26.05
+  # ** release branch pins VS Code at 1.119.0 while unstable carries
+  # ** 1.136.1, and the built-in updater is switched off (update.mode in
+  # ** the portable settings.json) because it overwrites the bundle in
+  # ** /Applications/Nix Apps that the next switch rsyncs back, so
+  # ** nixpkgs is the only thing that moves the editor forward.
+  #
+  # ** This requires ven.nix.nixpkgs.unstable.installOn.linux, since
+  # ** unstablePkgs is a throw on a platform where unstable is disabled.
   vscode = {
     enable = true;
     installOn = { darwin = true; linux = true; };
-    package = pkgs.vscode;
+    package = unstablePkgs.vscode;
     inherit appName;
     symlinkProgramming = true;
   };
