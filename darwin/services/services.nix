@@ -23,7 +23,6 @@
   # Enable the custom nginx reverse proxy (com.ven.nginx-custom)
   ven.nginx.enable = true;
 
-
   imports = [
 
     # Docker + containers + tooling

@@ -11,9 +11,8 @@
 
 let
   # ---- Variables from options/default.nix
-  # The nixpkgs policy is defined once there, so a host that does not
-  # override it still matches the rest. Bound under a different name
-  # than the constructor arguments below, which would shadow it.
+  # Host construction reads its plain value branch before a module
+  # fixpoint exists; the same file provides the Nix option module.
   sharedOptionValues = import ../options { };
   inherit (sharedOptionValues) nixpkgsConfig nixOptions nixSharedSettings;
   sharedNixpkgsConfig = nixpkgsConfig;
@@ -53,7 +52,9 @@ in
         inputs.darwin.lib.darwinSystem {
           inherit system;
 
-          specialArgs = specialArgs // { inherit nixSharedSettings; };
+          specialArgs = specialArgs // {
+            inherit nixSharedSettings;
+          };
 
           modules = [
             # Provides SOPS secret management.
@@ -61,7 +62,9 @@ in
 
             # Nix's typed options render the shared host settings.
             nixOptions
-          ] ++ modules;
+
+          ]
+          ++ modules;
         };
 
       # Creates a standalone Home Manager configuration for a future Linux host.
@@ -79,13 +82,14 @@ in
             config = nixpkgsConfig;
           };
 
-          # Shared option values are loaded once by host construction and
-          # supplied to the module graph as custom arguments, the way
-          # flake-modules/macbook.nix supplies them on Darwin.
-          sharedOptions = import ../options {
-            inherit inputs pkgs;
-          };
-          inherit (sharedOptions) serviceOptions terminalOptions featureOptions obsidianOptions unstablePkgs;
+          sharedOptions = import ../options { inherit inputs pkgs; };
+          inherit (sharedOptions)
+            serviceOptions
+            terminalOptions
+            featureOptions
+            obsidianOptions
+            unstablePkgs
+            ;
 
           platforms = import ../options/platforms.nix { inherit pkgs; };
           packageOptions = import ../options/package-options.nix {
@@ -119,7 +123,8 @@ in
           modules = [
             # Provides SOPS secret management.
             inputs.sops-nix.homeManagerModules.sops
-          ] ++ modules;
+          ]
+          ++ modules;
         };
 
       # Creates a NixOS system for a future host with only caller-supplied facts.
@@ -140,8 +145,6 @@ in
             config = nixpkgsConfig;
           };
 
-          # Shared option values are loaded once by host construction and
-          # supplied to the module graph as custom arguments.
           sharedOptions = import ../options {
             inherit inputs;
             pkgs = hostPkgs;
@@ -176,16 +179,15 @@ in
 
           specialArgs = hostSpecialArgs;
 
-          modules =
-            [
-              # Provides SOPS secret management.
-              inputs.sops-nix.nixosModules.sops
+          modules = [
+            # Provides SOPS secret management.
+            inputs.sops-nix.nixosModules.sops
 
-              # Nix's typed options render the shared host settings.
-              nixOptions
-            ]
-            ++ modules
-            ;
+            # Nix's typed options render the shared host settings.
+            nixOptions
+
+          ]
+          ++ modules;
         };
     };
   };

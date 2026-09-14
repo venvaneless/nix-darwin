@@ -24,6 +24,11 @@
   # Provides packages and package-building functions from nixpkgs.
   pkgs,
 
+  # Provides the nixpkgs-unstable package set. The stable release branch
+  # lags the Claude Code CLI by a long way, and the CLI is versioned far
+  # faster than a release branch moves.
+  unstablePkgs,
+
   # Accepts additional module arguments without requiring them here.
   ...
 }:
@@ -155,8 +160,13 @@ let
     lib.optionals
       (cfg.enable && cfg.code.enable)
       [
-        # Install the Claude Code CLI from nixpkgs.
-        pkgs.claude-code
+        # Install the Claude Code CLI from nixpkgs-unstable.
+        #
+        # ** Tracked from unstable rather than the release branch: the CLI
+        # ** ships far more often than a stable branch is updated, and it
+        # ** has no self-updater path that would fight darwin-rebuild the
+        # ** way VS Code's did.
+        unstablePkgs.claude-code
       ]
     # Append the Claude Desktop packages when Desktop is enabled on macOS.
     ++ lib.optionals

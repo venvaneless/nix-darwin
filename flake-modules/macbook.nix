@@ -40,7 +40,15 @@ let
     inherit inputs;
     pkgs = macbookPkgs;
   };
-  inherit (sharedOptions) paths serviceOptions terminalOptions featureOptions obsidianOptions unstablePkgs;
+  inherit (sharedOptions)
+    paths
+    serviceOptions
+    containerBackupOptions
+    terminalOptions
+    featureOptions
+    obsidianOptions
+    unstablePkgs
+    ;
 
   platforms = import ../options/platforms.nix { pkgs = macbookPkgs; };
   packageOptions = import ../options/package-options.nix {
@@ -60,29 +68,38 @@ in
   # =====================================================================
   # DARWIN: MAIN SYSTEM
   # =====================================================================
-  flake.darwinConfigurations.macbook =
-    withSystem system (
-      { ... }:
-      config.flake.lib.mkDarwinHost {
-        inherit system;
+  flake.darwinConfigurations.macbook = withSystem system (
+    { ... }:
+    config.flake.lib.mkDarwinHost {
+      inherit system;
 
-        specialArgs = {
-          inherit inputs;
-          pkgs = macbookPkgs;
-          inherit packageOptions paths platforms serviceOptions terminalOptions featureOptions obsidianOptions unstablePkgs;
-          home-manager = inputs.home-manager;
-          nix-homebrew = inputs.nix-homebrew;
+      specialArgs = {
+        inherit inputs;
+        pkgs = macbookPkgs;
+        inherit
+          containerBackupOptions
+          packageOptions
+          paths
+          platforms
+          serviceOptions
+          terminalOptions
+          featureOptions
+          obsidianOptions
+          unstablePkgs
+          ;
+        home-manager = inputs.home-manager;
+        nix-homebrew = inputs.nix-homebrew;
 
-        };
+      };
 
-        modules = [
-          {
-            nixpkgs.overlays = [ macbookOverlay ];
+      modules = [
+        {
+          nixpkgs.overlays = [ macbookOverlay ];
 
-          }
+        }
 
-          ../darwin/default.nix
-        ];
-      }
-    );
+        ../darwin/default.nix
+      ];
+    }
+  );
 }

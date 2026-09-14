@@ -32,7 +32,8 @@ let
   # So a sessions/ directory that is a symlink out of the profile resolves to
   # a path outside $CODEX_HOME, the archive destination becomes unreachable,
   # and the app reports "Failed to archive chat". Rewriting the rows alone
-  # does not hold: the next fallback scan restores the resolved spelling.
+  # does not hold: the next fallback scan restores the resolved spelling,
+  # which is why the layout is fixed here and the rows are left to the app.
   #
   # The stable arrangement is for one profile to own the real directories, so
   # that resolving a path returns the string it started as. Everything else
@@ -49,11 +50,6 @@ let
   # Both directories are managed together because archiving moves a thread
   # between them, so they have to resolve consistently.
   storageKinds = [ "sessions" "archived_sessions" ];
-
-  storageDatabases = map (root: "${root}/sqlite/state_5.sqlite") [
-    codex.chatgpt
-    codex.api
-  ];
 
   # ------------------------------------------------------------
   # ------ DOCK LAUNCHER ------ #
@@ -79,9 +75,10 @@ in
   # CODEX: ENVIRONMENT
   # =================================================================
 
-  # Profile launchers select CODEX_HOME themselves, so it must not be
-  # exported as a global default that overrides the API profile.
+  # Env variables
   environment.variables = {
+    CODEX_HOME = codex.chatgpt;
+
     CODEX_PROFILE_HOME_ROOT = codexRoot;
     CODEX_PROFILE_CONFIG_HOME = codex.profileConfig;
 
@@ -97,15 +94,35 @@ in
   # nothing is touched at all while ChatGPT is running.
 
   system.activationScripts.extraActivation.text = lib.mkBefore ''
-    echo "[nix-darwin][codex] Configuring Codex conversation storage..."
+    # ---- Fast path
+    # Every check below is a stat. pgrep, which costs more than all of
+    # them together, only runs when something actually needs changing.
+    codex_storage_ok=1
 
-    codex_owner_root=${lib.escapeShellArg storageOwner}
-    codex_shared_root=${lib.escapeShellArg codex.shared}
+    ${lib.concatMapStringsSep "\n" (kind: ''
+      if [ ! -d ${lib.escapeShellArg "${storageOwner}/${kind}"} ] \
+        || [ -L ${lib.escapeShellArg "${storageOwner}/${kind}"} ]; then
+        codex_storage_ok=0
+      fi
 
-    if /usr/bin/pgrep -qf '/Applications/ChatGPT.app/Contents/MacOS/ChatGPT'; then
+      ${lib.concatMapStringsSep "\n" (root: ''
+        if [ "$(readlink ${lib.escapeShellArg "${root}/${kind}"} 2>/dev/null)" \
+          != ${lib.escapeShellArg "${storageOwner}/${kind}"} ]; then
+          codex_storage_ok=0
+        fi
+      '') storageLinked}
+    '') storageKinds}
+
+    if [ "$codex_storage_ok" = 1 ]; then
+      : # Layout is correct; nothing to do.
+    elif /usr/bin/pgrep -qf '/Applications/ChatGPT.app/Contents/MacOS/ChatGPT'; then
       echo "[nix-darwin][codex] ChatGPT is running; conversation storage left untouched." >&2
       echo "[nix-darwin][codex] Quit it and rebuild to finish the layout." >&2
     else
+      echo "[nix-darwin][codex] Converging Codex conversation storage..."
+
+      codex_owner_root=${lib.escapeShellArg storageOwner}
+
       for codex_kind in ${lib.escapeShellArgs storageKinds}; do
         codex_owner_dir="$codex_owner_root/$codex_kind"
 
@@ -173,34 +190,6 @@ in
           echo "[nix-darwin][codex] Migrated $codex_linked_dir into the owner profile"
         done
       done
-
-      # ---- Rows recorded under the old resolved path.
-      # With the owner profile holding the real directories this rewrite is
-      # durable: resolving a path now returns the same spelling.
-      for codex_database in ${lib.escapeShellArgs storageDatabases}; do
-        [ -f "$codex_database" ] || continue
-
-        codex_stale="$(
-          ${pkgs.sqlite}/bin/sqlite3 "file:$codex_database?mode=ro" \
-            "SELECT COUNT(*) FROM threads WHERE rollout_path LIKE '$codex_shared_root/%';"
-        )"
-
-        if [ "$codex_stale" = "0" ]; then
-          continue
-        fi
-
-        mkdir -p "$(dirname "$codex_database")/backups"
-
-        ${pkgs.sqlite}/bin/sqlite3 "$codex_database" \
-          ".backup '$(dirname "$codex_database")/backups/state_5.sqlite.$(date +%Y%m%d-%H%M%S)'"
-
-        ${pkgs.sqlite}/bin/sqlite3 "$codex_database" \
-          "UPDATE threads
-              SET rollout_path = replace(rollout_path, '$codex_shared_root/', '$codex_owner_root/')
-            WHERE rollout_path LIKE '$codex_shared_root/%';"
-
-        echo "[nix-darwin][codex] Rewrote $codex_stale stale rollout path(s) in $codex_database"
-      done
     fi
   '';
 
@@ -219,14 +208,8 @@ in
     # Apps launched from the Dock, Spotlight, or Finder never source
     # those, so they are seeded into ven's launchd domain here.
 
-    # The Dock pins the real signed app, which must receive the ChatGPT
-    # profile before it starts. codex-profile app launches pass explicit
-    # values for named profiles, so the API profile remains isolated.
     /bin/launchctl asuser "$ven_uid" \
       /bin/launchctl setenv CODEX_HOME ${lib.escapeShellArg codex.chatgpt}
-
-    /bin/launchctl asuser "$ven_uid" \
-      /bin/launchctl setenv CODEX_SQLITE_HOME ${lib.escapeShellArg "${codex.chatgpt}/sqlite"}
 
     /bin/launchctl asuser "$ven_uid" \
       /bin/launchctl setenv CODEX_PROFILE_HOME_ROOT ${lib.escapeShellArg codexRoot}

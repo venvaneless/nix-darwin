@@ -14,7 +14,14 @@
 #   - User-level modules live under darwin/modules/home
 # ================================================
 
-{ config, lib, home-manager, paths, pkgs, ... }:
+{
+  config,
+  lib,
+  home-manager,
+  paths,
+  pkgs,
+  ...
+}:
 
 {
   # ------------------------------------------------------------
@@ -78,7 +85,7 @@
 
   # ---- Remote build machines
   # Keeps nix-darwin from reloading the daemon when no remote builders are configured.
-  environment.etc."nix/machines" = lib.mkIf (config.nix.buildMachines == []) {
+  environment.etc."nix/machines" = lib.mkIf (config.nix.buildMachines == [ ]) {
     text = "";
   };
 
@@ -94,7 +101,7 @@
   # ** shared/default.nix and is not repeated here.
   #
   # ** Any of these may be written as default instead, which takes the
-  # ** value declared in options/nix-options.nix. Written out here so the
+  # ** value declared in options/default.nix. Written out here so the
   # ** file says what this Mac actually runs.
   ven.nix.settings = {
     # System build group
@@ -150,7 +157,7 @@
   # ---- XDG directories
   # Moves compatible application files into your preferred ~/.config layout
   environment.variables = {
-  	# XDG base directories
+    # XDG base directories
     XDG_CONFIG_HOME = "/Users/ven/.config";
     XDG_STATE_HOME = "/Users/ven/.config/.state";
     XDG_DATA_HOME = "/Users/ven/.config/.local/share";
@@ -168,7 +175,7 @@
   # ---- Homebrew binary paths
   # Makes Apple Silicon Homebrew commands available system-wide
   environment.systemPath = [
-  	# Add Homebrew binary and sbin paths to the system PATH
+    # Add Homebrew binary and sbin paths to the system PATH
     "/opt/homebrew/bin"
     "/opt/homebrew/sbin"
   ];
@@ -186,13 +193,13 @@
     ./home
 
     # System options
-    ./system/system-options.nix
+    ./system
     ./system-commands
 
     # macOS-only packages
     ./packages/agents-pkgs.nix
     ./packages/tools-pkgs.nix
-    
+
     # Shared packages
     # The nixpkgs policy comes from options/default.nix, applied in
     # flake-modules/macbook.nix. Modules needing the unstable set read
