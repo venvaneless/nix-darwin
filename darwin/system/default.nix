@@ -152,8 +152,8 @@ in
       # New Finder window target: opens new windows at a custom location.
       NewWindowTarget = "Other";
 
-      # New Finder window location: uses the Downloads folder.
-      NewWindowTargetPath = "file:///Users/ven/Downloads/";
+      # New Finder window location: uses the standard macOS Downloads folder.
+      NewWindowTargetPath = "file://${paths.darwin.home.downloads}/";
 
       # Preferred view: uses List view for newly opened Finder windows.
       FXPreferredViewStyle = "Nlsv";
@@ -195,7 +195,10 @@ in
       _FXSortFoldersFirstOnDesktop = true;
     };
 
-    # Finder preferences not exposed by nix-darwin.
+    # -------------------------------------------------------------------
+    # FINDER RAW PREFERENCES
+    # Settings not exposed by nix-darwin's typed Finder option.
+    # -------------------------------------------------------------------
     CustomUserPreferences."com.apple.finder" = {
       # Relative dates: displays complete dates instead of relative dates in Finder.
       FXUseRelativeDates = false;
