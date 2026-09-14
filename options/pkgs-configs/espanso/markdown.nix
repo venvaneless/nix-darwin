@@ -3,11 +3,12 @@
 # =====================================================================
 # ESPANSO: MARKDOWN FEATURE DEFINITIONS
 #
-# Defines Markdown's toggles, subfeatures, and rendered match content.
-# This file never creates user files; Home Manager owns that separately.
+# Defines Markdown's toggles, subfeatures, and rendered match content,
+# and links the rendered match/markdown.yml through Home Manager.
+# Concrete values are selected in shared/home/default.nix.
 # =====================================================================
 
-{ config, lib, ... }:
+{ config, lib, paths, ... }:
 
 let
   cfg = config.ven.espanso.markdown;
@@ -304,9 +305,21 @@ in
     };
   };
 
-  config.ven.espanso.markdown.renderedMatchFile =
-    if matches == "" then
-      "matches: []\n"
-    else
-      "matches:\n${matches}";
+  config = {
+    ven.espanso.markdown.renderedMatchFile =
+      if matches == "" then
+        "matches: []\n"
+      else
+        "matches:\n${matches}";
+
+    # ------------------------------------------------------------
+    # ------ MARKDOWN HOME MANAGER FILE ------ #
+    # Home Manager owns the link to the rendered, immutable match file.
+
+    home.file.${paths.relative.espanso.markdownMatches} = lib.mkIf (
+      config.ven.espanso.enable && cfg.enable
+    ) {
+      text = cfg.renderedMatchFile;
+    };
+  };
 }
