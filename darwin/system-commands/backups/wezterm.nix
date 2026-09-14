@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/wezterm.nix
 # WezTerm backup command: `wezterm-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -54,7 +54,6 @@ let
   archivePrefix = "wezterm";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   weztermBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "WezTerm";

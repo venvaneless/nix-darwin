@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/vesktop.nix
 # Vesktop backup command: `vesktop-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -50,7 +50,6 @@ let
   archivePrefix = "vesktop";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   vesktopBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Vesktop";

@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/better-finder-renamer.nix
 # A Better Finder Rename backup command: `better-renamer-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -32,7 +32,7 @@ let
   ];
   additionalSources = [
     # {
-    #   sourcePath = "${backupPaths.homeDirectory}/Library/Somewhere/Better Finder Rename";
+    #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Better Finder Rename";
     #   destinationPath = "additional/Somewhere/Better Finder Rename";
     # }
   ];
@@ -59,7 +59,6 @@ let
   archivePrefix = "better-finder-renamer";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
 in
 appBackupHelper.mkAppBackup {
   inherit config;

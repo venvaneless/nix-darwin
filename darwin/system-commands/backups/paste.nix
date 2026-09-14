@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/paste.nix
 # Paste backup command: `paste-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -28,7 +28,7 @@ let
   ];
   additionalSources = [
     # {
-    #   sourcePath = "${backupPaths.homeDirectory}/Library/Somewhere/Paste";
+    #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Paste";
     #   destinationPath = "additional/Somewhere/Paste";
     # }
   ];
@@ -56,7 +56,6 @@ let
   cpuLimitPercent = 25;
   showProgress = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   pasteBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Paste";

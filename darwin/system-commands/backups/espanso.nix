@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/espanso.nix
 # Espanso backup command: `espanso-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -47,7 +47,6 @@ let
   archivePrefix = "espanso";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   espansoBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Espanso";

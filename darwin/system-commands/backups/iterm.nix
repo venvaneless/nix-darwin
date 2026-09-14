@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/iterm.nix
 # iTerm2 backup command: `iterm-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -58,7 +58,6 @@ let
   archivePrefix = "iterm";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   itermBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "iTerm2";

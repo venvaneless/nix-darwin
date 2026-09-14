@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/yate.nix
 # Yate backup command: `yate-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -22,9 +22,6 @@ let
       relativePath = "com.2manyrobots.Yate.plist";
       destinationPath = "app-pref/com.2manyrobots.Yate.plist";
     }
-  ];
-  configEntries = [
-    # { relativePath = "yate"; destinationPath = "user-config/yate"; }
   ];
   additionalSources = [ ];
 
@@ -50,14 +47,13 @@ let
   archivePrefix = "yate";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   yateBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Yate";
     appSlug = "yate";
     inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
     inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-    inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
+    inherit applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
     applicationSupportRoot = applicationSupportDirectory;
     preferencesRoot = preferencesDirectory;
     configRoot = configDirectory;

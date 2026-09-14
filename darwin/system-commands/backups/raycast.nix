@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/raycast.nix
 # Raycast backup command: `raycast-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -105,7 +105,6 @@ let
   archivePrefix = "raycast";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   raycastBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Raycast";

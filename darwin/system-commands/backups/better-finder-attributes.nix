@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/better-finder-attributes.nix
 # A Better Finder Attributes backup command: `better-attributes-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -28,7 +28,7 @@ let
   ];
   additionalSources = [
     # {
-    #   sourcePath = "${backupPaths.homeDirectory}/Library/Somewhere/Better Finder Attributes";
+    #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Better Finder Attributes";
     #   destinationPath = "additional/Somewhere/Better Finder Attributes";
     # }
   ];
@@ -55,7 +55,6 @@ let
   archivePrefix = "better-finder-attributes";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
 in
 appBackupHelper.mkAppBackup {
   inherit config;

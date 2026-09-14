@@ -12,14 +12,14 @@
 #   the command runs manually or from a schedule.
 # =====================================================================
 
-{ config, paths, lib, pkgs, ... }:
+{ backupExcludeHelper, config, paths, lib, pkgs, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # The CA root, the backup volume layout, and the mount check come from
   # the centralized path definitions.
   backupPaths = paths.darwin.backups;
-  excludeHelper = import ../../../options/backups/backup-exclude-helper.nix { inherit lib; };
+  excludeHelper = backupExcludeHelper;
 
   # ---- BACKUP PATHS
   # ** Certificates live beside the other data backups rather than under

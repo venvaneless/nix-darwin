@@ -6,21 +6,8 @@
 # Container backups are manual by default. Set an individual `automatic`
 # toggle only when that container should receive a scheduled LaunchAgent.
 # =====================================================================
-
-{ containerBackupOptions, lib, paths, pkgs, ... }:
-
-let
-  # ** App backups are still built by a constructor, so their settings
-  # ** module has to be produced before it can be imported. Container
-  # ** backups no longer need that: their module arrives as a path
-  # ** through specialArgs, the way options/services does.
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
-in
-{
+{...}: {
   imports = [
-    appBackupHelper.settingsModule
-    containerBackupOptions
-
     ./archivebox.nix
     ./better-finder-attributes.nix
     ./better-finder-renamer.nix

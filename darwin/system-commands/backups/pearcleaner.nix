@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/pearcleaner.nix
 # Pearcleaner backup command: `pearcleaner-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -54,7 +54,6 @@ let
   archivePrefix = "pearcleaner";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   pearcleanerBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "Pearcleaner";

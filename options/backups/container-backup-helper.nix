@@ -8,7 +8,7 @@
 # Downloads before its completed archive is moved to SystemBackup.
 # =====================================================================
 
-{ config, lib, pkgs, paths, ... }:
+{ backupExcludeHelper, config, lib, pkgs, paths, ... }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -20,7 +20,7 @@ let
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;
   systemPaths = paths.darwin.system;
-  excludeHelper = import ./backup-exclude-helper.nix { inherit lib; };
+  excludeHelper = backupExcludeHelper;
 
   # ---- PER-CONTAINER LOCATION LOOKUP
   # Resolves one container's backup locations from the registry in

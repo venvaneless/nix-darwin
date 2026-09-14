@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/snippetslab.nix
 # SnippetsLab backup command: `snippetslab-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -53,7 +53,6 @@ let
   archivePrefix = "snippetslab";
   preserveSymlinks = true;
 
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   snippetslabBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "SnippetsLab";

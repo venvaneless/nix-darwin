@@ -8,7 +8,7 @@
 # exact application files or directories into the archive layout.
 # =====================================================================
 
-{ lib, pkgs, paths }:
+{ backupExcludeHelper, lib, pkgs, paths }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -20,7 +20,7 @@ let
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;
   systemPaths = paths.darwin.system;
-  excludeHelper = import ./backup-exclude-helper.nix { inherit lib; };
+  excludeHelper = backupExcludeHelper;
 
   # ---- GLOBAL APPLICATION BACKUP CONTROLS
   # Imported once by default.nix. Individual app modules keep their own

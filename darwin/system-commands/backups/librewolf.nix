@@ -1,7 +1,7 @@
 # darwin/system-commands/backups/librewolf.nix
 # LibreWolf browser backup command: `librewolf-backup`.
 
-{ config, paths, lib, pkgs, ... }:
+{ appBackupHelper, config, paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
@@ -53,7 +53,6 @@ let
   archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
   archivePrefix = "librewolf";
   preserveSymlinks = true;
-  appBackupHelper = import ../../../options/backups/app-backup-helper.nix { inherit lib pkgs paths; };
   librewolfBackup = appBackupHelper.mkAppBackup {
     inherit config;
     appName = "LibreWolf";
