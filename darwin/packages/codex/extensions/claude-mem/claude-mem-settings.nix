@@ -39,6 +39,7 @@ let
   claudeMemSettings = builtins.toJSON {
     CLAUDE_MEM_DATA_DIR = claudeMem.data;
     CLAUDE_MEM_TRANSCRIPTS_CONFIG_PATH = claudeMem.transcriptWatch;
+    CLAUDE_MEM_WELCOME_HINT_ENABLED = "false";
     CLAUDE_MEM_EXCLUDED_PROJECTS = excludedProjects;
     CLAUDE_MEM_MODE = modeCreator.modeId;
     CLAUDE_MEM_TELEGRAM_TRIGGER_TYPES = lib.concatStringsSep "," modeCreator.telegram.types;
