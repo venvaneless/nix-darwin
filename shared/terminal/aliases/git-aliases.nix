@@ -4,7 +4,7 @@
 # GIT: ALIASES
 # =====================================================================
 
-{ ... }:
+{ paths, ... }:
 
 {
   ven.features.terminal.aliases = {
@@ -165,6 +165,31 @@
 
     functions = {
       # ---------- Git Functions ---------- #
+
+      # ---------------------------------------------------------
+      # ---- obsidian-files -> Commit and push each backup folder ---- #
+      # Process the configured folders one at a time. Remove or comment
+      # one folder line below to exclude it from the next run.
+      # ---------------------------------------------------------
+      obsidian-files = {
+        help = "Stage, verify, commit, and push each configured Obsidian backup folder";
+        command.obsidianFiles = { };
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+        folders = [
+          paths.darwin.backups.obsidianDotfiles
+          paths.darwin.backups.obsidianExtensions
+          paths.darwin.backups.obsidianRandomFiles
+          paths.darwin.backups.obsidianScripts
+          paths.darwin.backups.obsidianSnippets
+          paths.darwin.backups.obsidianThemes
+        ];
+      };
+      # ---------------------------------------------------------
+
 
       # ---------------------------------------------------------
       # ---- gm -> Stage all repo changes with drs ---- #
