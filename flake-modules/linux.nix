@@ -39,10 +39,6 @@
 let
   system = "x86_64-linux";
 
-  # ---- SHARED NIXPKGS POLICY ---- #
-  # Host construction exposes the common policy for every machine.
-  nixpkgsConfig = config.flake.lib.sharedNixpkgsConfig;
-
   # ---- HARDWARE DESCRIPTION ---- #
   # Generated on the target machine, not stored in this repository until
   # the laptop has been installed.
@@ -60,9 +56,6 @@ in
     extraSpecialArgs = {
       inherit inputs;
     };
-
-    # The shared policy, identical to every other machine
-    inherit nixpkgsConfig;
 
     modules = [
       ../nixos/home/default.nix
