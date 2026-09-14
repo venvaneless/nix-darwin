@@ -12,7 +12,7 @@
 # - Runs scripts independently with per-script timeouts
 # - Continues even if a script fails
 # - Logs start, skip, success, failure, and timeout events
-# 
+#
 # Safety:
 # - Missing scripts are skipped
 # - Non-executable scripts are skipped
@@ -40,31 +40,31 @@ let
   # Total time allowed per script before SIGTERM, then SIGKILL.
   # Adjust if needed for slow backups.
   timeoutSec = "120";
-  killAfter  = "5";
+  killAfter = "5";
 
   timeoutBin = "${pkgs.coreutils}/bin/timeout";
 
   # ---- Scripts List
   scripts = [
-   # "${scriptDir}/rsync-a_better_finder_rename.sh"
-   # "${scriptDir}/rsync-browsers.sh"
-   # "${scriptDir}/rsync-dash.sh"
-   # "${scriptDir}/rsync-espanso.sh"
-   # "${scriptDir}/rsync-iterm.sh"
-   # "${scriptDir}/rsync-lumineo.sh"
-   # "${scriptDir}/rsync-mkcert.sh"
-   # "${scriptDir}/rsync-obsidian.sh"
-   # "${scriptDir}/rsync-other-pref.sh"
-   # "${scriptDir}/rsync-paste.sh"
-   # "${scriptDir}/rsync-pearcleaner.sh"
-   # "${scriptDir}/rsync-raycast.sh"
-   # "${scriptDir}/rsync-snippetslab.sh"
-   # "${scriptDir}/rsync-vaultwarden.sh"
-   # "${scriptDir}/rsync-vesktop.sh"
-   # "${scriptDir}/rsync-vlc.sh"
-   # "${scriptDir}/rsync-wezterm.sh"
-   # "${scriptDir}/rsync-yate.sh"
-   # "${scriptDir}/rsync-zed.sh"
+    # "${scriptDir}/rsync-a_better_finder_rename.sh"
+    # "${scriptDir}/rsync-browsers.sh"
+    # "${scriptDir}/rsync-dash.sh"
+    # "${scriptDir}/rsync-espanso.sh"
+    # "${scriptDir}/rsync-iterm.sh"
+    # "${scriptDir}/rsync-lumineo.sh"
+    # "${scriptDir}/rsync-mkcert.sh"
+    # "${scriptDir}/rsync-obsidian.sh"
+    # "${scriptDir}/rsync-other-pref.sh"
+    # "${scriptDir}/rsync-paste.sh"
+    # "${scriptDir}/rsync-pearcleaner.sh"
+    # "${scriptDir}/rsync-raycast.sh"
+    # "${scriptDir}/rsync-snippetslab.sh"
+    # "${scriptDir}/rsync-vaultwarden.sh"
+    # "${scriptDir}/rsync-vesktop.sh"
+    # "${scriptDir}/rsync-vlc.sh"
+    # "${scriptDir}/rsync-wezterm.sh"
+    # "${scriptDir}/rsync-yate.sh"
+    # "${scriptDir}/rsync-zed.sh"
   ];
 
   # Execute each script with timeout and logging
@@ -98,7 +98,7 @@ let
       # Check if the script exists and is executable; log accordingly
       if [ ! -f "${s}" ]; then
         echo "$LOG_PREFIX SKIP (missing): ${s}"
-        
+
       # Log a message indicating the script is not executable and skip it
       elif [ ! -x "${s}" ]; then
         echo "$LOG_PREFIX SKIP (not executable): ${s}"
