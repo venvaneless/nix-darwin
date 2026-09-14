@@ -39,91 +39,6 @@
       ];
 
       # ------------------------------------------------------------
-      # Espanso
-      # ------------------------------------------------------------
-      # The shared Espanso module declares these knobs and renders the
-      # configuration files. This Mac chooses their concrete values.
-      ven.espanso = {
-        enable = true;
-        showNotifications = true;
-
-        base.enable = true;
-
-        markdown = {
-          enable = true;
-
-          links = {
-            enable = true;
-
-            standard = {
-              enable = true;
-              trigger = ":mdlink";
-              title = "Title";
-              link = "Link";
-            };
-
-            obsidian = {
-              enable = true;
-              trigger = ":wikilink";
-              text = "Text";
-            };
-
-            obsidianAlias = {
-              enable = false;
-              trigger = ":wikialias";
-              link = "Link";
-              title = "Title";
-            };
-
-            autolink = {
-              enable = false;
-              trigger = ":mdurl";
-              link = "Link";
-            };
-
-            image = {
-              enable = false;
-              trigger = ":mdimage";
-              alt = "Alt text";
-              link = "Image URL";
-            };
-          };
-
-          formatting = {
-            enable = true;
-
-            bold = {
-              enable = true;
-              trigger = ":mdbold";
-              text = "Text";
-            };
-
-            task = {
-              enable = true;
-              trigger = ":mdtask";
-            };
-          };
-        };
-      };
-
-      # Espanso needs these custom paths in its user LaunchAgent. Use the
-      # Nix package binary rather than the mutable /Applications symlink.
-      launchd.agents.espanso = {
-        config = {
-          Label = "com.federicoterzi.espanso";
-          ProgramArguments = [
-            "${pkgs.espanso}/bin/espanso"
-            "launcher"
-          ];
-          RunAtLoad = true;
-          EnvironmentVariables = {
-            ESPANSO_CONFIG_DIR = paths.darwin.home.espanso.config;
-            ESPANSO_DATA_DIR = "${paths.darwin.home.espanso.config}/data";
-          };
-        };
-      };
-
-      # ------------------------------------------------------------
       # Darwin Home Manager defaults
       # ------------------------------------------------------------
 
@@ -459,12 +374,12 @@
         ../terminal
 
         # Shared Home Manager
-        inputs.self.homeModules.shared.espanso
-        inputs.self.homeModules.shared.environment
-        inputs.self.homeModules.shared.services
+        inputs.self.homeModules.shared-home
+        inputs.self.homeModules.shared-environment
+        inputs.self.homeModules.shared-services
 
         # Shared terminal modules
-        inputs.self.homeModules.shared.terminal
+        inputs.self.homeModules.shared-terminal
 
         # Shared secrets
         ../../shared/home/secrets.nix
