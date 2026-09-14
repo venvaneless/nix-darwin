@@ -643,14 +643,17 @@ ${lib.optionalString localStagingUsesSharedRoot ''
     '';
   };
 in
-lib.mkIf cfg.enable (lib.mkMerge [
-    {
-      # Makes the enabled container backup available for manual use.
-      environment.systemPackages = [ backupRunner ];
-    }
+# ** Returned as one definition per target option, not as a module
+# ** config. The `config` block below lists these option names itself, so
+# ** the module's top-level attribute names never depend on
+# ** services.backups.containers; otherwise reading them would need that
+# ** option's value, which needs this module's names: infinite recursion.
+{
+    # Makes the enabled container backup available for manual use.
+    systemPackages = lib.mkIf cfg.enable [ backupRunner ];
 
-    (lib.mkIf cfg.automatic {
-      launchd.user.agents."backup-${appSlug}" = {
+    launchdAgents = lib.mkIf (cfg.enable && cfg.automatic) {
+      "backup-${appSlug}" = {
         serviceConfig = {
           Label = launchdLabel;
           ProgramArguments = [
@@ -684,16 +687,16 @@ lib.mkIf cfg.enable (lib.mkMerge [
           StandardErrorPath = "${libraryPaths.logs}/${commandName}-error.log";
         };
       };
-    })
+    };
 
-    (lib.mkIf cfg.runOnRebuild {
-      system.activationScripts."run-${appSlug}-backup".text = lib.mkAfter ''
+    activationScripts = lib.mkIf (cfg.enable && cfg.runOnRebuild) {
+      "run-${appSlug}-backup".text = lib.mkAfter ''
         echo ">>> [${appSlug} backup] Running requested rebuild backup"
         /usr/bin/sudo -H -u ven "${backupRunner}/bin/${commandName}" --rebuild \
           || echo ">>> [${appSlug} backup] Rebuild backup failed (continued)"
       '';
-    })
-  ]);
+    };
+  };
 in
 {
     options.services.backups = {
@@ -1108,10 +1111,15 @@ in
   # LaunchAgent, and its optional rebuild hook.
   # ------------------------------------------------------------
 
-  config = lib.mkMerge (
-    lib.mapAttrsToList
-      containerBackupConfig
-      config.services.backups.containers
-  );
+  config =
+    let
+      containerBackups = lib.mapAttrsToList containerBackupConfig config.services.backups.containers;
+      collect = part: lib.mkMerge (map (backup: backup.${part}) containerBackups);
+    in
+    {
+      environment.systemPackages = collect "systemPackages";
+      launchd.user.agents = collect "launchdAgents";
+      system.activationScripts = collect "activationScripts";
+    };
 
 }

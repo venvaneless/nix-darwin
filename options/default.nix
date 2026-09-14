@@ -17,9 +17,13 @@
   pkgs ? null,
   platforms ? null,
   ...
-}:
+}@args:
 
-if config == null then
+# Branch on whether a `config` argument was supplied, never on its value.
+# The module system must read this file's top-level attributes before its
+# fixpoint exists, so forcing `config` here (e.g. `config == null`) causes
+# infinite recursion. `args ? config` inspects attribute names only.
+if !(args ? config) then
   let
     # ------------------------------------------------------------
     # ------ SHARED HOST VALUES ------ #
@@ -57,6 +61,7 @@ if config == null then
     containerBackupOptions = ./backups/container-backup-helper.nix;
     terminalOptions = ./terminal-aliases.nix;
     featureOptions = ./terminal-features.nix;
+    cliOptions = ./cli/default.nix;
     obsidianOptions = ./obsidian/default.nix;
 
     # The consolidated system option module supplied to host constructors.
