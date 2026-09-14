@@ -1,117 +1,260 @@
 # options/default.nix
 #
 # =====================================================================
-# OPTIONS: SHARED SETTINGS AND HELPERS
+# OPTIONS: SHARED NIX KNOBS
 #
-# Cross-machine settings that are not package declarations. Every value
-# here is written once and read by every machine that needs it.
-#
-# This shared options helper exposes repository-owned values for host
-# construction to pass into modules as custom arguments. Paths remain defined
-# in paths.nix; this file only re-exports that existing value.
-#
-# Feature modules receive those values through specialArgs or
-# home-manager.extraSpecialArgs instead of evaluating this helper themselves.
-#
-# Every argument defaults to null, and Nix is lazy, so a value is only
-# built when something actually reads it.
+# Declares the custom ven.nix knob interface used by shared/default.nix
+# and machine modules. When directly imported by host construction, it
+# also exposes shared values and Home Manager option-module paths.
 # =====================================================================
 
 {
+  config ? null,
   inputs ? null,
   lib ? null,
+  nixSharedSettings ? null,
   options ? null,
   pkgs ? null,
+  platforms ? null,
   ...
 }:
 
-let
-  # ------------------------------------------------------------
-  # ------ SHARED HOST KNOBS ------ #
-  #
-  # This value-only profile is consumed here before a host package set
-  # exists. options/nix-options.nix supplies the module option types and
-  # runtime translation for the same knobs.
-  # ------------------------------------------------------------
+if config == null then
+  let
+    # ------------------------------------------------------------
+    # ------ SHARED HOST VALUES ------ #
+    # Host construction reads these before a system or Home Manager
+    # module fixpoint exists. This branch never declares options.
+    # ------------------------------------------------------------
+    sharedSettings = import ../shared/default.nix;
+    nixpkgsSettings = sharedSettings.ven.nix.nixpkgs;
+    nixpkgsConfig = nixpkgsSettings.config;
 
-  nixSharedSettings = import ../shared/default.nix;
+    unstableEnabled =
+      nixpkgsSettings.unstable.enable
+      && (
+        (pkgs.stdenv.hostPlatform.isDarwin && nixpkgsSettings.unstable.installOn.darwin)
+        || (pkgs.stdenv.hostPlatform.isLinux && nixpkgsSettings.unstable.installOn.linux)
+      );
 
-  nixpkgsSettings = nixSharedSettings.ven.nix.nixpkgs;
+    unstablePkgs =
+      if unstableEnabled then
+        import inputs.nixpkgs-unstable {
+          system = pkgs.stdenv.hostPlatform.system;
+          config = nixpkgsConfig;
+        }
+      else
+        throw "ven.nix.nixpkgs.unstable is disabled for this platform.";
 
-  # ------------------------------------------------------------
-  # ------ SHARED NIXPKGS POLICY ------ #
-  #
-  # Applied to every nixpkgs instance on every machine, stable and
-  # unstable alike.
-  # ------------------------------------------------------------
+    paths = import ./paths.nix { };
+  in
+  {
+    inherit nixpkgsConfig unstablePkgs paths;
+    nixSharedSettings = sharedSettings;
 
-  nixpkgsConfig = nixpkgsSettings.config;
+    # Home Manager option-module paths supplied through extraSpecialArgs.
+    serviceOptions = ./services/default.nix;
+    containerBackupOptions = ./backups/container-backup-helper.nix;
+    terminalOptions = ./terminal-aliases.nix;
+    featureOptions = ./terminal-features.nix;
+    obsidianOptions = ./obsidian/default.nix;
 
-  # ------------------------------------------------------------
-  # ------ UNSTABLE PACKAGE SET ------ #
-  #
-  # Built for the current system under the same policy as the stable
-  # set. The host passes it through specialArgs to modules that need it.
-  # ------------------------------------------------------------
+    # The consolidated system option module supplied to host constructors.
+    nixOptions = ./default.nix;
+  }
+else
+  let
+    cfg = config.ven.nix;
+    sharedNix = nixSharedSettings.ven.nix;
 
-  unstableEnabled =
-    nixpkgsSettings.unstable.enable
-    && (
-      (pkgs.stdenv.hostPlatform.isDarwin && nixpkgsSettings.unstable.installOn.darwin)
-      || (pkgs.stdenv.hostPlatform.isLinux && nixpkgsSettings.unstable.installOn.linux)
-    );
+    # ------------------------------------------------------------
+    # ------ DEFAULT MARKER ------ #
+    # A consumer binds `default = config.ven.nix.default;` and can use
+    # `cores = default;` to select the repository default below.
+    # ------------------------------------------------------------
+    marker = "@default@";
 
-  unstablePkgs =
-    if unstableEnabled then
-      import inputs.nixpkgs-unstable {
-        system = pkgs.stdenv.hostPlatform.system;
-        config = nixpkgsConfig;
-      }
-    else
-      throw ''
-        ven.nix.nixpkgs.unstable is disabled for this platform.
+    # ------------------------------------------------------------
+    # ------ REPOSITORY DEFAULTS ------ #
+    # Applies only when a consumer explicitly sets a setting to `default`.
+    # A setting not assigned anywhere remains Nix's own default.
+    # ------------------------------------------------------------
+    defaults = {
+      max-jobs = 4;
+      cores = 2;
+      fallback = true;
+      warn-dirty = false;
+      log-lines = 50;
+      keep-derivations = true;
+      keep-outputs = true;
+      use-xdg-base-directories = true;
 
-        Enable the platform in shared/default.nix before using unstablePkgs.
-      '';
+      # This is a nix-darwin/NixOS option, not a nix.conf setting.
+      "optimise.automatic" = true;
+    };
 
-  paths = import ./paths.nix { };
+    # ------------------------------------------------------------
+    # ------ NIX SETTING VALUE AND MERGE RULES ------ #
+    # Accepts Nix setting values plus the custom default marker. Lists
+    # merge uniquely; conflicting scalar values deliberately fail.
+    # ------------------------------------------------------------
+    settingType = lib.mkOptionType {
+      name = "nixSetting";
+      description = "boolean, number, string, list of strings, or default";
 
-  # ------------------------------------------------------------
-  # ------ HOME MANAGER OPTION MODULES ------ #
-  #
-  # Exposes option-module paths to host construction. The paths are then
-  # passed to the Home Manager graph rather than imported by a feature.
-  # ------------------------------------------------------------
+      check =
+        value:
+        value == marker
+        || lib.isBool value
+        || lib.isInt value
+        || lib.isFloat value
+        || lib.isString value
+        || (lib.isList value && lib.all lib.isString value);
 
-  serviceOptions = ./services/default.nix;
-  containerBackupOptions = ./backups/container-backup-helper.nix;
-  terminalOptions = ./terminal-aliases.nix;
-  featureOptions = ./terminal-features.nix;
-  obsidianOptions = ./obsidian/default.nix;
+      merge =
+        loc: defs:
+        let
+          stated = lib.filter (def: def.value != marker) defs;
+          values = map (def: def.value) stated;
+          unique = lib.unique values;
+        in
+        if stated == [ ] then
+          marker
+        else if lib.all lib.isList values then
+          lib.unique (lib.concatLists values)
+        else if lib.length unique == 1 then
+          lib.head unique
+        else
+          throw ''
+            ${lib.showOption loc} is given more than one value:
+              ${lib.concatMapStringsSep "\n    " (value: lib.generators.toPretty { } value) unique}
 
-  # ------------------------------------------------------------
-  # ------ SYSTEM OPTION MODULES ------ #
-  #
-  # Exposes system-level option-module paths to host construction. Unlike
-  # the Home Manager paths above, the constructors in
-  # flake-modules/hosts.nix apply these to the system module graph of
-  # every machine.
-  # ------------------------------------------------------------
+            Two files disagree about one setting. Leave the shared one as
+            default, or override it with lib.mkForce in the machine.
+          '';
+    };
 
-  nixOptions = ./nix-options.nix;
+    # ------------------------------------------------------------
+    # ------ DEFAULT RESOLUTION ------ #
+    # Converts the custom marker to its declared value immediately before
+    # writing to the real Nix option.
+    # ------------------------------------------------------------
+    resolve =
+      name: value:
+      if value != marker then
+        value
+      else if defaults ? ${name} then
+        defaults.${name}
+      else
+        throw ''
+          ven.nix.settings.${name} is set to default, but options/default.nix
+          declares no default for it. Write a real machine-specific value.
+        '';
 
-in
-{
-  inherit
-    nixpkgsConfig
-    unstablePkgs
-    nixSharedSettings
-    paths
-    serviceOptions
-    containerBackupOptions
-    terminalOptions
-    featureOptions
-    obsidianOptions
-    nixOptions
-    ;
-}
+    unstableEnabledForCurrentPlatform =
+      cfg.nixpkgs.unstable.enable
+      && (
+        (platforms.isDarwin && cfg.nixpkgs.unstable.installOn.darwin)
+        || (platforms.isLinux && cfg.nixpkgs.unstable.installOn.linux)
+      );
+  in
+  {
+    # ------------------------------------------------------------
+    # ------ CUSTOM KNOB INTERFACE ------ #
+    # ------------------------------------------------------------
+    options.ven.nix = {
+      default = lib.mkOption {
+        type = lib.types.str;
+        readOnly = true;
+        default = marker;
+        description = ''
+          Marker for selecting the default declared in options/default.nix.
+          Bind this to `default` before writing ven.nix.settings values.
+        '';
+      };
+
+      settings = lib.mkOption {
+        default = { };
+        type = lib.types.submodule {
+          freeformType = lib.types.attrsOf settingType;
+
+          options.optimise.automatic = lib.mkOption {
+            type = settingType;
+            default = marker;
+            description = "Hard-link duplicate store files automatically.";
+          };
+        };
+        example = lib.literalExpression ''
+          {
+            cores = default;
+            max-jobs = 8;
+            optimise.automatic = default;
+            trusted-users = [ "root" "ven" ];
+            build-users-group = "nixbld";
+          }
+        '';
+        description = ''
+          Nix settings under their real nix.conf names. Values may be real
+          values or the custom `default` marker. List values merge uniquely.
+        '';
+      };
+
+      nixpkgs = {
+        config = lib.mkOption {
+          type = lib.types.attrs;
+          description = "Nixpkgs policy shared by the stable and unstable package sets.";
+        };
+
+        unstable = {
+          enable = lib.mkEnableOption "the unstable Nixpkgs package set";
+
+          installOn = lib.mkOption {
+            type = lib.types.submodule {
+              options = {
+                darwin = lib.mkOption {
+                  type = lib.types.bool;
+                  description = "Make the unstable package set available on Darwin.";
+                };
+                linux = lib.mkOption {
+                  type = lib.types.bool;
+                  description = "Make the unstable package set available on Linux.";
+                };
+              };
+            };
+            description = "Platforms where enabled consumers may use unstablePkgs.";
+          };
+
+          enabledForCurrentPlatform = lib.mkOption {
+            type = lib.types.bool;
+            readOnly = true;
+            description = "Whether unstablePkgs is available on the current platform.";
+          };
+        };
+      };
+    };
+
+    # ------------------------------------------------------------
+    # ------ TRANSLATION TO BUILT-IN NIX OPTIONS ------ #
+    # The values assigned by shared/default.nix and host modules become
+    # nix.settings, nix.optimise.automatic, and nixpkgs.config only here.
+    # ------------------------------------------------------------
+    config = {
+      # Shared/default.nix assigns values to the custom knobs. The module
+      # logic below translates them into the corresponding built-in options.
+      ven.nix.settings = sharedNix.settings;
+      ven.nix.nixpkgs = lib.recursiveUpdate sharedNix.nixpkgs {
+        unstable.enabledForCurrentPlatform = unstableEnabledForCurrentPlatform;
+      };
+
+      nixpkgs.config = cfg.nixpkgs.config;
+
+      nix.optimise.automatic = resolve "optimise.automatic" cfg.settings.optimise.automatic;
+
+      nix.settings = lib.mapAttrs resolve (
+        removeAttrs cfg.settings [
+          "optimise"
+          "_module"
+        ]
+      );
+    };
+  }
