@@ -55,4 +55,5 @@ in
   obsidianOptions = ./obsidian/default.nix;
   darwinPackageOptions = ./package-options;
   nixOptions = ./nix-config.nix;
+  sharedHomeModule = ../shared/home/default.nix;
 }
