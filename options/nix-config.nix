@@ -3,13 +3,13 @@
 # =====================================================================
 # OPTIONS: SHARED NIX KNOBS
 #
-# Declares the custom ven.nix knob interface and translates its values
-# into the corresponding built-in Nix and Nixpkgs options.
+# Declares the shared and Darwin Nix knob interfaces and translates their values into the corresponding built-in Nix and Nixpkgs options.
 # =====================================================================
 { config, lib, platforms, ... }:
 
 let
-  cfg = config.ven.nix;
+  cfg = config.system.shared.nix;
+  darwinCfg = config.system.darwin.nix;
 
   # ------------------------------------------------------------
   # ------ NIX SETTING VALUE AND MERGE RULES ------ #
@@ -46,9 +46,111 @@ let
         '';
   };
 
+  # ------------------------------------------------------------
+  # ------ NIX SETTINGS SHAPE ------ #
+  # ------------------------------------------------------------
+  settingsType = lib.types.submodule {
+    freeformType = lib.types.attrsOf settingType;
+
+    options = {
+      experimental-features = lib.mkOption {
+        type = nullable (lib.types.listOf lib.types.str);
+        default = null;
+        description = "Experimental Nix features, including nix-command and flakes.";
+      };
+
+      build-users-group = lib.mkOption {
+        type = nullable lib.types.str;
+        default = null;
+        description = "Nix build-users group used by nix-darwin or NixOS.";
+      };
+
+      use-xdg-base-directories = lib.mkOption {
+        type = nullable lib.types.bool;
+        default = null;
+        description = "Use XDG base directories for Nix user profiles and channels.";
+      };
+
+      log-lines = lib.mkOption {
+        type = nullable lib.types.int;
+        default = null;
+        description = "Number of lines Nix includes from failed build logs.";
+      };
+
+      max-jobs = lib.mkOption {
+        type = nullable lib.types.int;
+        default = null;
+        description = "Maximum number of concurrent Nix build jobs.";
+      };
+
+      cores = lib.mkOption {
+        type = nullable lib.types.int;
+        default = null;
+        description = "Maximum number of CPU cores available to one Nix build.";
+      };
+
+      fallback = lib.mkOption {
+        type = nullable lib.types.bool;
+        default = null;
+        description = "Build locally when a binary substitute cannot be obtained.";
+      };
+
+      trusted-users = lib.mkOption {
+        type = nullable (lib.types.listOf lib.types.str);
+        default = null;
+        description = "Users permitted to pass trusted settings to the Nix daemon.";
+      };
+
+      keep-derivations = lib.mkOption {
+        type = nullable lib.types.bool;
+        default = null;
+        description = "Keep derivation files after their outputs are built.";
+      };
+
+      keep-outputs = lib.mkOption {
+        type = nullable lib.types.bool;
+        default = null;
+        description = "Keep build outputs reachable from their derivations.";
+      };
+
+      optimise.automatic = lib.mkOption {
+        type = nullable lib.types.bool;
+        default = null;
+        description = "Hard-link duplicate store files automatically.";
+      };
+    };
+  };
+
   # A setting is absent until a shared or machine module assigns it. This
   # preserves Nix's own default instead of inventing one for every host.
   nullable = type: lib.types.nullOr type;
+
+  # ------------------------------------------------------------
+  # ------ SHARED AND MACHINE SETTINGS ------ #
+  # The machine's own value wins; lists from both are kept.
+  # ------------------------------------------------------------
+  plainSettings = settings:
+    lib.filterAttrs (_: value: value != null) (
+      removeAttrs settings [
+        "optimise"
+        "_module"
+      ]
+    );
+
+  mergedSettings = lib.zipAttrsWith (_: values:
+    if lib.length values == 1 then
+      lib.head values
+    else if lib.all lib.isList values then
+      lib.unique (lib.concatLists values)
+    else
+      lib.last values
+  ) [ (plainSettings cfg.settings) (plainSettings darwinCfg.settings) ];
+
+  optimiseAutomatic =
+    if darwinCfg.settings.optimise.automatic != null then
+      darwinCfg.settings.optimise.automatic
+    else
+      cfg.settings.optimise.automatic;
 
   unstableEnabledForCurrentPlatform =
     cfg.nixpkgs.unstable.enable
@@ -60,80 +162,19 @@ in {
   # ------------------------------------------------------------
   # ------ CUSTOM KNOB INTERFACE ------ #
   # ------------------------------------------------------------
-  options.ven.nix = {
+  options.system.darwin.nix.settings = lib.mkOption {
+    default = {};
+    type = settingsType;
+    description = ''
+      This machine's own Nix settings. They override the shared values
+      under system.shared.nix.settings.
+    '';
+  };
+
+  options.system.shared.nix = {
     settings = lib.mkOption {
       default = {};
-      type = lib.types.submodule {
-        freeformType = lib.types.attrsOf settingType;
-
-        options = {
-          experimental-features = lib.mkOption {
-            type = nullable (lib.types.listOf lib.types.str);
-            default = null;
-            description = "Experimental Nix features, including nix-command and flakes.";
-          };
-
-          build-users-group = lib.mkOption {
-            type = nullable lib.types.str;
-            default = null;
-            description = "Nix build-users group used by nix-darwin or NixOS.";
-          };
-
-          use-xdg-base-directories = lib.mkOption {
-            type = nullable lib.types.bool;
-            default = null;
-            description = "Use XDG base directories for Nix user profiles and channels.";
-          };
-
-          log-lines = lib.mkOption {
-            type = nullable lib.types.int;
-            default = null;
-            description = "Number of lines Nix includes from failed build logs.";
-          };
-
-          max-jobs = lib.mkOption {
-            type = nullable lib.types.int;
-            default = null;
-            description = "Maximum number of concurrent Nix build jobs.";
-          };
-
-          cores = lib.mkOption {
-            type = nullable lib.types.int;
-            default = null;
-            description = "Maximum number of CPU cores available to one Nix build.";
-          };
-
-          fallback = lib.mkOption {
-            type = nullable lib.types.bool;
-            default = null;
-            description = "Build locally when a binary substitute cannot be obtained.";
-          };
-
-          trusted-users = lib.mkOption {
-            type = nullable (lib.types.listOf lib.types.str);
-            default = null;
-            description = "Users permitted to pass trusted settings to the Nix daemon.";
-          };
-
-          keep-derivations = lib.mkOption {
-            type = nullable lib.types.bool;
-            default = null;
-            description = "Keep derivation files after their outputs are built.";
-          };
-
-          keep-outputs = lib.mkOption {
-            type = nullable lib.types.bool;
-            default = null;
-            description = "Keep build outputs reachable from their derivations.";
-          };
-
-          optimise.automatic = lib.mkOption {
-            type = nullable lib.types.bool;
-            default = null;
-            description = "Hard-link duplicate store files automatically.";
-          };
-        };
-      };
+      type = settingsType;
       description = ''
         Nix settings under their real nix.conf names. Other valid nix.conf
         settings remain available through the freeform interface.
@@ -182,18 +223,12 @@ in {
   config = {
     # The shared system module assigns the user-facing shared Nix values.
     # This logic module only derives the platform-specific read-only result.
-    ven.nix.nixpkgs.unstable.enabledForCurrentPlatform = unstableEnabledForCurrentPlatform;
+    system.shared.nix.nixpkgs.unstable.enabledForCurrentPlatform = unstableEnabledForCurrentPlatform;
 
     nixpkgs.config = cfg.nixpkgs.config;
 
-    nix.optimise.automatic = lib.mkIf (cfg.settings.optimise.automatic != null)
-      cfg.settings.optimise.automatic;
+    nix.optimise.automatic = lib.mkIf (optimiseAutomatic != null) optimiseAutomatic;
 
-    nix.settings = lib.filterAttrs (_: value: value != null) (
-      removeAttrs cfg.settings [
-        "optimise"
-        "_module"
-      ]
-    );
+    nix.settings = mergedSettings;
   };
 }
