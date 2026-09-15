@@ -3,9 +3,9 @@
 # =====================================================================
 # OPTIONS: DARWIN APPLICATION LINKS
 #
-# Converts flat package flags into guarded macOS application links. The
-# generated manager only creates category directories and only removes
-# links that point to its expected Nix-managed application bundle.
+# Provides only guarded Darwin application-link behavior. Its caller supplies
+# already stripped link entries; this helper neither declares options nor reads
+# configuration.
 # =====================================================================
 
 { lib, paths, pkgs, platforms }:
@@ -16,68 +16,49 @@ let
   # ------------------------------------------------------------
 
   linkCategories = [
-    {
-      flag = "symlinkApplications";
-      targetDirectory = paths.darwin.applications.root;
-    }
-    {
-      flag = "symlinkProgramming";
-      targetDirectory = paths.darwin.applications.programming;
-    }
-    {
-      flag = "symlinkProductivity";
-      targetDirectory = paths.darwin.applications.productivity;
-    }
-    {
-      flag = "symlinkTools";
-      targetDirectory = paths.darwin.applications.tools;
-    }
-    {
-      flag = "symlinkMultimedia";
-      targetDirectory = paths.darwin.applications.multimedia;
-    }
-    {
-      flag = "symlinkSystem";
-      targetDirectory = paths.darwin.applications.system;
-    }
+    { flag = "symlinkApplications"; targetDirectory = paths.darwin.applications.root; }
+    { flag = "symlinkProgramming"; targetDirectory = paths.darwin.applications.programming; }
+    { flag = "symlinkProductivity"; targetDirectory = paths.darwin.applications.productivity; }
+    { flag = "symlinkTools"; targetDirectory = paths.darwin.applications.tools; }
+    { flag = "symlinkMultimedia"; targetDirectory = paths.darwin.applications.multimedia; }
+    { flag = "symlinkSystem"; targetDirectory = paths.darwin.applications.system; }
   ];
 
   # ------------------------------------------------------------
   # ------ APPLICATION LINK MANAGER ------ #
+  # Uses only link-entry fields: enable, appName, and category flags.
   # ------------------------------------------------------------
 
-  mkApplicationLinkManager = { name, packages }:
+  mkApplicationLinkManager = { name, applications }:
     let
-      applicationPackages = lib.filter (package: package ? appName) (lib.attrValues packages);
-
-      validateApplication = package:
+      validateApplication = application:
         let
           enabledCategories = lib.filter
-            (category: package.${category.flag} or false)
+            (category: application.${category.flag} or false)
             linkCategories;
         in
         if builtins.length enabledCategories > 1 then
-          throw "${name}: ${package.appName} enables more than one Darwin application-link category"
+          throw "${name}: ${application.appName} enables more than one Darwin application-link category"
         else
-          package;
+          application;
 
-      validatedApplications = map validateApplication applicationPackages;
+      validatedApplications = map validateApplication (lib.attrValues applications);
 
-      renderApplicationLinks = package:
+      renderApplicationLinks = application:
         let
-          sourcePath = "${paths.darwin.applications.nixApps}/${package.appName}";
-          shouldInstall = (package.enable or false) && ((package.installOn.darwin or false));
+          sourcePath = "${paths.darwin.applications.nixApps}/${application.appName}";
+          shouldInstall = application.enable or false;
         in
         lib.concatMapStringsSep "\n"
           (category:
             let
-              shouldLink = shouldInstall && (package.${category.flag} or false);
+              shouldLink = shouldInstall && (application.${category.flag} or false);
             in
             ''
               manage_application_link \
-                ${lib.escapeShellArg package.appName} \
+                ${lib.escapeShellArg application.appName} \
                 ${lib.escapeShellArg sourcePath} \
-                ${lib.escapeShellArg "${category.targetDirectory}/${package.appName}"} \
+                ${lib.escapeShellArg "${category.targetDirectory}/${application.appName}"} \
                 ${lib.escapeShellArg (if shouldLink then "true" else "false")}
             '')
           linkCategories;
@@ -101,8 +82,7 @@ let
 
         # Only Nix-managed bundles may be used as link sources.
         case "$source_path" in
-          "${paths.darwin.applications.nixApps}/"*.app)
-            ;;
+          "${paths.darwin.applications.nixApps}/"*.app) ;;
           *)
             echo "[$app_name] ERROR: Unsupported application source: $source_path" >&2
             return 1
@@ -111,8 +91,7 @@ let
 
         # Links may only be created inside the managed Applications tree.
         case "$target_path" in
-          "${paths.darwin.applications.root}/"*.app)
-            ;;
+          "${paths.darwin.applications.root}/"*.app) ;;
           *)
             echo "[$app_name] ERROR: Unsupported application target: $target_path" >&2
             return 1
@@ -168,21 +147,14 @@ let
 
   # ------------------------------------------------------------
   # ------ DARWIN LINK ACTIVATION ------ #
-  # The link manager owns both safe link reconciliation and the system
-  # activation hook that runs it after Nix application bundles exist.
+  # The link helper owns the safe reconciliation hook after Nix application
+  # bundles are available under /Applications/Nix Apps.
   # ------------------------------------------------------------
 
-  mkApplicationLinkModule = { name, packages }:
-    let
-      hasApplications = lib.any (package: package ? appName) (lib.attrValues packages);
-      applicationLinkManager = mkApplicationLinkManager {
-        inherit name packages;
-      };
-    in
-    lib.mkIf (platforms.isDarwin && hasApplications) {
-      # Link bundles before Dock defaults resolve persistent apps.
+  mkApplicationLinkModule = { name, applications }:
+    lib.mkIf (platforms.isDarwin && applications != { }) {
       system.activationScripts.applications.text = lib.mkAfter ''
-        ${applicationLinkManager}/bin/manage-${name}-application-links
+        ${mkApplicationLinkManager { inherit name applications; }}/bin/manage-${name}-application-links
       '';
     };
 in
