@@ -44,6 +44,9 @@ let
   };
   inherit (macbookHostContext) paths platforms;
 
+  # Darwin-only application options (iTerm2, Finder tools, Hammerspoon, ...).
+  inherit (import ../options { }) darwinPackageOptions;
+
   # ---- DARWIN APPLICATION LINK HELPER ---- #
   # Link behavior is constructed only for the Darwin host, then supplied to
   # package modules through specialArgs rather than imported by those modules.
@@ -109,7 +112,7 @@ in
         # Darwin-only option declarations are root modules. They receive the
         # MacBook context through specialArgs instead of being imported by a
         # knobs module that also reads config.
-        macbookHostContext.darwinPackageOptions
+        darwinPackageOptions
         containersBackupHelper.settingsModule
         appBackupHelper.settingsModule
 
