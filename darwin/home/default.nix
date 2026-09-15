@@ -350,7 +350,7 @@
         neovide.enable = true;
       };
 
-      ven.features.terminal.wezterm = {
+      shared.terminal.wezterm = {
         enable = true;
       };
 
@@ -368,6 +368,7 @@
       imports = [
         # Darwin-only Home Manager
         ../terminal
+        ./vscode-portable-environment.nix
 
         # The independent Obsidian command is declared and configured only
         # for the MacBook; portable terminal hosts do not import it.
