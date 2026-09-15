@@ -13,6 +13,7 @@
   # ---- SHARED NIXPKGS POLICY ---- #
   # Package outputs need this before any Nix module graph exists.
   sharedNixpkgsConfig = config.flake.lib.sharedNixpkgsConfig;
+  paths = import ../options/paths.nix { };
 in {
   perSystem = {system, ...}: let
     pkgs = import inputs.nixpkgs {
@@ -20,6 +21,13 @@ in {
 
       config = sharedNixpkgsConfig;
     };
+    platforms = import ../options/platforms.nix { inherit pkgs; };
+    packageOptions = import ../options/package-options {
+      lib = inputs.nixpkgs.lib;
+      installTarget = "system";
+      inherit paths pkgs platforms;
+    };
+    darwinPackages = packageOptions.darwinPackages;
   in {
     # Uses the same policy as every host when evaluating packages
     # directly through this flake.
@@ -31,25 +39,20 @@ in {
     # flake.nix for the NixOS host outputs, and would fail to evaluate
     # these.
     packages = inputs.nixpkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-      assetsnap = pkgs.callPackage ../darwin/packages/assetsnap.nix {};
+      assetsnap = darwinPackages.assetsnap;
 
-      better-finder-attributes = pkgs.callPackage ../darwin/packages/better-finder-attributes.nix {};
+      better-finder-attributes = darwinPackages.betterFinderAttributes;
 
-      better-finder-rename = pkgs.callPackage ../darwin/packages/better-finder-rename.nix {};
+      better-finder-rename = darwinPackages.betterFinderRename;
 
-      hammerspoon = pkgs.callPackage ../darwin/packages/hammerspoon.nix {};
+      hammerspoon = darwinPackages.hammerspoon;
 
-      update-hammerspoon = pkgs.callPackage ../darwin/packages/hammerspoon-update.nix {};
+      update-hammerspoon = darwinPackages.updateHammerspoon;
 
-      iterm2 = pkgs.callPackage ../darwin/packages/iterm2 {};
+      iterm-ai-plugin = darwinPackages.itermAiPlugin;
 
-      iterm-ai-plugin = pkgs.callPackage ../darwin/packages/iterm2/iterm-ai-plugin.nix {};
+      iterm-browser-plugin = darwinPackages.itermBrowserPlugin;
 
-      iterm-browser-plugin = pkgs.callPackage ../darwin/packages/iterm2/iterm-browser-plugin.nix {};
-
-      the-unarchiver = pkgs.callPackage ../darwin/packages/unarchiver {};
-
-      update-unarchiver = pkgs.callPackage ../darwin/packages/unarchiver/unarchiver-update.nix {};
     };
   };
 }

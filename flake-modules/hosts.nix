@@ -12,7 +12,7 @@
   # provides the pre-evaluation values and the module paths; it does not
   # import those modules into every host by itself.
   sharedOptionValues = import ../options { };
-  inherit (sharedOptionValues) nixOptions nixSharedSettings;
+  inherit (sharedOptionValues) darwinPackageOptions nixOptions nixSharedSettings;
   sharedNixpkgsConfig = sharedOptionValues.nixpkgsConfig;
 
   # ---- PER-HOST SHARED CONTEXT ---- #
@@ -37,15 +37,18 @@
       ;
 
     platforms = import ../options/platforms.nix {inherit pkgs;};
-    packageOptions = import ../options/package-options.nix {
+    packageOptions = import ../options/package-options {
       lib = inputs.nixpkgs.lib;
       inherit paths platforms pkgs installTarget;
     };
+    darwinPackages = packageOptions.darwinPackages;
 
   in {
     inherit
       cliOptions
       containerBackupOptions
+      darwinPackageOptions
+      darwinPackages
       envSettingsOptions
       espansoOptions
       featureOptions
@@ -162,7 +165,7 @@ in {
               # already receives the configured global package set.
               {
                 home-manager.extraSpecialArgs =
-                  (builtins.removeAttrs hostContext [ "pkgs" ])
+                  (builtins.removeAttrs hostContext [ "darwinPackages" "pkgs" ])
                   // { inherit inputs; };
               }
             ]

@@ -63,8 +63,9 @@ if !(args ? config) then
     featureOptions = ./terminal-features.nix;
     cliOptions = ./cli/default.nix;
     envSettingsOptions = ./env-settings;
-    espansoOptions = ./pkgs-configs/espanso;
+    espansoOptions = ./package-options/espanso;
     obsidianOptions = ./obsidian/default.nix;
+    darwinPackageOptions = ./package-options;
     nixOptions = ./default.nix;
   }
 else let

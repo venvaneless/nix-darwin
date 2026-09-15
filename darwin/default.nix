@@ -15,6 +15,7 @@
 # ================================================
 {
   config,
+  darwinPackageOptions,
   lib,
   home-manager,
   paths,
@@ -193,9 +194,9 @@
     ./system
     ./system-commands
 
-    # macOS-only packages
-    ./packages/agents-pkgs.nix
-    ./packages/tools-pkgs.nix
+    # macOS-only packages and their Darwin-only knobs
+    darwinPackageOptions
+    ./packages
 
     # Shared packages
     # The shared Nix knobs and their option module are imported by the

@@ -6,7 +6,7 @@
 # Selects Espanso's configuration values for every Home Manager host
 # (integrated on Darwin, standalone on Linux).
 #
-# options/pkgs-configs/espanso owns the option shape, generated files,
+# options/package-options/espanso owns the option shape, generated files,
 # and login startup. Package installation and app linking remain in
 # shared/packages.nix.
 # =====================================================================

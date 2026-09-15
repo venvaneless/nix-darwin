@@ -20,6 +20,7 @@
   lib,
   packageOptions,
   pkgs,
+  unstablePkgs,
   ...
 }:
 
@@ -869,52 +870,6 @@ let
   };
 
   # ------------------------------------------------------------
-  # ------ DARWIN-ONLY DEVELOPMENT APPLICATIONS ------ #
-  # Self-packaged applications stay beside the rest of development.
-  # ------------------------------------------------------------
-
-  darwinDevelopmentApplications = {
-    # ---- iTerm2
-    # Terminal emulator built from the repository's own package.
-    iterm2 = {
-      enable = true;
-      installOn = {
-        darwin = true;
-        linux = false;
-      };
-      package = pkgs.callPackage ../darwin/packages/iterm2 { };
-      appName = "iTerm.app";
-      symlinkProgramming = true;
-    };
-
-    # ---- iTerm2 AI plugin
-    # Adds the AI features iTerm2 no longer bundles.
-    itermAiPlugin = {
-      enable = true;
-      installOn = {
-        darwin = true;
-        linux = false;
-      };
-      package = pkgs.callPackage ../darwin/packages/iterm2/iterm-ai-plugin.nix { };
-      appName = "iTermAI.app";
-      symlinkProgramming = true;
-    };
-
-    # ---- iTerm2 browser plugin
-    # Adds the embedded browser component.
-    itermBrowserPlugin = {
-      enable = true;
-      installOn = {
-        darwin = true;
-        linux = false;
-      };
-      package = pkgs.callPackage ../darwin/packages/iterm2/iterm-browser-plugin.nix { };
-      appName = "iTermBrowserPlugin.app";
-      symlinkProgramming = true;
-    };
-  };
-
-  # ------------------------------------------------------------
   # ------ SHARED DEVELOPMENT APPLICATIONS ------ #
   # ------------------------------------------------------------
 
@@ -1028,26 +983,6 @@ let
   # ------------------------------------------------------------
 
   productivityPackages = {
-    # ---- Notesnook
-    # End-to-end encrypted note-taking application.
-    notesnook = {
-      enable = true;
-      installOn = {
-        darwin = true;
-        linux = true;
-      };
-      packageByPlatform = {
-        # nixos-26.05 expects Notesnook.app at the archive root, but the
-        # current macOS DMG places it below Install Notesnook instead.
-        darwin = pkgs.notesnook.overrideAttrs (_: {
-          sourceRoot = "Install Notesnook/Notesnook.app";
-        });
-        linux = pkgs.notesnook;
-      };
-      appName = "Notesnook.app";
-      symlinkProductivity = true;
-    };
-
     # ---- Obsidian
     # Knowledge base and note-taking application with Markdown support.
     obsidian = {
@@ -1151,7 +1086,7 @@ in
 
   (packageOptions.mkPackageModule {
     name = "shared-development";
-    packages = developmentPackages // darwinDevelopmentApplications // developmentApplications;
+    packages = developmentPackages // developmentApplications;
   })
 
   (packageOptions.mkPackageModule {
