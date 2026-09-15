@@ -1,101 +1,57 @@
 # shared/terminal/wezterm/themes/wez-nord.nix
 #
-# Embedded Lua source generated into .config/wezterm/themes/nord.lua.
+# =====================================================================
+# WEZTERM THEME: NORD
+# =====================================================================
 
-{ config, lib, pkgs, ... }:
-
-let
-  cfg = config.ven.features.terminal.wezterm;
-
-  luaConfig = pkgs.writeText "nord.lua" /* lua */ ''
-    -- shared/terminal/wezterm/themes/nord.lua
-
-    -- /home/ven/.config/terminal/wezterm/themes/nord.lua
-
-    local M = {}
-
-    function M.apply(config)
-        config.color_scheme = nil
-
-        config.colors = config.colors or {}
-
-        -- main terminal palette
-        config.colors.foreground = "#E5E9F0"
-        config.colors.background = "#293340"
-
-        config.colors.cursor_bg = "#88C0D0"
-        config.colors.cursor_border = "#88C0D0"
-        config.colors.cursor_fg = "#2E3440"
-
-        config.colors.selection_bg = "#4C566A"
-        config.colors.selection_fg = "#E5E9F0"
-
-        config.colors.scrollbar_thumb = "#4C566A"
-        config.colors.split = "#434C5E"
-
-        config.colors.ansi = {
-            "#3B4252", -- black
-            "#BF616A", -- red
-            "#A3BE8C", -- green
-            "#EBCB8B", -- yellow
-            "#81A1C1", -- blue
-            "#B48EAD", -- magenta
-            "#88C0D0", -- cyan
-            "#E5E9F0", -- white
-        }
-
-        config.colors.brights = {
-            "#4C566A", -- bright black
-            "#D08770", -- bright red/orange
-            "#A3BE8C", -- bright green
-            "#EBCB8B", -- bright yellow
-            "#81A1C1", -- bright blue
-            "#B48EAD", -- bright magenta
-            "#8FBCBB", -- bright cyan
-            "#ECEFF4", -- bright white
-        }
-
-        config.window_frame = config.window_frame or {}
-        config.window_frame.active_titlebar_bg = "#434C5E"
-        config.window_frame.inactive_titlebar_bg = "#3B4252"
-        config.window_frame.active_titlebar_fg = "#E5E9F0"
-        config.window_frame.inactive_titlebar_fg = "#D8DEE9"
-
-        config.colors.tab_bar = {
-            background = "#3B4252",
-
-            active_tab = {
-                bg_color = "#4C566A",
-                fg_color = "#E5E9F0",
-            },
-
-            inactive_tab = {
-                bg_color = "#434C5E",
-                fg_color = "#81A1C1",
-            },
-
-            inactive_tab_hover = {
-                bg_color = "#81A1C1",
-                fg_color = "#2E3440",
-            },
-
-            new_tab = {
-                bg_color = "#3B4252",
-                fg_color = "#88C0D0",
-            },
-
-            new_tab_hover = {
-                bg_color = "#88C0D0",
-                fg_color = "#2E3440",
-            },
-        }
-    end
-
-    return M
-  '';
-in
+{ ... }:
 {
-  config = lib.mkIf (cfg.enable && cfg.themes.default == "nord") {
-    home.file.".config/wezterm/themes/nord.lua".source = luaConfig;
+  config.shared.terminal.wezterm.themes.nord = {
+    colorScheme = null;
+
+    windowFrame = {
+      active_titlebar_bg = "#434C5E";
+      inactive_titlebar_bg = "#3B4252";
+      active_titlebar_fg = "#E5E9F0";
+      inactive_titlebar_fg = "#D8DEE9";
+    };
+
+    colors = {
+      foreground = "#E5E9F0";
+      background = "#293340";
+      cursor_bg = "#88C0D0";
+      cursor_border = "#88C0D0";
+      cursor_fg = "#2E3440";
+      selection_bg = "#4C566A";
+      selection_fg = "#E5E9F0";
+      scrollbar_thumb = "#4C566A";
+      split = "#434C5E";
+      ansi = [ "#3B4252" "#BF616A" "#A3BE8C" "#EBCB8B" "#81A1C1" "#B48EAD" "#88C0D0" "#E5E9F0" ];
+      brights = [ "#4C566A" "#D08770" "#A3BE8C" "#EBCB8B" "#81A1C1" "#B48EAD" "#8FBCBB" "#ECEFF4" ];
+
+      tab_bar = {
+        background = "#3B4252";
+        active_tab = {
+          bg_color = "#4C566A";
+          fg_color = "#E5E9F0";
+        };
+        inactive_tab = {
+          bg_color = "#434C5E";
+          fg_color = "#81A1C1";
+        };
+        inactive_tab_hover = {
+          bg_color = "#81A1C1";
+          fg_color = "#2E3440";
+        };
+        new_tab = {
+          bg_color = "#3B4252";
+          fg_color = "#88C0D0";
+        };
+        new_tab_hover = {
+          bg_color = "#88C0D0";
+          fg_color = "#2E3440";
+        };
+      };
+    };
   };
 }
