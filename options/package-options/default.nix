@@ -12,6 +12,7 @@
 {
   config ? null,
   lib,
+  packageOptionsMode,
   paths,
   platforms,
   pkgs,
@@ -87,10 +88,10 @@ let
       (_: package: builtins.removeAttrs package [ "package" "extraPackages" "installOn" ])
       (lib.filterAttrs (_: package: package ? appName) packages);
 
-  # Host construction always supplies installTarget when it reads the plain
-  # helper branch. The nix-darwin module import leaves it null, so this mode
-  # decision never forces the module-system config during import resolution.
-  packageInstallTarget = if installTarget == null then "system" else installTarget;
+  # The caller explicitly selects module or helper use before Nix resolves
+  # module arguments. This avoids looking up config or installTarget through
+  # _module.args while the module graph is still being constructed.
+  packageInstallTarget = if packageOptionsMode then "system" else installTarget;
 
   # ------------------------------------------------------------
   # ------ PACKAGE MODULE FACTORY ------ #
@@ -129,7 +130,7 @@ let
         { })
     ];
 in
-if installTarget != null then {
+if !packageOptionsMode then {
   # ------------------------------------------------------------
   # ------ PACKAGE MODULE FACTORY ------ #
   # ------------------------------------------------------------

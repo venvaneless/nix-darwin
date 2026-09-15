@@ -24,6 +24,7 @@ in {
     platforms = import ../options/platforms.nix { inherit pkgs; };
     packageOptions = import ../options/package-options {
       lib = inputs.nixpkgs.lib;
+      packageOptionsMode = false;
       installTarget = "system";
       inherit paths pkgs platforms;
     };
