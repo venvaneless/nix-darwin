@@ -7,6 +7,13 @@
 { ... }:
 {
   config.shared.terminal.wezterm.themes.otto = {
+    name = "otto";
+    title = "Otto";
+    description = "Otto terminal, window frame, and tab bar colors.";
+
+    # Lua file this theme is written to and loaded from.
+    relativePath = ".config/wezterm/themes/otto.lua";
+
     colorScheme = null;
 
     windowFrame = {

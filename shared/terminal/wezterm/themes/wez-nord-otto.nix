@@ -7,6 +7,13 @@
 { ... }:
 {
   config.shared.terminal.wezterm.themes.nord-otto = {
+    name = "nord-otto";
+    title = "Nord Otto";
+    description = "Nord-based Otto palette with its terminal and tab bar colors.";
+
+    # Lua file this theme is written to and loaded from.
+    relativePath = ".config/wezterm/themes/nord-otto.lua";
+
     colorScheme = null;
 
     windowFrame = {

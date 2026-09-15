@@ -7,6 +7,13 @@
 { ... }:
 {
   config.shared.terminal.wezterm.themes.gruvbox = {
+    name = "gruvbox";
+    title = "Gruvbox";
+    description = "Warm Gruvbox Dark (Gogh) colors and tab bar settings.";
+
+    # Lua file this theme is written to and loaded from.
+    relativePath = ".config/wezterm/themes/gruvbox.lua";
+
     colorScheme = "Gruvbox Dark (Gogh)";
     titleButtonColor = "#d79921";
 
