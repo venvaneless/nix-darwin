@@ -1490,20 +1490,20 @@ let
   # from paths.nix, while platform-specific Nix targets resolve here.
   # ------------------------------------------------------------
 
-  nixCfg = config.ven.features.terminal.fish.nixProfile;
+  nixCfg = config.home.shared.terminal.fish.nixProfile;
 in
 {
   options = {
-    ven.features.terminal.aliases = {
+    home.shared.terminal.aliases = {
       shell = entryCollection;
       functions = entryCollection;
       abbreviations = entryCollection;
     };
 
-    ven.features.terminal.commands = entryCollection;
+    home.shared.terminal.commands = entryCollection;
 
 
-    ven.features.terminal.fish.nixProfile = {
+    home.shared.terminal.fish.nixProfile = {
       flakeHost = lib.mkOption {
         type = lib.types.str;
         description = "Flake configuration name for this machine, such as macbook.";
@@ -1564,11 +1564,11 @@ in
 
   config = {
     programs.fish = {
-      shellAliases = enabledCommands config.ven.features.terminal.aliases.shell;
+      shellAliases = enabledCommands config.home.shared.terminal.aliases.shell;
       functions =
-        enabledFunctions config.ven.features.terminal.aliases.functions
-        // enabledFunctions config.ven.features.terminal.commands;
-      shellAbbrs = enabledCommands config.ven.features.terminal.aliases.abbreviations;
+        enabledFunctions config.home.shared.terminal.aliases.functions
+        // enabledFunctions config.home.shared.terminal.commands;
+      shellAbbrs = enabledCommands config.home.shared.terminal.aliases.abbreviations;
     };
 
     _module.args = {
