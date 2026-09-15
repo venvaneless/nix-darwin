@@ -33,9 +33,6 @@
     ./ripgrep.nix
     ./starship.nix
 
-    # Television channels and the theme selected in television/default.nix
-    ./television
-
     ./tmux.nix
     # Yazi settings and plugins
     ./yazi
@@ -172,6 +169,96 @@
 
         # Bind Ctrl-R to Atuin search.
         searchBinding = "\\cr";
+      };
+    };
+
+    # ------------------------------------------------------------
+    # ------ TELEVISION SETTINGS ------ #
+    # Television logic, rendering, and channel implementation live in
+    # options/cli/television. Channel actions use commands from PATH.
+
+    cli.television = {
+      enable = true;
+
+      installOn = {
+        darwin = true;
+        linux = true;
+      };
+
+      theme = "gruvbox";
+
+      ui = {
+        previewPanel.size = 55;
+        previewPanel.scrollbar = true;
+        helpPanel.hidden = true;
+        remoteControl.showChannelDescriptions = true;
+        remoteControl.sortAlphabetically = true;
+      };
+
+      search.excludedDirectories = [ ".git" "result" "result-*" ".cache" ];
+
+      actions = {
+        default = "nvim";
+        nvim.enable = true;
+        zed.enable = true;
+        copyAbsolutePath = true;
+        copyRelativePath = true;
+      };
+
+      channels = {
+        # Browse Nix files under the main configuration root.
+        nix = {
+          enable = true;
+          fileGlobs = [ "*.nix" ];
+        };
+
+        # Search text inside Nix files.
+        nixFiles = {
+          enable = true;
+          fileGlobs = [ "*.nix" ];
+        };
+
+        # Search common Nix declarations with ripgrep expressions.
+        nixSymbols = {
+          enable = true;
+          patterns = [
+            "environment\\.systemPackages"
+            "home\\.packages"
+            "imports[[:space:]]*="
+            "programs\\."
+            "services\\."
+            "options\\."
+            "config\\."
+          ];
+        };
+
+        # Search Nix import declarations and relative module paths.
+        nixImports = {
+          enable = true;
+          patterns = [
+            "imports[[:space:]]*="
+            "^[[:space:]]*\\.?\\.?/.*\\.nix"
+            "(^|[[:space:](])(builtins\\.)?import[[:space:]]+\\(?\\.?\\.?/.*\\.nix"
+          ];
+        };
+
+        # List recently modified Nix files, newest first.
+        nixRecent = {
+          enable = true;
+          maxResults = 100;
+        };
+
+        # Browse tracked and untracked Git changes in the Nix repository.
+        nixGit = {
+          enable = true;
+          includeUntracked = true;
+        };
+
+        # Browse Nix files only inside the darwin/ directory.
+        nixDarwin = {
+          enable = true;
+          fileGlobs = [ "*.nix" ];
+        };
       };
     };
   };

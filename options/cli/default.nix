@@ -20,5 +20,8 @@
 
     # Micro's option interface and Home Manager implementation.
     ./micro
+
+    # Television's option interface, channels, and Home Manager implementation.
+    ./television
   ];
 }
