@@ -156,8 +156,6 @@ let
         cli = [ "${darwinHome}/.vscode/cli" ];
         agentPlugins = [ "${darwinHome}/.vscode/agent-plugins" ];
       };
-
-      migrationBackups = "${darwinHome}/.config/.state/vscode-state-migrations";
     };
 
     # ---- State, data, and cache
