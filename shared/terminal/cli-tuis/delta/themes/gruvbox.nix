@@ -38,11 +38,11 @@
 { config, lib, ... }:
 
 let
-  deltaCfg = config.ven.features.terminal.cliTuis.delta;
+  deltaCfg = config.home.shared.terminal.cliTuis.delta;
   cfg = deltaCfg.themes.gruvbox;
 in
 {
-  options.ven.features.terminal.cliTuis.delta.themes.gruvbox.enable = lib.mkOption {
+  options.home.shared.terminal.cliTuis.delta.themes.gruvbox.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Gruvbox Dark theme selected in delta.nix.";

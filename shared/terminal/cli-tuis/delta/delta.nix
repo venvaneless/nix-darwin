@@ -13,11 +13,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.delta;
+  cfg = config.home.shared.terminal.cliTuis.delta;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Delta's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.delta.enable directly.
+  # still override home.shared.terminal.cliTuis.delta.enable directly.
   delta = {
     enable = true;
     installOn = {
@@ -62,12 +62,12 @@ let
       '';
 in
 {
-  options.ven.features.terminal.cliTuis.delta.enable =
+  options.home.shared.terminal.cliTuis.delta.enable =
     lib.mkEnableOption "Delta syntax-highlighting pager";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.delta.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.delta.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
       programs.delta = {
@@ -99,7 +99,7 @@ in
     })
     (lib.mkIf (cfg.enable && selectedThemeConfig.option != null) {
       # Only the selected theme module is imported and enabled.
-      ven.features.terminal.cliTuis.delta.themes.${selectedThemeConfig.option}.enable = true;
+      home.shared.terminal.cliTuis.delta.themes.${selectedThemeConfig.option}.enable = true;
     })
   ];
 
