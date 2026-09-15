@@ -14,6 +14,7 @@
     inputs.self.homeModules."shared.environment"
     inputs.self.homeModules."shared.services"
     inputs.self.homeModules."shared.terminal"
+    inputs.self.homeModules."shared.terminal.wezterm"
   ];
 
   # ------------------------------------------------------------
@@ -22,6 +23,10 @@
 
   ven.espanso = {
     enable = true;
+    installOn = {
+      darwin = true;
+      linux = true;
+    };
     autostart.enable = true;
     showNotifications = true;
 
