@@ -61,7 +61,7 @@ let
 in
 {
   options.ven.packages.qbittorrent.daemon = {
-    enable = lib.mkEnableOption "headless qBittorrent system service";
+    enable = lib.mkEnableOption "headless qBittorrent system service (NixOS only)";
 
     package = lib.mkOption {
       type = lib.types.package;
@@ -121,46 +121,61 @@ in
     };
   };
 
-  config = lib.mkIf (cfg.enable && platforms.isLinux) (
-    lib.mkMerge [
-      {
-        services.qbittorrent = {
-          enable = true;
-          package = cfg.package;
-          profileDir = cfg.profileDir;
-          webuiPort = cfg.webui.port;
-          torrentingPort = cfg.torrentingPort;
-          extraArgs = lib.optionals cfg.acceptLegalNotice [ "--confirm-legal-notice" ];
-          openFirewall = false;
-        };
+  config = lib.mkMerge [
+    # The daemon knob exists on every host, but the service is NixOS-only.
+    {
+      assertions = [
+        {
+          assertion = !cfg.enable || platforms.isLinux;
+          message = "ven.packages.qbittorrent.daemon is a NixOS system service and cannot be enabled on this platform.";
+        }
+      ];
+    }
 
-        systemd.services.qbittorrent = {
-          restartTriggers = [ daemonConfigText ];
-          serviceConfig.ExecStartPre = "${pkgs.coreutils}/bin/install -Dm600 ${daemonConfigSource} ${cfg.configFile}";
-        };
+    # services.qbittorrent, systemd, and networking.firewall only exist on NixOS.
+    (platforms.onlyOnLinux (
+      lib.mkIf cfg.enable (
+        lib.mkMerge [
+          {
+            services.qbittorrent = {
+              enable = true;
+              package = cfg.package;
+              profileDir = cfg.profileDir;
+              webuiPort = cfg.webui.port;
+              torrentingPort = cfg.torrentingPort;
+              extraArgs = lib.optionals cfg.acceptLegalNotice [ "--confirm-legal-notice" ];
+              openFirewall = false;
+            };
 
-        systemd.tmpfiles.settings.qbittorrent-downloads.${cfg.downloads}."d" = {
-          mode = "755";
-          user = config.services.qbittorrent.user;
-          group = config.services.qbittorrent.group;
-        };
-      }
+            systemd.services.qbittorrent = {
+              restartTriggers = [ daemonConfigText ];
+              serviceConfig.ExecStartPre = "${pkgs.coreutils}/bin/install -Dm600 ${daemonConfigSource} ${cfg.configFile}";
+            };
 
-      (lib.mkIf (cfg.webui.passwordSecret != null) {
-        sops.templates.${daemonTemplateName} = {
-          content = daemonConfigText;
-          owner = config.services.qbittorrent.user;
-          group = config.services.qbittorrent.group;
-          mode = "0400";
-        };
-      })
+            systemd.tmpfiles.settings.qbittorrent-downloads.${cfg.downloads}."d" = {
+              mode = "755";
+              user = config.services.qbittorrent.user;
+              group = config.services.qbittorrent.group;
+            };
+          }
 
-      (lib.mkIf cfg.firewall.openTorrentingPort {
-        networking.firewall = {
-          allowedTCPPorts = [ cfg.torrentingPort ];
-          allowedUDPPorts = [ cfg.torrentingPort ];
-        };
-      })
-    ]
-  );
+          (lib.mkIf (cfg.webui.passwordSecret != null) {
+            sops.templates.${daemonTemplateName} = {
+              content = daemonConfigText;
+              owner = config.services.qbittorrent.user;
+              group = config.services.qbittorrent.group;
+              mode = "0400";
+            };
+          })
+
+          (lib.mkIf cfg.firewall.openTorrentingPort {
+            networking.firewall = {
+              allowedTCPPorts = [ cfg.torrentingPort ];
+              allowedUDPPorts = [ cfg.torrentingPort ];
+            };
+          })
+        ]
+      )
+    ))
+  ];
 }
