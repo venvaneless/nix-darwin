@@ -1,15 +1,14 @@
 # darwin/system-commands/backups/paste.nix
 # Paste backup command: `paste-backup`.
 
-{ appBackupHelper, config, paths, ... }:
+{
+  appBackupHelper,
+  config,
+  paths,
+  ...
+}:
 
 let
-  # ---- EDITABLE BACKUP ROOTS
-  backupPaths = config.services.appBackups.paths;
-  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
-  preferencesDirectory = backupPaths.preferencesDirectory;
-  configDirectory = backupPaths.configDirectory;
-
   # ---- EDITABLE BACKUP CONTENTS
   applicationSupportEntries = [
     {
@@ -60,12 +59,31 @@ let
     inherit config;
     appName = "Paste";
     appSlug = "paste";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-    inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
-    applicationSupportRoot = applicationSupportDirectory;
-    preferencesRoot = preferencesDirectory;
-    configRoot = configDirectory;
+    inherit
+      automatic
+      automaticIntervalSeconds
+      minimumIntervalSeconds
+      cpuLimitPercent
+      showProgress
+      ;
+    inherit
+      archive
+      stageInDownloads
+      archiveFilenameTemplate
+      archiveTimestampFormat
+      archivePrefix
+      preserveSymlinks
+      ;
+    inherit
+      applicationSupportEntries
+      preferenceEntries
+      configEntries
+      additionalSources
+      extraExcludePatterns
+      ;
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
+    preferencesRoot = paths.darwin.library.preferences;
+    configRoot = paths.darwin.home.config;
   };
 in
 pasteBackup

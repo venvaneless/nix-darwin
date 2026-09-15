@@ -6,7 +6,7 @@
 # options/backups/container-backup-helper.nix, which owns what each one
 # means and how the backup is carried out.
 
-{ config, ... }:
+{ paths, ... }:
 
 {
   services.backups.containers.archivebox = {
@@ -18,14 +18,12 @@
     appName = "ArchiveBox";
 
     # ---- SOURCE
-    # ** The source is the directory the ArchiveBox service itself
-    # ** declares, so the backup follows the service if that data
-    # ** directory moves.
+    # ** The source is defined centrally in options/paths.nix.
     #
     # ** Destination and staging directories are registered under
     # ** darwin.backups.perContainer in options/paths.nix and resolved
     # ** from the slug. Change them there, not here.
-    sourceDir = config.services.archivebox.dataDir;
+    sourceDir = paths.darwin.docker.data.archivebox;
 
     # ---- LIVE DATABASE
     # ** ArchiveBox writes to this database while it runs, so it is
@@ -38,7 +36,7 @@
     # here: it would bypass the live-database handling above.)
     additionalSources = [
       # {
-      #   sourcePath = "${config.services.backups.paths.homeDirectory}/Library/Somewhere/ArchiveBox";
+      #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/ArchiveBox";
       #   destinationPath = "additional/Somewhere/ArchiveBox";
       # }
     ];

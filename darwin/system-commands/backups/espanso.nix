@@ -1,15 +1,14 @@
 # darwin/system-commands/backups/espanso.nix
 # Espanso backup command: `espanso-backup`.
 
-{ appBackupHelper, config, paths, ... }:
+{
+  appBackupHelper,
+  config,
+  paths,
+  ...
+}:
 
 let
-  # ---- EDITABLE BACKUP ROOTS
-  backupPaths = config.services.appBackups.paths;
-  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
-  preferencesDirectory = backupPaths.preferencesDirectory;
-  configDirectory = backupPaths.configDirectory;
-
   # ---- EDITABLE BACKUP CONTENTS
   configEntries = [
     {
@@ -51,12 +50,30 @@ let
     inherit config;
     appName = "Espanso";
     appSlug = "espanso";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-    inherit configEntries preferenceEntries additionalSources extraExcludePatterns;
-    applicationSupportRoot = applicationSupportDirectory;
-    preferencesRoot = preferencesDirectory;
-    configRoot = configDirectory;
+    inherit
+      automatic
+      automaticIntervalSeconds
+      minimumIntervalSeconds
+      cpuLimitPercent
+      showProgress
+      ;
+    inherit
+      archive
+      stageInDownloads
+      archiveFilenameTemplate
+      archiveTimestampFormat
+      archivePrefix
+      preserveSymlinks
+      ;
+    inherit
+      configEntries
+      preferenceEntries
+      additionalSources
+      extraExcludePatterns
+      ;
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
+    preferencesRoot = paths.darwin.library.preferences;
+    configRoot = paths.darwin.home.config;
   };
 in
 espansoBackup

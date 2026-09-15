@@ -1,26 +1,31 @@
 # darwin/system-commands/backups/librewolf.nix
 # LibreWolf browser backup command: `librewolf-backup`.
 
-{ appBackupHelper, config, paths, ... }:
+{
+  appBackupHelper,
+  config,
+  paths,
+  ...
+}:
 
 let
-  # ---- EDITABLE BACKUP ROOTS
-  backupPaths = config.services.appBackups.paths;
-  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
-  preferencesDirectory = backupPaths.preferencesDirectory;
-  configDirectory = backupPaths.configDirectory;
-
   # ---- EDITABLE BACKUP CONTENTS
   # Browser-specific mutable locations come from the centralized paths.
   browserPaths = paths.darwin.home.browsers;
 
   destinationSegments = [ "librewolf" ];
   applicationSupportEntries = [
-    { relativePath = "librewolf"; destinationPath = "app-support/librewolf"; }
+    {
+      relativePath = "librewolf";
+      destinationPath = "app-support/librewolf";
+    }
   ];
   preferenceEntries = [
     # The current Nix-installed LibreWolf bundle uses this identifier.
-    { relativePath = "org.nixos.librewolf.plist"; destinationPath = "app-pref/org.nixos.librewolf.plist"; }
+    {
+      relativePath = "org.nixos.librewolf.plist";
+      destinationPath = "app-pref/org.nixos.librewolf.plist";
+    }
   ];
   configEntries = [
     # The profile below is outside the ordinary .config root.
@@ -57,13 +62,33 @@ let
     inherit config;
     appName = "LibreWolf";
     appSlug = "librewolf";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
+    inherit
+      automatic
+      automaticIntervalSeconds
+      minimumIntervalSeconds
+      cpuLimitPercent
+      showProgress
+      ;
+    inherit
+      archive
+      stageInDownloads
+      archiveFilenameTemplate
+      archiveTimestampFormat
+      archivePrefix
+      preserveSymlinks
+      ;
     destinationRoot = "browserBackups";
-    inherit destinationSegments applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
-    applicationSupportRoot = applicationSupportDirectory;
-    preferencesRoot = preferencesDirectory;
-    configRoot = configDirectory;
+    inherit
+      destinationSegments
+      applicationSupportEntries
+      preferenceEntries
+      configEntries
+      additionalSources
+      extraExcludePatterns
+      ;
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
+    preferencesRoot = paths.darwin.library.preferences;
+    configRoot = paths.darwin.home.config;
   };
 in
 librewolfBackup

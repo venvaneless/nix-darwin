@@ -6,14 +6,12 @@
 # - Only defines launchd services (no systemd here).
 # =====================================================================
 
-{ config, pkgs, lib, ... }:
+{ paths, pkgs, lib, ... }:
 
 let
   # ---- SHARED PATHS ---- #
   # Container data root and the Docker Desktop CLI come from the
   # centralized path definitions.
-  paths = import ../../../options/paths.nix { };
-
   # Root directory for container data
   containersRoot = paths.darwin.docker.data.root;
 

@@ -6,7 +6,7 @@
 # options/backups/container-backup-helper.nix, which owns what each one
 # means and how the backup is carried out.
 
-{ config, ... }:
+{ paths, ... }:
 
 {
   services.backups.containers.wallabag = {
@@ -18,17 +18,15 @@
     appName = "Wallabag";
 
     # ---- SOURCE
-    # ** The source is the directory the Wallabag service itself
-    # ** declares, so the backup follows the service if that data
-    # ** directory moves.
-    sourceDir = config.services.wallabag.dataDir;
+    # ** The source is defined centrally in options/paths.nix.
+    sourceDir = paths.darwin.docker.data.wallabag;
 
     # ---- EDITABLE BACKUP PATHS
     # Absolute sourcePath entries for data outside sourceDir, staged on top
     # of the archive. Add as many as required.
     additionalSources = [
       # {
-      #   sourcePath = "${config.services.backups.paths.homeDirectory}/Library/Somewhere/Wallabag";
+      #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Wallabag";
       #   destinationPath = "additional/Somewhere/Wallabag";
       # }
     ];

@@ -1,15 +1,14 @@
 # darwin/system-commands/backups/dash.nix
 # Dash backup command: `dash-backup`.
 
-{ appBackupHelper, config, paths, ... }:
+{
+  appBackupHelper,
+  config,
+  paths,
+  ...
+}:
 
 let
-  # ---- EDITABLE BACKUP ROOTS
-  backupPaths = config.services.appBackups.paths;
-  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
-  preferencesDirectory = backupPaths.preferencesDirectory;
-  configDirectory = backupPaths.configDirectory;
-
   # These entries resolve from applicationSupportDirectory. Add one entry for
   # every Dash path stored in Application Support.
   applicationSupportEntries = [
@@ -72,12 +71,31 @@ let
     inherit config;
     appName = "Dash";
     appSlug = "dash";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-    inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
-    applicationSupportRoot = applicationSupportDirectory;
-    preferencesRoot = preferencesDirectory;
-    configRoot = configDirectory;
+    inherit
+      automatic
+      automaticIntervalSeconds
+      minimumIntervalSeconds
+      cpuLimitPercent
+      showProgress
+      ;
+    inherit
+      archive
+      stageInDownloads
+      archiveFilenameTemplate
+      archiveTimestampFormat
+      archivePrefix
+      preserveSymlinks
+      ;
+    inherit
+      applicationSupportEntries
+      preferenceEntries
+      configEntries
+      additionalSources
+      extraExcludePatterns
+      ;
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
+    preferencesRoot = paths.darwin.library.preferences;
+    configRoot = paths.darwin.home.config;
   };
 in
 dashBackup

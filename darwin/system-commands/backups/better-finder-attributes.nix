@@ -1,15 +1,14 @@
 # darwin/system-commands/backups/better-finder-attributes.nix
 # A Better Finder Attributes backup command: `better-attributes-backup`.
 
-{ appBackupHelper, config, paths, ... }:
+{
+  appBackupHelper,
+  config,
+  paths,
+  ...
+}:
 
 let
-  # ---- EDITABLE BACKUP ROOTS
-  backupPaths = config.services.appBackups.paths;
-  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
-  preferencesDirectory = backupPaths.preferencesDirectory;
-  configDirectory = backupPaths.configDirectory;
-
   # ---- EDITABLE BACKUP CONTENTS
   applicationSupportEntries = [
     {
@@ -62,10 +61,29 @@ appBackupHelper.mkAppBackup {
   appName = "A Better Finder Attributes";
   appSlug = "better-finder-attributes";
   commandName = "better-attributes-backup";
-  inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
-  inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
-  applicationSupportRoot = applicationSupportDirectory;
-  preferencesRoot = preferencesDirectory;
-  configRoot = configDirectory;
-  inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
+  inherit
+    automatic
+    automaticIntervalSeconds
+    minimumIntervalSeconds
+    cpuLimitPercent
+    showProgress
+    ;
+  inherit
+    applicationSupportEntries
+    preferenceEntries
+    configEntries
+    additionalSources
+    extraExcludePatterns
+    ;
+  applicationSupportRoot = paths.darwin.library.applicationSupport;
+  preferencesRoot = paths.darwin.library.preferences;
+  configRoot = paths.darwin.home.config;
+  inherit
+    archive
+    stageInDownloads
+    archiveFilenameTemplate
+    archiveTimestampFormat
+    archivePrefix
+    preserveSymlinks
+    ;
 }

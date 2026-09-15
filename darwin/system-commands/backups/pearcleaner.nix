@@ -1,15 +1,14 @@
 # darwin/system-commands/backups/pearcleaner.nix
 # Pearcleaner backup command: `pearcleaner-backup`.
 
-{ appBackupHelper, config, paths, ... }:
+{
+  appBackupHelper,
+  config,
+  paths,
+  ...
+}:
 
 let
-  # ---- EDITABLE BACKUP ROOTS
-  backupPaths = config.services.appBackups.paths;
-  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
-  preferencesDirectory = backupPaths.preferencesDirectory;
-  configDirectory = backupPaths.configDirectory;
-
   # ---- EDITABLE BACKUP CONTENTS
   applicationSupportEntries = [
     {
@@ -58,12 +57,31 @@ let
     inherit config;
     appName = "Pearcleaner";
     appSlug = "pearcleaner";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-    inherit applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
-    applicationSupportRoot = applicationSupportDirectory;
-    preferencesRoot = preferencesDirectory;
-    configRoot = configDirectory;
+    inherit
+      automatic
+      automaticIntervalSeconds
+      minimumIntervalSeconds
+      cpuLimitPercent
+      showProgress
+      ;
+    inherit
+      archive
+      stageInDownloads
+      archiveFilenameTemplate
+      archiveTimestampFormat
+      archivePrefix
+      preserveSymlinks
+      ;
+    inherit
+      applicationSupportEntries
+      preferenceEntries
+      configEntries
+      additionalSources
+      extraExcludePatterns
+      ;
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
+    preferencesRoot = paths.darwin.library.preferences;
+    configRoot = paths.darwin.home.config;
   };
 in
 pearcleanerBackup

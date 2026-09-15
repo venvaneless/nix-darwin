@@ -6,14 +6,15 @@
 # options/backups/container-backup-helper.nix, which owns what each one
 # means and how the backup is carried out.
 
-{ config, ... }:
+{ paths, ... }:
 
 let
   # ---- EDITABLE BACKUP ROOTS
-  # ** Destination and staging directories are registered under
-  # ** darwin.backups.perContainer in options/paths.nix and resolved by
-  # ** the helper from the slug. Change them there, not here.
-  backupPaths = config.services.backups.paths;
+  # ** Every backup root is read from options/paths.nix.
+  backupPaths = {
+    containerDirectory = paths.darwin.docker.data.root;
+    homeDirectory = paths.darwin.home.root;
+  };
   containerDirectory = backupPaths.containerDirectory;
 
   # ---- EDITABLE BACKUP PATHS

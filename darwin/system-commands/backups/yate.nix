@@ -5,7 +5,11 @@
 
 let
   # ---- EDITABLE BACKUP ROOTS
-  backupPaths = config.services.appBackups.paths;
+  backupPaths = {
+    applicationSupportDirectory = paths.darwin.library.applicationSupport;
+    preferencesDirectory = paths.darwin.library.preferences;
+    configDirectory = paths.darwin.home.config;
+  };
   applicationSupportDirectory = backupPaths.applicationSupportDirectory;
   preferencesDirectory = backupPaths.preferencesDirectory;
   configDirectory = backupPaths.configDirectory;

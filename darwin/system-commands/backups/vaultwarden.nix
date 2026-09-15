@@ -6,7 +6,7 @@
 # options/backups/container-backup-helper.nix, which owns what each one
 # means and how the backup is carried out.
 
-{ config, ... }:
+{ paths, ... }:
 
 {
   services.backups.containers.vaultwarden = {
@@ -18,9 +18,8 @@
     appName = "Vaultwarden";
 
     # ---- SOURCE
-    # ** The source is the directory the Vaultwarden module declares, so
-    # ** the backup follows the service if that data directory moves.
-    sourceDir = config.ven.vaultwarden.dataDir;
+    # ** The source is defined centrally in options/paths.nix.
+    sourceDir = paths.darwin.docker.data.vaultwarden;
 
     # ---- LIVE DATABASE
     # ** Vaultwarden writes to this database while it runs, so it is
@@ -33,7 +32,7 @@
     # here: it would bypass the live-database handling above.)
     additionalSources = [
       # {
-      #   sourcePath = "${config.services.backups.paths.homeDirectory}/Library/Somewhere/Vaultwarden";
+      #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Vaultwarden";
       #   destinationPath = "additional/Somewhere/Vaultwarden";
       # }
     ];
