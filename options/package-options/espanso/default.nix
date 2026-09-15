@@ -19,7 +19,7 @@
 }:
 
 let
-  cfg = config.ven.espanso;
+  cfg = config.home.shared.espanso;
 
   # Espanso's own default directory differs per platform, so both launchers
   # point it at the directory Home Manager populates.
@@ -44,7 +44,7 @@ in
     ./markdown.nix
   ];
 
-  options.ven.espanso = {
+  options.home.shared.espanso = {
     enable = lib.mkEnableOption "Espanso configuration";
 
     installOn = lib.mkOption {

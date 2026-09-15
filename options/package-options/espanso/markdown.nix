@@ -11,7 +11,7 @@
 { config, lib, paths, ... }:
 
 let
-  cfg = config.ven.espanso.markdown;
+  cfg = config.home.shared.espanso.markdown;
 
   # ------------------------------------------------------------
   # ------ MARKDOWN FEATURE RENDERING ------ #
@@ -126,7 +126,7 @@ in
   # ------ MARKDOWN FEATURE OPTIONS ------ #
   # Shared Espanso configuration selects these feature values.
 
-  options.ven.espanso.markdown = {
+  options.home.shared.espanso.markdown = {
     enable = lib.mkEnableOption "Espanso Markdown matches";
 
     links = {
@@ -306,7 +306,7 @@ in
   };
 
   config = {
-    ven.espanso.markdown.renderedMatchFile =
+    home.shared.espanso.markdown.renderedMatchFile =
       if matches == "" then
         "matches: []\n"
       else
@@ -317,7 +317,7 @@ in
     # Home Manager owns the link to the rendered, immutable match file.
 
     home.file.${paths.relative.espanso.markdownMatches} = lib.mkIf (
-      config.ven.espanso.enable && cfg.enable
+      config.home.shared.espanso.enable && cfg.enable
     ) {
       text = cfg.renderedMatchFile;
     };
