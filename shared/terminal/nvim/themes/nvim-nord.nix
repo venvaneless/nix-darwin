@@ -4,13 +4,13 @@
 # NEOVIM THEME: NORD
 #
 # Every setting this colorscheme takes, as a knob. The plugin's Lua is
-# generated from them in options/terminal-features.nix.
+# generated from them in options/cli/default.nix.
 # =====================================================================
 
 { ... }:
 
 {
-  ven.features.terminal.nvim.themes.list.nord = {
+  home.shared.terminal.nvim.themes.list.nord = {
     plugin = "gbprod/nord.nvim";
 
     settings = {

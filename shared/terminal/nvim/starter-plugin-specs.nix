@@ -422,7 +422,7 @@ let
   '';
 in
 {
-  config = lib.mkIf config.ven.features.terminal.nvim.enable {
+  config = lib.mkIf config.home.shared.terminal.nvim.enable {
     xdg.configFile = {
       # ---- ASTROVIM STARTER SPECS ---- #
       # Restores the exact populated specs as Nix-managed configuration files.

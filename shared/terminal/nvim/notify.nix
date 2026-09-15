@@ -13,7 +13,7 @@
 { config, lib, ... }:
 
 {
-  config = lib.mkIf config.ven.features.terminal.nvim.enable {
+  config = lib.mkIf config.home.shared.terminal.nvim.enable {
     xdg.configFile."nvim/lua/plugins/notify.lua".text = ''
       return {
         {

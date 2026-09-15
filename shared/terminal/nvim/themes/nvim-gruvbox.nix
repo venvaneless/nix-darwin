@@ -4,7 +4,7 @@
 # NEOVIM THEME: GRUVBOX
 #
 # Every setting this colorscheme takes, as a knob. The plugin's Lua is
-# generated from them in options/terminal-features.nix.
+# generated from them in options/cli/default.nix.
 #
 # ** Choosing it is shared/terminal/nvim/theme.nix, or a machine's own
 # ** home file.
@@ -13,7 +13,7 @@
 { ... }:
 
 {
-  ven.features.terminal.nvim.themes.list.gruvbox = {
+  home.shared.terminal.nvim.themes.list.gruvbox = {
     plugin = "ellisonleao/gruvbox.nvim";
 
     settings = {

@@ -14,10 +14,10 @@
 }:
 
 let
-  cfg = config.ven.features.terminal.nvim;
+  cfg = config.home.shared.terminal.nvim;
 in
 {
-  options.ven.features.terminal.nvim = {
+  options.home.shared.terminal.nvim = {
     enable = lib.mkEnableOption "Neovim and AstroNvim configuration";
 
     neovide.enable = lib.mkEnableOption "Neovide graphical Neovim client";

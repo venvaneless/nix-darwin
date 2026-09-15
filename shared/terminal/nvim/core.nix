@@ -39,7 +39,7 @@ let
   '';
 in
 {
-  config = lib.mkIf config.ven.features.terminal.nvim.enable {
+  config = lib.mkIf config.home.shared.terminal.nvim.enable {
     # ---- MUTABLE LAZY STATE ---- #
     # Lazy manages this runtime file, so Home Manager must not link it.
     home.activation.initializeNvimLazyLock = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
