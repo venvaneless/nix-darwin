@@ -19,20 +19,49 @@ let
 
   enabledForCurrentPlatform = platforms.enabledForCurrentPlatform cfg;
 
+  # Television selects a theme by its file name, so config.toml uses the
+  # selected theme's output file name. default keeps the built-in palette.
+  selectedTheme = cfg.themes.${cfg.uiTheme} or null;
+  themeName =
+    if selectedTheme == null then
+      "television"
+    else
+      lib.removeSuffix ".toml" (baseNameOf selectedTheme.relativePath);
+
   # The active Nix configuration root is configured by the shared terminal
   # module. Television searches that root; it does not own the path.
   nixConfigDir = config.ven.features.terminal.nixConfigDir;
   televisionCable = "${paths.relative.config}/television/cable";
 
-  # Television's default palette needs no managed theme file. Named themes
-  # are rendered only when the matching theme is selected.
-  themeName = if cfg.theme == "default" then "television" else "ven-${cfg.theme}";
-  themeFile = "${paths.relative.config}/television/themes/ven-gruvbox.toml";
+
+  # ------------------------------------------------------------
+  # ------ CONFIG.TOML RENDERING ------ #
+  # Each knob group maps to one TOML table under [ui]. Custom Nix channels
+  # are installed separately under cable/.
+  # ------------------------------------------------------------
+
+  configToml = (pkgs.formats.toml { }).generate "television-config.toml" {
+    ui = {
+      theme = themeName;
+
+      preview_panel = {
+        inherit (cfg.previewPanel) size scrollbar;
+      };
+
+      help_panel = {
+        inherit (cfg.helpPanel) hidden;
+      };
+
+      remote_control = {
+        show_channel_descriptions = cfg.remoteControl.showChannelDescriptions;
+        sort_alphabetically = cfg.remoteControl.sortAlphabetically;
+      };
+    };
+  };
 
   televisionLib = import ./lib.nix {
-    inherit lib pkgs nixConfigDir;
+    inherit lib pkgs nixConfigDir platforms;
     inherit (cfg) actions channels search;
-    isDarwin = platforms.isDarwin;
   };
 
   channels = import ./channels {
@@ -41,6 +70,11 @@ let
   };
 in
 {
+  imports = [
+    # Theme knob schema, uiTheme selector, and each theme's values.
+    ./themes
+  ];
+
   options.cli.television = {
     enable = lib.mkEnableOption "Television terminal navigator";
 
@@ -64,38 +98,39 @@ in
       description = "Whether Television is enabled for the Home Manager host currently being built.";
     };
 
-    theme = lib.mkOption {
-      type = lib.types.enum [ "default" "gruvbox" ];
-      default = "default";
-      description = "Built-in Television theme. Choose default or gruvbox.";
-    };
-
-    ui = {
-      previewPanel.size = lib.mkOption {
+    # [ui.preview_panel]
+    previewPanel = {
+      size = lib.mkOption {
         type = lib.types.ints.between 0 100;
         default = 55;
         description = "Percentage of the Television window reserved for file previews.";
       };
 
-      previewPanel.scrollbar = lib.mkOption {
+      scrollbar = lib.mkOption {
         type = lib.types.bool;
         default = true;
         description = "Show a scrollbar in Television's preview pane.";
       };
+    };
 
-      helpPanel.hidden = lib.mkOption {
+    # [ui.help_panel]
+    helpPanel = {
+      hidden = lib.mkOption {
         type = lib.types.bool;
         default = true;
         description = "Hide Television's built-in help pane.";
       };
+    };
 
-      remoteControl.showChannelDescriptions = lib.mkOption {
+    # [ui.remote_control]
+    remoteControl = {
+      showChannelDescriptions = lib.mkOption {
         type = lib.types.bool;
         default = true;
         description = "Show descriptions for custom Television channels.";
       };
 
-      remoteControl.sortAlphabetically = lib.mkOption {
+      sortAlphabetically = lib.mkOption {
         type = lib.types.bool;
         default = true;
         description = "Sort Television channel names alphabetically.";
@@ -226,19 +261,12 @@ in
       # already installed elsewhere and resolved from the user's PATH.
       home.packages = [ pkgs.television ];
 
-      xdg.configFile."television/config.toml".text = import ./config.nix {
-        inherit themeName;
-        inherit (cfg) ui;
-      };
+      xdg.configFile."television/config.toml".source = configToml;
 
-      home.file =
-        (lib.mapAttrs' (
-          name: text:
-          lib.nameValuePair "${televisionCable}/${name}.toml" { inherit text; }
-        ) channels)
-        // lib.optionalAttrs (cfg.theme == "gruvbox") {
-          "${themeFile}".text = import ./themes/gruvbox.nix;
-        };
+      home.file = lib.mapAttrs' (
+        name: text:
+        lib.nameValuePair "${televisionCable}/${name}.toml" { inherit text; }
+      ) channels;
 
       programs.fish.functions.tv = {
         description = "Television with Nix file-search input";
