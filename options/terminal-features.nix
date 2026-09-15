@@ -3,15 +3,9 @@
 # =====================================================================
 # OPTIONS: TERMINAL THEMES
 #
-# Defines the common configurable theme behaviour for WezTerm and
-# Neovim, and nothing else. No theme and no choice lives here.
+# Defines the configurable theme behaviour for Neovim and nothing else.
 #
 # Both are set the same way, in whichever file should decide:
-#
-#   ven.features.terminal.wezterm.themes = {
-#     list = [ "gruvbox" "nord" ];
-#     default = "gruvbox";
-#   };
 #
 #   ven.features.terminal.nvim.themes = {
 #     list = { gruvbox = { plugin = "..."; settings = { ... }; }; };
@@ -22,15 +16,13 @@
 # sets them for itself. One place decides: two files naming the same
 # one is a conflict, and the machine wins it with lib.mkForce.
 #
-# ** WezTerm's themes are Lua files written next to its config, so a
-# ** name is enough for it. A Neovim colorscheme is a plugin and the
-# ** settings its setup takes, so its entries carry those.
+# A Neovim colorscheme is a plugin and the settings its setup takes,
+# so its entries carry those.
 # =====================================================================
 
 { config, lib, ... }:
 
 let
-  wezterm = config.ven.features.terminal.wezterm;
   nvim = config.ven.features.terminal.nvim;
 
   # ------------------------------------------------------------
@@ -92,7 +84,12 @@ let
 
         priority = 1000,
 
-        opts = ${lib.generators.toLua { multiline = true; indent = "        "; } theme.settings},
+        opts = ${
+          lib.generators.toLua {
+            multiline = true;
+            indent = "        ";
+          } theme.settings
+        },
       },
 
       {
@@ -112,7 +109,7 @@ let
 
           -- ---- 24-BIT COLOUR ---- #
           -- Without this Neovim ignores the colorscheme's hex values
-          -- and renders using WezTerm's 16 ANSI colours instead.
+          -- and renders using the terminal's 16 ANSI colours instead.
           opts.options.opt.termguicolors = true
 
           return opts
@@ -126,46 +123,27 @@ let
 in
 
 {
-  options.ven.features.terminal = {
-    wezterm.themes = {
-      list = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-        example = [ "gruvbox" "nord" ];
-        description = ''
-          Themes that can be chosen, each one a Lua file written into
-          WezTerm's themes directory under the same name.
-        '';
-      };
+  options = {
+    ven.features.terminal = {
+      nvim.themes = {
+        list = lib.mkOption {
+          type = lib.types.attrsOf nvimThemeType;
+          default = { };
+          description = ''
+            Colorschemes that can be chosen, each with the plugin that
+            provides it and the settings its setup takes.
+          '';
+        };
 
-      default = lib.mkOption {
-        type = lib.types.str;
-        default = "none";
-        example = "nord";
-        description = ''
-          Theme to load. none leaves WezTerm's own palette alone.
-        '';
-      };
-    };
-
-    nvim.themes = {
-      list = lib.mkOption {
-        type = lib.types.attrsOf nvimThemeType;
-        default = { };
-        description = ''
-          Colorschemes that can be chosen, each with the plugin that
-          provides it and the settings its setup takes.
-        '';
-      };
-
-      default = lib.mkOption {
-        type = lib.types.str;
-        default = "none";
-        example = "nord";
-        description = ''
-          Colorscheme written into Neovim's plugin configuration. none
-          writes no theme at all.
-        '';
+        default = lib.mkOption {
+          type = lib.types.str;
+          default = "none";
+          example = "nord";
+          description = ''
+            Colorscheme written into Neovim's plugin configuration. none
+            writes no theme at all.
+          '';
+        };
       };
     };
   };
@@ -173,14 +151,14 @@ in
   # ------------------------------------------------------------
   # ------ THE NEOVIM COLORSCHEME ------ #
   #
-  # Written from the chosen theme's settings. WezTerm loads its own in
-  # shared/terminal/wezterm/default.nix, straight from the Lua file.
+  # Written from the chosen theme's settings.
   # ------------------------------------------------------------
 
   config.xdg.configFile."nvim/lua/plugins/theme.lua" =
-    lib.mkIf (nvim.enable && nvimSelected != null) {
-      text = renderNvimTheme nvimSelected;
-    };
+    lib.mkIf (nvim.enable && nvimSelected != null)
+      {
+        text = renderNvimTheme nvimSelected;
+      };
 
   # ------------------------------------------------------------
   # ------ THE CHOSEN THEME HAS TO EXIST ------ #
@@ -192,21 +170,7 @@ in
   config.assertions = [
     {
       assertion =
-        !wezterm.enable
-        || wezterm.themes.default == "none"
-        || lib.elem wezterm.themes.default wezterm.themes.list;
-
-      message = ''
-        ven.features.terminal.wezterm.themes.default is "${wezterm.themes.default}",
-        which is not one of: ${lib.concatStringsSep ", " wezterm.themes.list}
-      '';
-    }
-
-    {
-      assertion =
-        !nvim.enable
-        || nvim.themes.default == "none"
-        || lib.hasAttr nvim.themes.default nvim.themes.list;
+        !nvim.enable || nvim.themes.default == "none" || lib.hasAttr nvim.themes.default nvim.themes.list;
 
       message = ''
         ven.features.terminal.nvim.themes.default is "${nvim.themes.default}",
@@ -214,4 +178,5 @@ in
       '';
     }
   ];
+
 }

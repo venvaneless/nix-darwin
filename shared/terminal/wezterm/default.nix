@@ -3,155 +3,285 @@
 # =====================================================================
 # WEZTERM: SHARED TERMINAL EMULATOR CONFIGURATION
 #
-# Nix equivalent of wezterm.lua. Installs and configures WezTerm
-# through Home Manager on Darwin and Linux.
-#
-# The configuration is split in two halves:
-#
-# - Static configuration (mouse, ssh, keys) is expressed as Nix
-#   attribute sets and rendered into wezterm.lua by Home Manager
-#   through `settings`.
-#
-# - Appearance owns both window styling and one `theme` selector.
-#
-# - Runtime Lua that relies on closures, callbacks or the WezTerm
-#   event API is embedded in matching Nix modules. Home Manager
-#   generates and symlinks the resulting Lua files for WezTerm.
+# This is the shared, user-facing knobs file. The option module owns all
+# validation and Lua/Home Manager rendering.
 # =====================================================================
 
 {
-  config,
-  lib,
-  pkgs,
-  ...
-}:
-
-let
-  cfg = config.ven.features.terminal.wezterm;
-
-  # ------------------------------------------------------------
-  # ------ STATIC CONFIGURATION MODULES ------ #
-  #
-  # Each module returns a plain attribute set that is merged into
-  # `programs.wezterm.settings`. The merge is shallow, so the modules
-  # must not define overlapping top-level keys.
-  # ------------------------------------------------------------
-
-  mouse = import ./wez-mouse.nix {
-    inherit lib;
-  };
-
-  ssh = import ./wez-ssh.nix {
-    inherit lib;
-  };
-in
-{
-  # ------------------------------------------------------------
-  # ------ SUBMODULES ------ #
-  #
-  # Modules that add options or generate runtime Lua files.
-  # ------------------------------------------------------------
-
   imports = [
+    ./themes
+    ./wez-personal.nix
     ./wez-plugins.nix
-    ./wez-appearance.nix
-    ./wez-keybindings.nix
-
-    # ---- Embedded Lua modules
-    ./plugins/wez-plugins.nix
-    ./personal/wez-nvim_chrome.nix
-    ./personal/wez-replace_tab.nix
-    ./personal/wez-save_scrollback.nix
   ];
 
-  # ------------------------------------------------------------
-  # ------ FEATURE TOGGLE ------ #
-  # ------------------------------------------------------------
-
-  options.ven.features.terminal.wezterm.enable =
-    lib.mkEnableOption "WezTerm terminal emulator";
-
-  config = lib.mkIf cfg.enable {
-    programs.wezterm = {
+  config = {
+    shared.terminal.wezterm = {
       enable = true;
+      installOn = {
+        darwin = true;
+        linux = true;
+      };
 
-      # Use the package supplied by the selected nixpkgs package set
-      package = pkgs.wezterm;
+      themes = {
+        list = [
+          "gruvbox"
+          "nord"
+          "nord-otto"
+          "otto"
+        ];
+        default = "gruvbox";
+      };
 
       # ------------------------------------------------------------
-      # ------ WEZTERM SETTINGS ------ #
-      #
-      # Home Manager renders these Nix values into wezterm.lua with
-      # lib.generators.toLua. Values wrapped in mkLuaInline are
-      # emitted as raw Lua expressions.
+      # Keyboard shortcuts
       # ------------------------------------------------------------
-
-      settings =
-        mouse
-        // ssh
-        // {
-          # Scrollback
-          scrollback_lines = 100000;
-
-          # Debug
-          debug_key_events = true;
-
-          # Notifications
-          notification_handling = "AlwaysShow";
+      keybindings = {
+        leader = {
+          key = "F14";
+          timeoutMilliseconds = 1000;
         };
 
-      # ------------------------------------------------------------
-      # ------ WEZTERM EXTRA CONFIG ------ #
-      #
-      # Home Manager wraps this block in an immediately invoked Lua
-      # function with the generated `config` table in scope, so the
-      # runtime modules can mutate `config` directly.
-      #
-      # Nothing is returned from this block, so the settings above are
-      # never replaced wholesale.
-      # ------------------------------------------------------------
+        shortcuts = {
+          personalCommandPalette = {
+            key = "phys:O";
+            modifiers = [ "SUPER" "SHIFT" ];
+            action = "openPersonalCommandPalette";
+            description = "Open the personal command and directory picker.";
+          };
 
-      extraConfig = ''
-        -- Appearance theme
-        -- The theme chosen with wezterm.themes.default, loaded from the
-        -- Lua file of the same name.
+          nativeCommandPalette = {
+            key = "phys:P";
+            modifiers = [ "SUPER" "SHIFT" ];
+            action = "activateCommandPalette";
+            description = "Open WezTerm's native command palette.";
+          };
 
-        ${lib.optionalString (cfg.themes.default != "none") ''
-          local theme = dofile(
-              wezterm.config_dir .. "/themes/${cfg.themes.default}.lua"
-          )
+          commandPalette = {
+            key = "Space";
+            modifiers = [ "SHIFT" ];
+            action = "activateCommandPalette";
+            description = "Open WezTerm's native command palette.";
+          };
 
-          theme.apply(config)
-        ''}
+          copy = {
+            key = "c";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "copyClipboard";
+            description = "Copy the active selection to the clipboard.";
+          };
 
-        -- Plugins
-        -- Loads the generated plugin wrappers in plugins/.
-        local plugins = dofile(
-            wezterm.config_dir .. "/plugins/plugins.lua"
-        )
+          paste = {
+            key = "v";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "pasteClipboard";
+            description = "Paste from the clipboard.";
+          };
 
-        plugins.apply(config)
+          quit = {
+            key = "q";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "quitApplication";
+            description = "Quit WezTerm.";
+          };
 
-        -- Personal modules
-        local save_scrollback = dofile(
-            wezterm.config_dir .. "/personal/save_scrollback.lua"
-        )
+          searchScrollback = {
+            key = "f";
+            modifiers = [ "CTRL" ];
+            action = "searchScrollback";
+            description = "Search the current pane's scrollback.";
+          };
 
-        save_scrollback.apply(config)
+          clearScrollback = {
+            key = "d";
+            modifiers = [ "CTRL" ];
+            action = "clearScrollback";
+            description = "Clear the active pane's scrollback and viewport.";
+          };
 
-        local replace_tab = dofile(
-            wezterm.config_dir .. "/personal/replace_tab.lua"
-        )
+          copyMode = {
+            key = "Enter";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "activateCopyMode";
+            description = "Enter keyboard-driven copy mode.";
+          };
 
-        replace_tab.apply(config)
+          clearTypedCommand = {
+            key = "c";
+            modifiers = [ "CTRL" ];
+            action = "clearTypedCommand";
+            description = "Send Ctrl+U to clear the typed shell command.";
+          };
 
-        local nvim_chrome = dofile(
-            wezterm.config_dir .. "/personal/nvim_chrome.lua"
-        )
+          abortCommand = {
+            key = "h";
+            modifiers = [ "CTRL" ];
+            action = "abortCommand";
+            description = "Send Ctrl+C to interrupt the active command.";
+          };
 
-        nvim_chrome.apply(config)
+          smartCopyOrInterrupt = {
+            key = "u";
+            modifiers = [ "SUPER" ];
+            action = "smartCopyOrInterrupt";
+            description = "Copy a selection, or send Ctrl+C when none exists.";
+          };
 
-      '';
+          splitHorizontal = {
+            key = "phys:Comma";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "splitHorizontal";
+            description = "Split the current pane side by side.";
+          };
+
+          splitVertical = {
+            key = "phys:Period";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "splitVertical";
+            description = "Split the current pane above and below.";
+          };
+
+          closePane = {
+            key = "x";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "closeCurrentPane";
+            description = "Close the active pane without confirmation.";
+          };
+
+          focusPaneLeft = {
+            key = "LeftArrow";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "focusPaneLeft";
+            description = "Move focus to the pane on the left.";
+          };
+
+          focusPaneRight = {
+            key = "RightArrow";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "focusPaneRight";
+            description = "Move focus to the pane on the right.";
+          };
+
+          focusPaneUp = {
+            key = "UpArrow";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "focusPaneUp";
+            description = "Move focus to the pane above.";
+          };
+
+          focusPaneDown = {
+            key = "DownArrow";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "focusPaneDown";
+            description = "Move focus to the pane below.";
+          };
+
+          newTab = {
+            key = "n";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "spawnTab";
+            description = "Open a tab in the active pane's domain.";
+          };
+
+          closeTab = {
+            key = "w";
+            modifiers = [ "CTRL" ];
+            action = "closeCurrentTab";
+            description = "Close the active tab without confirmation.";
+          };
+
+          nextTab = {
+            key = "t";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "nextTab";
+            description = "Activate the next tab.";
+          };
+
+          increaseFontSize = {
+            key = "Add";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "increaseFontSize";
+            description = "Increase the terminal font size.";
+          };
+
+          decreaseFontSize = {
+            key = "Subtract";
+            modifiers = [ "CTRL" "SHIFT" ];
+            action = "decreaseFontSize";
+            description = "Decrease the terminal font size.";
+          };
+
+          resetFontSize = {
+            key = "0";
+            modifiers = [ "CTRL" ];
+            action = "resetFontSize";
+            description = "Restore the configured terminal font size.";
+          };
+        };
+      };
+
+      windows = {
+        closeConfirmation = "NeverPrompt";
+        decorations = "INTEGRATED_BUTTONS|RESIZE";
+        backgroundOpacity = 0.90;
+        macosBackgroundBlur = 20;
+        padding = {
+          left = "1cell";
+          right = "1cell";
+          top = "1.2cell";
+          bottom = "0.6cell";
+        };
+        frame = {
+          fontFamily = "JetBrainsMono Nerd Font";
+          fontWeight = "Bold";
+          fontSize = 13.0;
+        };
+        titleButtonAlignment = "Left";
+        titleButtons = [
+          "Hide"
+          "Maximize"
+          "Close"
+        ];
+      };
+      startup = {
+        columns = 95;
+        rows = 30;
+      };
+      font = {
+        family = "JetBrainsMono Nerd Font";
+        size = 13.0;
+        lineHeight = 1.5;
+      };
+      cursor = {
+        style = "SteadyBar";
+        thickness = "1pt";
+        blinkRate = 800;
+        forceReverseVideo = false;
+        animationFps = 80;
+      };
+      tabs = {
+        enable = true;
+        fancy = false;
+        atBottom = true;
+        hideWhenSingle = false;
+        showNewTabButton = false;
+        showIndex = false;
+        maximumWidth = 28;
+      };
+      scrollbar.enable = true;
+      mouse.openSelectionOrLink = {
+        enable = true;
+        button = "Left";
+        streak = 1;
+        modifiers = [ ];
+        selectionDestination = "ClipboardAndPrimarySelection";
+      };
+
+      ssh = { };
+      runtime = {
+        scrollbackLines = 100000;
+        debugKeyEvents = true;
+        notificationHandling = "AlwaysShow";
+      };
     };
   };
 }
