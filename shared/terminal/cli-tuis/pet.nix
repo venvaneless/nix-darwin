@@ -15,11 +15,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.pet;
+  cfg = config.home.shared.terminal.cliTuis.pet;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Pet's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.pet.enable directly.
+  # still override home.shared.terminal.cliTuis.pet.enable directly.
   pet = {
     enable = true;
     installOn = {
@@ -37,11 +37,11 @@ let
     pet.enable && ((isDarwin && pet.installOn.darwin) || (isLinux && pet.installOn.linux));
 in
 {
-  options.ven.features.terminal.cliTuis.pet.enable = lib.mkEnableOption "Pet command snippet manager";
+  options.home.shared.terminal.cliTuis.pet.enable = lib.mkEnableOption "Pet command snippet manager";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.pet.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.pet.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
       home.packages = [

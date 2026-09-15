@@ -9,11 +9,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.starship;
+  cfg = config.home.shared.terminal.cliTuis.starship;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Starship's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.starship.enable directly.
+  # still override home.shared.terminal.cliTuis.starship.enable directly.
   starship = {
     enable = true;
     installOn = {
@@ -31,11 +31,11 @@ let
     starship.enable && ((isDarwin && starship.installOn.darwin) || (isLinux && starship.installOn.linux));
 in
 {
-  options.ven.features.terminal.cliTuis.starship.enable = lib.mkEnableOption "Starship shell prompt";
+  options.home.shared.terminal.cliTuis.starship.enable = lib.mkEnableOption "Starship shell prompt";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.starship.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.starship.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
     programs.starship = {

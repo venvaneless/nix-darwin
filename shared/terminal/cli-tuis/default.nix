@@ -45,7 +45,7 @@
     # All values a user may reasonably change stay here. The option module
     # owns platform selection, validation, JSON rendering, and theme files.
 
-    cli.micro = {
+    home.shared.cli.micro = {
       enable = true;
 
       installOn = {
@@ -88,7 +88,7 @@
     # GitHub CLI implementation and platform selection live in
     # options/cli/gh.nix. OAuth credentials remain user-owned in hosts.yml.
 
-    cli.gh = {
+    home.shared.cli.gh = {
       enable = true;
 
       installOn = {
@@ -141,7 +141,7 @@
     # Atuin implementation, platform selection, and theme files live in
     # options/cli/atuin/default.nix. Exactly one theme may be enabled at a time.
 
-    cli.atuin = {
+    home.shared.cli.atuin = {
       enable = true;
 
       installOn = {
@@ -177,7 +177,7 @@
     # Television logic, rendering, and channel implementation live in
     # options/cli/television. Channel actions use commands from PATH.
 
-    cli.television = {
+    home.shared.cli.television = {
       enable = true;
 
       installOn = {

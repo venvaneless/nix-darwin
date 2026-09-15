@@ -9,11 +9,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.tmux;
+  cfg = config.home.shared.terminal.cliTuis.tmux;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Tmux's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.tmux.enable directly.
+  # still override home.shared.terminal.cliTuis.tmux.enable directly.
   tmux = {
     enable = true;
     installOn = {
@@ -31,11 +31,11 @@ let
     tmux.enable && ((isDarwin && tmux.installOn.darwin) || (isLinux && tmux.installOn.linux));
 in
 {
-  options.ven.features.terminal.cliTuis.tmux.enable = lib.mkEnableOption "Tmux terminal multiplexer";
+  options.home.shared.terminal.cliTuis.tmux.enable = lib.mkEnableOption "Tmux terminal multiplexer";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.tmux.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.tmux.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
     programs.tmux = {

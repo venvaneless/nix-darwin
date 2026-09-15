@@ -45,7 +45,7 @@ in {
     ./fish-themes.nix
   ];
 
-  options.ven.features.terminal.nixConfigDir = lib.mkOption {
+  options.home.shared.terminal.nixConfigDir = lib.mkOption {
     type = lib.types.str;
     default = "${config.home.homeDirectory}/${paths.relative.nixConfig}";
     description = "Path to the host's Nix configuration repository.";

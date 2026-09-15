@@ -9,11 +9,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.zoxide;
+  cfg = config.home.shared.terminal.cliTuis.zoxide;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Zoxide's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.zoxide.enable directly.
+  # still override home.shared.terminal.cliTuis.zoxide.enable directly.
   zoxide = {
     enable = true;
     installOn = {
@@ -31,12 +31,12 @@ let
     zoxide.enable && ((isDarwin && zoxide.installOn.darwin) || (isLinux && zoxide.installOn.linux));
 in
 {
-  options.ven.features.terminal.cliTuis.zoxide.enable =
+  options.home.shared.terminal.cliTuis.zoxide.enable =
     lib.mkEnableOption "Zoxide directory navigation";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.zoxide.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.zoxide.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
     programs.zoxide = {

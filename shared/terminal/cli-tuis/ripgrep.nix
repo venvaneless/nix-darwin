@@ -12,11 +12,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.ripgrep;
+  cfg = config.home.shared.terminal.cliTuis.ripgrep;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Ripgrep's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.ripgrep.enable directly.
+  # still override home.shared.terminal.cliTuis.ripgrep.enable directly.
   ripgrep = {
     enable = true;
     installOn = {
@@ -34,12 +34,12 @@ let
     ripgrep.enable && ((isDarwin && ripgrep.installOn.darwin) || (isLinux && ripgrep.installOn.linux));
 in
 {
-  options.ven.features.terminal.cliTuis.ripgrep.enable =
+  options.home.shared.terminal.cliTuis.ripgrep.enable =
     lib.mkEnableOption "Ripgrep recursive search";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.ripgrep.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.ripgrep.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
       # ---- INSTALLATION ---- #

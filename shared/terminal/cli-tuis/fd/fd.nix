@@ -15,14 +15,14 @@
 { config, paths, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.fd;
+  cfg = config.home.shared.terminal.cliTuis.fd;
 
   # ---- SHARED PATHS ---- #
   # Reuse the centralized user, Library, and iCloud paths instead of
   # repeating literal home directories inside the ignore list.
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Fd's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.fd.enable directly.
+  # still override home.shared.terminal.cliTuis.fd.enable directly.
   fd = {
     enable = true;
     installOn = {
@@ -105,11 +105,11 @@ let
   ignoreEntries = if isDarwin then darwinIgnores else linuxIgnores;
 in
 {
-  options.ven.features.terminal.cliTuis.fd.enable = lib.mkEnableOption "Fd file search";
+  options.home.shared.terminal.cliTuis.fd.enable = lib.mkEnableOption "Fd file search";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.fd.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.fd.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
       programs.fd = {
@@ -148,7 +148,7 @@ in
     })
     (lib.mkIf (cfg.enable && selectedThemeConfig.option != null) {
       # Only the selected theme module is imported and enabled.
-      ven.features.terminal.cliTuis.fd.themes.${selectedThemeConfig.option}.enable = true;
+      home.shared.terminal.cliTuis.fd.themes.${selectedThemeConfig.option}.enable = true;
     })
   ];
 
