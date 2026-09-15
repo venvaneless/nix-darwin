@@ -1,4 +1,4 @@
-# options/terminal-aliases.nix
+# options/cli/aliases.nix
 #
 # =====================================================================
 # OPTIONS: TERMINAL ALIASES
