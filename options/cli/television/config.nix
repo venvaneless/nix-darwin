@@ -7,23 +7,23 @@
 # recipes so each channel remains simple to extend or replace.
 # =====================================================================
 
-{ selectedThemeConfig }:
+{ themeName, ui }:
 
 ''
-  # Managed by shared/terminal/cli-tuis/television/default.nix.
+  # Managed by options/cli/television/default.nix.
   # Custom Nix channels are installed declaratively under cable/.
 
   [ui]
-  theme = "${selectedThemeConfig.name}"
+  theme = "${themeName}"
 
   [ui.preview_panel]
-  size = 55
-  scrollbar = true
+  size = ${toString ui.previewPanel.size}
+  scrollbar = ${if ui.previewPanel.scrollbar then "true" else "false"}
 
   [ui.help_panel]
-  hidden = true
+  hidden = ${if ui.helpPanel.hidden then "true" else "false"}
 
   [ui.remote_control]
-  show_channel_descriptions = true
-  sort_alphabetically = true
+  show_channel_descriptions = ${if ui.remoteControl.showChannelDescriptions then "true" else "false"}
+  sort_alphabetically = ${if ui.remoteControl.sortAlphabetically then "true" else "false"}
 ''

@@ -8,25 +8,7 @@
 # - Uses the same Gruvbox Dark colours as the local WezTerm palette
 # =====================================================================
 
-{ config, paths, lib, ... }:
-
-let
-  televisionCfg = config.ven.features.terminal.cliTuis.television;
-  cfg = televisionCfg.gruvbox;
-
-  # ---- Variables from paths.nix ---- #
-  # Keep the generated theme under the shared XDG configuration root.
-  themeFile = "${paths.relative.config}/television/themes/ven-gruvbox.toml";
-in
-{
-  options.ven.features.terminal.cliTuis.television.gruvbox.enable = lib.mkOption {
-    type = lib.types.bool;
-    default = false;
-    description = "Internal switch for the Gruvbox theme selected in television/default.nix.";
-  };
-
-  config = lib.mkIf (televisionCfg.enable && cfg.enable) {
-    home.file."${themeFile}".text = ''
+''
       # Matches the Gruvbox Dark colours configured for WezTerm.
 
       # General
@@ -57,6 +39,4 @@ in
       remote_control_mode_bg = "#8ec07c"
       action_picker_mode_fg = "#282828"
       action_picker_mode_bg = "#83a598"
-    '';
-  };
-}
+''

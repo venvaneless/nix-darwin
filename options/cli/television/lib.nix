@@ -1,4 +1,4 @@
-# shared/terminal/cli-tuis/television/lib.nix
+# options/cli/television/lib.nix
 #
 # =====================================================================
 # TELEVISION: NIX CHANNEL HELPERS
@@ -7,50 +7,44 @@
 # clipboard actions, Git handling, and portable recent-file ordering.
 # =====================================================================
 
-{ lib, pkgs, nixConfigDir, excludedDirectories, isDarwin }:
+{ lib, pkgs, nixConfigDir, actions, channels, search, isDarwin }:
 
 let
   # ---- SHARED COMMAND VALUES ---- #
-  # Explicit package paths keep generated helpers independent of an
-  # interactive shell's PATH on both supported platforms.
-  fish = "${pkgs.fish}/bin/fish";
-  fd = "${pkgs.fd}/bin/fd";
-  rg = "${pkgs.ripgrep}/bin/rg";
-  bat = "${pkgs.bat}/bin/bat";
-  git = "${pkgs.git}/bin/git";
-  find = "${pkgs.findutils}/bin/find";
-  sort = "${pkgs.coreutils}/bin/sort";
-  env = "${pkgs.coreutils}/bin/env";
-  nvim = "${pkgs.neovim}/bin/nvim";
-  zed = "${pkgs.zed-editor}/bin/zed";
-  wlCopy = "${pkgs.wl-clipboard}/bin/wl-copy";
-  xclip = "${pkgs.xclip}/bin/xclip";
+  # Commands are intentionally resolved from PATH. Television owns only its
+  # own package; its channel tools are installed independently.
 
   # ---- CENTRAL EXCLUSION RENDERING ---- #
   # fd, ripgrep, find, and Git all consume the same directory policy.
   fdExclusions = lib.concatMapStringsSep " " (
     directory: ''
-      --exclude ${lib.escapeShellArg directory.name}
-      --exclude ${lib.escapeShellArg "${directory.name}/**"}
-      --exclude ${lib.escapeShellArg "**/${directory.name}/**"}
+      --exclude ${lib.escapeShellArg directory}
+      --exclude ${lib.escapeShellArg "${directory}/**"}
+      --exclude ${lib.escapeShellArg "**/${directory}/**"}
     ''
-  ) excludedDirectories;
+  ) search.excludedDirectories;
   rgExclusions = lib.concatMapStringsSep " " (
     directory: ''
-      --glob ${lib.escapeShellArg "!${directory.name}/**"}
-      --glob ${lib.escapeShellArg "!**/${directory.name}/**"}
+      --glob ${lib.escapeShellArg "!${directory}/**"}
+      --glob ${lib.escapeShellArg "!**/${directory}/**"}
     ''
-  ) excludedDirectories;
+  ) search.excludedDirectories;
   findPruneExpression = lib.concatStringsSep " -o " (
-    map (directory: "-name ${lib.escapeShellArg directory.name}") excludedDirectories
+    map (directory: "-name ${lib.escapeShellArg directory}") search.excludedDirectories
   );
   gitExclusionCases = lib.concatMapStringsSep "\n\n" (
     directory: ''
-      if string match -rq -- ${lib.escapeShellArg directory.gitPathPattern} "$path"
+      if string match -q -- ${lib.escapeShellArg "*${directory}*"} "$path"
         return 0
       end
     ''
-  ) excludedDirectories;
+  ) search.excludedDirectories;
+
+  fdGlobs = globs:
+    lib.concatMapStringsSep " " (glob: "--glob ${lib.escapeShellArg glob}") globs;
+
+  rgPatterns = patterns:
+    lib.concatMapStringsSep " " (pattern: "-e ${lib.escapeShellArg pattern}") patterns;
 
   # ---- FISH HELPER FACTORY ---- #
   # Helpers are immutable executables in the store; they read but never
@@ -60,7 +54,7 @@ let
       inherit name;
       executable = true;
       text = ''
-        #!${fish}
+        #!/usr/bin/env fish
         ${text}
       '';
     };
@@ -93,7 +87,7 @@ let
         set clipboard_text (string collect)
 
         if test -n "$WAYLAND_DISPLAY"
-          if printf '%s' "$clipboard_text" | command ${wlCopy}
+          if printf '%s' "$clipboard_text" | command wl-copy
             exit 0
           end
 
@@ -106,7 +100,7 @@ let
         end
 
         if test -n "$DISPLAY"
-          if printf '%s' "$clipboard_text" | command ${xclip} -selection clipboard
+          if printf '%s' "$clipboard_text" | command xclip -selection clipboard
             exit 0
           end
 
@@ -126,7 +120,7 @@ let
     set fields (tv_record "$argv[1]")
     set file "$fields[2]"
     tv_require_file "$file"; or exit 1
-    command ${bat} --paging=never --style=numbers --color=always "$file"
+    command bat --paging=never --style=numbers --color=always "$file"
   '';
 
   fileNvim = mkFishHelper "television-nix-file-nvim" ''
@@ -134,7 +128,7 @@ let
     set fields (tv_record "$argv[1]")
     set file "$fields[2]"
     tv_require_file "$file"; or exit 1
-    command ${nvim} "$file"
+    command nvim "$file"
   '';
 
   fileZed = mkFishHelper "television-nix-file-zed" ''
@@ -142,7 +136,7 @@ let
     set fields (tv_record "$argv[1]")
     set file "$fields[2]"
     tv_require_file "$file"; or exit 1
-    command ${zed} "$file"
+    command zed "$file"
   '';
 
   fileCopyAbsolute = mkFishHelper "television-nix-file-copy-absolute" ''
@@ -168,7 +162,7 @@ let
 
     set start (math "max(1, $line - 8)")
     set finish (math "$line + 16")
-    command ${bat} --paging=never --style=numbers --color=always \
+    command bat --paging=never --style=numbers --color=always \
       --line-range "$start:$finish" --highlight-line "$line" "$file"
   '';
 
@@ -178,7 +172,7 @@ let
     set file "$fields[2]"
     set line "$fields[3]"
     tv_require_file "$file"; or exit 1
-    command ${nvim} "+$line" "$file"
+    command nvim "+$line" "$file"
   '';
 
   matchZed = mkFishHelper "television-nix-match-zed" ''
@@ -187,7 +181,7 @@ let
     set file "$fields[2]"
     set line "$fields[3]"
     tv_require_file "$file"; or exit 1
-    command ${zed} --line "$line" "$file"
+    command zed --line "$line" "$file"
   '';
 
   matchCopyAbsolute = mkFishHelper "television-nix-match-copy-absolute" ''
@@ -222,7 +216,7 @@ let
   gitSource = mkFishHelper "television-nix-git-source" ''
     ${gitFunctions}
     set root ${lib.escapeShellArg nixConfigDir}
-    set records (command ${git} -C "$root" status --porcelain=v1 -z --untracked-files=all | string split0)
+    set records (command git -C "$root" status --porcelain=v1 -z --untracked-files=${if channels.nixGit.includeUntracked then "all" else "no"} | string split0)
     set index 1
 
     while test $index -le (count $records)
@@ -257,7 +251,7 @@ let
     end
 
     tv_require_file "$file"; or exit 1
-    command ${bat} --paging=never --style=numbers --color=always "$file"
+    command bat --paging=never --style=numbers --color=always "$file"
   '';
 
   gitPreviewDiff = mkFishHelper "television-nix-git-preview-diff" ''
@@ -269,9 +263,9 @@ let
     set file "$fields[3]"
 
     if string match -q '??' -- "$status"
-      command ${git} -C "$root" diff --no-index --color=always -- /dev/null "$file"; or true
+      command git -C "$root" diff --no-index --color=always -- /dev/null "$file"; or true
     else
-      command ${git} -C "$root" diff HEAD --no-ext-diff --color=always -- "$relative"
+      command git -C "$root" diff HEAD --no-ext-diff --color=always -- "$relative"
     end
   '';
 
@@ -287,7 +281,7 @@ let
     end
 
     tv_require_file "$file"; or exit 1
-    command ${nvim} "$file"
+    command nvim "$file"
   '';
 
   gitZed = mkFishHelper "television-nix-git-zed" ''
@@ -302,7 +296,7 @@ let
     end
 
     tv_require_file "$file"; or exit 1
-    command ${zed} "$file"
+    command zed "$file"
   '';
 
   gitCopyAbsolute = mkFishHelper "television-nix-git-copy-absolute" ''
@@ -321,7 +315,7 @@ let
   # Sources retain a relative label for TV and an absolute path for actions.
   fileSource = scope: mkFishHelper "television-nix-${scope.name}-source" ''
     set root ${lib.escapeShellArg scope.path}
-    command ${fd} --type f --absolute-path --hidden --no-ignore ${fdExclusions} . "$root" | while read --local file
+    command fd --type f --absolute-path --hidden --no-ignore ${fdExclusions} ${fdGlobs scope.fileGlobs} . "$root" | while read --local file
       set relative (string replace -- "$root/" "" "$file")
       printf '%s\t%s\n' "$relative" "$file"
     end
@@ -331,7 +325,7 @@ let
   # Match sources print relative path, line, source context, and absolute data.
   matchSource = name: patterns: mkFishHelper "television-nix-${name}-source" ''
     set root ${lib.escapeShellArg nixConfigDir}
-    command ${rg} --line-number --no-heading --color=never --glob '*.nix' ${rgExclusions} ${patterns} "$root" | while read --local result
+    command rg --line-number --no-heading --color=never --glob '*.nix' ${rgExclusions} ${rgPatterns patterns} "$root" | while read --local result
       set fields (string split --max 2 : -- "$result")
       set absolute "$fields[1]"
       set line "$fields[2]"
@@ -346,8 +340,8 @@ let
   # stat differences and ordering .nix files by modification time safely.
   recentSource = mkFishHelper "television-nix-recent-source" ''
     set root ${lib.escapeShellArg nixConfigDir}
-    command ${env} LC_ALL=C ${find} "$root" \( ${findPruneExpression} \) -prune -o \
-      -type f -name '*.nix' -printf '%T@\t%p\n' | command ${env} LC_ALL=C ${sort} --numeric-sort --reverse | while read --local result
+    command env LC_ALL=C find "$root" \( ${findPruneExpression} \) -prune -o \
+      -type f -name '*.nix' -printf '%T@\t%p\n' | command env LC_ALL=C sort --numeric-sort --reverse | while read --local result
       set fields (string split --max 1 \t -- "$result")
       set file "$fields[2]"
       set relative (string replace -- "$root/" "" "$file")
@@ -356,16 +350,16 @@ let
   '';
 in
 {
-  inherit excludedDirectories;
-
   file = {
     source = fileSource {
       name = "files";
       path = nixConfigDir;
+      fileGlobs = channels.nix.fileGlobs;
     };
     darwinSource = fileSource {
       name = "darwin";
       path = "${nixConfigDir}/darwin";
+      fileGlobs = channels.nixDarwin.fileGlobs;
     };
     preview = filePreview;
     nvim = fileNvim;
@@ -375,9 +369,9 @@ in
   };
 
   match = {
-    filesSource = matchSource "files" "-e '.'";
-    symbolsSource = matchSource "symbols" "-e 'environment\\.systemPackages' -e 'home\\.packages' -e 'imports[[:space:]]*=' -e 'programs\\.' -e 'services\\.' -e 'options\\.' -e 'config\\.'";
-    importsSource = matchSource "imports" "-e 'imports[[:space:]]*=' -e '^[[:space:]]*\\.?\\.?/.*\\.nix' -e '(^|[[:space:](])(builtins\\.)?import[[:space:]]+\\(?\\.?\\.?/.*\\.nix'";
+    filesSource = matchSource "files" [ "." ];
+    symbolsSource = matchSource "symbols" channels.nixSymbols.patterns;
+    importsSource = matchSource "imports" channels.nixImports.patterns;
     preview = matchPreview;
     nvim = matchNvim;
     zed = matchZed;
