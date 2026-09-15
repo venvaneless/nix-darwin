@@ -19,7 +19,7 @@
 }:
 
 let
-  cfg = config.ven.packages.qbittorrent.daemon;
+  cfg = config.system.sharedPackages.mediaPackages.qbittorrent.daemon;
 
   passwordPlaceholder =
     if cfg.webui.passwordSecret == null then
@@ -60,64 +60,68 @@ let
       config.sops.templates.${daemonTemplateName}.path;
 in
 {
-  options.ven.packages.qbittorrent.daemon = {
-    enable = lib.mkEnableOption "headless qBittorrent system service (NixOS only)";
+  options.system.sharedPackages.mediaPackages = lib.mkOption {
+    type = lib.types.submodule {
+      options.qbittorrent.daemon = {
+        enable = lib.mkEnableOption "headless qBittorrent system service (NixOS only)";
 
-    package = lib.mkOption {
-      type = lib.types.package;
-      description = "qBittorrent package used by the headless system service.";
-    };
+        package = lib.mkOption {
+          type = lib.types.package;
+          description = "qBittorrent package used by the headless system service.";
+        };
 
-    profileDir = lib.mkOption {
-      type = lib.types.str;
-      description = "Persistent qBittorrent system-service profile directory.";
-    };
+        profileDir = lib.mkOption {
+          type = lib.types.str;
+          description = "Persistent qBittorrent system-service profile directory.";
+        };
 
-    configFile = lib.mkOption {
-      type = lib.types.str;
-      description = "Mutable qBittorrent system-service configuration file.";
-    };
+        configFile = lib.mkOption {
+          type = lib.types.str;
+          description = "Mutable qBittorrent system-service configuration file.";
+        };
 
-    downloads = lib.mkOption {
-      type = lib.types.str;
-      description = "Directory where the system service saves completed torrents.";
-    };
+        downloads = lib.mkOption {
+          type = lib.types.str;
+          description = "Directory where the system service saves completed torrents.";
+        };
 
-    acceptLegalNotice = lib.mkOption {
-      type = lib.types.bool;
-      description = "Accept qBittorrent's legal notice for unattended service startup.";
-    };
+        acceptLegalNotice = lib.mkOption {
+          type = lib.types.bool;
+          description = "Accept qBittorrent's legal notice for unattended service startup.";
+        };
 
-    webui = {
-      enable = lib.mkOption {
-        type = lib.types.bool;
-        description = "Enable qBittorrent's Web UI.";
+        webui = {
+          enable = lib.mkOption {
+            type = lib.types.bool;
+            description = "Enable qBittorrent's Web UI.";
+          };
+
+          port = lib.mkOption {
+            type = lib.types.port;
+            description = "Port on which qBittorrent's Web UI listens.";
+          };
+
+          username = lib.mkOption {
+            type = lib.types.str;
+            description = "qBittorrent Web UI user name.";
+          };
+
+          passwordSecret = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            description = "Optional SOPS secret holding qBittorrent's PBKDF2 Web UI password.";
+          };
+        };
+
+        torrentingPort = lib.mkOption {
+          type = lib.types.port;
+          description = "Incoming BitTorrent peer port.";
+        };
+
+        firewall.openTorrentingPort = lib.mkOption {
+          type = lib.types.bool;
+          description = "Open the incoming BitTorrent port in the NixOS firewall.";
+        };
       };
-
-      port = lib.mkOption {
-        type = lib.types.port;
-        description = "Port on which qBittorrent's Web UI listens.";
-      };
-
-      username = lib.mkOption {
-        type = lib.types.str;
-        description = "qBittorrent Web UI user name.";
-      };
-
-      passwordSecret = lib.mkOption {
-        type = lib.types.nullOr lib.types.str;
-        description = "Optional SOPS secret holding qBittorrent's PBKDF2 Web UI password.";
-      };
-    };
-
-    torrentingPort = lib.mkOption {
-      type = lib.types.port;
-      description = "Incoming BitTorrent peer port.";
-    };
-
-    firewall.openTorrentingPort = lib.mkOption {
-      type = lib.types.bool;
-      description = "Open the incoming BitTorrent port in the NixOS firewall.";
     };
   };
 
@@ -127,7 +131,7 @@ in
       assertions = [
         {
           assertion = !cfg.enable || platforms.isLinux;
-          message = "ven.packages.qbittorrent.daemon is a NixOS system service and cannot be enabled on this platform.";
+          message = "system.sharedPackages.mediaPackages.qbittorrent.daemon is a NixOS system service and cannot be enabled on this platform.";
         }
       ];
     }
