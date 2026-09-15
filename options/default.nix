@@ -53,7 +53,7 @@ in
   envSettingsOptions = ./env-settings;
   espansoOptions = ./package-options/espanso;
   obsidianOptions = ./obsidian/default.nix;
-  darwinPackageOptions = ./package-options;
+  darwinPackageOptions = import ./package-options { mode = "module"; };
   nixOptions = ./nix-config.nix;
   sharedHomeModule = ../shared/home/default.nix;
 }

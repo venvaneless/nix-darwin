@@ -22,9 +22,8 @@ in {
       config = sharedNixpkgsConfig;
     };
     platforms = import ../options/platforms.nix { inherit pkgs; };
-    packageOptions = import ../options/package-options {
+    packageOptions = (import ../options/package-options { mode = "helper"; }) {
       lib = inputs.nixpkgs.lib;
-      packageOptionsMode = false;
       installTarget = "system";
       inherit paths pkgs platforms;
     };

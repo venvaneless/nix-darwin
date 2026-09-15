@@ -42,9 +42,8 @@ let
         ;
 
       platforms = import ../options/platforms.nix { inherit pkgs; };
-      packageOptions = import ../options/package-options {
+      packageOptions = (import ../options/package-options { mode = "helper"; }) {
         lib = inputs.nixpkgs.lib;
-        packageOptionsMode = false;
         inherit
           paths
           platforms
@@ -168,9 +167,7 @@ in
         inputs.darwin.lib.darwinSystem {
           inherit system;
 
-          specialArgs = specialArgs // resolvedHostContext // {
-            packageOptionsMode = true;
-          };
+          specialArgs = specialArgs // resolvedHostContext;
 
           modules = [
             # Provides SOPS secret management.
