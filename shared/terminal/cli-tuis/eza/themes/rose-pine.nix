@@ -4,7 +4,7 @@
 # EZA: ROSÉ PINE THEME
 #
 # - Declares the Rosé Pine theme entirely in Nix
-# - Toggle with ven.features.terminal.cliTuis.eza.themes.rosePine.enable
+# - Toggle with home.shared.terminal.cliTuis.eza.themes.rosePine.enable
 # - Disabled by default; enable it after turning the active theme off
 #
 # Home Manager renders this attribute set to
@@ -16,11 +16,11 @@
 { config, lib, ... }:
 
 let
-  ezaCfg = config.ven.features.terminal.cliTuis.eza;
+  ezaCfg = config.home.shared.terminal.cliTuis.eza;
   cfg = ezaCfg.themes.rosePine;
 in
 {
-  options.ven.features.terminal.cliTuis.eza.themes.rosePine.enable = lib.mkOption {
+  options.home.shared.terminal.cliTuis.eza.themes.rosePine.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Use the Rosé Pine theme for eza.";

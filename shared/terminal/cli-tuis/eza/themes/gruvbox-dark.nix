@@ -16,11 +16,11 @@
 { config, lib, ... }:
 
 let
-  ezaCfg = config.ven.features.terminal.cliTuis.eza;
+  ezaCfg = config.home.shared.terminal.cliTuis.eza;
   cfg = ezaCfg.themes.gruvboxDark;
 in
 {
-  options.ven.features.terminal.cliTuis.eza.themes.gruvboxDark.enable = lib.mkOption {
+  options.home.shared.terminal.cliTuis.eza.themes.gruvboxDark.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Gruvbox Dark theme selected in eza.nix.";

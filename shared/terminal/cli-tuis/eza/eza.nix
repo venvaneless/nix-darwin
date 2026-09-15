@@ -13,11 +13,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.eza;
+  cfg = config.home.shared.terminal.cliTuis.eza;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Eza's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.eza.enable directly.
+  # still override home.shared.terminal.cliTuis.eza.enable directly.
   eza = {
     enable = true;
     installOn = {
@@ -73,17 +73,17 @@ let
       '';
 in
 {
-  options.ven.features.terminal.cliTuis.eza.enable = lib.mkEnableOption "Eza file listing";
+  options.home.shared.terminal.cliTuis.eza.enable = lib.mkEnableOption "Eza file listing";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.eza.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.eza.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
     # ---- ACTIVE THEME ---- #
     # The selected module exposes this internal switch. Because it is the
     # only imported theme module, a second eza palette cannot be enabled.
-    ven.features.terminal.cliTuis.eza.themes.${selectedTheme}.enable = true;
+    home.shared.terminal.cliTuis.eza.themes.${selectedTheme}.enable = true;
 
     programs.eza = {
       # Install and enable eza

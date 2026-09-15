@@ -4,7 +4,7 @@
 # EZA: CATPPUCCIN MACCHIATO THEME
 #
 # - Declares the Catppuccin Macchiato theme entirely in Nix
-# - Toggle with ven.features.terminal.cliTuis.eza.themes.catppuccinMacchiato.enable
+# - Toggle with home.shared.terminal.cliTuis.eza.themes.catppuccinMacchiato.enable
 # - Disabled by default; enable it after turning the active theme off
 #
 # Home Manager renders this attribute set to
@@ -16,11 +16,11 @@
 { config, lib, ... }:
 
 let
-  ezaCfg = config.ven.features.terminal.cliTuis.eza;
+  ezaCfg = config.home.shared.terminal.cliTuis.eza;
   cfg = ezaCfg.themes.catppuccinMacchiato;
 in
 {
-  options.ven.features.terminal.cliTuis.eza.themes.catppuccinMacchiato.enable = lib.mkOption {
+  options.home.shared.terminal.cliTuis.eza.themes.catppuccinMacchiato.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Use the Catppuccin Macchiato theme for eza.";
