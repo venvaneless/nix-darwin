@@ -290,8 +290,8 @@ let
 in
 {
   config = {
-    ven.features.terminal.aliases.shell = terminalAliasEntries.mkDefaults shellAliases;
+    home.shared.terminal.aliases.shell = terminalAliasEntries.mkDefaults shellAliases;
 
-    ven.features.terminal.aliases.functions = terminalAliasEntries.mkDefaults functions;
+    home.shared.terminal.aliases.functions = terminalAliasEntries.mkDefaults functions;
   };
 }

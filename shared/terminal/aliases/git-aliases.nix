@@ -7,7 +7,7 @@
 { paths, ... }:
 
 {
-  ven.features.terminal.aliases = {
+  home.shared.terminal.aliases = {
     shell = {
       # ---------- Git Aliases ---------- #
 

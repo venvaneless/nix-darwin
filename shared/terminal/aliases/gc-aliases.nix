@@ -7,7 +7,7 @@
 { nixAliasValues, ... }:
 
 {
-  ven.features.terminal.aliases = {
+  home.shared.terminal.aliases = {
     shell = {
       # List all generations of the system profile
       drg = {
