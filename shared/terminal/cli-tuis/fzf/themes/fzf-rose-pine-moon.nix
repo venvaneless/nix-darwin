@@ -12,7 +12,7 @@
 
 {
   config = lib.mkIf (
-    config.ven.features.terminal.cliTuis.fzf.enable
+    config.home.shared.terminal.cliTuis.fzf.enable
     && config.terminal.fzf.theme == "rose-pine-moon"
   ) {
     programs.fzf.defaultOptions = [

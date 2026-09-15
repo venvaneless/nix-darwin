@@ -16,11 +16,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.fzf;
+  cfg = config.home.shared.terminal.cliTuis.fzf;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Fzf's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.fzf.enable directly.
+  # still override home.shared.terminal.cliTuis.fzf.enable directly.
   fzf = {
     enable = true;
     installOn = {
@@ -38,11 +38,11 @@ let
     fzf.enable && ((isDarwin && fzf.installOn.darwin) || (isLinux && fzf.installOn.linux));
 in
 {
-  options.ven.features.terminal.cliTuis.fzf.enable = lib.mkEnableOption "Fzf fuzzy finder";
+  options.home.shared.terminal.cliTuis.fzf.enable = lib.mkEnableOption "Fzf fuzzy finder";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.fzf.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.fzf.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
     programs.fzf = {
