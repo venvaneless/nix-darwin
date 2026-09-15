@@ -1,6 +1,6 @@
 # darwin/packages/agents-pkgs.nix
 
-{ packageOptions, paths, pkgs, unstablePkgs, ... }:
+{ packageOptions, paths, pkgs, symlinks, unstablePkgs, ... }:
 
 let
   # ------------------------------------------------------------
@@ -58,4 +58,5 @@ in
 // packageOptions.mkPackageModule {
   name = "darwin-agents";
   packages = agentPackages;
+  inherit symlinks;
 }
