@@ -32,11 +32,12 @@ let
         serviceOptions
         containerBackupOptions
         terminalOptions
-        featureOptions
         weztermOptions
         cliOptions
         envSettingsOptions
         espansoOptions
+        vscodeOptions
+        qbittorrentOptions
         nixOptions
         sharedHomeModule
         unstablePkgs
@@ -63,7 +64,6 @@ let
         darwinPackages
         envSettingsOptions
         espansoOptions
-        featureOptions
         nixOptions
         packageOptions
         paths
@@ -74,7 +74,9 @@ let
         sharedOptions
         terminalOptions
         unstablePkgs
+        vscodeOptions
         weztermOptions
+        qbittorrentOptions
         ;
     };
 in
@@ -119,14 +121,12 @@ in
     # Every Home Manager host imports this and chooses terminal features locally.
     homeModules."shared.terminal" = {
       cliOptions,
-      featureOptions,
       terminalOptions,
       ...
     }: {
       imports = [
         # Terminal option modules declare values used by terminal modules.
         terminalOptions
-        featureOptions
 
         # CLI option modules define the knobs set by shared/terminal/cli-tuis.
         cliOptions
@@ -188,6 +188,8 @@ in
             # Both are root modules, so neither has to resolve config while
             # another module is still constructing its imports list.
             nixOptions
+            resolvedHostContext.vscodeOptions
+            resolvedHostContext.qbittorrentOptions
             ../shared/default.nix
 
             # Home Manager is a separate module graph, so it does not
@@ -289,6 +291,7 @@ in
 
             # Shared Nix option declarations and their common knob values.
             nixOptions
+            resolvedHostContext.qbittorrentOptions
             ../shared/default.nix
           ]
           ++ modules;
