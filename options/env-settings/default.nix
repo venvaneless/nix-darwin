@@ -19,13 +19,8 @@ let
   # The knobs retain both platform paths. Only the path and toggle for
   # the Home Manager host currently being built are used.
 
-  createSymlink =
-    if platforms.isDarwin then
-      cfg.createSymlink.darwin
-    else if platforms.isLinux then
-      cfg.createSymlink.linux
-    else
-      false;
+  # An unsupported platform resolves to null, which means no symlink.
+  createSymlink = platforms.valueForCurrentPlatform cfg.createSymlink == true;
 
   pathSymlink = platforms.valueForCurrentPlatform cfg.pathSymlink;
 
