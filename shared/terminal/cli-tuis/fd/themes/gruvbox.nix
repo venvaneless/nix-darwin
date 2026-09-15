@@ -18,7 +18,7 @@
 { config, lib, ... }:
 
 let
-  fdCfg = config.ven.features.terminal.cliTuis.fd;
+  fdCfg = config.home.shared.terminal.cliTuis.fd;
   cfg = fdCfg.themes.gruvbox;
 
   # ---- PALETTE ---- #
@@ -102,7 +102,7 @@ let
     ];
 in
 {
-  options.ven.features.terminal.cliTuis.fd.themes.gruvbox.enable = lib.mkOption {
+  options.home.shared.terminal.cliTuis.fd.themes.gruvbox.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Gruvbox Dark colours selected in fd.nix.";
