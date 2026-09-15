@@ -334,7 +334,7 @@ else if mode == "shared" then
       installTarget = "system";
     }) mkPackageModule;
 
-    cfg = config.shared.packages;
+    cfg = config.system.sharedPackages;
 
     # ------------------------------------------------------------
     # ------ PACKAGE GROUPS ------ #
@@ -398,7 +398,7 @@ else if mode == "shared" then
       ) attrs;
   in
   {
-    options.shared.packages = lib.genAttrs groups (group: lib.mkOption {
+    options.system.sharedPackages = lib.genAttrs groups (group: lib.mkOption {
       type = groupType;
       default = { };
       description = "The ${group} package group.";
