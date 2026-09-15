@@ -944,7 +944,7 @@ let
         darwin = true;
         linux = true;
       };
-      package = pkgs.zed-editor;
+      package = unstablePkgs.zed-editor;
       appName = "Zed.app";
       symlinkProgramming = true;
     };
