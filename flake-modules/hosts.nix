@@ -13,7 +13,12 @@ let
   # provides the pre-evaluation values and the module paths; it does not
   # import those modules into every host by itself.
   sharedOptionValues = import ../options { };
-  inherit (sharedOptionValues) darwinPackageOptions nixOptions nixSharedSettings;
+  inherit (sharedOptionValues)
+    nixSharedSettings
+    qbittorrentOptions
+    sharedPackageOptions
+    vscodeOptions
+    ;
   sharedNixpkgsConfig = sharedOptionValues.nixpkgsConfig;
 
   # ---- PER-HOST SHARED CONTEXT ---- #
@@ -38,7 +43,6 @@ let
         espansoOptions
         vscodeOptions
         qbittorrentOptions
-        nixOptions
         sharedHomeModule
         unstablePkgs
         ;
@@ -60,11 +64,9 @@ let
       inherit
         cliOptions
         containerBackupOptions
-        darwinPackageOptions
         darwinPackages
         envSettingsOptions
         espansoOptions
-        nixOptions
         packageOptions
         paths
         pkgs
@@ -158,39 +160,30 @@ in
         {
           system,
           modules,
-          hostContext ? null,
           specialArgs ? { },
-        }:
-        let
+
           # Darwin hosts supply their fully configured package set so this
           # shared constructor can derive platform and package helpers once.
-          hostPkgs = specialArgs.pkgs or (throw "mkDarwinHost requires specialArgs.pkgs");
-          resolvedHostContext =
-            if hostContext == null then
-              mkHostContext {
-                pkgs = hostPkgs;
-                installTarget = "system";
-              }
-            else
-              hostContext;
-
-        in
+          # A host that already built its context passes it instead.
+          hostContext ? mkHostContext {
+            pkgs = specialArgs.pkgs or (throw "mkDarwinHost requires specialArgs.pkgs");
+            installTarget = "system";
+          },
+        }:
         inputs.darwin.lib.darwinSystem {
           inherit system;
 
-          specialArgs = specialArgs // resolvedHostContext;
+          specialArgs = specialArgs // hostContext;
 
           modules = [
             # Provides SOPS secret management.
             inputs.sops-nix.darwinModules.sops
 
-            # Shared Nix option declarations and their common knob values.
-            # Both are root modules, so neither has to resolve config while
-            # another module is still constructing its imports list.
-            nixOptions
-            resolvedHostContext.vscodeOptions
-            resolvedHostContext.qbittorrentOptions
-            ../shared/default.nix
+            # Shared Nix settings and shared package options.
+            nixSharedSettings
+            sharedPackageOptions
+            vscodeOptions
+            qbittorrentOptions
 
             # Home Manager is a separate module graph, so it does not
             # inherit nix-darwin's specialArgs. Pass the host context at
@@ -198,7 +191,7 @@ in
             # already receives the configured global package set.
             {
               home-manager.extraSpecialArgs =
-                (builtins.removeAttrs resolvedHostContext [
+                (builtins.removeAttrs hostContext [
                   "darwinPackages"
                   "pkgs"
                 ])
@@ -289,10 +282,10 @@ in
             # Provides SOPS secret management.
             inputs.sops-nix.nixosModules.sops
 
-            # Shared Nix option declarations and their common knob values.
-            nixOptions
-            resolvedHostContext.qbittorrentOptions
-            ../shared/default.nix
+            # Shared Nix settings and shared package options.
+            nixSharedSettings
+            sharedPackageOptions
+            qbittorrentOptions
           ]
           ++ modules;
         };

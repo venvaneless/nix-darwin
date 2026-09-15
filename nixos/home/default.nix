@@ -29,11 +29,11 @@
 
   # ---- HOST TERMINAL FEATURES ---- #
   # CLI/TUI defaults come from shared/terminal/cli-tuis/default.nix.
-  ven.features.terminal.nvim = {
+  home.shared.terminal.nvim = {
     enable = true;
     neovide.enable = false;
   };
 
   # ---- NIX ALIAS HOST ---- #
-  ven.features.terminal.fish.nixProfile.flakeHost = "zephyrus";
+  home.shared.terminal.fish.nixProfile.flakeHost = "zephyrus";
 }
