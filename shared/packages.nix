@@ -19,6 +19,7 @@
   inputs,
   lib,
   packageOptions,
+  paths,
   pkgs,
   symlinks ? null,
   unstablePkgs,
@@ -915,24 +916,6 @@ let
   # ------------------------------------------------------------
 
   developmentApplications = {
-    # ---- WezTerm
-    # GPU-accelerated terminal emulator; its config lives in
-    # shared/terminal/wezterm.
-    wezterm = {
-      enable = true;
-      installOn = {
-        darwin = true;
-        linux = true;
-      };
-      package = pkgs.wezterm;
-      appName = "WezTerm.app";
-      symlinkProgramming = true;
-    };
-
-    # ** Visual Studio Code is not listed here. It owns ./vscode.nix,
-    # ** which keeps its package, its application link, and the
-    # ** relocation of its state in one place.
-
     # ---- Zed
     zed = {
       enable = true;
@@ -1075,42 +1058,98 @@ let
     };
   };
 
-  # ------------------------------------------------------------
-  # ------ TOOL PACKAGE DEFINITIONS ------ #
-  # ------------------------------------------------------------
-
-  toolPackages = {
-    # ---- Espanso
-    # Cross-platform text expander for keyboard-driven snippets.
-    espanso = {
-      enable = true;
-      installOn = {
-        darwin = true;
-        linux = true;
-      };
-      package = pkgs.espanso;
-      appName = "Espanso.app";
-      symlinkApplications = true;
-    };
-  };
-
 in
 {
   # ------------------------------------------------------------
-  # ------ PROGRAMS THAT OWN THEIR OWN MODULE ------ #
-  # VS Code keeps its package, its Darwin application link, and the
-  # relocation of its state together rather than split across files.
-  #
-  # qBittorrent does the same for its package, its application link,
-  # its profile location, and the settings declared for that profile.
-  # The optional NixOS daemon is not part of it: a system service
-  # cannot be declared from a file that Home Manager also evaluates.
+  # ------ APPLICATION KNOBS ------ #
+  # Semantics and rendering live in options/package-options. This file
+  # selects every machine value for VS Code and qBittorrent.
   # ------------------------------------------------------------
 
-  imports = [
-    ./packages/vscode.nix
-    ./packages/qbittorrent.nix
-  ];
+  ven.packages = {
+    vscode = {
+      enable = true;
+      installOn = { darwin = true; linux = true; };
+      package = unstablePkgs.vscode;
+      appName = "Visual Studio Code.app";
+      symlinkProgramming = true;
+
+      paths = {
+        source = {
+          extensions = paths.darwin.home.vscode.source.extensions;
+          userData = paths.darwin.home.vscode.source.userData;
+          sharedData = paths.darwin.home.vscode.source.sharedData;
+          argv = paths.darwin.home.vscode.source.argv;
+          cli = paths.darwin.home.vscode.source.cli;
+          agentPlugins = paths.darwin.home.vscode.source.agentPlugins;
+        };
+
+        symlink = {
+          extensions = paths.darwin.home.vscode.symlink.extensions;
+          userData = paths.darwin.home.vscode.symlink.userData;
+          sharedData = paths.darwin.home.vscode.symlink.sharedData;
+          argv = paths.darwin.home.vscode.symlink.argv;
+          cli = paths.darwin.home.vscode.symlink.cli;
+          agentPlugins = paths.darwin.home.vscode.symlink.agentPlugins;
+        };
+
+        migrationBackups = paths.darwin.home.vscode.migrationBackups;
+      };
+    };
+
+    qbittorrent = {
+      desktop = {
+        enable = true;
+        installOn = { darwin = true; linux = true; };
+        package = pkgs.qbittorrent-enhanced;
+        appName = "qbittorrent.app";
+        symlinkTools = true;
+      };
+
+      cli = {
+        enable = true;
+        installOn = { darwin = false; linux = true; };
+        package = pkgs.qbittorrent-cli;
+
+        paths = {
+          profileRoot = paths.darwin.home.qbittorrent.profileRoot;
+          config = paths.darwin.home.qbittorrent.config;
+          configFile = paths.darwin.home.qbittorrent.configFile;
+          downloads = paths.darwin.home.qbittorrent.downloads;
+        };
+
+        settings = {
+          webuiPort = 8090;
+          torrentingPort = 6881;
+          webuiUsername = paths.user.name;
+        };
+      };
+
+      # ------------------------------------------------------------
+      # System service knobs
+      # ------------------------------------------------------------
+      # This stays disabled on the desktop. Enable it on the NixOS
+      # server when it should seed without a logged-in user.
+      daemon = {
+        enable = false;
+        package = pkgs.qbittorrent-enhanced-nox;
+        profileDir = paths.linux.services.qbittorrent.profileDir;
+        configFile = paths.linux.services.qbittorrent.configFile;
+        downloads = paths.linux.services.qbittorrent.downloads;
+        acceptLegalNotice = true;
+
+        webui = {
+          enable = true;
+          port = 8080;
+          username = paths.user.name;
+          passwordSecret = null;
+        };
+
+        torrentingPort = 6882;
+        firewall.openTorrentingPort = false;
+      };
+    };
+  };
 }
 // lib.mkMerge [
 
@@ -1147,12 +1186,6 @@ in
   (packageOptions.mkPackageModule {
     name = "shared-productivity";
     packages = productivityPackages;
-    inherit symlinks;
-  })
-
-  (packageOptions.mkPackageModule {
-    name = "shared-tools";
-    packages = toolPackages;
     inherit symlinks;
   })
 ]
