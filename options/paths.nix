@@ -69,23 +69,27 @@ let
     };
 
     # ---- Editors
-    # VS Code portable root. The same relative location on both
-    # platforms, so only the home prefix differs.
-    #
-    # ** VS Code resolves VSCODE_PORTABLE before VSCODE_APPDATA,
-    # ** --user-data-dir, and its platform default, and derives every
-    # ** subdirectory below from it. The names are fixed upstream, so
-    # ** they are written once here instead of in each caller.
+    # VS Code's mutable state root. The same source-of-truth layout is
+    # used on both platforms, so only the home prefix differs.
     vscode = rec {
       root = "${home}/.config/vscode";
 
-      userData = "${root}/user-data";
-      extensions = "${root}/extensions";
-      sharedData = "${root}/shared-data";
+      # The mutable source-of-truth files and directories. Package knobs
+      # select these values in shared/packages.nix; the VS Code option module
+      # creates links at the editor's standard discovery locations.
+      source = rec {
+        extensions = "${root}/extensions";
+        userData = "${root}/user-data";
+        sharedData = "${root}/shared-data";
+        argv = "${root}/argv.json";
+        cli = "${root}/cli";
+        agentPlugins = "${root}/agent-plugins";
+      };
 
-      # ** The tunnel and serve-web CLI keeps its metadata separately
-      # ** and ignores VSCODE_PORTABLE, so it needs its own variable.
-      cli = "${root}/cli";
+      # Backwards-compatible names for callers that read the source paths.
+      inherit (source) extensions userData sharedData cli;
+      argv = source.argv;
+      agentPlugins = source.agentPlugins;
 
       settings = "${userData}/User/settings.json";
       keybindings = "${userData}/User/keybindings.json";
@@ -134,7 +138,28 @@ let
   # Bound here so the platform selector can return one of them. Each is
   # published in its own platform group further down.
 
-  darwinHomePaths = mkHomePaths darwinHome // {
+  darwinBaseHomePaths = mkHomePaths darwinHome;
+  linuxBaseHomePaths = mkHomePaths linuxHome;
+
+  darwinHomePaths = darwinBaseHomePaths // {
+    # ---- Editors
+    # The standard macOS locations remain the locations VS Code opens.
+    # Home Manager links each one to the source-of-truth state root above.
+    vscode = darwinBaseHomePaths.vscode // {
+      # VS Code's normal macOS locations. Each value is a list so one source
+      # can be linked to more than one upstream discovery path when needed.
+      symlink = {
+        extensions = [ "${darwinHome}/.vscode/extensions" ];
+        userData = [ "${darwinHome}/Library/Application Support/Code" ];
+        sharedData = [ "${darwinHome}/.vscode-shared" ];
+        argv = [ "${darwinHome}/.vscode/argv.json" ];
+        cli = [ "${darwinHome}/.vscode/cli" ];
+        agentPlugins = [ "${darwinHome}/.vscode/agent-plugins" ];
+      };
+
+      migrationBackups = "${darwinHome}/.config/.state/vscode-state-migrations";
+    };
+
     # ---- State, data, and cache
     # ** This host deliberately keeps all three below .config rather
     # ** than at the standard XDG locations. Preserved as configured.
@@ -163,7 +188,7 @@ let
     ssl = "${darwinHome}/.config/ssl";
   };
 
-  linuxHomePaths = mkHomePaths linuxHome // {
+  linuxHomePaths = linuxBaseHomePaths // {
     # ---- State, data, and cache
     # ** Standard XDG locations, unlike the macOS tree above.
     state = "${linuxHome}/.local/state";
