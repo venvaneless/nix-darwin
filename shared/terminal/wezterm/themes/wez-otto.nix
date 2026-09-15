@@ -6,7 +6,7 @@
 
 { ... }:
 {
-  config.shared.terminal.wezterm.themes.otto = {
+  config.home.shared.terminal.wezterm.themes.otto = {
     name = "otto";
     title = "Otto";
     description = "Otto terminal, window frame, and tab bar colors.";
