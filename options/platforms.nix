@@ -40,7 +40,25 @@ let
       values.linux or null
     else
       null;
+
+  # ------------------------------------------------------------
+  # ------ PLATFORM-ONLY ATTRIBUTES ------ #
+  # Drops the attributes entirely on other platforms. Needed for option
+  # paths that exist in only one module system (services.*, systemd, and
+  # networking.firewall on NixOS), where a false lib.mkIf still defines
+  # the path, and for flake outputs that only evaluate on one platform.
+  # ------------------------------------------------------------
+
+  onlyOnLinux = definitions: if isLinux then definitions else { };
+  onlyOnDarwin = definitions: if isDarwin then definitions else { };
 in
 {
-  inherit isDarwin isLinux enabledForCurrentPlatform valueForCurrentPlatform;
+  inherit
+    isDarwin
+    isLinux
+    enabledForCurrentPlatform
+    valueForCurrentPlatform
+    onlyOnLinux
+    onlyOnDarwin
+    ;
 }
