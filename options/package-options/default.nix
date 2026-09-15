@@ -107,7 +107,7 @@ let
 
         mkPackageModule = { name, packages, symlinks ? null }:
           let
-            normalizedPackages = normalizePackages packages;
+            normalizedPackages = normalizePackages (lib.filterAttrs (_: enabledForCurrentPlatform) packages);
             installedPackages = selectedPackages normalizedPackages;
             applicationLinks = applicationLinkEntries packages;
 
@@ -317,5 +317,99 @@ else if mode == "module" then
         inherit symlinks;
       };
     }
+
+else if mode == "shared" then
+  {
+    config,
+    lib,
+    paths,
+    platforms,
+    pkgs,
+    symlinks ? null,
+    ...
+  }:
+  let
+    inherit (mkPackageHelpers {
+      inherit lib paths platforms pkgs symlinks;
+      installTarget = "system";
+    }) mkPackageModule;
+
+    cfg = config.shared.packages;
+
+    # ------------------------------------------------------------
+    # ------ PACKAGE GROUPS ------ #
+    # ------------------------------------------------------------
+
+    groups = [
+      "appPackages"
+      "developmentPackages"
+      "developmentApplications"
+      "cliPackages"
+      "mediaPackages"
+      "productivityPackages"
+    ];
+
+    # One package; enable and installOn default to its group.
+    entryType = group: lib.types.submodule {
+      freeformType = lib.types.lazyAttrsOf lib.types.raw;
+
+      options = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          default = group.enable;
+          description = "Install this package. Defaults to its group.";
+        };
+
+        installOn = lib.mkOption {
+          type = lib.types.attrsOf lib.types.bool;
+          default = group.installOn;
+          description = "Platforms on which this package is installed. Defaults to its group.";
+        };
+      };
+    };
+
+    groupType = lib.types.submodule ({ config, ... }: {
+      freeformType = lib.types.attrsOf (entryType config);
+
+      options = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          default = false;
+          description = "Default enable for every package in this group.";
+        };
+
+        installOn = lib.mkOption {
+          type = lib.types.attrsOf lib.types.bool;
+          default = { };
+          description = "Default platforms for every package in this group.";
+        };
+      };
+    });
+
+    # Packages in a group, including those in subtrees such as qbittorrent.desktop.
+    packageEntries = prefix: attrs:
+      lib.concatMapAttrs (name: value:
+        if !(builtins.isAttrs value) then
+          { }
+        else if value ? package || value ? packageByPlatform then
+          { "${prefix}${name}" = value; }
+        else
+          packageEntries "${prefix}${name}." value
+      ) attrs;
+  in
+  {
+    options.shared.packages = lib.genAttrs groups (group: lib.mkOption {
+      type = groupType;
+      default = { };
+      description = "The ${group} package group.";
+    });
+
+    config = lib.mkMerge (map (group: mkPackageModule {
+      name = "shared-${group}";
+      packages = packageEntries "" (builtins.removeAttrs cfg.${group} [ "enable" "installOn" ]);
+      inherit symlinks;
+    }) groups);
+  }
+
 else
-  throw "options/package-options: mode must be helper or module"
+  throw "options/package-options: mode must be helper, module, or shared"
