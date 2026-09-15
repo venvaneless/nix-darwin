@@ -1,42 +1,65 @@
-# shared/terminal/cli-tuis/television/themes/gruvbox.nix
+# options/cli/television/themes/gruvbox.nix
 #
 # =====================================================================
-# TELEVISION: GRUVBOX THEME
+# TELEVISION THEME: GRUVBOX
 #
-# - Installs the `ven-gruvbox` Television theme file
-# - Selected directly in television/default.nix with selectedTheme = "gruvbox"
+# - Identity, output file, and colour values for the Gruvbox Television theme
+# - Knobs are declared and rendered by ./default.nix
+# - Selected in shared/terminal/cli-tuis/default.nix with cli.television.uiTheme = "gruvbox"
 # - Uses the same Gruvbox Dark colours as the local WezTerm palette
 # =====================================================================
 
-''
-      # Matches the Gruvbox Dark colours configured for WezTerm.
+{ ... }:
+{
+  config.cli.television.themes.gruvbox = {
+    name = "gruvbox";
+    title = "Gruvbox";
+    description = "Gruvbox Dark colours matching the WezTerm palette.";
 
-      # General
-      background = "#282828"
-      border_fg = "#665c54"
-      text_fg = "#ebdbb2"
-      dimmed_text_fg = "#a89984"
+    # TOML file this theme is written to. Its file name (ven-gruvbox) is
+    # what config.toml selects.
+    relativePath = ".config/television/themes/ven-gruvbox.toml";
 
-      # Input
-      input_text_fg = "#fb4934"
-      result_count_fg = "#cc241d"
+    general = {
+      background = "#282828";
+      borderFg = "#665c54";
+      textFg = "#ebdbb2";
+      dimmedTextFg = "#a89984";
+    };
 
-      # Results
-      result_name_fg = "#83a598"
-      result_line_number_fg = "#fabd2f"
-      result_value_fg = "#ebdbb2"
-      selection_fg = "#282828"
-      selection_bg = "#d79921"
-      match_fg = "#fb4934"
+    input = {
+      textFg = "#fb4934";
+      resultCountFg = "#cc241d";
+    };
 
-      # Preview
-      preview_title_fg = "#b8bb26"
+    results = {
+      nameFg = "#83a598";
+      lineNumberFg = "#fabd2f";
+      valueFg = "#ebdbb2";
+      selectionFg = "#282828";
+      selectionBg = "#d79921";
+      matchFg = "#fb4934";
+    };
 
-      # Modes
-      channel_mode_fg = "#282828"
-      channel_mode_bg = "#b16286"
-      remote_control_mode_fg = "#282828"
-      remote_control_mode_bg = "#8ec07c"
-      action_picker_mode_fg = "#282828"
-      action_picker_mode_bg = "#83a598"
-''
+    preview = {
+      titleFg = "#b8bb26";
+    };
+
+    modes = {
+      channel = {
+        fg = "#282828";
+        bg = "#b16286";
+      };
+
+      remoteControl = {
+        fg = "#282828";
+        bg = "#8ec07c";
+      };
+
+      actionPicker = {
+        fg = "#282828";
+        bg = "#83a598";
+      };
+    };
+  };
+}
