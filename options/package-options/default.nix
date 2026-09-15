@@ -18,7 +18,7 @@
   symlinks ? null,
   installTarget ? null,
   ...
-}@args:
+}:
 
 let
   # ------------------------------------------------------------
@@ -87,10 +87,10 @@ let
       (_: package: builtins.removeAttrs package [ "package" "extraPackages" "installOn" ])
       (lib.filterAttrs (_: package: package ? appName) packages);
 
-  # The option-module branch is imported only by nix-darwin and therefore
-  # always installs into the system package set. Other consumers supply
-  # their install target through the plain helper branch.
-  packageInstallTarget = if args ? config then "system" else installTarget;
+  # Host construction always supplies installTarget when it reads the plain
+  # helper branch. The nix-darwin module import leaves it null, so this mode
+  # decision never forces the module-system config during import resolution.
+  packageInstallTarget = if installTarget == null then "system" else installTarget;
 
   # ------------------------------------------------------------
   # ------ PACKAGE MODULE FACTORY ------ #
@@ -129,7 +129,7 @@ let
         { })
     ];
 in
-if !(args ? config) then {
+if installTarget != null then {
   # ------------------------------------------------------------
   # ------ PACKAGE MODULE FACTORY ------ #
   # ------------------------------------------------------------
