@@ -73,7 +73,7 @@ let
   };
 
   # Creates a shorter name for the evaluated Claude option set.
-  cfg = config.ven.packages.claude;
+  cfg = config.system.darwin.packages.claude;
 
   # ---- Variables from platforms.nix
   # Platform detection is defined once in options/platforms.nix, so
@@ -499,7 +499,7 @@ in
   # ------------------------------------------------------------
   
   # Options related specifically to Claude Code
-  options.ven.packages.claude = {
+  options.system.darwin.packages.claude = {
 
   # Controls installation and configuration of Claude Code
   enable =
@@ -692,7 +692,7 @@ in
   # Merges the evaluated Claude options into the final nix-darwin configuration.
   config = lib.mkMerge [
     {
-      ven.packages.claude = {
+      system.darwin.packages.claude = {
         enable =
           # Enable the entire Claude module and all its features
           lib.mkDefault claudeSettings.enable;
