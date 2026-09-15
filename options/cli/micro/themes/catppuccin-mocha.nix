@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.catppuccin;
 in
 {
-  options.cli.micro.themes.catppuccin.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.catppuccin.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Catppuccin Mocha theme selected in default.nix.";
