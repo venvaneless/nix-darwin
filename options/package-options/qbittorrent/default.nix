@@ -19,9 +19,36 @@
 
 let
   cfg = config.ven.packages.qbittorrent;
-  desktopCfg = cfg.desktop;
 
-  desktopPackage = desktopCfg;
+  # The package helper reads every field of each entry, and package,
+  # appName, and installOn have no defaults. Hosts that import this module
+  # without setting its knobs (NixOS today) must not hand it disabled entries.
+  enabledPackages = lib.filterAttrs (_: package: package.enable) {
+    qbittorrent = cfg.desktop;
+    qbittorrentCli = cfg.cli;
+  };
+
+  cliPathOptions = platformName: {
+    profileRoot = lib.mkOption {
+      type = lib.types.str;
+      description = "qBittorrent CLI profile root on ${platformName}.";
+    };
+
+    config = lib.mkOption {
+      type = lib.types.str;
+      description = "qBittorrent CLI configuration directory on ${platformName}.";
+    };
+
+    configFile = lib.mkOption {
+      type = lib.types.str;
+      description = "qBittorrent CLI configuration file on ${platformName}.";
+    };
+
+    downloads = lib.mkOption {
+      type = lib.types.str;
+      description = "qBittorrent CLI torrent download directory on ${platformName}.";
+    };
+  };
 in
 {
   imports = [
@@ -66,26 +93,11 @@ in
         description = "qBittorrent command-line client package.";
       };
 
+      # Home paths differ per platform, so each platform gets its own set.
+      # Read them with platforms.valueForCurrentPlatform cfg.cli.paths.
       paths = {
-        profileRoot = lib.mkOption {
-          type = lib.types.str;
-          description = "qBittorrent CLI profile root.";
-        };
-
-        config = lib.mkOption {
-          type = lib.types.str;
-          description = "qBittorrent CLI configuration directory.";
-        };
-
-        configFile = lib.mkOption {
-          type = lib.types.str;
-          description = "qBittorrent CLI configuration file.";
-        };
-
-        downloads = lib.mkOption {
-          type = lib.types.str;
-          description = "qBittorrent CLI torrent download directory.";
-        };
+        darwin = cliPathOptions "macOS";
+        linux = cliPathOptions "Linux";
       };
 
       settings = {
@@ -109,10 +121,7 @@ in
 
   config = packageOptions.mkPackageModule {
     name = "qbittorrent";
-    packages = {
-      qbittorrent = desktopPackage;
-      qbittorrentCli = cfg.cli;
-    };
+    packages = enabledPackages;
     inherit symlinks;
   };
 }
