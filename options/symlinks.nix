@@ -8,7 +8,7 @@
 # links that point to its expected Nix-managed application bundle.
 # =====================================================================
 
-{ lib, paths, pkgs }:
+{ lib, paths, pkgs, platforms }:
 
 let
   # ------------------------------------------------------------
@@ -165,7 +165,27 @@ let
 
       ${linkCommands}
     '';
+
+  # ------------------------------------------------------------
+  # ------ DARWIN LINK ACTIVATION ------ #
+  # The link manager owns both safe link reconciliation and the system
+  # activation hook that runs it after Nix application bundles exist.
+  # ------------------------------------------------------------
+
+  mkApplicationLinkModule = { name, packages }:
+    let
+      hasApplications = lib.any (package: package ? appName) (lib.attrValues packages);
+      applicationLinkManager = mkApplicationLinkManager {
+        inherit name packages;
+      };
+    in
+    lib.mkIf (platforms.isDarwin && hasApplications) {
+      # Link bundles before Dock defaults resolve persistent apps.
+      system.activationScripts.applications.text = lib.mkAfter ''
+        ${applicationLinkManager}/bin/manage-${name}-application-links
+      '';
+    };
 in
 {
-  inherit linkCategories mkApplicationLinkManager;
+  inherit linkCategories mkApplicationLinkManager mkApplicationLinkModule;
 }
