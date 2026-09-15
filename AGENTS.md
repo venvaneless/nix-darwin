@@ -353,6 +353,8 @@ __MACOSX/
 .last-branch
 ```
 
+- Make sure that any backup, folder, downloader, if they exclude files, also exclude the above files.
+
 Do not modify `flake.lock` unless the task explicitly changes inputs or requests an update. Never run `nix flake update` as part of routine validation.
 
 Before finishing, use `git status` and `git diff` to make sure only intended files changed.
@@ -384,11 +386,11 @@ introduce a flat camelCase name when a namespace already expresses the same
 relationship.
 
 ```nix
-homeModules.shared.environment = {
+homeModules.shared-environment = {
   # Shared Home Manager environment modules.
 };
 
-homeModules.shared.terminal = {
+homeModules.shared-terminal = {
   # Shared Home Manager terminal modules.
 };
 ```
