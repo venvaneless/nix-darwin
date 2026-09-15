@@ -23,7 +23,7 @@
 { config, lib, platforms, ... }:
 
 let
-  cfg = config.cli.gh;
+  cfg = config.home.shared.cli.gh;
 
   # ---- PLATFORM SELECTION ---- #
   # The shared CLI/TUI settings choose enablement and supported platforms.
@@ -31,7 +31,7 @@ let
   enabledForCurrentPlatform = platforms.enabledForCurrentPlatform cfg;
 in
 {
-  options.cli.gh = {
+  options.home.shared.cli.gh = {
     enable = lib.mkEnableOption "GitHub CLI";
 
     installOn = {
@@ -77,7 +77,7 @@ in
 
   config = lib.mkMerge [
     {
-      cli.gh.enabledForCurrentPlatform = enabledForCurrentPlatform;
+      home.shared.cli.gh.enabledForCurrentPlatform = enabledForCurrentPlatform;
     }
     (lib.mkIf enabledForCurrentPlatform {
       programs.gh = {
