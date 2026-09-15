@@ -14,11 +14,11 @@
 { config, lib, ... }:
 
 let
-  batCfg = config.ven.features.terminal.cliTuis.bat;
+  batCfg = config.home.shared.terminal.cliTuis.bat;
   cfg = batCfg.gruvbox;
 in
 {
-  options.ven.features.terminal.cliTuis.bat.gruvbox.enable = lib.mkOption {
+  options.home.shared.terminal.cliTuis.bat.gruvbox.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Gruvbox Dark theme selected in bat.nix.";

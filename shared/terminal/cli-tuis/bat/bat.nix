@@ -20,11 +20,11 @@
 }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.bat;
+  cfg = config.home.shared.terminal.cliTuis.bat;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Bat's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.bat.enable directly.
+  # still override home.shared.terminal.cliTuis.bat.enable directly.
   bat = {
     enable = true;
     installOn = {
@@ -72,11 +72,11 @@ let
       '';
 in
 {
-  options.ven.features.terminal.cliTuis.bat.enable = lib.mkEnableOption "Bat file viewer";
+  options.home.shared.terminal.cliTuis.bat.enable = lib.mkEnableOption "Bat file viewer";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.bat.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.bat.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
       programs.bat = {
@@ -113,7 +113,7 @@ in
     })
     (lib.mkIf (cfg.enable && selectedThemeConfig.option != null) {
       # Only the selected theme module is imported and enabled.
-      ven.features.terminal.cliTuis.bat.${selectedThemeConfig.option}.enable = true;
+      home.shared.terminal.cliTuis.bat.${selectedThemeConfig.option}.enable = true;
     })
   ];
 

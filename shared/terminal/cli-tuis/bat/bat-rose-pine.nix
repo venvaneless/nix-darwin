@@ -21,7 +21,7 @@
 }:
 
 let
-  batCfg = config.ven.features.terminal.cliTuis.bat;
+  batCfg = config.home.shared.terminal.cliTuis.bat;
   cfg = batCfg.rosePine;
 
   # ---- THEME IDENTITY ---- #
@@ -222,7 +222,7 @@ let
   themeDir = pkgs.writeTextDir "${themeName}.tmTheme" themeFile;
 in
 {
-  options.ven.features.terminal.cliTuis.bat.rosePine.enable = lib.mkOption {
+  options.home.shared.terminal.cliTuis.bat.rosePine.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Use the Rosé Pine Moon syntax theme for bat.";
