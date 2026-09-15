@@ -10,8 +10,8 @@
 { config, paths, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.services.obsidianSync;
-  unison = config.ven.services.unison;
+  cfg = config.home.darwin.services.obsidianSync;
+  unison = config.home.darwin.services.unison;
 
   # Obsidian remains Darwin-only. paths arrives as a module argument, so
   # the service option tree stays importable from every Home Manager host.
@@ -67,7 +67,7 @@ let
 in
 
 {
-  options.ven.services.obsidianSync = lib.mkOption {
+  options.home.darwin.services.obsidianSync = lib.mkOption {
     type = lib.types.submodule {
       options = {
         enable = lib.mkEnableOption "Obsidian iCloud synchronization";

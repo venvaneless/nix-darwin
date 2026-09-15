@@ -10,8 +10,8 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.services.documentsSync;
-  unison = config.ven.services.unison;
+  cfg = config.home.darwin.services.documentsSync;
+  unison = config.home.darwin.services.unison;
 
   # A disabled service has no remote target. Keep runner rendering safe
   # while the assertion below gives a clear error if it is enabled
@@ -77,7 +77,7 @@ let
   '';
 in
 {
-  options.ven.services.documentsSync = lib.mkOption {
+  options.home.darwin.services.documentsSync = lib.mkOption {
     type = lib.types.submodule {
       options = {
         enable = lib.mkEnableOption "Documents synchronization";
@@ -135,15 +135,15 @@ in
       assertions = [
         {
           assertion = unison.enable;
-          message = "ven.services.documentsSync requires ven.services.unison.enable = true.";
+          message = "home.darwin.services.documentsSync requires home.darwin.services.unison.enable = true.";
         }
         {
           assertion = cfg.remoteDirectory != null;
-          message = "ven.services.documentsSync.remoteDirectory must be set when synchronization is enabled.";
+          message = "home.darwin.services.documentsSync.remoteDirectory must be set when synchronization is enabled.";
         }
         {
           assertion = cfg.remoteDirectory == null || cfg.remoteDirectory != cfg.localDirectory;
-          message = "ven.services.documentsSync remoteDirectory must differ from localDirectory.";
+          message = "home.darwin.services.documentsSync remoteDirectory must differ from localDirectory.";
         }
       ];
     }

@@ -10,7 +10,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.services.startpage;
+  cfg = config.home.darwin.services.startpage;
 
   # A trailing slash is accepted in the configured directory, while the
   # runner always addresses one normalized index-file path.
@@ -44,7 +44,7 @@ let
   '';
 in
 {
-  options.ven.services.startpage = lib.mkOption {
+  options.home.darwin.services.startpage = lib.mkOption {
     type = lib.types.submodule {
       options = {
         enable = lib.mkEnableOption "local Tartarus startpage service";

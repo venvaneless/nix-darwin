@@ -14,7 +14,7 @@
 { lib, ... }:
 
 {
-  options.ven.services.unison = lib.mkOption {
+  options.home.darwin.services.unison = lib.mkOption {
     type = lib.types.submodule {
       options = {
         enable = lib.mkEnableOption "Unison-backed synchronization";

@@ -24,7 +24,7 @@
   # Global defaults
   # ------------------------------------------------------------
 
-  ven.services.unison = {
+  home.darwin.services.unison = {
     enable = lib.mkDefault false;
     auto = lib.mkDefault true;
     batch = lib.mkDefault true;
@@ -32,7 +32,7 @@
     confirmBigDeletes = lib.mkDefault true;
   };
 
-  ven.services.obsidianSync = {
+  home.darwin.services.obsidianSync = {
     enable = lib.mkDefault false;
     runAtLoad = lib.mkDefault true;
 
@@ -43,14 +43,14 @@
     ];
   };
 
-  ven.services.documentsSync = {
+  home.darwin.services.documentsSync = {
     enable = lib.mkDefault false;
     runAtLoad = lib.mkDefault true;
     watchPaths = lib.mkDefault true;
     createRemoteDirectory = lib.mkDefault true;
   };
 
-  ven.services.startpage = {
+  home.darwin.services.startpage = {
     enable = lib.mkDefault false;
     runAtLoad = lib.mkDefault true;
     keepAlive = lib.mkDefault true;
