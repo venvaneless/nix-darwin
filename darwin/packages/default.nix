@@ -22,7 +22,8 @@
       enable = true;
       symlinkProgramming = true;
       package = unstablePkgs.iterm2;
-      appName = "iTerm.app";
+      # nixpkgs installs the upstream bundle as iTerm2.app.
+      appName = "iTerm2.app";
 
       ai = {
         enable = true;
@@ -35,7 +36,8 @@
         enable = true;
         symlinkProgramming = true;
         package = darwinPackages.itermBrowserPlugin;
-        appName = "iTermBrowser.app";
+        # The packaged browser integration bundle keeps Plugin in its name.
+        appName = "iTermBrowserPlugin.app";
       };
     };
 
