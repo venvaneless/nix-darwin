@@ -14,7 +14,7 @@
   # ------------------------------------------------------------
 
   # ---- UNISON ---- #  
-  ven.services.unison = {
+  home.darwin.services.unison = {
     enable = true;
     auto = true;
     batch = true;
@@ -23,7 +23,7 @@
   };
 
   # ---- DOCUMENTS ---- #
-  ven.services.documentsSync = {
+  home.darwin.services.documentsSync = {
     enable = true;
     localDirectory = paths.darwin.home.documents;
     remoteDirectory = paths.darwin.icloud.documents;
@@ -36,7 +36,7 @@
   };
 
   # ---- OBSIDIAN ---- #
-  ven.services.obsidianSync = {
+  home.darwin.services.obsidianSync = {
     enable = true;
     localVault = paths.darwin.obsidian.vault;
     remoteVault = paths.darwin.obsidian.iCloudVault;
@@ -55,7 +55,7 @@
   # ------------------------------------------------------------
 
   # ---- BROWSER STARTPAGE ---- #
-  ven.services.startpage = {
+  home.darwin.services.startpage = {
     enable = true;
     directory = paths.darwin.documents.tartarusStartpage;
     host = "127.0.0.1";

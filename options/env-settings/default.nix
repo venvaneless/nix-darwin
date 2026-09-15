@@ -12,7 +12,7 @@
 { config, lib, platforms, ... }:
 
 let
-  cfg = config.ven.envSettings.markdownlint;
+  cfg = config.home.shared.envSettings.markdownlint;
 
   # ------------------------------------------------------------
   # ------ CURRENT PLATFORM SETTINGS ------ #
@@ -33,7 +33,7 @@ let
       lib.removePrefix "${config.home.homeDirectory}/" pathSymlink;
 in
 {
-  options.ven.envSettings.markdownlint = {
+  options.home.shared.envSettings.markdownlint = {
     createSymlink = {
       darwin = lib.mkOption {
         type = lib.types.bool;
@@ -106,7 +106,7 @@ in
             && homeFileTarget != ""
           );
         message = ''
-          ven.envSettings.markdownlint.pathSymlink for the current platform
+          home.shared.envSettings.markdownlint.pathSymlink for the current platform
           must be a file below home.homeDirectory when createSymlink is true.
         '';
       }
