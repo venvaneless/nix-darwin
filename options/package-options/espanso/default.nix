@@ -56,10 +56,22 @@ in
       description = "Platforms on which Home Manager installs and starts Espanso.";
     };
 
-    autostart.enable = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Start Espanso at login (launchd on Darwin, systemd on Linux).";
+    autostart = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Start Espanso at login (launchd on Darwin, systemd on Linux).";
+      };
+
+      restartOnCrash = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          Restart the autostarted Espanso when it crashes or exits with an
+          error. Quitting it normally does not restart it. Rendered as
+          KeepAlive on Darwin and Restart=on-failure on Linux.
+        '';
+      };
     };
 
     showNotifications = lib.mkOption {
@@ -107,7 +119,7 @@ in
     # Uses the Nix package binary rather than the mutable /Applications
     # symlink.
 
-    (lib.mkIf (enabledForCurrentPlatform && cfg.autostart.enable && pkgs.stdenv.isDarwin) {
+    (lib.mkIf (enabledForCurrentPlatform && cfg.autostart.enable && platforms.isDarwin) {
       launchd.agents.espanso = {
         enable = true;
         config = {
@@ -118,6 +130,17 @@ in
           ];
           RunAtLoad = true;
           EnvironmentVariables = espansoEnvironment;
+
+          # Same rule as systemd's on-failure: relaunch after a non-zero exit
+          # or a crash signal, never after a clean quit.
+          KeepAlive =
+            if cfg.autostart.restartOnCrash then
+              {
+                SuccessfulExit = false;
+                Crashed = true;
+              }
+            else
+              null;
         };
       };
     })
@@ -126,7 +149,7 @@ in
     # ------ LINUX ESPANSO USER SERVICE ------ #
     # Starts Espanso with the graphical session.
 
-    (lib.mkIf (enabledForCurrentPlatform && cfg.autostart.enable && pkgs.stdenv.isLinux) {
+    (lib.mkIf (enabledForCurrentPlatform && cfg.autostart.enable && platforms.isLinux) {
       systemd.user.services.espanso = {
         Unit = {
           Description = "Espanso text expander";
@@ -137,7 +160,7 @@ in
         Service = {
           ExecStart = "${pkgs.espanso}/bin/espanso launcher";
           Environment = lib.mapAttrsToList (name: value: "${name}=${value}") espansoEnvironment;
-          Restart = "on-failure";
+          Restart = if cfg.autostart.restartOnCrash then "on-failure" else "no";
         };
 
         Install.WantedBy = [ "graphical-session.target" ];
