@@ -12,7 +12,7 @@
 { config, lib, paths, pkgs, ... }:
 
 let
-  cfg = config.cli.television;
+  cfg = config.home.shared.cli.television;
 
   # Television only finds themes inside its own themes directory.
   themesDirectory = "${paths.relative.config}/television/themes/";
@@ -140,7 +140,7 @@ in
     ./gruvbox.nix
   ];
 
-  options.cli.television = {
+  options.home.shared.cli.television = {
     uiTheme = lib.mkOption {
       type = lib.types.str;
       default = "default";
@@ -160,7 +160,7 @@ in
         {
           assertion = cfg.uiTheme == "default" || selectedTheme != null;
           message = ''
-            cli.television.uiTheme is "${cfg.uiTheme}",
+            home.shared.cli.television.uiTheme is "${cfg.uiTheme}",
             which is not one of: default, ${lib.concatStringsSep ", " (lib.attrNames cfg.themes)}
           '';
         }
@@ -170,7 +170,7 @@ in
           {
             assertion = theme.name == attrName;
             message = ''
-              cli.television.themes.${attrName}.name is "${theme.name}",
+              home.shared.cli.television.themes.${attrName}.name is "${theme.name}",
               but it must match the attribute name "${attrName}".
             '';
           }
@@ -178,7 +178,7 @@ in
             assertion =
               lib.hasPrefix themesDirectory theme.relativePath && lib.hasSuffix ".toml" theme.relativePath;
             message = ''
-              cli.television.themes.${attrName}.relativePath is "${theme.relativePath}",
+              home.shared.cli.television.themes.${attrName}.relativePath is "${theme.relativePath}",
               but Television only loads .toml themes from ${themesDirectory}.
             '';
           }

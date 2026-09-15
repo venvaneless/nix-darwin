@@ -5,13 +5,13 @@
 #
 # - Identity, output file, and colour values for the Gruvbox Television theme
 # - Knobs are declared and rendered by ./default.nix
-# - Selected in shared/terminal/cli-tuis/default.nix with cli.television.uiTheme = "gruvbox"
+# - Selected in shared/terminal/cli-tuis/default.nix with home.shared.cli.television.uiTheme = "gruvbox"
 # - Uses the same Gruvbox Dark colours as the local WezTerm palette
 # =====================================================================
 
 { ... }:
 {
-  config.cli.television.themes.gruvbox = {
+  config.home.shared.cli.television.themes.gruvbox = {
     name = "gruvbox";
     title = "Gruvbox";
     description = "Gruvbox Dark colours matching the WezTerm palette.";

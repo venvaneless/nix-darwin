@@ -11,7 +11,7 @@
 { config, paths, platforms, lib, pkgs, ... }:
 
 let
-  cfg = config.cli.television;
+  cfg = config.home.shared.cli.television;
 
   # ------------------------------------------------------------
   # ------ PLATFORM SELECTION ------ #
@@ -30,7 +30,7 @@ let
 
   # The active Nix configuration root is configured by the shared terminal
   # module. Television searches that root; it does not own the path.
-  nixConfigDir = config.ven.features.terminal.nixConfigDir;
+  nixConfigDir = config.home.shared.terminal.nixConfigDir;
   televisionCable = "${paths.relative.config}/television/cable";
 
 
@@ -75,7 +75,7 @@ in
     ./themes
   ];
 
-  options.cli.television = {
+  options.home.shared.cli.television = {
     enable = lib.mkEnableOption "Television terminal navigator";
 
     installOn = {
@@ -243,16 +243,16 @@ in
 
   config = lib.mkMerge [
     {
-      cli.television.enabledForCurrentPlatform = enabledForCurrentPlatform;
+      home.shared.cli.television.enabledForCurrentPlatform = enabledForCurrentPlatform;
 
       assertions = [
         {
           assertion = cfg.actions.default != "nvim" || cfg.actions.nvim.enable;
-          message = "cli.television.actions.default is nvim, but cli.television.actions.nvim.enable is false.";
+          message = "home.shared.cli.television.actions.default is nvim, but home.shared.cli.television.actions.nvim.enable is false.";
         }
         {
           assertion = cfg.actions.default != "zed" || cfg.actions.zed.enable;
-          message = "cli.television.actions.default is zed, but cli.television.actions.zed.enable is false.";
+          message = "home.shared.cli.television.actions.default is zed, but home.shared.cli.television.actions.zed.enable is false.";
         }
       ];
     }
