@@ -14,7 +14,7 @@
 }:
 
 let
-  cfg = config.ven.features.terminal.fish.downloads;
+  cfg = config.home.shared.terminal.fish.downloads;
 
   # ------------------------------------------------------------
   # ------ PLATFORM COMMAND FLAGS ------ #
@@ -32,7 +32,7 @@ let
 
 in
 {
-  options.ven.features.terminal.fish.downloads.enable =
+  options.home.shared.terminal.fish.downloads.enable =
     lib.mkEnableOption "portable Fish download helpers";
 
   config = lib.mkIf cfg.enable {

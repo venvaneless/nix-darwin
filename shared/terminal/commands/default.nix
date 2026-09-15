@@ -15,7 +15,7 @@
   # downloads.nix deliberately owns its implementation and option.
   # Keep its existing default here without changing that module.
   config = {
-    ven.features.terminal.fish.downloads.enable = lib.mkDefault true;
+    home.shared.terminal.fish.downloads.enable = lib.mkDefault true;
 
   };
 }

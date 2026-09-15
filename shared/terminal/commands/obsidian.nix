@@ -16,7 +16,7 @@
 
 {
   config = {
-    ven.features.obsidian = {
+    home.shared.terminal.obsidian = {
       # ---- Main command ---- #
       # Keep this disabled until the independent implementation has completed
       # its requested validation. Legacy commands continue to be available.
