@@ -15,15 +15,14 @@ let
   # Read shared values before a module fixpoint exists. Host constructors
   # pass the returned context to the system or Home Manager module graph.
   sharedSettings = import ../shared/default.nix { };
-  nixpkgsSettings = sharedSettings.ven.nix.nixpkgs;
+  nixpkgsSettings = sharedSettings.system.shared.nix.nixpkgs;
   nixpkgsConfig = nixpkgsSettings.config;
 
-  unstableEnabled =
-    nixpkgsSettings.unstable.enable
-    && (
-      (pkgs.stdenv.hostPlatform.isDarwin && nixpkgsSettings.unstable.installOn.darwin)
-      || (pkgs.stdenv.hostPlatform.isLinux && nixpkgsSettings.unstable.installOn.linux)
-    );
+  # Only read when unstablePkgs is used, so hosts that call this without
+  # pkgs never evaluate it.
+  platforms = import ./platforms.nix { inherit pkgs; };
+
+  unstableEnabled = platforms.enabledForCurrentPlatform nixpkgsSettings.unstable;
 
   unstablePkgs =
     if unstableEnabled then
@@ -31,13 +30,12 @@ let
         system = pkgs.stdenv.hostPlatform.system;
         config = nixpkgsConfig;
       }
-    else throw "ven.nix.nixpkgs.unstable is disabled for this platform.";
+    else throw "system.shared.nix.nixpkgs.unstable is disabled for this platform.";
 
   paths = import ./paths.nix { };
 in
 {
   inherit nixpkgsConfig paths unstablePkgs;
-  nixSharedSettings = sharedSettings;
 
   # ------------------------------------------------------------
   # ------ MODULE PATHS ------ #
@@ -45,14 +43,22 @@ in
   # the named module it needs through the appropriate module graph.
   serviceOptions = ./services/default.nix;
   containerBackupOptions = ./backups/container-backup-helper.nix;
-  terminalOptions = ./terminal-aliases.nix;
-  featureOptions = ./terminal-features.nix;
+  terminalOptions = ./cli/aliases.nix;
   weztermOptions = ./package-options/wezterm;
   cliOptions = ./cli/default.nix;
   envSettingsOptions = ./env-settings;
   espansoOptions = ./package-options/espanso;
+  vscodeOptions = ./package-options/vscode.nix;
+  qbittorrentOptions = ./package-options/qbittorrent;
   obsidianOptions = ./obsidian/default.nix;
   darwinPackageOptions = import ./package-options { mode = "module"; };
-  nixOptions = ./nix-config.nix;
+  sharedPackageOptions = import ./package-options { mode = "shared"; };
+  # Shared Nix settings: option logic and the values every host uses.
+  nixSharedSettings = {
+    imports = [
+      ./nix-config.nix
+      ../shared/default.nix
+    ];
+  };
   sharedHomeModule = ../shared/home/default.nix;
 }
