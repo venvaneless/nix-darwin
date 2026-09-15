@@ -11,7 +11,7 @@
 { ... }:
 
 {
-	config.shared.terminal.wezterm.plugins = {
+	config.home.shared.terminal.wezterm.plugins = {
 		# ------------------------------------------------------------
 		# Plugin loading
 		# ------------------------------------------------------------

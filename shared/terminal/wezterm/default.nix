@@ -15,7 +15,7 @@
   ];
 
   config = {
-    shared.terminal.wezterm = {
+    home.shared.terminal.wezterm = {
       enable = true;
       installOn = {
         darwin = true;

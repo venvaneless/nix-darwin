@@ -6,7 +6,14 @@
 
 { ... }:
 {
-  config.shared.terminal.wezterm.themes.nord = {
+  config.home.shared.terminal.wezterm.themes.nord = {
+    name = "nord";
+    title = "Nord";
+    description = "Cool Nord terminal, window frame, and tab bar colors.";
+
+    # Lua file this theme is written to and loaded from.
+    relativePath = ".config/wezterm/themes/nord.lua";
+
     colorScheme = null;
 
     windowFrame = {

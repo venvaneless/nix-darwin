@@ -6,7 +6,7 @@
 
 { ... }:
 {
-  config.shared.terminal.wezterm.themes.nord-otto = {
+  config.home.shared.terminal.wezterm.themes.nord-otto = {
     name = "nord-otto";
     title = "Nord Otto";
     description = "Nord-based Otto palette with its terminal and tab bar colors.";

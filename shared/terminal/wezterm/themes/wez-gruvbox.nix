@@ -6,7 +6,7 @@
 
 { ... }:
 {
-  config.shared.terminal.wezterm.themes.gruvbox = {
+  config.home.shared.terminal.wezterm.themes.gruvbox = {
     name = "gruvbox";
     title = "Gruvbox";
     description = "Warm Gruvbox Dark (Gogh) colors and tab bar settings.";

@@ -11,7 +11,7 @@
 { ... }:
 
 {
-  config.shared.terminal.wezterm.personal = {
+  config.home.shared.terminal.wezterm.personal = {
     # ------------------------------------------------------------
     # Personal runtime modules
     # ------------------------------------------------------------
