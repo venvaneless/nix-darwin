@@ -19,7 +19,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.fastfetch;
+  cfg = config.home.shared.terminal.cliTuis.fastfetch;
 
   # ---- PLATFORM DETECTION ---- #
   # ---- Variables from platforms.nix
@@ -30,7 +30,7 @@ let
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Fastfetch's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.fastfetch.enable directly.
+  # still override home.shared.terminal.cliTuis.fastfetch.enable directly.
   fastfetch = {
     enable = true;
     installOn = {
@@ -99,7 +99,7 @@ let
       '';
 in
 {
-  options.ven.features.terminal.cliTuis.fastfetch = {
+  options.home.shared.terminal.cliTuis.fastfetch = {
     enable = lib.mkEnableOption "Fastfetch system information";
 
     layout = lib.mkOption {
@@ -133,7 +133,7 @@ in
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.fastfetch.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.fastfetch.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
       # Install and enable Fastfetch

@@ -17,7 +17,7 @@
 { config, lib, ... }:
 
 let
-  fastfetchCfg = config.ven.features.terminal.cliTuis.fastfetch;
+  fastfetchCfg = config.home.shared.terminal.cliTuis.fastfetch;
 
   render = import ./render.nix { inherit lib; };
 
