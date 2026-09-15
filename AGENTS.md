@@ -416,6 +416,32 @@ Use the same `cli.<tool>` path for every CLI/TUI tool, for example
 `cli.atuin` and `cli.gh`. Do not put implementation details or option
 declarations in the shared knobs file.
 
+#### System package namespaces
+
+This convention applies to every system-scoped package, application, plugin,
+extension, setting, and other package-specific feature. Package configuration
+must be platform-first, then purpose, then the application. For Darwin, use
+`system.darwin.packages`; `darwin` is the platform namespace here, not the
+`macbook` hostname.
+
+```nix
+# Darwin package setting.
+system.darwin.packages.<package> = {
+  enable = true;
+};
+```
+
+Never use the backwards `system.packages.darwin` path. After the application
+name, add its specific feature, extension, plugin, or configuration namespace:
+
+```nix
+system.darwin.packages.iterm2.ai
+system.darwin.packages.espanso.config
+```
+
+Do not add a generic grouping level when the package-specific feature name is
+already clear.
+
 Always consider:
 
 - Can this become its own module?

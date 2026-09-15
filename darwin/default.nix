@@ -100,9 +100,7 @@
   # ** flakes, the caches, dirty warnings -- is written once in
   # ** shared/default.nix and is not repeated here.
   #
-  # ** Any of these may be written as default instead, which takes the
-  # ** value declared in options/nix-config.nix. Written out here so the
-  # ** file says what this Mac actually runs.
+  # ** Written out here so the file says what this Mac actually runs.
   ven.nix.settings = {
     # System build group
     build-users-group = "nixbld";

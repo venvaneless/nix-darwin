@@ -12,6 +12,19 @@
 
 let
   # ------------------------------------------------------------
+  # ------ APPLICATION LINK FLAGS ------ #
+  # Kept separately from category destinations so package validation can
+  # reject link requests that do not describe an application bundle.
+  symlinkFlags = [
+    "symlinkApplications"
+    "symlinkProgramming"
+    "symlinkProductivity"
+    "symlinkTools"
+    "symlinkMultimedia"
+    "symlinkSystem"
+  ];
+
+  # ------------------------------------------------------------
   # ------ APPLICATION LINK CATEGORIES ------ #
   # ------------------------------------------------------------
 
@@ -34,8 +47,8 @@ let
       validateApplication = application:
         let
           enabledCategories = lib.filter
-            (category: application.${category.flag} or false)
-            linkCategories;
+            (flag: application.${flag} or false)
+            symlinkFlags;
         in
         if builtins.length enabledCategories > 1 then
           throw "${name}: ${application.appName} enables more than one Darwin application-link category"
@@ -159,5 +172,5 @@ let
     };
 in
 {
-  inherit linkCategories mkApplicationLinkManager mkApplicationLinkModule;
+  inherit linkCategories mkApplicationLinkManager mkApplicationLinkModule symlinkFlags;
 }

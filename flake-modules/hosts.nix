@@ -37,7 +37,6 @@ let
         envSettingsOptions
         espansoOptions
         nixOptions
-        sharedHomeModule
         unstablePkgs
         ;
 
@@ -69,7 +68,6 @@ let
         pkgs
         platforms
         serviceOptions
-        sharedHomeModule
         sharedOptions
         terminalOptions
         unstablePkgs
@@ -86,12 +84,11 @@ in
   flake = {
     # ---- SHARED HOME MODULE ---- #
     # Values every Home Manager host uses, integrated on Darwin and
-    # standalone on Linux. Its implementation is supplied by the shared
-    # context, so consumers never need its literal path.
-    homeModules."shared.home" = { espansoOptions, sharedHomeModule, ... }: {
+    # standalone on Linux. Its option shape comes from the shared context.
+    homeModules."shared.home" = { espansoOptions, ... }: {
       imports = [
         espansoOptions
-        sharedHomeModule
+        ../shared/home/default.nix
       ];
     };
 
