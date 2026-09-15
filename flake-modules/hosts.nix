@@ -33,6 +33,7 @@ let
         containerBackupOptions
         terminalOptions
         featureOptions
+        weztermOptions
         cliOptions
         envSettingsOptions
         espansoOptions
@@ -73,6 +74,7 @@ let
         sharedOptions
         terminalOptions
         unstablePkgs
+        weztermOptions
         ;
     };
 in
@@ -131,6 +133,15 @@ in
         ../shared/terminal
         ../shared/terminal/nvim
         ../shared/terminal/cli-tuis
+      ];
+    };
+
+    # ---- SHARED WEZTERM HOME MODULE ---- #
+    # Keeps WezTerm's option declarations, Lua renderers, and shared knobs
+    # behind one named Home Manager module boundary.
+    homeModules."shared.terminal.wezterm" = { weztermOptions, ... }: {
+      imports = [
+        weztermOptions
         ../shared/terminal/wezterm
       ];
     };
