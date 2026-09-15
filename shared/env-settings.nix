@@ -12,7 +12,7 @@
 { paths, ... }:
 
 {
-  ven.envSettings.markdownlint = {
+  home.shared.envSettings.markdownlint = {
     # ------------------------------------------------------------
     # ------ MARKDOWNLINT CONFIGURATION ------ #
     # The Markdownlint extensions for Zed and VS Code discover this
