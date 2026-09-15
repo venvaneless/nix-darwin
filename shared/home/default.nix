@@ -1,16 +1,21 @@
 # shared/home/default.nix
 #
 # =====================================================================
-# ESPANSO
+# SHARED HOME MANAGER
 #
-# Selects Espanso's configuration values for every Home Manager host
-# (integrated on Darwin, standalone on Linux).
+# Collects every portable Home Manager module and selects its shared values
+# for integrated Darwin, standalone Linux, and NixOS Home Manager hosts.
 #
-# options/package-options/espanso owns the option shape, generated files,
-# and login startup. Package installation and app linking remain in
-# shared/packages.nix.
+# Darwin-only Home Manager settings remain in darwin/home/default.nix.
 # =====================================================================
-{...}: {
+{ inputs, ... }: {
+  imports = [
+    # Shared Home Manager module boundaries.
+    inputs.self.homeModules."shared.environment"
+    inputs.self.homeModules."shared.services"
+    inputs.self.homeModules."shared.terminal"
+  ];
+
   # ------------------------------------------------------------
   # ------ SHARED ESPANSO FEATURE SELECTION ------ #
   # These values apply to every Home Manager host that imports Espanso.

@@ -15,6 +15,7 @@
   paths,
   platforms,
   pkgs,
+  symlinks ? null,
   installTarget ? null,
   ...
 }@args:
@@ -23,8 +24,6 @@ let
   # ------------------------------------------------------------
   # ------ SHARED OPTION HELPERS ------ #
   # ------------------------------------------------------------
-
-  symlinks = import ../symlinks.nix { inherit lib paths pkgs; };
 
   # ------------------------------------------------------------
   # ------ DARWIN PACKAGE VALUES ------ #
@@ -83,14 +82,10 @@ let
   normalizePackages = packages:
     lib.mapAttrs normalizeEntry packages;
 
-  symlinkFlags = [
-    "symlinkApplications"
-    "symlinkProgramming"
-    "symlinkProductivity"
-    "symlinkTools"
-    "symlinkMultimedia"
-    "symlinkSystem"
-  ];
+  applicationLinkEntries = packages:
+    lib.mapAttrs
+      (_: package: builtins.removeAttrs package [ "package" "extraPackages" "installOn" ])
+      (lib.filterAttrs (_: package: package ? appName) packages);
 
   # The option-module branch is imported only by nix-darwin and therefore
   # always installs into the system package set. Other consumers supply
@@ -103,20 +98,11 @@ let
   # install packages through the same filtering and linking behavior.
   # ------------------------------------------------------------
 
-  mkPackageModule = { name, packages }:
+  mkPackageModule = { name, packages, symlinks ? null }:
     let
       normalizedPackages = normalizePackages packages;
       installedPackages = selectedPackages normalizedPackages;
-      hasApplications = lib.any (package: package ? appName) (lib.attrValues normalizedPackages);
-      invalidLinkEntries = lib.filter
-        (package:
-          lib.any (flag: package.${flag} or false) symlinkFlags
-          && !(package ? appName))
-        (lib.attrValues normalizedPackages);
-      applicationLinkManager = symlinks.mkApplicationLinkManager {
-        inherit name;
-        packages = normalizedPackages;
-      };
+      applicationLinks = applicationLinkEntries normalizedPackages;
 
       packageConfig =
         if packageInstallTarget == "system" then
@@ -126,22 +112,22 @@ let
         else
           throw "${name}: installTarget must be system or home";
     in
-    if invalidLinkEntries != [ ] then
-      throw "${name}: every Darwin symlink flag requires appName"
-    else
-      lib.mkMerge [
-        packageConfig
+    lib.mkMerge [
+      packageConfig
 
-        (if packageInstallTarget == "system" then
-          lib.mkIf (platforms.isDarwin && hasApplications) {
-            # Link bundles before Dock defaults resolve persistent apps.
-            system.activationScripts.applications.text = lib.mkAfter ''
-              ${applicationLinkManager}/bin/manage-${name}-application-links
-            '';
-          }
+      (if packageInstallTarget == "system" && platforms.isDarwin && applicationLinks != { } then
+        # Package options attach the shared link manager using only
+        # stripped link entries; symlinks.nix owns its implementation.
+        if symlinks == null then
+          throw "${name}: Darwin application links require the Darwin symlink helper"
         else
-          { })
-      ];
+          symlinks.mkApplicationLinkModule {
+            inherit name;
+            applications = applicationLinks;
+          }
+      else
+        { })
+    ];
 in
 if !(args ? config) then {
   # ------------------------------------------------------------
@@ -152,8 +138,6 @@ if !(args ? config) then {
 }
 else
 let
-  cfg = config.system.packages.darwin;
-
   # ------------------------------------------------------------
   # ------ DARWIN APPLICATION ASSEMBLY ------ #
   # darwin/packages/default.nix supplies each package and application
@@ -161,12 +145,12 @@ let
   # guarded-link semantics to those selected Darwin values.
   # ------------------------------------------------------------
 
-  iterm2Plugins = {
+  iterm2Extensions = {
     # Optional iTerm2 AI integration bundle.
-    itermAiPlugin = cfg.iterm2.plugins.ai;
+    itermAiPlugin = config.system.darwin.packages.iterm2.ai;
 
     # Optional iTerm2 embedded-browser bundle.
-    itermBrowserPlugin = cfg.iterm2.plugins.browser;
+    itermBrowserPlugin = config.system.darwin.packages.iterm2.browser;
   };
 
   darwinApplications =
@@ -177,26 +161,26 @@ let
       })
       ({
         # Terminal emulator and its optional integration bundles.
-        iterm2 = builtins.removeAttrs cfg.iterm2 [ "plugins" ];
+        iterm2 = builtins.removeAttrs config.system.darwin.packages.iterm2 [ "ai" "browser" ];
 
         # Finder metadata editing application.
-        betterFinderAttributes = cfg.betterFinderAttributes;
+        betterFinderAttributes = config.system.darwin.packages.betterFinderAttributes;
 
         # Finder batch-renaming application.
-        betterFinderRename = cfg.betterFinderRename;
+        betterFinderRename = config.system.darwin.packages.betterFinderRename;
 
         # Menu-bar application visibility utility.
-        floe = cfg.floe;
+        floe = config.system.darwin.packages.floe;
 
         # macOS automation application and its source updater.
-        hammerspoon = cfg.hammerspoon;
+        hammerspoon = config.system.darwin.packages.hammerspoon;
 
         # Developer asset manager application.
-        assetsnap = cfg.assetsnap;
+        assetsnap = config.system.darwin.packages.assetsnap;
 
         # Archive extraction application from the pinned stable package set.
-        theUnarchiver = cfg.theUnarchiver;
-      } // iterm2Plugins);
+        theUnarchiver = config.system.darwin.packages.theUnarchiver;
+      } // iterm2Extensions);
 
   # The Darwin package file supplies package metadata and user-selected
   # application settings. Link execution itself remains in symlinks.nix.
@@ -272,37 +256,23 @@ in
   # in the Linux or standalone Home Manager module graphs.
   # ------------------------------------------------------------
 
-  options.system.packages.darwin = lib.mkOption {
-    type = lib.types.submodule {
-      options = {
-        iterm2 = lib.mkOption {
-          type = lib.types.submodule {
-            options = (darwinApplicationSettings "iTerm2") // {
-              plugins = lib.mkOption {
-                type = lib.types.submodule {
-                  options = {
-                    ai = darwinApplicationOption "the iTerm2 AI plugin";
-                    browser = darwinApplicationOption "the iTerm2 browser plugin";
-                  };
-                };
-                default = { };
-                description = "Darwin package configuration for optional iTerm2 plugins.";
-              };
-            };
-          };
-          default = { };
-          description = "Darwin package configuration for iTerm2 and its plugins.";
+  options.system.darwin.packages = {
+    iterm2 = lib.mkOption {
+      type = lib.types.submodule {
+        options = (darwinApplicationSettings "iTerm2") // {
+          ai = darwinApplicationOption "the iTerm2 AI plugin";
+          browser = darwinApplicationOption "the iTerm2 browser plugin";
         };
-        betterFinderAttributes = darwinApplicationOption "A Better Finder Attributes";
-        betterFinderRename = darwinApplicationOption "A Better Finder Rename";
-        floe = darwinApplicationOption "Floe";
-        hammerspoon = darwinApplicationOption "Hammerspoon";
-        assetsnap = darwinApplicationOption "AssetSnap";
-        theUnarchiver = darwinApplicationOption "The Unarchiver";
       };
+      default = { };
+      description = "Darwin package configuration for iTerm2 and its extensions.";
     };
-    default = { };
-    description = "Darwin-only Nix application package configuration.";
+    betterFinderAttributes = darwinApplicationOption "A Better Finder Attributes";
+    betterFinderRename = darwinApplicationOption "A Better Finder Rename";
+    floe = darwinApplicationOption "Floe";
+    hammerspoon = darwinApplicationOption "Hammerspoon";
+    assetsnap = darwinApplicationOption "AssetSnap";
+    theUnarchiver = darwinApplicationOption "The Unarchiver";
   };
 
   # Installs the enabled Darwin applications and delegates guarded links
@@ -310,5 +280,6 @@ in
   config = mkPackageModule {
     name = "darwin-applications";
     packages = darwinApplications;
+    inherit symlinks;
   };
 }

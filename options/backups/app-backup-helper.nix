@@ -23,7 +23,7 @@ let
   excludeHelper = backupExcludeHelper;
 
   # ---- GLOBAL APPLICATION BACKUP CONTROLS
-  # Imported once by default.nix. Individual app modules keep their own
+  # Constructed once by the MacBook host. Individual app modules keep their own
   # toggles below, while this switch controls every automatic app schedule.
   settingsModule = { lib, ... }: {
     options.services.appBackups = {

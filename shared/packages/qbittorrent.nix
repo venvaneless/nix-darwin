@@ -20,7 +20,7 @@
 # ** their own torrents, their own session state, and their own ports.
 # =====================================================================
 
-{ lib, packageOptions, paths, platforms, pkgs, ... }:
+{ lib, packageOptions, paths, platforms, pkgs, symlinks ? null, ... }:
 
 let
   # The same relative layout on both platforms, so the selector only
@@ -220,6 +220,7 @@ lib.mkMerge [
   (packageOptions.mkPackageModule {
     name = "qbittorrent";
     packages = qbittorrentPackages;
+    inherit symlinks;
   })
 
   # ---- Profile location and declared settings

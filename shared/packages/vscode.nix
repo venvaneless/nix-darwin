@@ -16,7 +16,7 @@
 # ** installs normally, only into the relocated extensions directory.
 # =====================================================================
 
-{ lib, packageOptions, paths, platforms, pkgs, unstablePkgs, ... }:
+{ lib, packageOptions, paths, platforms, pkgs, symlinks ? null, unstablePkgs, ... }:
 
 let
   # The same relative location on both platforms, so the selector only
@@ -102,6 +102,7 @@ lib.mkMerge [
   (packageOptions.mkPackageModule {
     name = "vscode";
     packages = { inherit vscode; };
+    inherit symlinks;
   })
 
   # ---- Shell environment

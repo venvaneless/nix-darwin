@@ -5,11 +5,19 @@
 # =====================================================================
 #
 # The shared knobs for every machine live here. This file deliberately
-# contains values only: options/default.nix owns their option types,
+# contains values only: options/nix-config.nix owns their option types,
 # platform selection, validation, and translation into Nix settings.
 # =====================================================================
 
-{
+{ nixOptions, ... }: {
+  # ------------------------------------------------------------
+  # Nix option semantics
+  # ------------------------------------------------------------
+  # Shared values below use the option shape and translation owned by options/.
+  imports = [
+    nixOptions
+  ];
+
   ven.nix = {
     # ------------------------------------------------------------
     # Nix daemon and command settings

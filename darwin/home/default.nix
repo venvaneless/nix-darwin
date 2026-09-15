@@ -371,15 +371,11 @@
 
         # The independent Obsidian command is declared and configured only
         # for the MacBook; portable terminal hosts do not import it.
+        ../../options/obsidian/default.nix
         ../../shared/terminal/commands/obsidian.nix
 
         # Shared Home Manager
         inputs.self.homeModules."shared.home"
-        inputs.self.homeModules."shared.environment"
-        inputs.self.homeModules."shared.services"
-
-        # Shared terminal modules
-        inputs.self.homeModules."shared.terminal"
 
         # Shared secrets
         ../../shared/home/secrets.nix

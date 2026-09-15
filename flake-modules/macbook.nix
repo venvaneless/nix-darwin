@@ -35,15 +35,24 @@ let
     overlays = [ macbookOverlay ];
   };
 
-  # ---- DARWIN-ONLY OPTION CONTEXT ---- #
-  # Obsidian's commands are not part of the portable host context. Read its
-  # option-module path from the shared plain options context, then wire it
-  # only into this Darwin host.
-  sharedOptions = import ../options {
-    inherit inputs;
+  # ---- SHARED HOST CONTEXT ---- #
+  # Hosts.nix constructs machine-agnostic values once. This Darwin host reads
+  # its paths and platform facts from that context without importing options.
+  macbookHostContext = config.flake.lib.mkHostContext {
     pkgs = macbookPkgs;
+    installTarget = "system";
   };
-  inherit (sharedOptions) containerBackupOptions obsidianOptions paths;
+  inherit (macbookHostContext) paths platforms;
+
+  # ---- DARWIN APPLICATION LINK HELPER ---- #
+  # Link behavior is constructed only for the Darwin host, then supplied to
+  # package modules through specialArgs rather than imported by those modules.
+  macbookSymlinks = import ../options/symlinks.nix {
+    lib = inputs.nixpkgs.lib;
+    paths = paths;
+    pkgs = macbookPkgs;
+    platforms = platforms;
+  };
 
   # ---- DARWIN BACKUP HELPERS ---- #
   # Backup implementation is MacBook-only. The helpers are supplied to the
@@ -51,6 +60,12 @@ let
   backupPaths = paths;
   backupExcludeHelper = import ../options/backups/backup-exclude-helper.nix {
     lib = inputs.nixpkgs.lib;
+  };
+  containersBackupHelper = import ../options/backups/container-backup-helper.nix {
+    lib = inputs.nixpkgs.lib;
+    pkgs = macbookPkgs;
+    paths = backupPaths;
+    inherit backupExcludeHelper;
   };
   appBackupHelper = import ../options/backups/app-backup-helper.nix {
     lib = inputs.nixpkgs.lib;
@@ -73,13 +88,15 @@ in
     { ... }:
     config.flake.lib.mkDarwinHost {
       inherit system;
+      hostContext = macbookHostContext;
 
       specialArgs = {
         inherit inputs;
         pkgs = macbookPkgs;
+        symlinks = macbookSymlinks;
         home-manager = inputs.home-manager;
         nix-homebrew = inputs.nix-homebrew;
-        inherit appBackupHelper backupExcludeHelper;
+        inherit appBackupHelper backupExcludeHelper containersBackupHelper;
 
       };
 
@@ -88,16 +105,6 @@ in
           nixpkgs.overlays = [ macbookOverlay ];
 
         }
-
-        # Obsidian commands are enabled only for this Darwin host, while the
-        # module itself remains a Home Manager module.
-        {
-          home-manager.sharedModules = [ obsidianOptions ];
-        }
-
-        # Darwin-only backup option declarations.
-        containerBackupOptions
-        appBackupHelper.settingsModule
 
         ../darwin/default.nix
       ];

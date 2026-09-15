@@ -8,7 +8,7 @@
 # Downloads before its completed archive is moved to SystemBackup.
 # =====================================================================
 
-{ backupExcludeHelper, config, lib, pkgs, paths, ... }:
+{ backupExcludeHelper, lib, pkgs, paths }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -41,7 +41,7 @@ let
   # appSlug is the attribute name that entry was written under, and cfg is
   # that entry's merged option values, so every knob below reads from the
   # option surface rather than from a function argument.
-  containerBackupConfig = appSlug: cfg:
+  containerBackupConfig = config: appSlug: cfg:
   let
     # Knobs read straight from this container's entry. The names match the
     # option names one for one, so the body below is unchanged from when
@@ -697,8 +697,8 @@ in
       '';
     };
   };
-in
-{
+
+  settingsModule = { config, lib, ... }: {
     options.services.backups = {
     paths = {
       homeDirectory = lib.mkOption {
@@ -1113,7 +1113,7 @@ in
 
   config =
     let
-      containerBackups = lib.mapAttrsToList containerBackupConfig config.services.backups.containers;
+      containerBackups = lib.mapAttrsToList (containerBackupConfig config) config.services.backups.containers;
       collect = part: lib.mkMerge (map (backup: backup.${part}) containerBackups);
     in
     {
@@ -1122,4 +1122,8 @@ in
       system.activationScripts = collect "activationScripts";
     };
 
+  };
+in
+{
+  inherit settingsModule;
 }

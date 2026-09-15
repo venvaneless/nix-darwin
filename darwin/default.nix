@@ -15,6 +15,8 @@
 # ================================================
 {
   config,
+  appBackupHelper,
+  containersBackupHelper,
   darwinPackageOptions,
   lib,
   home-manager,
@@ -99,7 +101,7 @@
   # ** shared/default.nix and is not repeated here.
   #
   # ** Any of these may be written as default instead, which takes the
-  # ** value declared in options/default.nix. Written out here so the
+  # ** value declared in options/nix-config.nix. Written out here so the
   # ** file says what this Mac actually runs.
   ven.nix.settings = {
     # System build group
@@ -193,6 +195,10 @@
     # System options
     ./system
     ./system-commands
+
+    # Darwin backup option modules
+    containersBackupHelper.settingsModule
+    appBackupHelper.settingsModule
 
     # macOS-only packages and their Darwin-only knobs
     darwinPackageOptions

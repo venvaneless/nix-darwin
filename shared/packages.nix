@@ -20,6 +20,7 @@
   lib,
   packageOptions,
   pkgs,
+  symlinks ? null,
   unstablePkgs,
   ...
 }:
@@ -1082,30 +1083,36 @@ in
   (packageOptions.mkPackageModule {
     name = "shared-apps";
     packages = appPackages;
+    inherit symlinks;
   })
 
   (packageOptions.mkPackageModule {
     name = "shared-development";
     packages = developmentPackages // developmentApplications;
+    inherit symlinks;
   })
 
   (packageOptions.mkPackageModule {
     name = "shared-cli";
     packages = cliPackages;
+    inherit symlinks;
   })
 
   (packageOptions.mkPackageModule {
     name = "shared-media";
     packages = mediaPackages;
+    inherit symlinks;
   })
 
   (packageOptions.mkPackageModule {
     name = "shared-productivity";
     packages = productivityPackages;
+    inherit symlinks;
   })
 
   (packageOptions.mkPackageModule {
     name = "shared-tools";
     packages = toolPackages;
+    inherit symlinks;
   })
 ]
