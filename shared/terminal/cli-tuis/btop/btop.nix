@@ -23,11 +23,11 @@
 }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.btop;
+  cfg = config.home.shared.terminal.cliTuis.btop;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Btop's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.btop.enable directly.
+  # still override home.shared.terminal.cliTuis.btop.enable directly.
   btop = {
     enable = true;
     installOn = {
@@ -71,11 +71,11 @@ let
       '';
 in
 {
-  options.ven.features.terminal.cliTuis.btop.enable = lib.mkEnableOption "Btop resource monitor";
+  options.home.shared.terminal.cliTuis.btop.enable = lib.mkEnableOption "Btop resource monitor";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.btop.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.btop.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
       programs.btop = {
@@ -265,7 +265,7 @@ in
     })
     (lib.mkIf (cfg.enable && selectedThemeConfig.option != null) {
       # Only the selected theme module is imported and enabled.
-      ven.features.terminal.cliTuis.btop.${selectedThemeConfig.option}.enable = true;
+      home.shared.terminal.cliTuis.btop.${selectedThemeConfig.option}.enable = true;
     })
   ];
 

@@ -11,11 +11,11 @@
 { config, lib, ... }:
 
 let
-  btopCfg = config.ven.features.terminal.cliTuis.btop;
+  btopCfg = config.home.shared.terminal.cliTuis.btop;
   cfg = btopCfg.gruvbox;
 in
 {
-  options.ven.features.terminal.cliTuis.btop.gruvbox.enable = lib.mkOption {
+  options.home.shared.terminal.cliTuis.btop.gruvbox.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Gruvbox Dark theme selected in btop.nix.";
