@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.sunny-day;
 in
 {
-  options.cli.micro.themes.sunny-day.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.sunny-day.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Sunny Day theme selected in default.nix.";

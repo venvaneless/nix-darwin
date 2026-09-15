@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.railscast;
 in
 {
-  options.cli.micro.themes.railscast.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.railscast.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Railscast theme selected in default.nix.";

@@ -11,7 +11,7 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
 
   themeRegistry = import ./.;
 

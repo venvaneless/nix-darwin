@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.atom-dark;
 in
 {
-  options.cli.micro.themes.atom-dark.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.atom-dark.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Atom-Dark theme selected in default.nix.";

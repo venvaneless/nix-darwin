@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.test-scheme;
 in
 {
-  options.cli.micro.themes.test-scheme.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.test-scheme.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Test Scheme theme selected in default.nix.";

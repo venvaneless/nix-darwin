@@ -12,7 +12,7 @@
 { config, lib, pkgs, platforms, ... }:
 
 let
-  cfg = config.cli.micro;
+  cfg = config.home.shared.cli.micro;
 
   # ------------------------------------------------------------
   # ------ PLATFORM SELECTION ------ #
@@ -49,7 +49,7 @@ let
   bindingsJson = builtins.toJSON cfg.bindings;
 in
 {
-  options.cli.micro = {
+  options.home.shared.cli.micro = {
     enable = lib.mkEnableOption "Micro terminal text editor";
 
     installOn = {
@@ -137,13 +137,13 @@ in
 
   config = lib.mkMerge [
     {
-      cli.micro.enabledForCurrentPlatform = enabledForCurrentPlatform;
+      home.shared.cli.micro.enabledForCurrentPlatform = enabledForCurrentPlatform;
 
       assertions = [
         {
           assertion = !enabledForCurrentPlatform || selectedThemeConfig != null;
           message = ''
-            cli.micro.themes.selected is "${selectedTheme}",
+            home.shared.cli.micro.themes.selected is "${selectedTheme}",
             which is not one of: ${lib.concatStringsSep ", " (lib.attrNames themeModules)}
           '';
         }
@@ -153,8 +153,8 @@ in
             || selectedThemeConfig == null
             || cfg.themes.${selectedTheme}.enable;
           message = ''
-            cli.micro.themes.selected is "${selectedTheme}", but that theme is disabled.
-            Enable cli.micro.themes.${selectedTheme}.enable or select an enabled theme.
+            home.shared.cli.micro.themes.selected is "${selectedTheme}", but that theme is disabled.
+            Enable home.shared.cli.micro.themes.${selectedTheme}.enable or select an enabled theme.
           '';
         }
       ];

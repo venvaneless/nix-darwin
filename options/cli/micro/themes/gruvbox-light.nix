@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.gruvbox-light;
 in
 {
-  options.cli.micro.themes.gruvbox-light.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.gruvbox-light.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Gruvbox-Light theme selected in default.nix.";

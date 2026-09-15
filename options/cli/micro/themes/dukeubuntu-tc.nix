@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.dukeubuntu-tc;
 in
 {
-  options.cli.micro.themes.dukeubuntu-tc.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.dukeubuntu-tc.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Dukeubuntu TC theme selected in default.nix.";

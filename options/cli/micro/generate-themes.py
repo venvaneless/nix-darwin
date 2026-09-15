@@ -71,11 +71,11 @@ def build_nix_module(
 {{ config, lib, ... }}:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.{theme_name};
 in
 {{
-  options.cli.micro.themes.{theme_name}.enable = lib.mkOption {{
+  options.home.shared.cli.micro.themes.{theme_name}.enable = lib.mkOption {{
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the {human_name} theme selected in default.nix.";

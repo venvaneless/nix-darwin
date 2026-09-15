@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.cmc-tc;
 in
 {
-  options.cli.micro.themes.cmc-tc.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.cmc-tc.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the CaptainMcClellan's personal colour scheme selected in default.nix.";

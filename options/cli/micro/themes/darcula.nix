@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.darcula;
 in
 {
-  options.cli.micro.themes.darcula.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.darcula.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Darcula theme selected in default.nix.";

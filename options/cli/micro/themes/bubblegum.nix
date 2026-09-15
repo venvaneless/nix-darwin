@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.bubblegum;
 in
 {
-  options.cli.micro.themes.bubblegum.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.bubblegum.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Bubblegum theme selected in default.nix.";

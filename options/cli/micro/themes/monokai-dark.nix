@@ -10,11 +10,11 @@
 { config, lib, ... }:
 
 let
-  microCfg = config.cli.micro;
+  microCfg = config.home.shared.cli.micro;
   cfg = microCfg.themes.monokai-dark;
 in
 {
-  options.cli.micro.themes.monokai-dark.enable = lib.mkOption {
+  options.home.shared.cli.micro.themes.monokai-dark.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Internal switch for the Monokai Dark theme selected in default.nix.";
