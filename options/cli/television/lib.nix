@@ -7,7 +7,7 @@
 # clipboard actions, Git handling, and portable recent-file ordering.
 # =====================================================================
 
-{ lib, pkgs, nixConfigDir, actions, channels, search, isDarwin }:
+{ lib, pkgs, nixConfigDir, actions, channels, search, platforms }:
 
 let
   # ---- SHARED COMMAND VALUES ---- #
@@ -78,12 +78,12 @@ let
   # macOS supplies pbcopy. Linux selects Wayland first, then X11, and
   # reports a clear failure instead of claiming success without a display.
   clipboardCopy = mkFishHelper "television-nix-copy-to-clipboard" (
-    if isDarwin then
-      ''
+    platforms.valueForCurrentPlatform {
+      darwin = ''
         command /usr/bin/pbcopy
-      ''
-    else
-      ''
+      '';
+
+      linux = ''
         set clipboard_text (string collect)
 
         if test -n "$WAYLAND_DISPLAY"
@@ -110,7 +110,8 @@ let
 
         echo "Television: clipboard unavailable; requires WAYLAND_DISPLAY or DISPLAY." >&2
         exit 1
-      ''
+      '';
+    }
   );
 
   # ---- FILE ACTIONS ---- #
