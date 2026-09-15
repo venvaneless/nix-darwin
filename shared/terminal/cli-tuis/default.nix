@@ -185,14 +185,24 @@
         linux = true;
       };
 
-      theme = "gruvbox";
+      # Theme written to [ui]: default or gruvbox.
+      uiTheme = "gruvbox";
 
-      ui = {
-        previewPanel.size = 55;
-        previewPanel.scrollbar = true;
-        helpPanel.hidden = true;
-        remoteControl.showChannelDescriptions = true;
-        remoteControl.sortAlphabetically = true;
+      # [ui.preview_panel]
+      previewPanel = {
+        size = 55;
+        scrollbar = true;
+      };
+
+      # [ui.help_panel]
+      helpPanel = {
+        hidden = true;
+      };
+
+      # [ui.remote_control]
+      remoteControl = {
+        showChannelDescriptions = true;
+        sortAlphabetically = true;
       };
 
       search.excludedDirectories = [ ".git" "result" "result-*" ".cache" ];
