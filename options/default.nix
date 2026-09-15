@@ -47,6 +47,7 @@ in
   containerBackupOptions = ./backups/container-backup-helper.nix;
   terminalOptions = ./terminal-aliases.nix;
   featureOptions = ./terminal-features.nix;
+  weztermOptions = ./package-options/wezterm;
   cliOptions = ./cli/default.nix;
   envSettingsOptions = ./env-settings;
   espansoOptions = ./package-options/espanso;

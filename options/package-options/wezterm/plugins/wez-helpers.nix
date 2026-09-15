@@ -1,14 +1,14 @@
-# shared/terminal/wezterm/plugins/wez-helpers.nix
+# options/package-options/wezterm/plugins/wez-helpers.nix
 #
 # Embedded Lua source generated into .config/wezterm/plugins/helpers.lua.
 
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.wezterm;
+  cfg = config.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "helpers.lua" /* lua */ ''
-    -- shared/terminal/wezterm/plugins/helpers.lua
+    -- options/package-options/wezterm/plugins/helpers.lua
 
     local M = {}
 
@@ -24,6 +24,12 @@ let
   '';
 in
 {
+  options.shared.terminal.wezterm.plugins.modules = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [ ];
+    description = "WezTerm plugin modules loaded in order.";
+  };
+
   config = lib.mkIf cfg.enable {
     home.file.".config/wezterm/plugins/helpers.lua".source = luaConfig;
   };

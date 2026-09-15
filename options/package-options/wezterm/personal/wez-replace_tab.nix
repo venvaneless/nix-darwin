@@ -1,14 +1,14 @@
-# shared/terminal/wezterm/personal/wez-replace_tab.nix
+# options/package-options/wezterm/personal/wez-replace_tab.nix
 #
 # Embedded Lua source generated into .config/wezterm/personal/replace_tab.lua.
 
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.wezterm;
+  cfg = config.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "replace_tab.lua" /* lua */ ''
-    -- shared/terminal/wezterm/personal/replace_tab.lua
+    -- options/package-options/wezterm/personal/replace_tab.lua
     --
     -- Replaces the current tab with a fresh one that keeps its working
     -- directory, domain, workspace and title.
@@ -21,6 +21,24 @@ let
     )
 
     local M = {}
+
+    local settings = {
+        key = ${builtins.toJSON cfg.personal.replaceTab.key},
+        modifiers = ${lib.generators.toLua { } cfg.personal.replaceTab.modifiers},
+    }
+
+    local function modifier_string(modifiers)
+        local parts = {}
+
+        for _, modifier in ipairs(modifiers) do
+            table.insert(
+                parts,
+                modifier == "SUPER" and platform.super or modifier
+            )
+        end
+
+        return table.concat(parts, "|")
+    end
 
     local function replace_tab(window, pane)
         local mux_window = window:mux_window()
@@ -74,8 +92,8 @@ let
             --
             -- macOS: Command + Shift + T
             -- Linux: Super + Shift + T
-            key = "T",
-            mods = platform.super .. "|SHIFT",
+            key = settings.key,
+            mods = modifier_string(settings.modifiers),
             action = wezterm.action_callback(replace_tab),
         })
     end
@@ -84,6 +102,18 @@ let
   '';
 in
 {
+  options.shared.terminal.wezterm.personal.replaceTab = {
+    key = lib.mkOption {
+      type = lib.types.str;
+      description = "WezTerm key that replaces the active tab.";
+    };
+
+    modifiers = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      description = "Platform-neutral modifiers for the replace-tab shortcut.";
+    };
+  };
+
   # replace_tab.lua loads platform.lua at runtime.
   imports = [
     ./wez-platform.nix

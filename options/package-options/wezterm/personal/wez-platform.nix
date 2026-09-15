@@ -1,20 +1,25 @@
-# shared/terminal/wezterm/personal/wez-platform.nix
+# options/package-options/wezterm/personal/wez-platform.nix
 #
 # Embedded Lua source generated into .config/wezterm/personal/platform.lua.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
-  cfg = config.ven.features.terminal.wezterm;
+  cfg = config.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "platform.lua" /* lua */ ''
-    -- shared/terminal/wezterm/personal/platform.lua
+    -- options/package-options/wezterm/personal/platform.lua
     --
     -- Runtime platform detection for the Lua modules.
     --
     -- The key bindings generated from Nix resolve the platform at build
-    -- time in wez-keybindings.nix, so they do not need this module. The
-    -- runtime modules below still do, because they build their bindings
+    -- time in the WezTerm option module, so they do not need this module.
+    -- The runtime modules below still do, because they build their bindings
     -- while WezTerm is starting.
 
     local wezterm = require("wezterm")

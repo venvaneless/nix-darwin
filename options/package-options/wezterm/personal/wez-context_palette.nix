@@ -1,11 +1,11 @@
-# shared/terminal/wezterm/personal/wez-context_palette.nix
+# options/package-options/wezterm/personal/wez-context_palette.nix
 #
 # Embedded Lua source generated into .config/wezterm/personal/context_palette.lua.
 
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.wezterm;
+    cfg = config.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "context_palette.lua" /* lua */ ''
     -- ~/.config/wezterm/personal/context_palette.lua
@@ -24,36 +24,22 @@ let
     local M = {}
     local home = os.getenv("HOME") or wezterm.home_dir
 
-    -- USER SETTINGS
-    -- =====================================================================
     local settings = {
-        palette_rows = 24,
-        parent_search_depth = 20,
-
-        -- Used for nix-darwin actions.
-        darwin_host = "macbook",
-
-        -- First existing path wins.
+        palette_rows = ${toString cfg.personal.contextPalette.paletteRows},
+        parent_search_depth = ${toString cfg.personal.contextPalette.parentSearchDepth},
+        darwin_host = ${builtins.toJSON cfg.personal.contextPalette.darwinHost},
+        key = ${builtins.toJSON cfg.personal.contextPalette.key},
+        modifiers = ${lib.generators.toLua { } cfg.personal.contextPalette.modifiers},
         paths = {
-            nix_config = home .. "/.config/nix/nix-config",
-            downloads = home .. "/Downloads",
-            config = home .. "/.config",
-            hammerspoon = home .. "/.config/.hammerspoon",
-
-            projects = {
-                home .. "/iCloudDocs/Documents/programming",
-                home .. "/Projects",
-                home .. "/Documents/programming",
+            nix_config = home .. "/${cfg.personal.contextPalette.paths.nixConfig}",
+            downloads = home .. "/${cfg.personal.contextPalette.paths.downloads}",
+            config = home .. "/${cfg.personal.contextPalette.paths.config}",
+            hammerspoon = home .. "/${cfg.personal.contextPalette.paths.hammerspoon}",
+            projects = {${lib.concatMapStringsSep "" (path: "\n                home .. \"/${path}\",") cfg.personal.contextPalette.paths.projects}
             },
-
-            fish_configs = {
-                home .. "/.config/fish/config.fish",
-                home .. "/.config/terminal/fish/config-ven.fish",
+            fish_configs = {${lib.concatMapStringsSep "" (path: "\n                home .. \"/${path}\",") cfg.personal.contextPalette.paths.fishConfigs}
             },
-
-            fish_functions = {
-                home .. "/.config/fish/functions",
-                home .. "/.config/terminal/fish/functions",
+            fish_functions = {${lib.concatMapStringsSep "" (path: "\n                home .. \"/${path}\",") cfg.personal.contextPalette.paths.fishFunctions}
             },
         },
     }
@@ -834,20 +820,31 @@ let
         return table.concat(parts, "|")
     end
 
+    local function modifier_string(modifiers)
+        local parts = {}
+
+        for _, modifier in ipairs(modifiers) do
+            table.insert(
+                parts,
+                modifier == "SUPER" and platform.super or modifier
+            )
+        end
+
+        return table.concat(parts, "|")
+    end
+
     function M.apply(config)
         config.command_palette_rows = settings.palette_rows
         config.keys = config.keys or {}
 
         local wanted_mods = normalize_mods(
-            platform.super .. "|SHIFT"
+            modifier_string(settings.modifiers)
         )
 
         -- Remove older copies of this shortcut before adding the final binding.
         for index = #config.keys, 1, -1 do
             local binding = config.keys[index]
-            local same_key = binding.key == "P"
-                or binding.key == "phys:P"
-                or binding.key == "mapped:P"
+            local same_key = binding.key == settings.key
 
             if same_key
                 and normalize_mods(binding.mods) == wanted_mods
@@ -864,8 +861,8 @@ let
             --
             -- macOS: Command + Shift + P
             -- Linux: Super + Shift + P
-            key = "phys:P",
-            mods = platform.super .. "|SHIFT",
+            key = settings.key,
+            mods = modifier_string(settings.modifiers),
             action = act.ActivateCommandPalette,
         })
     end
@@ -874,6 +871,75 @@ let
   '';
 in
 {
+  options.shared.terminal.wezterm.personal.contextPalette = {
+    paletteRows = lib.mkOption {
+      type = lib.types.ints.positive;
+      description = "Maximum visible rows in the context-aware command palette.";
+    };
+
+    parentSearchDepth = lib.mkOption {
+      type = lib.types.ints.positive;
+      description = "Maximum parent directories searched for project context.";
+    };
+
+    darwinHost = lib.mkOption {
+      type = lib.types.str;
+      description = "Darwin host name used by context-palette rebuild actions.";
+    };
+
+    key = lib.mkOption {
+      type = lib.types.str;
+      description = "WezTerm key that opens the context-aware command palette.";
+    };
+
+    modifiers = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      description = "Platform-neutral modifiers for the context-palette shortcut.";
+    };
+
+    paths = lib.mkOption {
+      type = lib.types.submodule {
+        options = {
+          nixConfig = lib.mkOption {
+            type = lib.types.str;
+            description = "Relative Nix configuration path.";
+          };
+
+          downloads = lib.mkOption {
+            type = lib.types.str;
+            description = "Relative downloads path.";
+          };
+
+          config = lib.mkOption {
+            type = lib.types.str;
+            description = "Relative configuration path.";
+          };
+
+          hammerspoon = lib.mkOption {
+            type = lib.types.str;
+            description = "Relative Hammerspoon configuration path.";
+          };
+
+          projects = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            description = "Relative project root paths.";
+          };
+
+          fishConfigs = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            description = "Relative Fish configuration paths.";
+          };
+
+          fishFunctions = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            description = "Relative Fish functions paths.";
+          };
+        };
+      };
+      description = "Paths searched and opened by the context-aware command palette.";
+    };
+  };
+
   # context_palette.lua loads platform.lua at runtime.
   imports = [
     ./wez-platform.nix
