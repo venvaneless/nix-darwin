@@ -17,7 +17,18 @@
 
 let
   cfg = config.shared.terminal.wezterm;
-  superModifier = if platforms.isDarwin then "CMD" else "SUPER";
+
+  # The theme named by themes.default; list and default are the selector,
+  # not themes. Its own relativePath decides which Lua file is loaded.
+  selectedTheme =
+    (builtins.removeAttrs cfg.themes [ "list" "default" ]).${cfg.themes.default} or null;
+
+  # WezTerm names the Super key CMD on macOS.
+  superModifier = platforms.valueForCurrentPlatform {
+    darwin = "CMD";
+    linux = "SUPER";
+  };
+
   keybindingModifiers =
     modifiers:
     let
@@ -124,7 +135,7 @@ let
 in
 {
   imports = [
-    ./themes
+    ./themes-helper.nix
     ./plugins
     ./personal
   ];
@@ -330,7 +341,7 @@ in
         '';
       }
       {
-        assertion = cfg.themes.default == "none" || lib.hasAttr cfg.themes.default cfg.themes;
+        assertion = cfg.themes.default == "none" || selectedTheme != null;
         message = ''
           shared.terminal.wezterm.themes.default is "${cfg.themes.default}",
           but no palette settings were declared for it.
@@ -391,8 +402,8 @@ in
       };
 
       extraConfig = ''
-        ${lib.optionalString (cfg.themes.default != "none") ''
-          local theme = dofile(wezterm.config_dir .. "/themes/${cfg.themes.default}.lua")
+        ${lib.optionalString (selectedTheme != null) ''
+          local theme = dofile(wezterm.home_dir .. "/" .. ${builtins.toJSON selectedTheme.relativePath})
           theme.apply(config)
         ''}
 
