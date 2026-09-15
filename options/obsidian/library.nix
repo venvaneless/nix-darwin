@@ -10,7 +10,7 @@
 { config, lib, pkgs, platforms, ... }:
 
 let
-  cfg = config.ven.features.obsidian;
+  cfg = config.home.shared.terminal.obsidian;
   inherit (platforms) isDarwin;
 
   # ---- CONFIGURED PATHS ---- #

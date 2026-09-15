@@ -14,7 +14,7 @@
 }:
 
 let
-  cfg = config.ven.features.obsidian;
+  cfg = config.home.shared.terminal.obsidian;
 
   # ------------------------------------------------------------
   # ------ PLATFORM COMMAND FLAGS ------ #

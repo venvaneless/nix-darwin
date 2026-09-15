@@ -98,7 +98,7 @@ in
     ./dispatcher.nix
   ];
 
-  options.ven.features.obsidian = feature "the independent Obsidian command" // {
+  options.home.shared.terminal.obsidian = feature "the independent Obsidian command" // {
     # ---- Command modes ---- #
     # The library mode owns its full familiar TUI. These are per-platform
     # command settings; only the root command itself has installOn.
