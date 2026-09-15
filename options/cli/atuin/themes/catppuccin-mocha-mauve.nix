@@ -4,18 +4,18 @@
 # ATUIN: CATPPUCCIN MOCHA MAUVE THEME
 #
 # - Preserves the archived custom Atuin theme in Nix
-# - Toggle with cli.atuin.themes.catppuccinMochaMauve.enable
+# - Toggle with home.shared.cli.atuin.themes.catppuccinMochaMauve.enable
 # - Disabled by default; enable it after turning the active theme off
 # =====================================================================
 
 { config, lib, ... }:
 
 let
-  atuinCfg = config.cli.atuin;
+  atuinCfg = config.home.shared.cli.atuin;
   cfg = atuinCfg.themes.catppuccinMochaMauve;
 in
 {
-  options.cli.atuin.themes.catppuccinMochaMauve.enable = lib.mkOption {
+  options.home.shared.cli.atuin.themes.catppuccinMochaMauve.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Use the archived Catppuccin Mocha Mauve theme for Atuin.";

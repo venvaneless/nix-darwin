@@ -26,7 +26,7 @@
 { config, lib, platforms, ... }:
 
 let
-  cfg = config.cli.atuin;
+  cfg = config.home.shared.cli.atuin;
 
   # ---- PLATFORM SELECTION ---- #
   # The shared CLI/TUI settings choose enablement and supported platforms.
@@ -39,7 +39,7 @@ let
   enabledThemes = lib.attrNames (lib.filterAttrs (_: theme: theme.enable) cfg.themes);
 in
 {
-  options.cli.atuin = {
+  options.home.shared.cli.atuin = {
     enable = lib.mkEnableOption "Atuin shell history";
 
     installOn = {
@@ -85,7 +85,7 @@ in
 
   config = lib.mkMerge [
     {
-      cli.atuin.enabledForCurrentPlatform = enabledForCurrentPlatform;
+      home.shared.cli.atuin.enabledForCurrentPlatform = enabledForCurrentPlatform;
     }
     (lib.mkIf enabledForCurrentPlatform {
     # ---- CONFLICTING THEMES ---- #
@@ -97,7 +97,7 @@ in
           ${lib.concatStringsSep ", " enabledThemes}
 
           Disable the others under
-          cli.atuin.themes.<name>.enable.
+          home.shared.cli.atuin.themes.<name>.enable.
         '';
       }
     ];

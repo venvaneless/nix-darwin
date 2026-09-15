@@ -4,18 +4,18 @@
 # ATUIN: GRUVBOX DARK THEME
 #
 # - Uses the Gruvbox Dark palette shared by the active WezTerm theme
-# - Toggle with cli.atuin.themes.gruvboxDark.enable
+# - Toggle with home.shared.cli.atuin.themes.gruvboxDark.enable
 # - Enabled by default; this is the active Atuin theme
 # =====================================================================
 
 { config, lib, ... }:
 
 let
-  atuinCfg = config.cli.atuin;
+  atuinCfg = config.home.shared.cli.atuin;
   cfg = atuinCfg.themes.gruvboxDark;
 in
 {
-  options.cli.atuin.themes.gruvboxDark.enable = lib.mkOption {
+  options.home.shared.cli.atuin.themes.gruvboxDark.enable = lib.mkOption {
     type = lib.types.bool;
     default = false;
     description = "Use the Gruvbox Dark theme for Atuin.";
