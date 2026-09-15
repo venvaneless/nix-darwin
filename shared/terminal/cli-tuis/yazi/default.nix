@@ -11,11 +11,11 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ven.features.terminal.cliTuis.yazi;
+  cfg = config.home.shared.terminal.cliTuis.yazi;
 
   # ---- PLATFORM TOGGLES ---- #
   # Change these values to set Yazi's default per platform. Hosts can
-  # still override ven.features.terminal.cliTuis.yazi.enable directly.
+  # still override home.shared.terminal.cliTuis.yazi.enable directly.
   yazi = {
     enable = true;
     installOn = {
@@ -73,12 +73,12 @@ in
     (lib.optional plugins.fullBorder.install ./plugins/full-border.nix)
     ++ (lib.optional plugins.yatline.install ./plugins/yatline.nix);
 
-  options.ven.features.terminal.cliTuis.yazi.enable =
+  options.home.shared.terminal.cliTuis.yazi.enable =
     lib.mkEnableOption "Yazi terminal file manager";
 
   config = lib.mkMerge [
     {
-      ven.features.terminal.cliTuis.yazi.enable = lib.mkDefault enabledForCurrentSystem;
+      home.shared.terminal.cliTuis.yazi.enable = lib.mkDefault enabledForCurrentSystem;
     }
     (lib.mkIf cfg.enable {
       # ---- INSTALLATION ---- #
