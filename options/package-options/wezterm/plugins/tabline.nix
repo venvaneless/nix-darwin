@@ -10,7 +10,7 @@
 }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
   tablineCfg = cfg.plugins.tabline;
 
   paddingOptions = component: {
@@ -191,7 +191,7 @@ let
   '';
 in
 {
-  options.shared.terminal.wezterm.plugins.tabline = {
+  options.home.shared.terminal.wezterm.plugins.tabline = {
     url = lib.mkOption {
       type = lib.types.str;
       description = "Git URL for the tabline.wez plugin.";

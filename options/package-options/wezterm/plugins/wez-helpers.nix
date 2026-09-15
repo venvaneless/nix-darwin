@@ -5,7 +5,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "helpers.lua" /* lua */ ''
     -- options/package-options/wezterm/plugins/helpers.lua
@@ -24,7 +24,7 @@ let
   '';
 in
 {
-  options.shared.terminal.wezterm.plugins.modules = lib.mkOption {
+  options.home.shared.terminal.wezterm.plugins.modules = lib.mkOption {
     type = lib.types.listOf lib.types.str;
     default = [ ];
     description = "WezTerm plugin modules loaded in order.";

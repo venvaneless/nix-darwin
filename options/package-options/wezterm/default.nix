@@ -16,7 +16,7 @@
 }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
 
   # The theme named by themes.default; list and default are the selector,
   # not themes. Its own relativePath decides which Lua file is loaded.
@@ -140,7 +140,7 @@ in
     ./personal
   ];
 
-  options.shared.terminal.wezterm = {
+  options.home.shared.terminal.wezterm = {
     enable = lib.mkEnableOption "WezTerm terminal emulator";
 
     installOn = lib.mkOption {
@@ -336,14 +336,14 @@ in
       {
         assertion = cfg.themes.default == "none" || lib.elem cfg.themes.default cfg.themes.list;
         message = ''
-          shared.terminal.wezterm.themes.default is "${cfg.themes.default}",
+          home.shared.terminal.wezterm.themes.default is "${cfg.themes.default}",
           which is not one of: ${lib.concatStringsSep ", " cfg.themes.list}
         '';
       }
       {
         assertion = cfg.themes.default == "none" || selectedTheme != null;
         message = ''
-          shared.terminal.wezterm.themes.default is "${cfg.themes.default}",
+          home.shared.terminal.wezterm.themes.default is "${cfg.themes.default}",
           but no palette settings were declared for it.
         '';
       }

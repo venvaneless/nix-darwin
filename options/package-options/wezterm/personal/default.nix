@@ -20,7 +20,7 @@
     ./wez-save_scrollback.nix
   ];
 
-  options.shared.terminal.wezterm.personal.modules = lib.mkOption {
+  options.home.shared.terminal.wezterm.personal.modules = lib.mkOption {
     type = lib.types.listOf (
       lib.types.enum [
         "context_palette"

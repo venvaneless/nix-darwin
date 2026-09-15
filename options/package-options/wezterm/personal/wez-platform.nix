@@ -10,7 +10,7 @@
 }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "platform.lua" /* lua */ ''
     -- options/package-options/wezterm/personal/platform.lua

@@ -5,7 +5,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "smart_workspace_switcher.lua" /* lua */ ''
     -- options/package-options/wezterm/plugins/smart_workspace_switcher.lua
@@ -23,7 +23,7 @@ let
   '';
 in
 {
-  options.shared.terminal.wezterm.plugins.smartWorkspaceSwitcher.url = lib.mkOption {
+  options.home.shared.terminal.wezterm.plugins.smartWorkspaceSwitcher.url = lib.mkOption {
     type = lib.types.str;
     description = "Git URL for the smart-workspace-switcher WezTerm plugin.";
   };

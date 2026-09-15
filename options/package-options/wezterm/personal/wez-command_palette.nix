@@ -10,7 +10,7 @@
 }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "command_palette.lua" /* lua */ ''
         -- ~/.config/wezterm/personal/command_palette.lua
@@ -165,7 +165,7 @@ let
   '';
 in
 {
-  options.shared.terminal.wezterm.personal.commandPalette = {
+  options.home.shared.terminal.wezterm.personal.commandPalette = {
     darwinFlake = lib.mkOption {
       type = lib.types.str;
       description = "Darwin flake target exposed by the personal command palette.";

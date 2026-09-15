@@ -10,7 +10,7 @@
 }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "resurrect.lua" /* lua */ ''
     -- options/package-options/wezterm/plugins/resurrect.lua
@@ -165,7 +165,7 @@ let
   '';
 in
 {
-  options.shared.terminal.wezterm.plugins.resurrect.url = lib.mkOption {
+  options.home.shared.terminal.wezterm.plugins.resurrect.url = lib.mkOption {
     type = lib.types.str;
     description = "Git URL for the resurrect.wezterm plugin.";
   };

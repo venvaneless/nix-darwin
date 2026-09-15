@@ -18,7 +18,7 @@
 }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
 
   # ------------------------------------------------------------
   # ------ SHARED THEME KNOBS ------ #
@@ -373,7 +373,7 @@ ${renderFrame}
     '';
 in
 {
-  options.shared.terminal.wezterm.themes = lib.mkOption {
+  options.home.shared.terminal.wezterm.themes = lib.mkOption {
     type = lib.types.submodule {
       freeformType = lib.types.attrsOf themeType;
       options = themeSelectorOptions;
@@ -386,7 +386,7 @@ in
     assertions = lib.mapAttrsToList (attrName: theme: {
       assertion = theme.name == attrName;
       message = ''
-        shared.terminal.wezterm.themes.${attrName}.name is "${theme.name}",
+        home.shared.terminal.wezterm.themes.${attrName}.name is "${theme.name}",
         but it must match the attribute name "${attrName}".
       '';
     }) declaredThemes;

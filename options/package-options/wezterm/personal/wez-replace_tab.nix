@@ -5,7 +5,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "replace_tab.lua" /* lua */ ''
     -- options/package-options/wezterm/personal/replace_tab.lua
@@ -102,7 +102,7 @@ let
   '';
 in
 {
-  options.shared.terminal.wezterm.personal.replaceTab = {
+  options.home.shared.terminal.wezterm.personal.replaceTab = {
     key = lib.mkOption {
       type = lib.types.str;
       description = "WezTerm key that replaces the active tab.";

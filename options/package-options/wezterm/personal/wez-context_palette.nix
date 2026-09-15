@@ -5,7 +5,7 @@
 { config, lib, pkgs, ... }:
 
 let
-    cfg = config.shared.terminal.wezterm;
+    cfg = config.home.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "context_palette.lua" /* lua */ ''
     -- ~/.config/wezterm/personal/context_palette.lua
@@ -871,7 +871,7 @@ let
   '';
 in
 {
-  options.shared.terminal.wezterm.personal.contextPalette = {
+  options.home.shared.terminal.wezterm.personal.contextPalette = {
     paletteRows = lib.mkOption {
       type = lib.types.ints.positive;
       description = "Maximum visible rows in the context-aware command palette.";

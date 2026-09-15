@@ -5,7 +5,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.shared.terminal.wezterm;
+  cfg = config.home.shared.terminal.wezterm;
 
   luaConfig = pkgs.writeText "nvim_chrome.lua" /* lua */ ''
     -- options/package-options/wezterm/personal/nvim_chrome.lua
@@ -41,7 +41,7 @@ let
   '';
 in
 {
-  options.shared.terminal.wezterm.personal.nvimChrome.processSuffix = lib.mkOption {
+  options.home.shared.terminal.wezterm.personal.nvimChrome.processSuffix = lib.mkOption {
     type = lib.types.str;
     description = "Process-name suffix that identifies a local Neovim pane.";
   };
