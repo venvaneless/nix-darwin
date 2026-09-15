@@ -46,8 +46,8 @@ let
           floe = pkgs.callPackage ./floe.nix { };
           hammerspoon = hammerspoonPackages.hammerspoon;
           updateHammerspoon = hammerspoonPackages.updateHammerspoon;
-          itermAiPlugin = pkgs.callPackage ./iterm-ai-plugin.nix { };
-          itermBrowserPlugin = pkgs.callPackage ./iterm-browser-plugin.nix { };
+          itermAiPlugin = pkgs.callPackage ./iterm/iterm-ai-plugin.nix { };
+          itermBrowserPlugin = pkgs.callPackage ./iterm/iterm-browser-plugin.nix { };
         };
 
         # ------------------------------------------------------------
