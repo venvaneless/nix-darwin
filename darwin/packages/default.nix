@@ -16,7 +16,7 @@
   # Enable packages and choose their guarded /Applications category.
   # ------------------------------------------------------------
 
-  system.packages.darwin = {
+  system.darwin.packages = {
     # Terminal emulator and its optional integration bundles.
     iterm2 = {
       enable = true;
@@ -24,20 +24,18 @@
       package = unstablePkgs.iterm2;
       appName = "iTerm.app";
 
-      plugins = {
-        ai = {
-          enable = true;
-          symlinkProgramming = true;
-          package = darwinPackages.itermAiPlugin;
-          appName = "iTermAI.app";
-        };
+      ai = {
+        enable = true;
+        symlinkProgramming = true;
+        package = darwinPackages.itermAiPlugin;
+        appName = "iTermAI.app";
+      };
 
-        browser = {
-          enable = true;
-          symlinkProgramming = true;
-          package = darwinPackages.itermBrowserPlugin;
-          appName = "iTermBrowser.app";
-        };
+      browser = {
+        enable = true;
+        symlinkProgramming = true;
+        package = darwinPackages.itermBrowserPlugin;
+        appName = "iTermBrowser.app";
       };
     };
 
