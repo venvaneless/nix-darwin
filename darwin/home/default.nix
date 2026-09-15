@@ -13,10 +13,6 @@
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
-    extraSpecialArgs = {
-      inherit inputs paths platforms;
-    };
-
     # Provides the Home Manager sops.* options used by shared/secrets.nix.
     sharedModules = [
       inputs.sops-nix.homeManagerModules.sops
@@ -373,13 +369,17 @@
         # Darwin-only Home Manager
         ../terminal
 
+        # The independent Obsidian command is declared and configured only
+        # for the MacBook; portable terminal hosts do not import it.
+        ../../shared/terminal/commands/obsidian.nix
+
         # Shared Home Manager
-        inputs.self.homeModules.shared-home
-        inputs.self.homeModules.shared-environment
-        inputs.self.homeModules.shared-services
+        inputs.self.homeModules."shared.home"
+        inputs.self.homeModules."shared.environment"
+        inputs.self.homeModules."shared.services"
 
         # Shared terminal modules
-        inputs.self.homeModules.shared-terminal
+        inputs.self.homeModules."shared.terminal"
 
         # Shared secrets
         ../../shared/home/secrets.nix

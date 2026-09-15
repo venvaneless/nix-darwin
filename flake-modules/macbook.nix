@@ -18,8 +18,9 @@ let
   system = "aarch64-darwin";
 
   # ---- SHARED NIXPKGS POLICY ---- #
-  # Host construction exposes the common policy; MacBook only adds overlays.
-  nixpkgsConfig = config.flake.lib.nixpkgsConfig;
+  # The MacBook starts from the portable policy, then applies its own overlay
+  # only while constructing this machine's package set.
+  macbookNixpkgsConfig = config.flake.lib.sharedNixpkgsConfig;
 
   # Load the list of overlays from darwin/overlays.
   macbookOverlays = import ../darwin/overlays;
@@ -30,14 +31,24 @@ let
   # This keeps shared package-list helpers independent of the module fixpoint.
   macbookPkgs = import inputs.nixpkgs {
     inherit system;
-    config = nixpkgsConfig;
+    config = macbookNixpkgsConfig;
     overlays = [ macbookOverlay ];
   };
+
+  # ---- DARWIN-ONLY OPTION CONTEXT ---- #
+  # Obsidian's commands are not part of the portable host context. Read its
+  # option-module path from the shared plain options context, then wire it
+  # only into this Darwin host.
+  sharedOptions = import ../options {
+    inherit inputs;
+    pkgs = macbookPkgs;
+  };
+  inherit (sharedOptions) containerBackupOptions obsidianOptions paths;
 
   # ---- DARWIN BACKUP HELPERS ---- #
   # Backup implementation is MacBook-only. The helpers are supplied to the
   # Darwin module graph once, so backup files do not import them themselves.
-  backupPaths = import ../options/paths.nix {};
+  backupPaths = paths;
   backupExcludeHelper = import ../options/backups/backup-exclude-helper.nix {
     lib = inputs.nixpkgs.lib;
   };
@@ -78,8 +89,14 @@ in
 
         }
 
+        # Obsidian commands are enabled only for this Darwin host, while the
+        # module itself remains a Home Manager module.
+        {
+          home-manager.sharedModules = [ obsidianOptions ];
+        }
+
         # Darwin-only backup option declarations.
-        ../options/backups/container-backup-helper.nix
+        containerBackupOptions
         appBackupHelper.settingsModule
 
         ../darwin/default.nix

@@ -58,7 +58,13 @@
 
       trueColor = true;
 
-      themes.default = "gruvbox";
+      themes = {
+        # Select one enabled theme for Micro's settings.json.
+        selected = "gruvbox";
+
+        # Theme modules are individually toggleable through this registry.
+        gruvbox.enable = true;
+      };
 
       settings = {
         clipboard = "external";

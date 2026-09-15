@@ -128,7 +128,7 @@ in
   imports = [
     # ---- THEMES ---- #
     # Exactly one may be enabled.
-    ./atuin/themes/catppuccin-mocha-mauve.nix
-    ./atuin/themes/gruvbox-dark.nix
+    ./themes/catppuccin-mocha-mauve.nix
+    ./themes/gruvbox-dark.nix
   ];
 }

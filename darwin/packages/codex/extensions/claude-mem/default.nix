@@ -148,13 +148,6 @@ in
 {
   imports = [
     ./claude-mem-settings.nix
-
-    ./standup.nix
-    ./what-the.nix
-    ./make-plan.nix
-    ./mem-search.nix
-    ./pathfinder.nix
-    ./mode-creator.nix
   ];
 
   # COMMANDS

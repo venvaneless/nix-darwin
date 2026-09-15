@@ -19,13 +19,9 @@
 # ** nothing but the machine, and their torrenting ports must differ.
 # =====================================================================
 
-{ config, lib, options, pkgs, ... }:
+{ config, lib, options, paths, pkgs, ... }:
 
 let
-  helpers = import ../../options { inherit lib options pkgs; };
-
-  inherit (helpers) paths;
-
   cfg = config.ven.features.services.qbittorrent;
 
   daemonPaths = paths.linux.services.qbittorrent;

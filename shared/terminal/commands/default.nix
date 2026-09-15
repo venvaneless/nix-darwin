@@ -10,7 +10,6 @@
   imports = [
     ./chmod.nix
     ./downloads.nix
-    ./obsidian.nix
   ];
 
   # downloads.nix deliberately owns its implementation and option.

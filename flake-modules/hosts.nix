@@ -6,62 +6,60 @@
 # Exposes the shared terminal Home Manager module and constructors for
 # Darwin, Linux Home Manager, and NixOS hosts without defining a machine.
 # =====================================================================
-
-{ inputs, ... }:
-
-let
-  # ---- Variables from options/default.nix
-  # Host construction reads its plain value branch before a module
-  # fixpoint exists; the same file provides the Nix option module.
+{inputs, ...}: let
+  # ---- SHARED OPTION CONTEXT ---- #
+  # This is the one plain import used before a module fixpoint exists. It
+  # provides the pre-evaluation values and the module paths; it does not
+  # import those modules into every host by itself.
   sharedOptionValues = import ../options { };
-  inherit (sharedOptionValues) nixpkgsConfig nixOptions nixSharedSettings;
-  sharedNixpkgsConfig = nixpkgsConfig;
+  inherit (sharedOptionValues) nixOptions nixSharedSettings;
+  sharedNixpkgsConfig = sharedOptionValues.nixpkgsConfig;
 
   # ---- PER-HOST SHARED CONTEXT ---- #
   # Every constructor receives a package set for one host. Build the values
   # that depend on that package set once here, then pass the same context to
   # that host's Nix module graph.
-  mkHostContext =
-    {
-      pkgs,
-      installTarget,
-    }:
-    let
-      sharedOptions = import ../options { inherit inputs pkgs; };
-      inherit (sharedOptions)
-        paths
-        serviceOptions
-        containerBackupOptions
-        terminalOptions
-        featureOptions
-        obsidianOptions
-        unstablePkgs
-        ;
+  mkHostContext = {
+    pkgs,
+    installTarget,
+  }: let
+    sharedOptions = import ../options { inherit inputs pkgs; };
+    inherit (sharedOptions)
+      paths
+      serviceOptions
+      containerBackupOptions
+      terminalOptions
+      featureOptions
+      cliOptions
+      envSettingsOptions
+      espansoOptions
+      unstablePkgs
+      ;
 
-      platforms = import ../options/platforms.nix { inherit pkgs; };
-      packageOptions = import ../options/package-options.nix {
-        lib = inputs.nixpkgs.lib;
-        inherit paths platforms pkgs installTarget;
-      };
-    in
-    {
-      inherit
-        sharedOptions
-        packageOptions
-        paths
-        pkgs
-        platforms
-        serviceOptions
-        containerBackupOptions
-        terminalOptions
-        featureOptions
-        obsidianOptions
-        unstablePkgs
-        ;
+    platforms = import ../options/platforms.nix {inherit pkgs;};
+    packageOptions = import ../options/package-options.nix {
+      lib = inputs.nixpkgs.lib;
+      inherit paths platforms pkgs installTarget;
     };
 
-in
-{
+  in {
+    inherit
+      cliOptions
+      containerBackupOptions
+      envSettingsOptions
+      espansoOptions
+      featureOptions
+      packageOptions
+      paths
+      pkgs
+      platforms
+      serviceOptions
+      sharedOptions
+      terminalOptions
+      unstablePkgs
+      ;
+  };
+in {
   # ---- HOME MANAGER FLAKE-PARTS OPTIONS ---- #
   # Provides typed flake.homeModules and flake.homeConfigurations options.
   imports = [
@@ -69,22 +67,50 @@ in
   ];
 
   flake = {
+    # ---- SHARED HOME MODULE ---- #
+    # Values every Home Manager host uses, integrated on Darwin and
+    # standalone on Linux. Option modules declare and implement the knobs;
+    # shared/home/default.nix only selects their values.
+    homeModules."shared.home" = {espansoOptions, ...}: {
+      imports = [
+        espansoOptions
+        ../shared/home/default.nix
+      ];
+    };
+
     # ---- SHARED ENVIRONMENT HOME MODULE ---- #
     # Every Home Manager host gets the common environment option module
     # and its shared knob assignments through this one composition point.
-    homeModules.shared.environment = {
+    homeModules."shared.environment" = {envSettingsOptions, ...}: {
       imports = [
-        ../options/env-settings
+        envSettingsOptions
         ../shared/env-settings.nix
+      ];
+    };
+
+    # ---- SHARED SERVICES HOME MODULE ---- #
+    # Declares shared Home Manager service options once for every host.
+    homeModules."shared.services" = {serviceOptions, ...}: {
+      imports = [
+        serviceOptions
       ];
     };
 
     # ---- SHARED TERMINAL HOME MODULE ---- #
     # Every Home Manager host imports this and chooses terminal features locally.
-    homeModules.shared.terminal = {
+    homeModules."shared.terminal" = {
+      cliOptions,
+      featureOptions,
+      terminalOptions,
+      ...
+    }: {
       imports = [
+        # Terminal option modules declare values used by terminal modules.
+        terminalOptions
+        featureOptions
+
         # CLI option modules define the knobs set by shared/terminal/cli-tuis.
-        ../options/cli
+        cliOptions
         ../shared/terminal
         ../shared/terminal/nvim
         ../shared/terminal/cli-tuis
@@ -95,26 +121,25 @@ in
     # ---- MACHINE-NEUTRAL CONSTRUCTORS ---- #
     lib = {
       # Lets host modules construct their configured package set from the
-      # same shared nixpkgs policy without importing options/default.nix.
-      sharedNixpkgsConfig = sharedNixpkgsConfig;
+      # same shared nixpkgs policy without importing the option module.
+      inherit sharedNixpkgsConfig;
 
       # Creates a nix-darwin system with the shared SOPS module included.
       # Callers supply the host facts, package set, and system modules.
-      mkDarwinHost =
-        {
-          system,
-          modules,
-          specialArgs ? { },
-        }:
-        let
-          # Darwin hosts supply their fully configured package set so this
-          # shared constructor can derive platform and package helpers once.
-          hostPkgs = specialArgs.pkgs or (throw "mkDarwinHost requires specialArgs.pkgs");
-          hostContext = mkHostContext {
-            pkgs = hostPkgs;
-            installTarget = "system";
-          };
-        in
+      mkDarwinHost = {
+        system,
+        modules,
+        specialArgs ? {},
+      }: let
+        # Darwin hosts supply their fully configured package set so this
+        # shared constructor can derive platform and package helpers once.
+        hostPkgs = specialArgs.pkgs or (throw "mkDarwinHost requires specialArgs.pkgs");
+        hostContext = mkHostContext {
+          pkgs = hostPkgs;
+          installTarget = "system";
+        };
+
+      in
         inputs.darwin.lib.darwinSystem {
           inherit system;
 
@@ -122,103 +147,112 @@ in
             inherit nixSharedSettings;
           };
 
-          modules = [
-            # Provides SOPS secret management.
-            inputs.sops-nix.darwinModules.sops
+          modules =
+            [
+              # Provides SOPS secret management.
+              inputs.sops-nix.darwinModules.sops
 
-            # Nix's typed options render the shared host settings.
-            nixOptions
+              # Nix's typed option module receives shared values through
+              # nixSharedSettings and renders them into Nix's real options.
+              nixOptions
 
-          ]
-          ++ modules;
+              # Home Manager is a separate module graph, so it does not
+              # inherit nix-darwin's specialArgs. Pass the host context at
+              # this construction boundary; omit pkgs because Home Manager
+              # already receives the configured global package set.
+              {
+                home-manager.extraSpecialArgs =
+                  (builtins.removeAttrs hostContext [ "pkgs" ])
+                  // { inherit inputs; };
+              }
+            ]
+            ++ modules;
         };
 
       # Creates a standalone Home Manager configuration for a future Linux host.
       # Callers supply system, user-specific modules, and optional Nixpkgs config.
-      mkStandaloneHome =
-        {
-          system,
-          modules,
-          extraSpecialArgs ? { },
-          nixpkgsConfig ? sharedNixpkgsConfig,
-        }:
-        let
-          pkgs = import inputs.nixpkgs {
-            inherit system;
-            config = nixpkgsConfig;
-          };
+      mkStandaloneHome = {
+        system,
+        modules,
+        extraSpecialArgs ? {},
+        hostNixpkgsConfig ? sharedNixpkgsConfig,
+      }: let
+        pkgs = import inputs.nixpkgs {
+          inherit system;
+          config = hostNixpkgsConfig;
+        };
 
-          hostContext = mkHostContext {
-            inherit pkgs;
-            installTarget = "home";
-          };
+        hostContext = mkHostContext {
+          inherit pkgs;
+          installTarget = "home";
+        };
 
-          # Lets imported Home Manager modules use the same package set
-          # without resolving it indirectly through the module fixpoint.
-          homeSpecialArgs = extraSpecialArgs // hostContext;
-        in
+        # Lets imported Home Manager modules use the same package set
+        # without resolving it indirectly through the module fixpoint.
+        homeSpecialArgs = extraSpecialArgs // hostContext;
+      in
         inputs.home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
           extraSpecialArgs = homeSpecialArgs;
 
           # Provides user-level SOPS secret management for every standalone
           # Home Manager host built through this shared constructor.
-          modules = [
-            # Provides SOPS secret management.
-            inputs.sops-nix.homeManagerModules.sops
-          ]
-          ++ modules;
+          modules =
+            [
+              # Provides SOPS secret management.
+              inputs.sops-nix.homeManagerModules.sops
+            ]
+            ++ modules;
         };
 
       # Creates a NixOS system for a future host with only caller-supplied facts.
       # Standalone Home Manager remains a separate flake output.
-      mkNixosHost =
-        {
-          system,
-          modules,
-          specialArgs ? { },
-          nixpkgsConfig ? sharedNixpkgsConfig,
-        }:
-        let
-          # Built here only so the shared helpers below can be evaluated
-          # before the module fixpoint exists. The host's own package set is
-          # still built by the NixOS module system from the same policy.
-          hostPkgs = import inputs.nixpkgs {
-            inherit system;
-            config = nixpkgsConfig;
-          };
+      mkNixosHost = {
+        system,
+        modules,
+        specialArgs ? {},
+        hostNixpkgsConfig ? sharedNixpkgsConfig,
+      }: let
+        # Built here only so the shared helpers below can be evaluated
+        # before the module fixpoint exists. The host's own package set is
+        # still built by the NixOS module system from the same policy.
+        hostPkgs = import inputs.nixpkgs {
+          inherit system;
+          config = hostNixpkgsConfig;
+        };
 
-          hostContext = mkHostContext {
-            pkgs = hostPkgs;
-            installTarget = "system";
-          };
+        hostContext = mkHostContext {
+          pkgs = hostPkgs;
+          installTarget = "system";
+        };
 
-          # NixOS supplies its own pkgs through the module system. Do not
-          # shadow it with the package set used only to build this context.
-          nixosHostContext = builtins.removeAttrs hostContext [ "pkgs" ];
+        # NixOS supplies its own pkgs through the module system. Do not
+        # shadow it with the package set used only to build this context.
+        nixosHostContext = builtins.removeAttrs hostContext ["pkgs"];
 
-          # nixosSystem accepts specialArgs and silently ignores every
-          # argument it does not know, so anything a module expects has to
-          # be merged in here. pkgs is deliberately absent: NixOS supplies
-          # it from the module system, built with the policy below.
+        # nixosSystem accepts specialArgs and silently ignores every
+        # argument it does not know, so anything a module expects has to
+        # be merged in here. pkgs is deliberately absent: NixOS supplies
+        # it from the module system, built with the policy below.
           hostSpecialArgs = specialArgs // nixosHostContext // {
             inherit nixSharedSettings;
           };
-        in
+      in
         inputs.nixpkgs.lib.nixosSystem {
           inherit system;
 
           specialArgs = hostSpecialArgs;
 
-          modules = [
-            # Provides SOPS secret management.
-            inputs.sops-nix.nixosModules.sops
+          modules =
+            [
+              # Provides SOPS secret management.
+              inputs.sops-nix.nixosModules.sops
 
-            # Nix's typed options render the shared host settings.
-            nixOptions
-
-          ]
-          ++ modules;
+              # Nix's typed option module receives shared values through
+              # nixSharedSettings and renders them into Nix's real options.
+              nixOptions
+            ]
+            ++ modules;
         };
     };
   };

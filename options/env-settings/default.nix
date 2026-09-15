@@ -21,7 +21,7 @@ let
 
   createSymlink =
     if platforms.isDarwin then
-      cfg.createSymlink.macos
+      cfg.createSymlink.darwin
     else if platforms.isLinux then
       cfg.createSymlink.linux
     else
@@ -40,10 +40,10 @@ in
 {
   options.ven.envSettings.markdownlint = {
     createSymlink = {
-      macos = lib.mkOption {
+      darwin = lib.mkOption {
         type = lib.types.bool;
         default = false;
-        description = "Create the managed Markdownlint configuration symlink on macOS.";
+        description = "Create the managed Markdownlint configuration symlink on Darwin.";
       };
 
       linux = lib.mkOption {
@@ -54,10 +54,10 @@ in
     };
 
     pathSymlink = {
-      macos = lib.mkOption {
+      darwin = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
         default = null;
-        description = "Absolute macOS home path for the Markdownlint configuration symlink.";
+        description = "Absolute Darwin home path for the Markdownlint configuration symlink.";
       };
 
       linux = lib.mkOption {

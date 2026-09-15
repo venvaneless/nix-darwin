@@ -6,21 +6,14 @@
 # Common Fish configuration for Darwin, standalone Linux Home Manager,
 # and integrated NixOS Home Manager hosts.
 # =====================================================================
-
 {
   config,
   lib,
   pkgs,
   paths,
   platforms,
-  terminalOptions,
-  featureOptions,
-  cliOptions,
-  obsidianOptions,
   ...
-}:
-
-let
+}: let
   # ---- PLATFORM DETECTION ---- #
   # Host construction supplies the shared platform helper, so this module
   # uses options/platforms.nix without importing it directly.
@@ -45,13 +38,8 @@ let
   };
 
   enabledForCurrentSystem = platforms.enabledForCurrentPlatform;
-in
-{
+in {
   imports = [
-    terminalOptions
-    featureOptions
-    cliOptions
-    obsidianOptions
     ./aliases
     ./commands
     ./fish-themes.nix
@@ -80,16 +68,16 @@ in
         }
       ];
 
-        shellInit = ''
-          # Hide default greeting
-          set fish_greeting
+      shellInit = ''
+        # Hide default greeting
+        set fish_greeting
 
-          # Use a named Fish history file
-          set -g fish_history ven
+        # Use a named Fish history file
+        set -g fish_history ven
 
-          # Direnv integration
-          direnv hook fish | source
-        '';
+        # Direnv integration
+        direnv hook fish | source
+      '';
 
       interactiveShellInit = ''
         # Completions

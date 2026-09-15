@@ -6,13 +6,9 @@
 # the configuration for the GPT and API profiles.
 # =====================================================================
 
-{ lib, options, pkgs, ... }:
+{ lib, paths, pkgs, ... }:
 
 let
-  helpers = import ../../../options { inherit lib options pkgs; };
-
-  inherit (helpers) paths;
-
   userName = paths.user.name;
 
   codex = paths.darwin.agents.codex;

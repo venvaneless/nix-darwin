@@ -12,13 +12,13 @@
 {config, inputs, ...}: let
   # ---- SHARED NIXPKGS POLICY ---- #
   # Package outputs need this before any Nix module graph exists.
-  nixpkgsConfig = config.flake.lib.nixpkgsConfig;
+  sharedNixpkgsConfig = config.flake.lib.sharedNixpkgsConfig;
 in {
   perSystem = {system, ...}: let
     pkgs = import inputs.nixpkgs {
       inherit system;
 
-      config = nixpkgsConfig;
+      config = sharedNixpkgsConfig;
     };
   in {
     # Uses the same policy as every host when evaluating packages

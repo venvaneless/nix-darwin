@@ -14,15 +14,19 @@
   ...
 }: {
   imports = [
+    # ---- SHARED HOME MANAGER VALUES ---- #
+    # Same shared Home Manager values as integrated Darwin.
+    inputs.self.homeModules."shared.home"
+
     # ---- SHARED SERVICE OPTIONS ---- #
     # Services remain disabled until this host enables them explicitly.
-    inputs.self.homeModules.shared.services
+    inputs.self.homeModules."shared.services"
 
     # ---- SHARED TERMINAL CONFIGURATION ---- #
-    inputs.self.homeModules.shared.terminal
+    inputs.self.homeModules."shared.terminal"
 
     # ---- SHARED ENVIRONMENT CONFIGURATION ---- #
-    inputs.self.homeModules.shared.environment
+    inputs.self.homeModules."shared.environment"
   ];
 
   # ---- HOME MANAGER IDENTITY ---- #

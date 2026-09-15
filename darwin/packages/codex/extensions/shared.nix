@@ -11,13 +11,9 @@
 # ** already in. A correct link is left alone rather than recreated, and a
 # ** real directory where a link belongs is reported instead of deleted.
 
-{ lib, options, pkgs, ... }:
+{ lib, paths, ... }:
 
 let
-  helpers = import ../../../../options { inherit lib options pkgs; };
-
-  inherit (helpers) paths;
-
   codex = paths.darwin.agents.codex;
 
   owner = "${paths.user.name}:staff";

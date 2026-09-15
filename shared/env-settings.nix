@@ -19,12 +19,12 @@
     # real configuration file for every Markdown file they open.
 
     createSymlink = {
-      macos = true;
+      darwin = true;
       linux = true;
     };
 
     pathSymlink = {
-      macos = paths.darwin.home.markdownlint;
+      darwin = paths.darwin.home.markdownlint;
       linux = paths.linux.home.markdownlint;
     };
   };

@@ -23,17 +23,16 @@ let
 
   # ------------------------------------------------------------
   # ------ THEME REGISTRY ------ #
-  # Every Nix-managed palette is installed while Micro is enabled, so the
-  # colourschemes index and the files it advertises always agree.
+  # The registry supplies every available palette. Each palette's module owns
+  # its own enable switch, so the shared knobs can install only the themes
+  # wanted on a host.
 
   themeModules = import ./themes;
 
-  selectedTheme = cfg.themes.default;
+  selectedTheme = cfg.themes.selected;
   selectedThemeConfig = themeModules.${selectedTheme} or null;
   selectedThemeName =
     if selectedThemeConfig == null then selectedTheme else selectedThemeConfig.themeName;
-
-  enabledThemes = lib.mapAttrs (_: _: { enable = true; }) themeModules;
 
   # ------------------------------------------------------------
   # ------ RENDERED SETTINGS ------ #
@@ -79,7 +78,7 @@ in
       description = "Request true-colour rendering from Micro.";
     };
 
-    themes.default = lib.mkOption {
+    themes.selected = lib.mkOption {
       type = lib.types.str;
       default = "gruvbox";
       description = "Name of the Nix-managed Micro theme selected in settings.json.";
@@ -139,6 +138,26 @@ in
   config = lib.mkMerge [
     {
       cli.micro.enabledForCurrentPlatform = enabledForCurrentPlatform;
+
+      assertions = [
+        {
+          assertion = !enabledForCurrentPlatform || selectedThemeConfig != null;
+          message = ''
+            cli.micro.themes.selected is "${selectedTheme}",
+            which is not one of: ${lib.concatStringsSep ", " (lib.attrNames themeModules)}
+          '';
+        }
+        {
+          assertion =
+            !enabledForCurrentPlatform
+            || selectedThemeConfig == null
+            || cfg.themes.${selectedTheme}.enable;
+          message = ''
+            cli.micro.themes.selected is "${selectedTheme}", but that theme is disabled.
+            Enable cli.micro.themes.${selectedTheme}.enable or select an enabled theme.
+          '';
+        }
+      ];
     }
     (lib.mkIf enabledForCurrentPlatform {
       # Install Micro as a user-scoped cross-platform CLI tool.
@@ -149,10 +168,6 @@ in
         MICRO_TRUECOLOR = "1";
       };
 
-      # Theme modules use internal switches; all are enabled together so
-      # changing themes never leaves colorschemes.json pointing at no file.
-      cli.micro.themes = enabledThemes;
-
       xdg.configFile = {
         # Core editor settings, including the selected colourscheme name.
         "micro/settings.json".text = settingsJson;
@@ -161,16 +176,6 @@ in
         "micro/bindings.json".text = bindingsJson;
       };
     })
-  ];
-
-  assertions = [
-    {
-      assertion = !enabledForCurrentPlatform || selectedThemeConfig != null;
-      message = ''
-        cli.micro.themes.default is "${selectedTheme}",
-        which is not one of: ${lib.concatStringsSep ", " (lib.attrNames themeModules)}
-      '';
-    }
   ];
 
   imports = [
