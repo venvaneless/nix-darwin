@@ -15,9 +15,6 @@
 # ================================================
 {
   config,
-  appBackupHelper,
-  containersBackupHelper,
-  darwinPackageOptions,
   lib,
   home-manager,
   paths,
@@ -85,7 +82,7 @@
 
   # ---- Remote build machines
   # Keeps nix-darwin from reloading the daemon when no remote builders are configured.
-  environment.etc."nix/machines" = lib.mkIf (config.nix.buildMachines == []) {
+  environment.etc."nix/machines" = lib.mkIf (config.nix.buildMachines == [ ]) {
     text = "";
   };
 
@@ -196,12 +193,8 @@
     ./system
     ./system-commands
 
-    # Darwin backup option modules
-    containersBackupHelper.settingsModule
-    appBackupHelper.settingsModule
-
-    # macOS-only packages and their Darwin-only knobs
-    darwinPackageOptions
+    # macOS-only package knobs. Their option declarations are root modules
+    # supplied by flake-modules/macbook.nix.
     ./packages
 
     # Shared packages

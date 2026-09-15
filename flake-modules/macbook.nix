@@ -106,6 +106,13 @@ in
 
         }
 
+        # Darwin-only option declarations are root modules. They receive the
+        # MacBook context through specialArgs instead of being imported by a
+        # knobs module that also reads config.
+        macbookHostContext.darwinPackageOptions
+        containersBackupHelper.settingsModule
+        appBackupHelper.settingsModule
+
         ../darwin/default.nix
       ];
     }

@@ -14,9 +14,7 @@ let
   # ------ SHARED HOST VALUES ------ #
   # Read shared values before a module fixpoint exists. Host constructors
   # pass the returned context to the system or Home Manager module graph.
-  sharedSettings = import ../shared/default.nix {
-    nixOptions = ./nix-config.nix;
-  };
+  sharedSettings = import ../shared/default.nix { };
   nixpkgsSettings = sharedSettings.ven.nix.nixpkgs;
   nixpkgsConfig = nixpkgsSettings.config;
 

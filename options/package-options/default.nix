@@ -89,7 +89,11 @@ let
 
         applicationLinkEntries = packages:
           lib.mapAttrs
-            (_: package: builtins.removeAttrs package [ "package" "extraPackages" "installOn" ])
+            # Link rendering needs only the application bundle name and link
+            # flags. Do not normalize the package field here: Darwin package
+            # knobs are merged through config, and selecting their derivation
+            # while the module fixed point is still being built recurses.
+            (_: package: builtins.removeAttrs package [ "package" "packageByPlatform" "extraPackages" "installOn" ])
             (lib.filterAttrs (_: package: package ? appName) packages);
 
         # The caller sets the target before this helper is evaluated.
@@ -105,7 +109,7 @@ let
           let
             normalizedPackages = normalizePackages packages;
             installedPackages = selectedPackages normalizedPackages;
-            applicationLinks = applicationLinkEntries normalizedPackages;
+            applicationLinks = applicationLinkEntries packages;
 
             packageConfig =
               if packageInstallTarget == "system" then
@@ -118,9 +122,11 @@ let
           lib.mkMerge [
             packageConfig
 
-            (if packageInstallTarget == "system" && platforms.isDarwin && applicationLinks != { } then
+            (if packageInstallTarget == "system" && platforms.isDarwin then
               # Package options attach the shared link manager using only
               # stripped link entries; symlinks.nix owns its implementation.
+              # The entry set stays lazy until the module fixed point has
+              # merged the Darwin package knobs.
               if symlinks == null then
                 throw "${name}: Darwin application links require the Darwin symlink helper"
               else

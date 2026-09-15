@@ -173,7 +173,10 @@ in
             # Provides SOPS secret management.
             inputs.sops-nix.darwinModules.sops
 
-            # Shared system settings load their Nix option logic themselves.
+            # Shared Nix option declarations and their common knob values.
+            # Both are root modules, so neither has to resolve config while
+            # another module is still constructing its imports list.
+            nixOptions
             ../shared/default.nix
 
             # Home Manager is a separate module graph, so it does not
@@ -273,7 +276,8 @@ in
             # Provides SOPS secret management.
             inputs.sops-nix.nixosModules.sops
 
-            # Shared system settings load their Nix option logic themselves.
+            # Shared Nix option declarations and their common knob values.
+            nixOptions
             ../shared/default.nix
           ]
           ++ modules;

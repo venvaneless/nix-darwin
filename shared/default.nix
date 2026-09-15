@@ -9,15 +9,7 @@
 # platform selection, validation, and translation into Nix settings.
 # =====================================================================
 
-{ nixOptions, ... }: {
-  # ------------------------------------------------------------
-  # Nix option semantics
-  # ------------------------------------------------------------
-  # Shared values below use the option shape and translation owned by options/.
-  imports = [
-    nixOptions
-  ];
-
+{ ... }: {
   ven.nix = {
     # ------------------------------------------------------------
     # Nix daemon and command settings

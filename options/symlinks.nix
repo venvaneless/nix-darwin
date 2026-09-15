@@ -165,7 +165,10 @@ let
   # ------------------------------------------------------------
 
   mkApplicationLinkModule = { name, applications }:
-    lib.mkIf (platforms.isDarwin && applications != { }) {
+    # Keep applications lazy here. A package option module may pass values
+    # from config, which are available only after the module fixed point has
+    # been merged. An empty entry set simply renders no link commands.
+    lib.mkIf platforms.isDarwin {
       system.activationScripts.applications.text = lib.mkAfter ''
         ${mkApplicationLinkManager { inherit name applications; }}/bin/manage-${name}-application-links
       '';
