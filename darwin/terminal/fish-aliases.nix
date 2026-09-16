@@ -22,12 +22,12 @@
       upd = "softwareupdate -ia";
       ip = "ifconfig";
 
-      # ---- NIXOS-SPECIFIC CODEX LAUNCHERS ---- #
-      # Kept as compatibility aliases for the existing Darwin profile.
-      codexc = "exec /run/current-system/sw/bin/codex-profile app chatgpt";
-      codexc-cli = "codex-profile cli chatgpt";
-      codexa = "exec /run/current-system/sw/bin/codex-profile app api";
-      codexa-cli = "codex-profile cli api";
+      # ---- CODEX LAUNCHERS ---- #
+      # Subscription login (c) or API key (a); one shared Codex home.
+      codexc = "exec open -a /Applications/ChatGPT.app";
+      codexc-cli = "codex";
+      codexa = "codex-api app";
+      codexa-cli = "codex-api cli";
     };
 
     # ---- ABBREVIATIONS ---- #
