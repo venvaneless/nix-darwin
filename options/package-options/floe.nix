@@ -3,8 +3,9 @@
 # =====================================================================
 # PACKAGE: FLOE
 #
-# Packages the signed and notarized Floe macOS application from its
-# official GitHub release archive.
+# Packages Floe's macOS application from its official GitHub release archive.
+# The upstream 0.1.5 bundle has an invalid code-signature seal, so this
+# derivation creates a locally ad-hoc-signed copy before installing it.
 # =====================================================================
 
 {
@@ -26,8 +27,15 @@ stdenvNoCC.mkDerivation rec {
 
   dontUnpack = true;
 
-  # Prevent Nix fixups from modifying the signed application bundle
+  # Do not run generic Nix fixups on the application bundle. It is re-signed
+  # explicitly below after every file has been installed.
   dontFixup = true;
+
+  # codesign is supplied by the macOS host rather than nixpkgs. Declare it so
+  # Darwin's sandbox can make the explicit local signing step available.
+  __impureHostDeps = [
+    "/usr/bin/codesign"
+  ];
 
   installPhase = ''
     runHook preInstall
@@ -46,6 +54,22 @@ stdenvNoCC.mkDerivation rec {
     fi
 
     runHook postInstall
+
+    # Floe 0.1.5's upstream signature fails strict verification because its
+    # Info.plist is not sealed. Re-sign the immutable Nix output ad hoc; this
+    # does not claim the release retains its Developer ID or notarization.
+    /usr/bin/codesign \
+      --force \
+      --deep \
+      --sign - \
+      --timestamp=none \
+      "$out/Applications/Floe.app"
+
+    /usr/bin/codesign \
+      --verify \
+      --deep \
+      --strict \
+      "$out/Applications/Floe.app"
   '';
 
   meta = {
