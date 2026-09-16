@@ -1,21 +1,19 @@
-# shared/terminal/nvim/starter-plugin-specs.nix
-
-# =====================================================================
-# NEOVIM: ASTROVIM STARTER PLUGIN SPECS
+# options/cli/nvim/starter.nix
 #
-# Restores the populated AstroNvim starter specifications as store-backed
-# Home Manager links. Their guards keep their established behavior unchanged,
-# while this repository owns their exact contents.
+# =====================================================================
+# OPTIONS: ASTRONVIM STARTER SPECS
+#
+# Writes the populated AstroNvim starter files this repository owns.
+# Each one keeps upstream's guard line, so it stays inert until it is
+# edited; the knobs choose which files exist and where they go.
 # =====================================================================
 
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 
 let
-  # ---- ASTROCORE STARTER SPEC ---- #
+  cfg = config.home.shared.terminal.nvim;
+  starter = cfg.starter;
+
   astrocoreConfig = ''
     if true then return {} end -- WARN: REMOVE THIS LINE TO ACTIVATE THIS FILE
 
@@ -420,19 +418,42 @@ let
       },
     }
   '';
+  templates = {
+    astrocore = astrocoreConfig;
+    astrolsp = astrolspConfig;
+    astroui = astrouiConfig;
+    mason = masonConfig;
+    none-ls = noneLsConfig;
+    treesitter = treesitterConfig;
+    user = userConfig;
+  };
 in
 {
-  config = lib.mkIf config.home.shared.terminal.nvim.enable {
-    xdg.configFile = {
-      # ---- ASTROVIM STARTER SPECS ---- #
-      # Restores the exact populated specs as Nix-managed configuration files.
-      "nvim/lua/plugins/astrocore.lua".text = astrocoreConfig;
-      "nvim/lua/plugins/astrolsp.lua".text = astrolspConfig;
-      "nvim/lua/plugins/astroui.lua".text = astrouiConfig;
-      "nvim/lua/plugins/mason.lua".text = masonConfig;
-      "nvim/lua/plugins/none-ls.lua".text = noneLsConfig;
-      "nvim/lua/plugins/treesitter.lua".text = treesitterConfig;
-      "nvim/lua/plugins/user.lua".text = userConfig;
+  options.home.shared.terminal.nvim.starter = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Write the AstroNvim starter files this repository owns.";
     };
+
+    directory = lib.mkOption {
+      type = lib.types.str;
+      default = "nvim/lua/plugins";
+      description = "Config-relative directory the starter files are written to.";
+    };
+
+    files = lib.mkOption {
+      type = lib.types.listOf (lib.types.enum (lib.attrNames templates));
+      default = lib.attrNames templates;
+      description = "Starter files that are written.";
+    };
+  };
+
+  config = lib.mkIf (cfg.enable && starter.enable) {
+    xdg.configFile = lib.listToAttrs (
+      map (
+        name: lib.nameValuePair "${starter.directory}/${name}.lua" { text = templates.${name}; }
+      ) starter.files
+    );
   };
 }

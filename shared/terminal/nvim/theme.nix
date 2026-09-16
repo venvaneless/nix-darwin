@@ -1,27 +1,23 @@
 # shared/terminal/nvim/theme.nix
 
 # =====================================================================
-# NEOVIM: THEMES
+# NEOVIM: THEME SELECTION
 #
-# Which colorscheme every machine uses. Each one's settings live in its
-# own file under ./themes, the same way WezTerm's do, and the Lua is
-# generated from them in options/cli/default.nix.
+# Which colorscheme every machine uses, and each theme's own values.
+# Their schema and generated Lua live in options/cli/nvim/themes.
 #
-# Adding one: write ./themes/nvim-<name>.nix and import it below.
-#
-# ** default is what every machine uses. A machine sets its own in its
-# ** home file:
+# ** A machine sets its own in its home file:
 # **
-# **   home.shared.terminal.nvim.themes.default = "nord";
+# **   home.shared.terminal.nvim.theme = "nord";
 # =====================================================================
 
 { ... }:
 
 {
   imports = [
-    ./themes/nvim-gruvbox.nix
-    ./themes/nvim-nord.nix
+    ./themes/gruvbox.nix
+    ./themes/nord.nix
   ];
 
-  home.shared.terminal.nvim.themes.default = "gruvbox";
+  home.shared.terminal.nvim.theme = "gruvbox";
 }
