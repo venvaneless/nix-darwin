@@ -8,7 +8,7 @@
 # Downloads before its completed archive is moved to SystemBackup.
 # =====================================================================
 
-{ backupExcludeHelper, lib, pkgs, paths }:
+{ backupExcludeHelper, lib, paths, pkgs, platforms }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -16,7 +16,10 @@ let
   # LaunchAgent log directory come from the centralized path definitions.
   # default.nix sets the same values explicitly; these defaults keep the
   # option surface usable on its own.
-  userPaths = paths.darwin.home;
+  userPaths = platforms.valueForCurrentPlatform {
+    darwin = paths.darwin.home;
+    linux = paths.linux.home;
+  };
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;
   systemPaths = paths.darwin.system;
@@ -51,6 +54,8 @@ let
       sourceDir
       sourceRoot
       sourceEntries
+      configRoot
+      configEntries
       additionalSources
       containerConfig
       externalBackupVolume
@@ -149,20 +154,33 @@ let
 
   # ---- SOURCE RESOLUTION
   # ** sourceDir is the root this container is backed up from, and
-  # ** sourceEntries name folders inside it. A relativePath is therefore
+  # ** sourceEntries name folders inside it. A relative sourcePath is therefore
   # ** resolved against sourceDir, so an entry never repeats the part of
   # ** the path the backup already knows. sourceRoot stays the base only
   # ** for a container that declares no sourceDir at all.
   sourceEntryRoot = if sourceDir != null then sourceDir else sourceRoot;
 
   resolvedSourceEntries = map (entry: {
-    sourcePath = if entry ? sourcePath then entry.sourcePath else "${sourceEntryRoot}/${entry.relativePath}";
+    sourcePath = if lib.hasPrefix "/" entry.sourcePath then entry.sourcePath else "${sourceEntryRoot}/${entry.sourcePath}";
     destinationPath = entry.destinationPath;
   }) sourceEntries;
-  resolvedAdditionalSources = map (entry: {
-    sourcePath = entry.sourcePath;
+  # Configuration entries are staged like additional sources, after the
+  # container's own directories.
+  resolvedConfigEntries = map (entry: {
+    sourcePath =
+      if lib.hasPrefix "/" entry.sourcePath then
+        entry.sourcePath
+      else
+        "${configRoot}/${entry.sourcePath}";
     destinationPath = entry.destinationPath;
-  }) additionalSources;
+  }) configEntries;
+
+  resolvedAdditionalSources =
+    resolvedConfigEntries
+    ++ map (entry: {
+      sourcePath = entry.sourcePath;
+      destinationPath = entry.destinationPath;
+    }) additionalSources;
   resolvedSourceDir =
     if sourceDir != null then
       sourceDir
@@ -886,14 +904,27 @@ in
           sourceRoot = lib.mkOption {
             type = lib.types.str;
             default = config.services.backups.paths.containerDirectory;
-            description = "Directory that each relativePath in sourceEntries is resolved against.";
+            description = "Directory that each relative sourcePath in sourceEntries is resolved against.";
+          };
+
+          configRoot = lib.mkOption {
+            type = lib.types.str;
+            default = config.services.backups.paths.configDirectory;
+            description = "Root that each relative sourcePath in configEntries resolves from.";
+          };
+
+          configEntries = lib.mkOption {
+            type = lib.types.listOf (lib.types.attrsOf lib.types.str);
+            default = [ ];
+            example = [ { sourcePath = "karakeep"; destinationPath = "config/karakeep"; } ];
+            description = "Configuration paths staged into this backup, each relative to configRoot.";
           };
 
           sourceEntries = lib.mkOption {
             type = lib.types.listOf (lib.types.attrsOf lib.types.str);
             default = [ ];
-            example = [ { relativePath = "karakeep"; destinationPath = "karakeep"; } ];
-            description = "Directories staged into this backup, each given as relativePath or sourcePath plus destinationPath.";
+            example = [ { sourcePath = "karakeep"; destinationPath = "karakeep"; } ];
+            description = "Directories staged into this backup, each a sourcePath plus its destinationPath. A sourcePath that does not start with / resolves from sourceRoot.";
           };
 
           containerConfig = lib.mkOption {
