@@ -843,6 +843,7 @@ in
         package = pkgs.p7zip;
       };
 
+      # Tool for shell commands execution, visualization and alerting
       sampler = {
         enable = true;
         installOn = {
