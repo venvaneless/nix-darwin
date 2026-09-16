@@ -35,12 +35,12 @@ let
 
 
   # ------------------------------------------------------------
-  # ------ CONFIG.TOML RENDERING ------ #
-  # Each knob group maps to one TOML table under [ui]. Custom Nix channels
-  # are installed separately under cable/.
+  # ------ HOME MANAGER SETTINGS ------ #
+  # Each knob group maps to one TOML table under [ui]. Home Manager renders
+  # config.toml; custom Nix channel text is installed separately under cable/.
   # ------------------------------------------------------------
 
-  configToml = (pkgs.formats.toml { }).generate "television-config.toml" {
+  televisionSettings = {
     ui = {
       theme = themeName;
 
@@ -257,11 +257,19 @@ in
       ];
     }
     (lib.mkIf enabledForCurrentPlatform {
-      # Television owns only its own package. Channel actions use commands
-      # already installed elsewhere and resolved from the user's PATH.
-      home.packages = [ pkgs.television ];
+      # Home Manager owns Television's package and config.toml rendering.
+      programs.television = {
+        enable = true;
+        settings = televisionSettings;
+        enableFishIntegration = true;
+      };
 
-      xdg.configFile."television/config.toml".source = configToml;
+      # nix-recent uses GNU find -printf and sort --numeric-sort on both
+      # platforms, so its command dependencies stay with this channel.
+      home.packages = lib.optionals cfg.channels.nixRecent.enable [
+        pkgs.coreutils
+        pkgs.findutils
+      ];
 
       home.file = lib.mapAttrs' (
         name: text:
