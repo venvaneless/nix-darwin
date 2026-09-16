@@ -774,36 +774,6 @@ in
         package = pkgs.ffmpegthumbnailer;
       };
 
-      # Cross-platform command shell.
-      fish = {
-        enable = true;
-        installOn = {
-          darwin = true;
-          linux = true;
-        };
-        package = pkgs.fish;
-      };
-
-      # GNU find supports Television's portable recent-file channel.
-      findutils = {
-        enable = true;
-        installOn = {
-          darwin = true;
-          linux = true;
-        };
-        package = pkgs.findutils;
-      };
-
-      # GNU sort supports Television's portable recent-file ordering.
-      coreutils = {
-        enable = true;
-        installOn = {
-          darwin = true;
-          linux = true;
-        };
-        package = pkgs.coreutils;
-      };
-
       # Wayland clipboard command used by Television only on Linux.
       wlClipboard = {
         enable = true;
@@ -812,16 +782,6 @@ in
           linux = true;
         };
         package = pkgs.wl-clipboard;
-      };
-
-      # X11 clipboard fallback used by Television only on Linux.
-      xclip = {
-        enable = true;
-        installOn = {
-          darwin = false;
-          linux = true;
-        };
-        package = pkgs.xclip;
       };
 
       # GNU implementation of awk.
@@ -852,6 +812,15 @@ in
           linux = true;
         };
         package = pkgs.imagemagick;
+      };
+
+      jless = {
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+        package = pkgs.jless;
       };
 
       # Interactive disk usage analyzer.
