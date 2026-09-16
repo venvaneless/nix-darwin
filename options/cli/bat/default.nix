@@ -14,12 +14,19 @@ let
   cfg = config.home.shared.cli.bat;
 
   enabledForCurrentPlatform = platforms.enabledForCurrentPlatform cfg;
+
+  # Theme values remain shared knobs, while this option module owns their
+  # discovery and imports alongside Bat's theme schema and rendering.
+  sharedThemeDirectory = ../../../shared/terminal/cli-tuis/bat/themes;
+  themeFiles = lib.filterAttrs (
+    name: type: type == "regular" && lib.hasSuffix ".nix" name
+  ) (builtins.readDir sharedThemeDirectory);
 in
 {
+  # Theme knob schema, selector, rendering, and every shared theme value.
   imports = [
-    # Theme knob schema, theme selector, and each theme's generated file.
     ./themes/helper.nix
-  ];
+  ] ++ map (name: sharedThemeDirectory + "/${name}") (lib.attrNames themeFiles);
 
   options.home.shared.cli.bat = {
     enable = lib.mkEnableOption "Bat file viewer";
