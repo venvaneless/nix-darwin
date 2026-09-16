@@ -33,10 +33,6 @@ let
   # This module uses the common selector instead of recreating it locally.
   enabledForCurrentPlatform = platforms.enabledForCurrentPlatform cfg;
 
-  # ---- ACTIVE THEMES ---- #
-  # Atuin reads one theme name from config.toml, so its theme toggles are
-  # mutually exclusive.
-  enabledThemes = lib.attrNames (lib.filterAttrs (_: theme: theme.enable) cfg.themes);
 in
 {
   options.home.shared.cli.atuin = {
@@ -88,20 +84,6 @@ in
       home.shared.cli.atuin.enabledForCurrentPlatform = enabledForCurrentPlatform;
     }
     (lib.mkIf enabledForCurrentPlatform {
-    # ---- CONFLICTING THEMES ---- #
-    assertions = [
-      {
-        assertion = lib.length enabledThemes <= 1;
-        message = ''
-          atuin: only one theme may be enabled at a time, but these are on:
-          ${lib.concatStringsSep ", " enabledThemes}
-
-          Disable the others under
-          home.shared.cli.atuin.themes.<name>.enable.
-        '';
-      }
-    ];
-
     programs.atuin = {
       # Install and enable atuin and integrate it with fish shell
       enable = true;
@@ -126,9 +108,7 @@ in
   ];
 
   imports = [
-    # ---- THEMES ---- #
-    # Exactly one may be enabled.
-    ./themes/catppuccin-mocha-mauve.nix
-    ./themes/gruvbox-dark.nix
+    # Theme knob schema, theme selector, and the selected theme's file.
+    ./themes/helper.nix
   ];
 }
