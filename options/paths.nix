@@ -445,11 +445,6 @@ in
     bundles = {
       cider = "${multimedia}/Cider.app";
       chatgpt = "${root}/ChatGPT.app";
-      # Pinned in the Dock, so this must be the real bundle path rather
-      # than the /Applications symlink: the Dock only resolves an entry
-      # as a bundle when its URL points at a real directory, and cannot
-      # read the icon out of it until the app is running otherwise.
-      codexChatgpt = "${nixApps}/Codex ChatGPT.app";
       helium = "${root}/Helium.app";
       snippetsLab = "${programming}/SnippetsLab.app";
       wezterm = "${nixApps}/WezTerm.app";
@@ -467,15 +462,19 @@ in
 
   darwin.agents = {
     # ---- Codex
-    # codex-profile is patched to store each profile below .config
-    # instead of ~/.codex-<profile>. Both profiles share their skills,
-    # plugins, sessions, and archived sessions through the symlinks made by
-    # extensions/shared.nix.
+    # One Codex home (chatgpt) for the app, VS Code, and both logins.
+    # The api profile only supplies the API key file.
     codex = rec {
       root = "${darwinHomePaths.config}/codex";
 
       api = "${root}/api";
+      apiKeyFile = "${api}/auth.json";
       chatgpt = "${root}/chatgpt";
+      sqlite = "${chatgpt}/sqlite";
+      electronUserData = "${chatgpt}/electron-user-data";
+
+      # Default Electron data dir of ChatGPT.app, linked to electronUserData.
+      appUserData = "${darwinLibrary}/Application Support/Codex";
       shared = "${root}/shared";
       sharedSkills = "${shared}/skills";
       sharedPlugins = "${shared}/plugins";
@@ -710,6 +709,9 @@ in
     # Archives are built in Downloads and only moved to the volume once
     # they are complete and verified.
     staging = "${darwinHome}/Downloads/backup-staging";
+
+    # ---- Logs
+    logs = "${darwinHome}/Downloads/logs";
 
     # ---- Per-container locations
     # One entry per container backup command: where its finished archive
