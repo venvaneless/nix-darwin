@@ -18,12 +18,6 @@
 
     # ---- PATHS ---- #
 
-    # -- Application Support
-    applicationSupportRoot = paths.darwin.library.applicationSupport;
-
-    # -- Preferences
-    preferencesRoot = paths.darwin.library.preferences;
-
     # -- Config
     configRoot = paths.darwin.home.config;
 
@@ -32,119 +26,45 @@
     destinationSegments = [ "vscode" ];
 
     # ---- EDITABLE BACKUP CONTENTS
-    # sourcePath resolves from the root above it; destinationPath is
-    # where it lands inside the archive. Application Support goes under
-    # app-support/, configuration under config/, and a lone preference
-    # file sits at the archive root. Each entry may exclude its own
-    # subpaths.
-    #
-    # ** The global user-data folder VS Code uses when it is not told to
-    # ** use another one. This machine points it at the portable tree
-    # ** below, so once the VS Code module's links exist only the link
-    # ** itself is stored here.
-
-    applicationSupportEntries = {
-      applicationSupportPaths = [
-        {
-          sourcePath = "Code";
-          destinationPath = "app-support/Code";
-        }
-      ];
-
-      # Electron rebuilds every one of these on the next start.
-      excludePatterns = [
-        "Cache/"
-        "CachedData/"
-        "CachedConfigurations/"
-        "CachedExtensionVSIXs/"
-        "CachedProfilesData/"
-        "Code Cache/"
-        "GPUCache/"
-        "DawnGraphiteCache/"
-        "DawnWebGPUCache/"
-        "Service Worker/"
-        "Session Storage/"
-        "Shared Dictionary/"
-        "blob_storage/"
-        "Crashpad/"
-        "logs/"
-        "*.log"
-      ];
-    };
-
-    preferenceEntries = {
-      preferencePaths = [
-        {
-          sourcePath = "com.microsoft.VSCode.plist";
-          destinationPath = "com.microsoft.VSCode.plist";
-        }
-      ];
-
-      excludePatterns = [ ];
-    };
-
-    # ** The portable tree this machine uses, entry by entry, so each part
-    # ** can be restored on its own.
+    # ** Everything VS Code uses lives in ~/.config/vscode. Each part lands
+    # ** at the same relative path in the archive root, so extracting the
+    # ** archive into ~/.config/vscode restores it.
 
     configEntries = {
       configPaths = [
         {
-          sourcePath = "vscode/user-data/User/settings.json";
-          destinationPath = "config/user-settings.json";
-        }
-        {
-          sourcePath = "vscode/user-data/User/keybindings.json";
-          destinationPath = "config/user-keybindings.json";
-        }
-        {
-          sourcePath = "vscode/user-data/User/chatLanguageModels.json";
-          destinationPath = "config/user-chat-language-models.json";
-        }
-        {
           sourcePath = "vscode/argv.json";
-          destinationPath = "config/argv.json";
+          destinationPath = "argv.json";
         }
         {
-          sourcePath = "vscode/user-data/User/profiles";
-          destinationPath = "config/profile-settings";
-        }
-        {
-          sourcePath = "vscode/user-data/User/snippets";
-          destinationPath = "config/snippets";
-        }
-        {
-          sourcePath = "vscode/user-data/User/globalStorage";
-          destinationPath = "config/extension-data";
-        }
-        {
-          sourcePath = "vscode/user-data/User/workspaceStorage";
-          destinationPath = "config/workspace-data";
+          sourcePath = "vscode/user-data/User";
+          destinationPath = "user-data/User";
         }
         {
           sourcePath = "vscode/extensions";
-          destinationPath = "config/extensions";
-        }
-        {
-          sourcePath = "vscode/shared-data";
-          destinationPath = "config/shared-data";
+          destinationPath = "extensions";
         }
         {
           sourcePath = "vscode/agent-plugins";
-          destinationPath = "config/agent-plugins";
+          destinationPath = "agent-plugins";
         }
         {
-          sourcePath = "vscode/user-data/User/History";
-          destinationPath = "config/local-history";
+          sourcePath = "vscode/shared-data";
+          destinationPath = "shared-data";
+        }
+        {
+          sourcePath = "vscode/backup-configs";
+          destinationPath = "backup-configs";
         }
       ];
 
-      excludePatterns = [ ];
+      excludePatterns = [
+        "*.log"
+      ];
     };
 
-    # ** Workspace settings live in each project's own .vscode/settings.json,
-    # ** not in VS Code's directories. List the projects here to include them.
-
-    # Absolute paths outside the roots above. Uncomment to add one.
+    # ** Workspace settings live in each project's own .vscode/settings.json.
+    # ** List the projects here to include them.
 
     # Absolute paths outside the roots above. Uncomment to add one.
 
@@ -172,6 +92,8 @@
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+
+    # ---- OUTPUT
     showProgress = true;
   };
 }

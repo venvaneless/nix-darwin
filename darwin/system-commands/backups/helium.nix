@@ -75,8 +75,16 @@
             "BrowserMetrics*"
             "OptimizationGuide*/"
             "Safe Browsing*/"
-            "Singleton*"
+            "Session Storage/"
+            "Shared Dictionary/"
             "*.log"
+
+            # Rewritten constantly while the browser runs.
+            "Singleton*"
+            "LOCK"
+            "*-journal"
+            "*-wal"
+            "*-shm"
           ];
         }
         {

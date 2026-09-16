@@ -53,7 +53,7 @@ let
       show_progress=${if progressEnabled then "1" else "0"}
       rsync_progress_args=()
       if [ "$show_progress" -eq 1 ]; then
-        rsync_progress_args+=(--info=progress2)
+        rsync_progress_args+=(--info=progress2 --no-inc-recursive)
       fi
       global_lock_dir="${backupPaths.archiveLock}"
       global_lock_acquired=0

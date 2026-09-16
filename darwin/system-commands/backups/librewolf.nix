@@ -56,17 +56,26 @@
         }
       ];
 
-      # Firefox rebuilds all of these on the next start.
       excludePatterns = [
+        # Firefox rebuilds all of these on the next start.
         "cache2/"
         "startupCache/"
         "shader-cache/"
         "thumbnails/"
+        "safebrowsing/"
+        "storage/temporary/"
         "crashes/"
         "minidumps/"
         "datareporting/"
         "saved-telemetry-pings/"
         "*.log"
+
+        # Rewritten constantly while the browser runs.
+        "lock"
+        ".parentlock"
+        "*.sqlite-wal"
+        "*.sqlite-shm"
+        "*.sqlite-journal"
       ];
     };
 

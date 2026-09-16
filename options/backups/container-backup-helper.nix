@@ -135,6 +135,7 @@ let
         fail "${appName} SQLite database does not exist: $source_dir/${database}"
       fi
 
+      log "SQLITE $source_dir/${database} -> ${database}"
       ${pkgs.coreutils}/bin/timeout ${toString sqliteBackupTimeoutSeconds} \
         ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
         ${pkgs.sqlite}/bin/sqlite3 \
@@ -217,6 +218,7 @@ let
   zipExtraExcludes = excludeHelper.mkZipExcludeArguments (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
   rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
   stageSourceEntries = lib.concatMapStringsSep "\n" (entry: ''
+        log_part ${lib.escapeShellArg entry.sourcePath} ${lib.escapeShellArg entry.destinationPath}
         ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
         backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
           ${lib.escapeShellArg "${entry.sourcePath}/"} "$staged_source/${entry.destinationPath}/"
@@ -225,10 +227,12 @@ let
       if [ ! -e ${lib.escapeShellArg entry.sourcePath} ] && [ ! -L ${lib.escapeShellArg entry.sourcePath} ]; then
         log "SKIP missing additional source: ${entry.sourcePath}"
       elif [ -d ${lib.escapeShellArg entry.sourcePath} ]; then
+        log_part ${lib.escapeShellArg entry.sourcePath} ${lib.escapeShellArg entry.destinationPath}
         ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
         backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
           ${lib.escapeShellArg "${entry.sourcePath}/"} "$staged_source/${entry.destinationPath}/"
       else
+        log_part ${lib.escapeShellArg entry.sourcePath} ${lib.escapeShellArg entry.destinationPath}
         ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$staged_source/${entry.destinationPath}" )"
         backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
           ${lib.escapeShellArg entry.sourcePath} "$staged_source/${entry.destinationPath}"
@@ -270,6 +274,7 @@ ${stageAdditionalSources}
       cpulimit
       coreutils
       findutils
+      pv
       rsync
       sqlite
       unzip
@@ -305,7 +310,7 @@ ${stageAdditionalSources}
       show_progress=${if cfg.showProgress then "1" else "0"}
       rsync_progress_args=()
       if [ "$show_progress" -eq 1 ]; then
-        rsync_progress_args+=(--info=progress2)
+        rsync_progress_args+=(--info=progress2 --no-inc-recursive)
       fi
 
       mode="manual"
@@ -333,6 +338,15 @@ ${extraExcludes}
 
       log() {
         printf '[%s backup] %s\n' "$app_slug" "$*"
+      }
+
+      log_part() {
+        if [ "$show_progress" -eq 1 ]; then
+          part_size="$( ${pkgs.coreutils}/bin/du -sh -- "$1" 2>/dev/null | ${pkgs.coreutils}/bin/cut -f1 || true )"
+          log "COPY $1 -> $2 (''${part_size:-?})"
+        else
+          log "COPY $1 -> $2"
+        fi
       }
 
       backup_process() {
@@ -571,6 +585,7 @@ ${lib.optionalString localStagingUsesSharedRoot ''
       printf '%s\n' "$$" > "$global_lock_dir/pid"
       global_lock_acquired=1
 
+      log_part "$source_dir" "."
       ${prepareSourceEntries}
       ${archivePreparation}
       ${prepareAdditionalSources}
@@ -610,15 +625,26 @@ ${lib.optionalString localStagingUsesSharedRoot ''
 
       log "creating archive: $temporary_archive"
 
+      # Archive root holds the backed-up parts directly, with no slug folder.
       (
-        cd -- "$archive_source_parent"
+        cd -- "$archive_source_parent/$archive_source_name"
 
-        backup_process ${pkgs.zip}/bin/zip -q -r -y "$temporary_archive" "$archive_source_name" \
-          -x '*/Thumbs.db' \
-          -x '*/desktop.ini' \
-          ${zipMetadataExcludes} ${zipExtraExcludes}
+        if [ "$show_progress" -eq 1 ]; then
+          archive_bytes="$(( $( ${pkgs.coreutils}/bin/du -sk -- . | ${pkgs.coreutils}/bin/cut -f1 ) * 1024 ))"
+          backup_process ${pkgs.zip}/bin/zip -q -r -y - . \
+            -x 'Thumbs.db' -x '*/Thumbs.db' \
+            -x 'desktop.ini' -x '*/desktop.ini' \
+            ${zipMetadataExcludes} ${zipExtraExcludes} \
+            | ${pkgs.pv}/bin/pv -N "$app_slug archive" -s "$archive_bytes" > "$temporary_archive"
+        else
+          backup_process ${pkgs.zip}/bin/zip -q -r -y "$temporary_archive" . \
+            -x 'Thumbs.db' -x '*/Thumbs.db' \
+            -x 'desktop.ini' -x '*/desktop.ini' \
+            ${zipMetadataExcludes} ${zipExtraExcludes}
+        fi
       )
 
+      log "verifying archive: $temporary_archive"
       backup_process ${pkgs.unzip}/bin/unzip -t "$temporary_archive" >/dev/null
       if [ "$archive_in_downloads" -eq 1 ]; then
         ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$local_archive"
@@ -1104,7 +1130,7 @@ in
           showProgress = lib.mkOption {
             type = lib.types.bool;
             default = config.services.backups.defaultShowProgress;
-            description = "Show rsync transfer progress.";
+            description = "Show copy and archive progress.";
           };
 
           runOnRebuild = lib.mkOption {

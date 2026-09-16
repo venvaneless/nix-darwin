@@ -440,7 +440,7 @@ let
             showProgress = lib.mkOption {
               type = lib.types.bool;
               default = config.services.appBackups.defaultShowProgress;
-              description = "Show rsync transfer progress.";
+              description = "Show copy and archive progress.";
             };
           };
         }));
@@ -521,10 +521,11 @@ let
       ""
     else
       "--bwlimit=${toString cfg.transferLimitKiBps}";
-  rsyncProgressArguments = if cfg.showProgress then "--info=progress2" else "";
+  rsyncProgressArguments = if cfg.showProgress then "--info=progress2 --no-inc-recursive" else "";
 
-  copySources = lib.concatMapStringsSep "\n" (source: ''
-    copy_source ${lib.escapeShellArg source.path} ${lib.escapeShellArg source.destination} ${lib.escapeShellArgs (source.excludePatterns or [ ])}
+  sourceCount = toString (builtins.length resolvedSources);
+  copySources = lib.concatImapStringsSep "\n" (index: source: ''
+    copy_source "${toString index}/${sourceCount}" ${lib.escapeShellArg source.path} ${lib.escapeShellArg source.destination} ${lib.escapeShellArgs (source.excludePatterns or [ ])}
   '') resolvedSources;
 
   touchSourceMarkers = lib.concatMapStringsSep "\n" (marker: ''
@@ -552,6 +553,7 @@ let
     cpulimit
     coreutils
     gnutar
+    pv
     rsync
   ];
 
@@ -590,6 +592,7 @@ let
     cpu_limit_percent="$(printf '%s' ${toString effectiveCpuLimitPercent})"
     minimum_interval_seconds=${toString cfg.minimumIntervalSeconds}
     automatic_notifications_enabled=${if cfg.notifyOnAutomatic then "1" else "0"}
+    show_progress=${if cfg.showProgress then "1" else "0"}
     mode="manual"
     copied_count=0
     backup_started=0
@@ -673,9 +676,10 @@ ${lib.optionalString localStagingUsesSharedRoot ''
     }
 
     copy_source() {
-      source_path="$1"
-      archive_relative_path="$2"
-      shift 2
+      source_position="$1"
+      source_path="$2"
+      archive_relative_path="$3"
+      shift 3
       source_exclude_args=()
 
       for exclude_pattern in "$@"; do
@@ -683,12 +687,17 @@ ${lib.optionalString localStagingUsesSharedRoot ''
       done
 
       if [ ! -e "$source_path" ] && [ ! -L "$source_path" ]; then
-        log "SKIP missing source: $source_path"
+        log "[$source_position] SKIP missing source: $source_path"
         return 0
       fi
 
       destination_path="$archive_root/$archive_relative_path"
-      log "COPY $source_path -> $archive_relative_path"
+      if [ "$show_progress" -eq 1 ]; then
+        source_size="$( ${pkgs.coreutils}/bin/du -sh -- "$source_path" 2>/dev/null | ${pkgs.coreutils}/bin/cut -f1 || true )"
+        log "[$source_position] COPY $source_path -> $archive_relative_path (''${source_size:-?})"
+      else
+        log "[$source_position] COPY $source_path -> $archive_relative_path"
+      fi
       if [ -d "$source_path" ]; then
         ${pkgs.coreutils}/bin/mkdir -p -- "$destination_path"
         ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
@@ -699,7 +708,7 @@ ${lib.optionalString localStagingUsesSharedRoot ''
           ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable ${rsyncProgressArguments} "''${exclude_args[@]}" "''${source_exclude_args[@]}" -- "$source_path" "$destination_path"
       fi
       copied_count=$((copied_count + 1))
-      log "COPIED $source_path -> $archive_relative_path"
+      log "[$source_position] COPIED $archive_relative_path"
     }
 
     trap on_exit EXIT
@@ -770,12 +779,18 @@ ${lib.optionalString localStagingUsesSharedRoot ''
       temporary_archive="$archive_work_path"
     fi
 
+    # Archive root holds the backed-up parts directly, with no slug folder.
     log "CREATE archive: $archive_work_path"
-    (
-      cd -- "$staging_dir"
+    if [ "$show_progress" -eq 1 ]; then
+      archive_bytes="$(( $( ${pkgs.coreutils}/bin/du -sk -- "$archive_root" | ${pkgs.coreutils}/bin/cut -f1 ) * 1024 ))"
       ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
-        ${pkgs.gnutar}/bin/tar --create --file "$archive_work_path" --directory "$staging_dir" "$app_slug"
-    )
+        ${pkgs.gnutar}/bin/tar --create --file - --directory "$archive_root" . \
+        | ${pkgs.pv}/bin/pv -N "$app_slug archive" -s "$archive_bytes" > "$archive_work_path"
+    else
+      ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
+        ${pkgs.gnutar}/bin/tar --create --file "$archive_work_path" --directory "$archive_root" .
+    fi
+    log "VERIFY archive: $archive_work_path"
 
     ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
       ${pkgs.gnutar}/bin/tar --list --file "$archive_work_path" >/dev/null

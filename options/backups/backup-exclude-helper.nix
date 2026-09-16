@@ -28,7 +28,7 @@ let
     '') patterns;
 
   mkZipExcludeArguments = patterns:
-    lib.concatMapStringsSep " " (pattern: "-x ${lib.escapeShellArg "*/${pattern}"}") patterns;
+    lib.concatMapStringsSep " " (pattern: "-x ${lib.escapeShellArg pattern} -x ${lib.escapeShellArg "*/${pattern}"}") patterns;
 in
 {
   inherit defaultMetadataExcludePatterns mkRsyncExcludeArguments mkZipExcludeArguments;
