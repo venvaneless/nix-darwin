@@ -7,7 +7,7 @@
 # directory. Platform modules provide the appropriate user-service host.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ config, options, platforms, lib, pkgs, ... }:
 
 let
   cfg = config.home.darwin.services.startpage;
@@ -103,7 +103,7 @@ in
     description = "Per-machine settings for the local Tartarus startpage service.";
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
+  config = platforms.onlyInHome options (lib.mkIf cfg.enable (lib.mkMerge [
     (lib.mkIf pkgs.stdenv.isDarwin {
       launchd.agents.tartarus-startpage = {
         enable = true;
@@ -135,5 +135,5 @@ in
         };
       };
     })
-  ]);
+  ]));
 }

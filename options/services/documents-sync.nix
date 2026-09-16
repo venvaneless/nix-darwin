@@ -7,7 +7,7 @@
 # Documents folder and a separately selected remote copy.
 # =====================================================================
 
-{ config, lib, pkgs, ... }:
+{ config, options, platforms, lib, pkgs, ... }:
 
 let
   cfg = config.home.darwin.services.documentsSync;
@@ -130,7 +130,7 @@ in
     description = "Per-machine settings for portable Documents synchronization.";
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
+  config = platforms.onlyInHome options (lib.mkIf cfg.enable (lib.mkMerge [
     {
       assertions = [
         {
@@ -198,5 +198,5 @@ in
         };
       };
     })
-  ]);
+  ]));
 }

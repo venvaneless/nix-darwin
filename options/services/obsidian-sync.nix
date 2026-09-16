@@ -7,7 +7,7 @@
 # synchronization service.
 # =====================================================================
 
-{ config, paths, lib, pkgs, ... }:
+{ config, options, paths, platforms, lib, pkgs, ... }:
 
 let
   cfg = config.home.darwin.services.obsidianSync;
@@ -112,7 +112,7 @@ in
     description = "Per-machine settings for Obsidian iCloud synchronization.";
   };
 
-  config = lib.mkIf (pkgs.stdenv.isDarwin && cfg.enable && unison.enable) {
+  config = platforms.onlyInHome options (lib.mkIf (pkgs.stdenv.isDarwin && cfg.enable && unison.enable) {
     # The LaunchAgent runs in the logged-in user's session, where both
     # the local vault and the iCloud container are available.
     launchd.agents.obsidian-sync = {
@@ -129,5 +129,5 @@ in
         ];
       };
     };
-  };
+  });
 }
