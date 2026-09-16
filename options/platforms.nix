@@ -51,6 +51,17 @@ let
 
   onlyOnLinux = definitions: if isLinux then definitions else { };
   onlyOnDarwin = definitions: if isDarwin then definitions else { };
+
+  # ------------------------------------------------------------
+  # ------ MODULE-SYSTEM-ONLY ATTRIBUTES ------ #
+  # Keeps definitions in Home Manager or in the system (nix-darwin,
+  # NixOS). Pass the module's own options argument.
+  # ------------------------------------------------------------
+
+  isHomeManager = options: options ? home && options.home ? homeDirectory;
+
+  onlyInHome = options: definitions: if isHomeManager options then definitions else { };
+  onlyInSystem = options: definitions: if isHomeManager options then { } else definitions;
 in
 {
   inherit
@@ -60,5 +71,8 @@ in
     valueForCurrentPlatform
     onlyOnLinux
     onlyOnDarwin
+    isHomeManager
+    onlyInHome
+    onlyInSystem
     ;
 }
