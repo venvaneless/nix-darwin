@@ -30,24 +30,41 @@
     # ---- EDITABLE BACKUP CONTENTS
     # Entries resolve from the roots above; additionalSources are absolute.
 
+    # ** Plugins ship inside Vencord's downloaded bundle, so only their
+    # ** settings and stored data are kept. Login token (Local Storage,
+    # ** Cookies) is deliberately left out.
+
     applicationSupportEntries = {
       applicationSupportPaths = [
         {
-          sourcePath = "vesktop";
-          destinationPath = "app-support/vesktop";
+          # Vesktop app settings
+          sourcePath = "vesktop/settings.json";
+          destinationPath = "settings.json";
+        }
+        {
+          # Window size and position
+          sourcePath = "vesktop/state.json";
+          destinationPath = "state.json";
+        }
+        {
+          # Vencord plugin toggles, plugin options, QuickCSS
+          sourcePath = "vesktop/settings";
+          destinationPath = "settings";
+        }
+        {
+          sourcePath = "vesktop/themes";
+          destinationPath = "themes";
+        }
+        {
+          # Plugin data (Vencord DataStore)
+          sourcePath = "vesktop/sessionData/IndexedDB";
+          destinationPath = "sessionData/IndexedDB";
         }
       ];
 
-      # Electron rebuilds these on the next start.
       excludePatterns = [
-        "Cache/"
-        "Code Cache/"
-        "GPUCache/"
-        "ExtensionCache/"
-        "blob_storage/"
-        "Crashpad/"
-        "logs/"
-        "*.log"
+        # Rewritten constantly while the app runs.
+        "LOCK"
       ];
     };
 
