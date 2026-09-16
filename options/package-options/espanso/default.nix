@@ -115,8 +115,8 @@ in
 
     # ------------------------------------------------------------
     # ------ DARWIN ESPANSO LAUNCH AGENT ------ #
-    # Uses the Nix package binary rather than the mutable /Applications
-    # symlink.
+    # Runs the executable inside the Nix store Espanso.app bundle so TCC
+    # attributes it to Espanso.app, not a bare "espanso" binary.
 
     (lib.mkIf (enabledForCurrentPlatform && cfg.autostart.enable && platforms.isDarwin) {
       launchd.agents.espanso = {
@@ -124,7 +124,7 @@ in
         config = {
           Label = "com.federicoterzi.espanso";
           ProgramArguments = [
-            "${pkgs.espanso}/bin/espanso"
+            "${pkgs.espanso}/Applications/Espanso.app/Contents/MacOS/espanso"
             "launcher"
           ];
           RunAtLoad = true;
