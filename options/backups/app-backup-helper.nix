@@ -442,6 +442,50 @@ let
               default = config.services.appBackups.defaultShowProgress;
               description = "Show copy and archive progress.";
             };
+
+            # ---- PROCESS PRIORITY
+            processType = lib.mkOption {
+              type = lib.types.enum [ "Background" "Standard" "Adaptive" "Interactive" ];
+              default = "Background";
+              description = "launchd ProcessType for the automatic backup.";
+            };
+
+            niceLevel = lib.mkOption {
+              type = lib.types.ints.between 0 20;
+              default = 20;
+              description = "Scheduling priority for archive work; 20 is the lowest.";
+            };
+
+            lowPriorityIO = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+              description = "Throttle disk IO of the automatic backup.";
+            };
+
+            # ---- LOGS
+            logDirectory = lib.mkOption {
+              type = lib.types.str;
+              default = backupPaths.logs;
+              description = "Directory each run writes its log files to.";
+            };
+
+            logFilenameTemplate = lib.mkOption {
+              type = lib.types.str;
+              default = "{appSlug}-{timestamp}.log";
+              description = "Run log name; use {appSlug} and {timestamp}.";
+            };
+
+            errorLogFilenameTemplate = lib.mkOption {
+              type = lib.types.str;
+              default = "{appSlug}-{timestamp}-error.log";
+              description = "Error log name, kept only when a run wrote errors; use {appSlug} and {timestamp}.";
+            };
+
+            logTimestampFormat = lib.mkOption {
+              type = lib.types.str;
+              default = "%Y-%m-%d-%H-%M-%S";
+              description = "strftime format substituted for {timestamp} in log names.";
+            };
           };
         }));
       };
@@ -522,6 +566,8 @@ let
     else
       "--bwlimit=${toString cfg.transferLimitKiBps}";
   rsyncProgressArguments = if cfg.showProgress then "--info=progress2 --no-inc-recursive" else "";
+  runLogSetup = excludeHelper.mkRunLogSetup { inherit pkgs cfg; };
+  runLogClose = excludeHelper.mkRunLogClose { inherit pkgs; };
 
   sourceCount = toString (builtins.length resolvedSources);
   copySources = lib.concatImapStringsSep "\n" (index: source: ''
@@ -601,12 +647,17 @@ ${defaultMetadataExcludes}
 ${extraExcludes}
     )
 
+${runLogSetup}
+
     log() {
-      printf '[%s backup] %s\n' "$app_slug" "$*"
+      log_line="$(printf '[%s backup] %s' "$app_slug" "$*")"
+      printf '%s\n' "$log_line"
+      printf '%s\n' "$log_line" >> "$log_file"
     }
 
     fail() {
       log "ERROR $*"
+      printf '%s\n' "$log_line" >> "$error_log_file"
       exit 1
     }
 
@@ -666,6 +717,7 @@ ${lib.optionalString localStagingUsesSharedRoot ''
         fi
       fi
 
+${runLogClose}
       return "$exit_status"
     }
 
@@ -700,11 +752,11 @@ ${lib.optionalString localStagingUsesSharedRoot ''
       fi
       if [ -d "$source_path" ]; then
         ${pkgs.coreutils}/bin/mkdir -p -- "$destination_path"
-        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
+        ${pkgs.coreutils}/bin/nice -n ${toString cfg.niceLevel} ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
           ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable ${rsyncProgressArguments} "''${exclude_args[@]}" "''${source_exclude_args[@]}" -- "$source_path/" "$destination_path/"
       else
         ${pkgs.coreutils}/bin/mkdir -p -- "$( ${pkgs.coreutils}/bin/dirname -- "$destination_path" )"
-        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
+        ${pkgs.coreutils}/bin/nice -n ${toString cfg.niceLevel} ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
           ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable ${rsyncProgressArguments} "''${exclude_args[@]}" "''${source_exclude_args[@]}" -- "$source_path" "$destination_path"
       fi
       copied_count=$((copied_count + 1))
@@ -764,7 +816,7 @@ ${lib.optionalString localStagingUsesSharedRoot ''
 
     if [ "$archive_enabled" -eq 0 ]; then
       log "SYNC unarchived backup: $destination_dir"
-      ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
+      ${pkgs.coreutils}/bin/nice -n ${toString cfg.niceLevel} ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
         ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} ${rsyncTransferArguments} --human-readable ${rsyncProgressArguments} "''${exclude_args[@]}" -- "$archive_root/" "$destination_dir/"
       ${pkgs.coreutils}/bin/touch -- "$marker_file"
       ${touchSourceMarkers}
@@ -783,16 +835,16 @@ ${lib.optionalString localStagingUsesSharedRoot ''
     log "CREATE archive: $archive_work_path"
     if [ "$show_progress" -eq 1 ]; then
       archive_bytes="$(( $( ${pkgs.coreutils}/bin/du -sk -- "$archive_root" | ${pkgs.coreutils}/bin/cut -f1 ) * 1024 ))"
-      ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
+      ${pkgs.coreutils}/bin/nice -n ${toString cfg.niceLevel} ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
         ${pkgs.gnutar}/bin/tar --create --file - --directory "$archive_root" . \
-        | ${pkgs.pv}/bin/pv -N "$app_slug archive" -s "$archive_bytes" > "$archive_work_path"
+        | ${pkgs.pv}/bin/pv -N "$app_slug archive" -s "$archive_bytes" 2>&4 > "$archive_work_path"
     else
-      ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
+      ${pkgs.coreutils}/bin/nice -n ${toString cfg.niceLevel} ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
         ${pkgs.gnutar}/bin/tar --create --file "$archive_work_path" --directory "$archive_root" .
     fi
     log "VERIFY archive: $archive_work_path"
 
-    ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
+    ${pkgs.coreutils}/bin/nice -n ${toString cfg.niceLevel} ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
       ${pkgs.gnutar}/bin/tar --list --file "$archive_work_path" >/dev/null
     ${pkgs.coreutils}/bin/mv -- "$archive_work_path" "$archive_path"
     temporary_archive=""
@@ -816,12 +868,14 @@ ${lib.optionalString localStagingUsesSharedRoot ''
             RunAtLoad = false;
             KeepAlive = false;
             StartInterval = app.automaticIntervalSeconds;
-            ProcessType = "Background";
-            Nice = 20;
-            LowPriorityIO = true;
-            LowPriorityBackgroundIO = true;
-            StandardOutPath = "${libraryPaths.logs}/${commandName}.log";
-            StandardErrorPath = "${libraryPaths.logs}/${commandName}-error.log";
+            ProcessType = app.processType;
+            Nice = app.niceLevel;
+            LowPriorityIO = app.lowPriorityIO;
+            LowPriorityBackgroundIO = app.lowPriorityIO;
+
+            # Each run writes its own dated logs; these catch launch failures.
+            StandardOutPath = "${app.logDirectory}/${commandName}-launchd.log";
+            StandardErrorPath = "${app.logDirectory}/${commandName}-launchd-error.log";
           };
         };
       };

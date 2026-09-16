@@ -20,7 +20,6 @@ let
     darwin = paths.darwin.home;
     linux = paths.linux.home;
   };
-  libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;
   systemPaths = paths.darwin.system;
   excludeHelper = backupExcludeHelper;
@@ -137,7 +136,7 @@ let
 
       log "SQLITE $source_dir/${database} -> ${database}"
       ${pkgs.coreutils}/bin/timeout ${toString sqliteBackupTimeoutSeconds} \
-        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
+        ${pkgs.coreutils}/bin/nice -n ${toString cfg.niceLevel} ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
         ${pkgs.sqlite}/bin/sqlite3 \
         "$source_dir/${database}" \
         ".backup '$staged_source/${database}'"
@@ -217,6 +216,8 @@ let
   zipMetadataExcludes = excludeHelper.mkZipExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
   zipExtraExcludes = excludeHelper.mkZipExcludeArguments (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
   rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
+  runLogSetup = excludeHelper.mkRunLogSetup { inherit pkgs cfg; };
+  runLogClose = excludeHelper.mkRunLogClose { inherit pkgs; };
   stageSourceEntries = lib.concatMapStringsSep "\n" (entry: ''
         log_part ${lib.escapeShellArg entry.sourcePath} ${lib.escapeShellArg entry.destinationPath}
         ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
@@ -331,13 +332,18 @@ ${extraExcludes}
         printf 'Usage: %s [--scheduled|--rebuild]\n' "$0" >&2
       }
 
+${runLogSetup}
+
       fail() {
         printf '%s backup failed: %s\n' "$app_name" "$*" >&2
+        printf '%s backup failed: %s\n' "$app_name" "$*" >> "$log_file"
         exit 1
       }
 
       log() {
-        printf '[%s backup] %s\n' "$app_slug" "$*"
+        log_line="$(printf '[%s backup] %s' "$app_slug" "$*")"
+        printf '%s\n' "$log_line"
+        printf '%s\n' "$log_line" >> "$log_file"
       }
 
       log_part() {
@@ -350,7 +356,7 @@ ${extraExcludes}
       }
 
       backup_process() {
-        ${pkgs.coreutils}/bin/nice -n 20 ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- "$@"
+        ${pkgs.coreutils}/bin/nice -n ${toString cfg.niceLevel} ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- "$@"
       }
 
       release_lock() {
@@ -425,6 +431,7 @@ ${lib.optionalString localStagingUsesSharedRoot ''
           fi
         fi
 
+${runLogClose}
         return "$exit_status"
       }
 
@@ -635,7 +642,7 @@ ${lib.optionalString localStagingUsesSharedRoot ''
             -x 'Thumbs.db' -x '*/Thumbs.db' \
             -x 'desktop.ini' -x '*/desktop.ini' \
             ${zipMetadataExcludes} ${zipExtraExcludes} \
-            | ${pkgs.pv}/bin/pv -N "$app_slug archive" -s "$archive_bytes" > "$temporary_archive"
+            | ${pkgs.pv}/bin/pv -N "$app_slug archive" -s "$archive_bytes" 2>&4 > "$temporary_archive"
         else
           backup_process ${pkgs.zip}/bin/zip -q -r -y "$temporary_archive" . \
             -x 'Thumbs.db' -x '*/Thumbs.db' \
@@ -723,12 +730,14 @@ in
             }
           ];
 
-          ProcessType = "Background";
-          Nice = 20;
-          LowPriorityIO = true;
-          LowPriorityBackgroundIO = true;
-          StandardOutPath = "${libraryPaths.logs}/${commandName}.log";
-          StandardErrorPath = "${libraryPaths.logs}/${commandName}-error.log";
+          ProcessType = cfg.processType;
+          Nice = cfg.niceLevel;
+          LowPriorityIO = cfg.lowPriorityIO;
+          LowPriorityBackgroundIO = cfg.lowPriorityIO;
+
+          # Each run writes its own dated logs; these catch launch failures.
+          StandardOutPath = "${cfg.logDirectory}/${commandName}-launchd.log";
+          StandardErrorPath = "${cfg.logDirectory}/${commandName}-launchd-error.log";
         };
       };
     };
@@ -1131,6 +1140,50 @@ in
             type = lib.types.bool;
             default = config.services.backups.defaultShowProgress;
             description = "Show copy and archive progress.";
+          };
+
+          # ---- PROCESS PRIORITY
+          processType = lib.mkOption {
+            type = lib.types.enum [ "Background" "Standard" "Adaptive" "Interactive" ];
+            default = "Background";
+            description = "launchd ProcessType for the automatic backup.";
+          };
+
+          niceLevel = lib.mkOption {
+            type = lib.types.ints.between 0 20;
+            default = 20;
+            description = "Scheduling priority for archive work; 20 is the lowest.";
+          };
+
+          lowPriorityIO = lib.mkOption {
+            type = lib.types.bool;
+            default = true;
+            description = "Throttle disk IO of the automatic backup.";
+          };
+
+          # ---- LOGS
+          logDirectory = lib.mkOption {
+            type = lib.types.str;
+            default = backupPaths.logs;
+            description = "Directory each run writes its log files to.";
+          };
+
+          logFilenameTemplate = lib.mkOption {
+            type = lib.types.str;
+            default = "{appSlug}-{timestamp}.log";
+            description = "Run log name; use {appSlug} and {timestamp}.";
+          };
+
+          errorLogFilenameTemplate = lib.mkOption {
+            type = lib.types.str;
+            default = "{appSlug}-{timestamp}-error.log";
+            description = "Error log name, kept only when a run wrote errors; use {appSlug} and {timestamp}.";
+          };
+
+          logTimestampFormat = lib.mkOption {
+            type = lib.types.str;
+            default = "%Y-%m-%d-%H-%M-%S";
+            description = "strftime format substituted for {timestamp} in log names.";
           };
 
           runOnRebuild = lib.mkOption {

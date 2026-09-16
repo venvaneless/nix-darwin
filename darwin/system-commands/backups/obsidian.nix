@@ -17,6 +17,14 @@ let
   backupPaths = paths.darwin.backups;
   excludeHelper = backupExcludeHelper;
   showProgress = true;
+
+  # ---- LOGS
+  runLog = {
+    logDirectory = backupPaths.logs;
+    logFilenameTemplate = "{appSlug}-{timestamp}.log";
+    errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
+    logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
+  };
   progressEnabled = config.services.appBackups.obsidian.showProgress;
   defaultMetadataExcludes = excludeHelper.mkRsyncExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
 
@@ -76,12 +84,18 @@ let
 ${defaultMetadataExcludes}
       )
 
+      app_slug="obsidian"
+${excludeHelper.mkRunLogSetup { inherit pkgs; cfg = runLog; }}
+
       log() {
-        printf '[obsidian backup] %s\n' "$*"
+        log_line="$(printf '[obsidian backup] %s' "$*")"
+        printf '%s\n' "$log_line"
+        printf '%s\n' "$log_line" >> "$log_file"
       }
 
       fail() {
         log "ERROR $*"
+        printf '%s\n' "$log_line" >> "$error_log_file"
         exit 1
       }
 
@@ -90,10 +104,13 @@ ${defaultMetadataExcludes}
       }
 
       release_backup_lock() {
+        exit_status="$?"
         if [ "$global_lock_acquired" -eq 1 ]; then
           ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid" 2>/dev/null || true
           ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" 2>/dev/null || true
         fi
+${excludeHelper.mkRunLogClose { inherit pkgs; }}
+        return "$exit_status"
       }
 
       acquire_backup_lock() {

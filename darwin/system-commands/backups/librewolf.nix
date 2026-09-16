@@ -108,5 +108,16 @@
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
     showProgress = true;
+
+    # ---- PROCESS PRIORITY
+    processType = "Background";
+    niceLevel = 20;
+    lowPriorityIO = true;
+
+    # ---- LOGS
+    logDirectory = paths.darwin.backups.logs;
+    logFilenameTemplate = "{appSlug}-{timestamp}.log";
+    errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
+    logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
   };
 }
