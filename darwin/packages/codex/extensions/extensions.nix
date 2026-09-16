@@ -14,7 +14,7 @@ let
   # The Darwin host constructor supplies the platform-selected package set.
 
   # Keep the two Codex profiles aligned while retaining their independent UI state.
-  profiles = [ "chatgpt" "api" ];
+  profiles = [ "chatgpt" ];
   sharedRoot = "/Users/ven/.config/codex/shared";
   codebaseMemoryDataDir = "${sharedRoot}/codebase-memory-mcp";
 

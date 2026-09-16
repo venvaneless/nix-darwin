@@ -29,7 +29,6 @@ let
   cavemanLink = "${sharedPlugins}/caveman";
 
   profiles = [
-    "api"
     "chatgpt"
   ];
 

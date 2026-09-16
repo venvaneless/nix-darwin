@@ -26,7 +26,6 @@ let
   codexRoot = paths.darwin.agents.codex.root;
   profileConfig = paths.darwin.agents.codex.profileConfig;
   profiles = [
-    "api"
     "chatgpt"
   ];
 

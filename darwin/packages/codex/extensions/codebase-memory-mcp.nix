@@ -21,7 +21,6 @@ let
   dataDir = "${codexRoot}/shared/codebase-memory-mcp";
 
   profiles = [
-    "api"
     "chatgpt"
   ];
 

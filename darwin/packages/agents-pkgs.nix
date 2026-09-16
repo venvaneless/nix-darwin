@@ -28,19 +28,6 @@ let
       installOn = { darwin = true; linux = false; };
       package = pkgs.codex-profile;
     };
-
-    # Dock launcher that always opens the ChatGPT Codex profile.
-    codexChatgptLauncher = {
-      enable = true;
-      installOn = { darwin = true; linux = false; };
-      package = pkgs.callPackage ./codex/chatgpt-launcher.nix {
-        inherit paths;
-      };
-      appName = "Codex ChatGPT.app";
-
-      # Kept out of /Applications: the real ChatGPT.app already sits there.
-      symlinkApplications = false;
-    };
   };
 in
 {
@@ -53,7 +40,7 @@ in
     # Declarative shared Codex plugins and MCP synchronization command
     ./codex/extensions
 
-    # Codex backup command and LaunchAgent
+    # Codex backup command
     ./codex/codex-backup.nix
   ];
 }

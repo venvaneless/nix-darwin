@@ -21,7 +21,6 @@ let
   sharedPlugins = "${codexRoot}/shared/plugins";
 
   profiles = [
-    "api"
     "chatgpt"
   ];
 

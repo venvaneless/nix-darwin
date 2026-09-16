@@ -41,30 +41,73 @@ let
 
   storageOwner = codex.chatgpt;
 
-  storageLinked = [ codex.shared codex.api ];
+  storageLinked = [ codex.shared ];
 
   # Both directories are managed together because archiving moves a thread
   # between them, so they have to resolve consistently.
   storageKinds = [ "sessions" "archived_sessions" ];
 
   # ------------------------------------------------------------
-  # ------ DOCK LAUNCHER ------ #
+  # ------ SHARED ENVIRONMENT ------ #
   # ------------------------------------------------------------
-  # Same derivation as the one installed through agents-pkgs.nix, so both
-  # resolve to one store path.
 
-  launcherPackage = pkgs.callPackage ./chatgpt-launcher.nix {
-    inherit paths;
+  chatgptApp = paths.darwin.applications.bundles.chatgpt;
+  chatgptProcess = "${chatgptApp}/Contents/MacOS/ChatGPT";
+
+  codexEnvironment = {
+    CODEX_HOME = codex.chatgpt;
+    CODEX_SQLITE_HOME = codex.sqlite;
+    CODEX_PROFILE_HOME_ROOT = codexRoot;
   };
 
-  launcherBundle = paths.darwin.applications.bundles.codexChatgpt;
+  setGuiEnvironment = lib.concatStringsSep "\n" (lib.mapAttrsToList
+    (name: value: "/bin/launchctl setenv ${name} ${lib.escapeShellArg value}")
+    codexEnvironment);
 
-  launcherMarkerDirectory = "${paths.darwin.system.var}/lib/nix-darwin-codex";
-  launcherMarker = "${launcherMarkerDirectory}/chatgpt-launcher.registered";
+  # ------------------------------------------------------------
+  # ------ API LAUNCHER ------ #
+  # ------------------------------------------------------------
+  # Same home and database as the subscription login; only the key differs.
 
-  lsregister =
-    "/System/Library/Frameworks/CoreServices.framework"
-    + "/Frameworks/LaunchServices.framework/Support/lsregister";
+  codexApi = pkgs.writeShellApplication {
+    name = "codex-api";
+    runtimeInputs = [ pkgs.jq ];
+    text = ''
+      mode="''${1:-app}"
+      [ "$#" -eq 0 ] || shift
+
+      key="$(jq -r '.OPENAI_API_KEY // empty' ${lib.escapeShellArg codex.apiKeyFile})"
+      if [ -z "$key" ]; then
+        echo "No OPENAI_API_KEY in ${codex.apiKeyFile}" >&2
+        exit 1
+      fi
+
+      export CODEX_HOME=${lib.escapeShellArg codex.chatgpt}
+      export CODEX_SQLITE_HOME=${lib.escapeShellArg codex.sqlite}
+
+      case "$mode" in
+        app)
+          if /usr/bin/pgrep -qf ${lib.escapeShellArg chatgptProcess}; then
+            echo "Codex is already running. Quit it first." >&2
+            exit 1
+          fi
+
+          exec /usr/bin/open \
+            --env "CODEX_HOME=$CODEX_HOME" \
+            --env "CODEX_SQLITE_HOME=$CODEX_SQLITE_HOME" \
+            --env "CODEX_API_KEY=$key" \
+            -a ${lib.escapeShellArg chatgptApp}
+          ;;
+        cli)
+          CODEX_API_KEY="$key" exec /run/current-system/sw/bin/codex "$@"
+          ;;
+        *)
+          echo "Usage: codex-api [app|cli] [codex args...]" >&2
+          exit 2
+          ;;
+      esac
+    '';
+  };
 in
 {
 
@@ -72,14 +115,19 @@ in
   # =================================================================
 
   # Env variables
-  environment.variables = {
-    CODEX_HOME = codex.chatgpt;
-
-    CODEX_PROFILE_HOME_ROOT = codexRoot;
+  environment.variables = codexEnvironment // {
     CODEX_PROFILE_CONFIG_HOME = codex.profileConfig;
 
-    CHATGPT_APP = paths.darwin.applications.bundles.chatgpt;
+    CHATGPT_APP = chatgptApp;
     CODEX_CLI = "/run/current-system/sw/bin/codex";
+  };
+
+  environment.systemPackages = [ codexApi ];
+
+  # GUI environment at login; launchctl setenv does not survive a reboot.
+  launchd.user.agents.codex-environment.serviceConfig = {
+    ProgramArguments = [ "/bin/sh" "-c" setGuiEnvironment ];
+    RunAtLoad = true;
   };
 
 
@@ -111,7 +159,7 @@ in
 
     if [ "$codex_storage_ok" = 1 ]; then
       : # Layout is correct; nothing to do.
-    elif /usr/bin/pgrep -qf '/Applications/ChatGPT.app/Contents/MacOS/ChatGPT'; then
+    elif /usr/bin/pgrep -qf ${lib.escapeShellArg chatgptProcess}; then
       echo "[nix-darwin][codex] ChatGPT is running; conversation storage left untouched." >&2
       echo "[nix-darwin][codex] Quit it and rebuild to finish the layout." >&2
     else
@@ -192,68 +240,33 @@ in
 
   # CODEX: ACTIVATION
   # =================================================================
-  # Two things that only make sense once the store paths for this
-  # generation exist, so they share one postActivation block.
 
   system.activationScripts.postActivation.text = lib.mkAfter ''
     ven_uid="$(/usr/bin/id -u ${userName})"
 
-
     # ------ GUI SESSION ENVIRONMENT ------ #
-    # environment.variables only reaches /etc/zshenv and /etc/bashrc.
-    # Apps launched from the Dock, Spotlight, or Finder never source
-    # those, so they are seeded into ven's launchd domain here.
+    # Applies now; the codex-environment agent reapplies it at login.
+    /bin/launchctl asuser "$ven_uid" /bin/sh -c ${lib.escapeShellArg setGuiEnvironment}
 
-    /bin/launchctl asuser "$ven_uid" \
-      /bin/launchctl setenv CODEX_HOME ${lib.escapeShellArg codex.chatgpt}
+    # ------ APP DATA LINK ------ #
+    # ChatGPT.app's default Electron data dir points into the Codex home.
+    codex_app_data=${lib.escapeShellArg codex.appUserData}
+    codex_app_target=${lib.escapeShellArg codex.electronUserData}
 
-    /bin/launchctl asuser "$ven_uid" \
-      /bin/launchctl setenv CODEX_PROFILE_HOME_ROOT ${lib.escapeShellArg codexRoot}
-
-
-    # ------ LAUNCHER REGISTRATION ------ #
-    # /Applications/Nix Apps is refreshed from the Nix store on every
-    # activation, so the launcher bundle is replaced whenever its store
-    # path changes -- which happens on every nixpkgs bump, not only when
-    # the launcher itself is edited. LaunchServices keeps serving the
-    # icon and metadata it recorded for the previous bundle, so the Dock
-    # tile silently reverts to a stale icon until it is registered again.
-    #
-    # The store path that was last registered is recorded, so this only
-    # does work when it actually changes.
-
-    codex_launcher_store_path=${lib.escapeShellArg launcherPackage}
-    codex_launcher_bundle=${lib.escapeShellArg launcherBundle}
-    codex_launcher_marker=${lib.escapeShellArg launcherMarker}
-    codex_launcher_recorded=""
-
-    if [ -f "$codex_launcher_marker" ]; then
-      codex_launcher_recorded="$(/bin/cat "$codex_launcher_marker")"
-    fi
-
-    if [ ! -e "$codex_launcher_bundle" ]; then
-      echo "[nix-darwin][codex] Launcher bundle is missing: $codex_launcher_bundle" >&2
-    elif [ "$codex_launcher_recorded" = "$codex_launcher_store_path" ]; then
-      : # Registration is current.
-    elif [ ! -x ${lib.escapeShellArg lsregister} ]; then
-      echo "[nix-darwin][codex] lsregister is unavailable; skipping registration." >&2
+    if [ "$(readlink "$codex_app_data" 2>/dev/null)" = "$codex_app_target" ]; then
+      : # Link is current.
+    elif /usr/bin/pgrep -qf ${lib.escapeShellArg chatgptProcess}; then
+      echo "[nix-darwin][codex] ChatGPT is running; app data link left untouched." >&2
     else
-      echo "[nix-darwin][codex] Registering $codex_launcher_bundle with LaunchServices..."
+      if [ -e "$codex_app_data" ] || [ -L "$codex_app_data" ]; then
+        codex_app_backup="$codex_app_data.before-nix-$(/bin/date +%Y%m%d-%H%M%S)"
+        mv "$codex_app_data" "$codex_app_backup"
+        echo "[nix-darwin][codex] Moved old app data to $codex_app_backup"
+      fi
 
-      # LaunchServices reads the per-user database, so registration and
-      # the Dock restart both run inside ven's launchd domain.
-      /bin/launchctl asuser "$ven_uid" \
-        /usr/bin/sudo -u ${userName} \
-        ${lib.escapeShellArg lsregister} -f "$codex_launcher_bundle"
-
-      # The Dock caches the tile image, so it has to be reloaded before
-      # the refreshed icon is used.
-      /bin/launchctl asuser "$ven_uid" \
-        /usr/bin/sudo -u ${userName} \
-        /usr/bin/killall Dock || true
-
-      /bin/mkdir -p ${lib.escapeShellArg launcherMarkerDirectory}
-      printf '%s' "$codex_launcher_store_path" > "$codex_launcher_marker"
+      /usr/bin/sudo -u ${userName} /bin/mkdir -p "$codex_app_target"
+      /usr/bin/sudo -u ${userName} /bin/ln -s "$codex_app_target" "$codex_app_data"
+      echo "[nix-darwin][codex] Linked $codex_app_data -> $codex_app_target"
     fi
   '';
 
