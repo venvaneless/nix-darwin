@@ -24,9 +24,9 @@
         paths.darwin.applications.bundles.zed
         paths.darwin.applications.bundles.snippetsLab
 
-        # The real signed app owns the running process, so pinning it keeps
-        # the running-dot on this tile instead of creating a recent-app tile.
-        paths.darwin.applications.bundles.chatgpt
+        # Launcher tile: opens the chatgpt Codex profile. It shares the real
+        # app's bundle identifier, so the running-dot stays on this tile.
+        paths.darwin.applications.bundles.codexChatgpt
       ];
     };
   };
