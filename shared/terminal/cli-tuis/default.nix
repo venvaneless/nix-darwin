@@ -44,6 +44,31 @@
 
   config = {
     # ------------------------------------------------------------
+    # ------ NAVI SETTINGS ------ #
+    # Navi's Home Manager module installs the command and wires its widget
+    # into Fish without a separate package declaration.
+  programs = {
+    navi = {
+      enable = true;
+      enableFishIntegration = true;
+    };
+    jujutsu = {
+      enable = true;
+      settings = {
+        user = "ven";
+        email = "ven@example.com";
+        name = "Ven";
+        editor = "micro";
+        color = "orange";
+      };
+    };
+  };
+
+
+
+
+
+    # ------------------------------------------------------------
     # ------ MICRO SETTINGS ------ #
     # All values a user may reasonably change stay here. The option module
     # owns platform selection, validation, JSON rendering, and theme files.
