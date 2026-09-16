@@ -42,6 +42,7 @@ in
   # These paths are values, not imports. Each owning aggregator imports
   # the named module it needs through the appropriate module graph.
   serviceOptions = ./services/default.nix;
+  settingsOptions = ./settings;
   containerBackupOptions = ./backups/container-backup-helper.nix;
   terminalOptions = ./cli/aliases.nix;
   weztermOptions = ./package-options/wezterm;
