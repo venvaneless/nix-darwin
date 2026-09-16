@@ -52,6 +52,7 @@
       enable = true;
       enableFishIntegration = true;
     };
+
     jujutsu = {
       enable = true;
       settings = {
