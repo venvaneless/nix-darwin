@@ -1,74 +1,94 @@
 # darwin/system-commands/backups/wezterm.nix
 # WezTerm backup command: `wezterm-backup`.
 
-{ appBackupHelper, config, paths, ... }:
+{ paths, ... }:
 
-let
-  # ---- EDITABLE BACKUP ROOTS
-  backupPaths = {
-    applicationSupportDirectory = paths.darwin.library.applicationSupport;
-    preferencesDirectory = paths.darwin.library.preferences;
-    configDirectory = paths.darwin.home.config;
-  };
-  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
-  preferencesDirectory = backupPaths.preferencesDirectory;
-  configDirectory = backupPaths.configDirectory;
+{
+  services.backups.apps.wezterm = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.appBackups.enabled for this app.
+    enable = true;
 
-  # ---- EDITABLE BACKUP CONTENTS
-  destinationSegments = [ "wezterm" "backups" ];
-  applicationSupportEntries = [
-    {
-      relativePath = "wezterm";
-      destinationPath = "app-support/wezterm";
-    }
-  ];
-  preferenceEntries = [
-    {
-      relativePath = "com.github.wez.wezterm.plist";
-      destinationPath = "app-pref/com.github.wez.wezterm.plist";
-    }
-  ];
-  configEntries = [
-    {
-      relativePath = "wezterm";
-      destinationPath = "user-config/wezterm";
-    }
-  ];
-  additionalSources = [
-    # { sourcePath = "/Users/ven/Library/Somewhere/WezTerm"; destinationPath = "additional/WezTerm"; }
-  ];
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
-
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 25;
-  showProgress = true;
-
-  # ---- INDIVIDUAL ARCHIVE CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "wezterm";
-  preserveSymlinks = true;
-
-  weztermBackup = appBackupHelper.mkAppBackup {
-    inherit config;
+    # ---- IDENTITY
     appName = "WezTerm";
-    appSlug = "wezterm";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-    destinationRoot = "terminalBackups";
-    inherit destinationSegments applicationSupportEntries preferenceEntries configEntries additionalSources extraExcludePatterns;
-    applicationSupportRoot = applicationSupportDirectory;
-    preferencesRoot = preferencesDirectory;
-    configRoot = configDirectory;
+
+    # ---- PATHS ---- #
+
+    # -- Application Support
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
+
+    # -- Preferences
+    preferencesRoot = paths.darwin.library.preferences;
+
+    # -- Config
+    configRoot = paths.darwin.home.config;
+
+    # -- Destination
+    destinationRoot = paths.darwin.backups.terminal;
+    destinationSegments = [ "wezterm" "backups" ];
+
+    # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    applicationSupportEntries = {
+      applicationSupportPaths = [
+        {
+          sourcePath = "wezterm";
+          destinationPath = "app-support/wezterm";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    preferenceEntries = {
+      preferencePaths = [
+        {
+          sourcePath = "com.github.wez.wezterm.plist";
+          destinationPath = "com.github.wez.wezterm.plist";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    configEntries = {
+      configPaths = [
+        {
+          sourcePath = "wezterm";
+          destinationPath = "config/wezterm";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    additionalSources = {
+      additionalPaths = [
+        # {
+        #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/App";
+        #   destinationPath = "";
+        # }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "wezterm";
+    preserveSymlinks = true;
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
+    showProgress = true;
   };
-in
-weztermBackup
+}

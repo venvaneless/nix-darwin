@@ -1,89 +1,93 @@
 # darwin/system-commands/backups/better-finder-attributes.nix
 # A Better Finder Attributes backup command: `better-attributes-backup`.
 
+{ paths, ... }:
+
 {
-  appBackupHelper,
-  config,
-  paths,
-  ...
-}:
+  services.backups.apps.better-finder-attributes = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.appBackups.enabled for this app.
+    enable = true;
 
-let
-  # ---- EDITABLE BACKUP CONTENTS
-  applicationSupportEntries = [
-    {
-      relativePath = "A Better Finder Attributes 7";
-      destinationPath = "app-support/A Better Finder Attributes 7";
-    }
-  ];
-  preferenceEntries = [
-    {
-      relativePath = "net.publicspace.abfa7.plist";
-      destinationPath = "app-pref/net.publicspace.abfa7.plist";
-    }
-  ];
-  configEntries = [
-    # { relativePath = "better-finder-attributes"; destinationPath = "user-config/better-finder-attributes"; }
-  ];
-  additionalSources = [
-    # {
-    #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Better Finder Attributes";
-    #   destinationPath = "additional/Somewhere/Better Finder Attributes";
-    # }
-  ];
+    # ---- IDENTITY
+    appName = "A Better Finder Attributes";
 
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
+    # ---- PATHS ---- #
 
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 25;
-  showProgress = true;
+    # -- Application Support
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
 
-  # ---- INDIVIDUAL ARCHIVE CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "better-finder-attributes";
-  preserveSymlinks = true;
+    # -- Preferences
+    preferencesRoot = paths.darwin.library.preferences;
 
-in
-appBackupHelper.mkAppBackup {
-  inherit config;
+    # -- Config
+    configRoot = paths.darwin.home.config;
 
-  appName = "A Better Finder Attributes";
-  appSlug = "better-finder-attributes";
-  commandName = "better-attributes-backup";
-  inherit
-    automatic
-    automaticIntervalSeconds
-    minimumIntervalSeconds
-    cpuLimitPercent
-    showProgress
-    ;
-  inherit
-    applicationSupportEntries
-    preferenceEntries
-    configEntries
-    additionalSources
-    extraExcludePatterns
-    ;
-  applicationSupportRoot = paths.darwin.library.applicationSupport;
-  preferencesRoot = paths.darwin.library.preferences;
-  configRoot = paths.darwin.home.config;
-  inherit
-    archive
-    stageInDownloads
-    archiveFilenameTemplate
-    archiveTimestampFormat
-    archivePrefix
-    preserveSymlinks
-    ;
+    # -- Destination
+    destinationRoot = paths.darwin.backups.apps;
+    destinationSegments = [ "better-finder-attributes" ];
+
+    commandName = "better-attributes-backup";
+
+    # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    applicationSupportEntries = {
+      applicationSupportPaths = [
+        {
+          sourcePath = "A Better Finder Attributes 7";
+          destinationPath = "app-support/A Better Finder Attributes 7";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    preferenceEntries = {
+      preferencePaths = [
+        {
+          sourcePath = "net.publicspace.abfa7.plist";
+          destinationPath = "net.publicspace.abfa7.plist";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    configEntries = {
+      configPaths = [ ];
+
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    additionalSources = {
+      additionalPaths = [
+        # {
+        #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Better Finder Attributes";
+        #   destinationPath = "additional/Somewhere/Better Finder Attributes";
+        # }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "better-finder-attributes";
+    preserveSymlinks = true;
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
+    showProgress = true;
+  };
 }

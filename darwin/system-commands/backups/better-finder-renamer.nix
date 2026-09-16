@@ -1,93 +1,97 @@
 # darwin/system-commands/backups/better-finder-renamer.nix
 # A Better Finder Rename backup command: `better-renamer-backup`.
 
+{ paths, ... }:
+
 {
-  appBackupHelper,
-  config,
-  paths,
-  ...
-}:
+  services.backups.apps.better-finder-renamer = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.appBackups.enabled for this app.
+    enable = true;
 
-let
-  # ---- EDITABLE BACKUP CONTENTS
-  applicationSupportEntries = [
-    {
-      relativePath = "A Better Finder Rename 12";
-      destinationPath = "app-support/A Better Finder Rename 12";
-    }
-  ];
-  preferenceEntries = [
-    {
-      relativePath = "ABFR Registration";
-      destinationPath = "app-pref/ABFR Registration";
-    }
-    {
-      relativePath = "net.publicspace.abfr12.plist";
-      destinationPath = "app-pref/net.publicspace.abfr12.plist";
-    }
-  ];
-  configEntries = [
-    # { relativePath = "better-finder-renamer"; destinationPath = "user-config/better-finder-renamer"; }
-  ];
-  additionalSources = [
-    # {
-    #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Better Finder Rename";
-    #   destinationPath = "additional/Somewhere/Better Finder Rename";
-    # }
-  ];
+    # ---- IDENTITY
+    appName = "A Better Finder Rename";
 
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
+    # ---- PATHS ---- #
 
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 25;
-  showProgress = true;
+    # -- Application Support
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
 
-  # ---- INDIVIDUAL ARCHIVE CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "better-finder-renamer";
-  preserveSymlinks = true;
+    # -- Preferences
+    preferencesRoot = paths.darwin.library.preferences;
 
-in
-appBackupHelper.mkAppBackup {
-  inherit config;
+    # -- Config
+    configRoot = paths.darwin.home.config;
 
-  appName = "A Better Finder Rename";
-  appSlug = "better-finder-renamer";
-  commandName = "better-renamer-backup";
-  inherit
-    automatic
-    automaticIntervalSeconds
-    minimumIntervalSeconds
-    cpuLimitPercent
-    showProgress
-    ;
-  inherit
-    applicationSupportEntries
-    preferenceEntries
-    configEntries
-    additionalSources
-    extraExcludePatterns
-    ;
-  applicationSupportRoot = paths.darwin.library.applicationSupport;
-  preferencesRoot = paths.darwin.library.preferences;
-  configRoot = paths.darwin.home.config;
-  inherit
-    archive
-    stageInDownloads
-    archiveFilenameTemplate
-    archiveTimestampFormat
-    archivePrefix
-    preserveSymlinks
-    ;
+    # -- Destination
+    destinationRoot = paths.darwin.backups.apps;
+    destinationSegments = [ "better-finder-renamer" ];
+
+    commandName = "better-renamer-backup";
+
+    # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    applicationSupportEntries = {
+      applicationSupportPaths = [
+        {
+          sourcePath = "A Better Finder Rename 12";
+          destinationPath = "app-support/A Better Finder Rename 12";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    preferenceEntries = {
+      preferencePaths = [
+        {
+          sourcePath = "ABFR Registration";
+          destinationPath = "pref/ABFR Registration";
+        }
+        {
+          sourcePath = "net.publicspace.abfr12.plist";
+          destinationPath = "pref/net.publicspace.abfr12.plist";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    configEntries = {
+      configPaths = [ ];
+
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    additionalSources = {
+      additionalPaths = [
+        # {
+        #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Better Finder Rename";
+        #   destinationPath = "additional/Somewhere/Better Finder Rename";
+        # }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "better-finder-renamer";
+    preserveSymlinks = true;
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
+    showProgress = true;
+  };
 }

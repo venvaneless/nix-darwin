@@ -67,7 +67,6 @@ let
       from typing import Any
       from urllib.parse import quote
 
-
       DEFAULT_PLUGINS_DIR = Path(
           "${backupPaths.obsidianExtensions}/"
       )
@@ -161,7 +160,6 @@ let
 
       BATCH_FAILURES: list[str] = []
 
-
       def is_blocked_download_name(value: str) -> bool:
           filename = Path(value).name.casefold()
           filename_stem = filename.rsplit(".", 1)[0]
@@ -203,7 +201,6 @@ let
               for blocked_name in BLOCKED_DOWNLOAD_NAMES
           )
 
-
       @dataclass(frozen=True)
       class LibraryType:
           label: str
@@ -211,7 +208,6 @@ let
           payload_file: str
           optional_files: tuple[str, ...]
           is_theme: bool = False
-
 
       @dataclass(frozen=True)
       class LibraryEntry:
@@ -250,7 +246,6 @@ let
                   return "archived"
               return ""
 
-
       @dataclass(frozen=True)
       class ThemeRemoteFile:
           source_name: str
@@ -258,13 +253,11 @@ let
           release_asset: dict[str, Any] | None = None
           repository_path: str | None = None
 
-
       @dataclass(frozen=True)
       class ThemeSource:
           location: str
           version_label: str | None
           files: tuple[ThemeRemoteFile, ...]
-
 
       @dataclass(frozen=True)
       class CheckResult:
@@ -274,7 +267,6 @@ let
           message: str = ""
           release: dict[str, Any] | None = None
           theme_source: ThemeSource | None = None
-
 
       # These files are updated from a release/theme source and must not be
       # overwritten through the optional repository-file refresh. data.json is
@@ -288,19 +280,15 @@ let
           "theme.css",
       }
 
-
       def print_heading(text: str) -> None:
           print()
           print(f"== {text} ==")
 
-
       def fail(message: str) -> None:
           print(f"Error: {message}", file=sys.stderr)
 
-
       def error_log_path() -> Path:
           return Path(os.environ.get("OBSIDIAN_LIBRARY_DOWNLOADS_DIR", DEFAULT_DOWNLOADS_DIR)) / "obsidian-library-errors.log"
-
 
       def report_error(message: str) -> None:
           BATCH_FAILURES.append(message)
@@ -311,7 +299,6 @@ let
                   error_log.write(f"Error: {message}\n")
           except OSError as error:
               fail(f"could not save the error log: {error}")
-
 
       def write_batch_failure_report(library_type: LibraryType) -> None:
           if not BATCH_FAILURES:
@@ -328,10 +315,8 @@ let
               return
           print(f"Batch failure report: {report}")
 
-
       def run(command: list[str], *, text: bool = True) -> subprocess.CompletedProcess[Any]:
           return subprocess.run(command, capture_output=True, text=text, check=False)
-
 
       def gh_value(endpoint: str) -> Any:
           completed = run([GH_BIN, "api", endpoint])
@@ -346,13 +331,11 @@ let
 
           return response
 
-
       def gh_json(endpoint: str) -> dict[str, Any]:
           response = gh_value(endpoint)
           if not isinstance(response, dict):
               raise RuntimeError(f"GitHub returned an unexpected response for {endpoint}")
           return response
-
 
       def gh_list(endpoint: str) -> list[dict[str, Any]]:
           response = gh_value(endpoint)
@@ -360,16 +343,13 @@ let
               raise RuntimeError(f"GitHub returned an unexpected response for {endpoint}")
           return response
 
-
       def repository_contents_endpoint(repository: str, repository_path: str) -> str:
           # GitHub API endpoints require reserved path characters to be encoded,
           # while directory separators must remain literal path separators.
           return f"repos/{repository}/contents/{quote(repository_path, safe='/')}"
 
-
       def repository_field(library_type: LibraryType) -> str:
           return THEME_URL_FIELD if library_type.is_theme else PLUGIN_URL_FIELD
-
 
       def github_repository_from_url(value: Any) -> str | None:
           if not isinstance(value, str):
@@ -383,7 +363,6 @@ let
               return None
           return f"{match.group(1)}/{match.group(2).removesuffix('.git')}"
 
-
       def manifest_repository(directory: Path, library_type: LibraryType) -> str | None:
           try:
               manifest = json.loads(manifest_file(directory).read_text(encoding="utf-8"))
@@ -392,7 +371,6 @@ let
           if not isinstance(manifest, dict):
               return None
           return github_repository_from_url(manifest.get(repository_field(library_type)))
-
 
       def manifest_status(directory: Path) -> tuple[bool, bool]:
           try:
@@ -407,7 +385,6 @@ let
               manifest.get(ABANDONED_FIELD) in {True, "yes"},
               manifest.get(ARCHIVED_FIELD) in {True, "yes"},
           )
-
 
       def write_manifest_fields(manifest_path: Path, fields: dict[str, Any]) -> None:
           if manifest_path.is_symlink():
@@ -428,7 +405,6 @@ let
               staging.unlink(missing_ok=True)
               raise
 
-
       def create_theme_manifest(manifest_path: Path, repository: str, theme_name: str) -> None:
           owner = repository.split("/", 1)[0]
 
@@ -445,7 +421,6 @@ let
               json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
               encoding="utf-8",
           )
-
 
       def repository_package_metadata(repository: str) -> dict[str, Any]:
           # A missing package manifest is normal for many Obsidian projects.
@@ -466,7 +441,6 @@ let
               return {}
 
           return metadata if isinstance(metadata, dict) else {}
-
 
       def create_plugin_manifest(manifest_path: Path, repository: str, folder_name: str) -> None:
           metadata = repository_package_metadata(repository)
@@ -513,7 +487,6 @@ let
               staging.unlink(missing_ok=True)
               raise
 
-
       def set_manifest_repository(manifest_path: Path, library_type: LibraryType, repository: str) -> None:
           fields = {
               repository_field(library_type): f"https://github.com/{repository}",
@@ -521,7 +494,6 @@ let
           if library_type.is_theme:
               fields["name"] = manifest_path.parent.name
           write_manifest_fields(manifest_path, fields)
-
 
       def mark_repository_status(entry: LibraryEntry, field: str) -> str:
           try:
@@ -534,7 +506,6 @@ let
           except RuntimeError as error:
               return f"; could not save {field}: {error}"
           return ""
-
 
       def local_files_named(directory: Path, names: tuple[str, ...]) -> list[Path]:
           # Preserve the user's existing hierarchy. Core and optional files may
@@ -577,7 +548,6 @@ let
 
           return found
 
-
       def existing_core_file(directory: Path, filename: str) -> Path:
           # A theme may legitimately use obsidian.css instead of theme.css.
           matches = local_files_named(directory, (filename,))
@@ -589,13 +559,11 @@ let
                   return legacy_matches[0]
           return directory / filename
 
-
       def manifest_file(directory: Path) -> Path:
           matches = local_files_named(directory, (MANIFEST_FILE,))
           if matches:
               return matches[0]
           return directory / "repo" / MANIFEST_FILE
-
 
       def manifest_metadata(directory: Path) -> tuple[str, str, str, str | None, bool]:
           source = manifest_file(directory)
@@ -631,7 +599,6 @@ let
 
           return identifier, author, description, optional_manifest_version(source), False
 
-
       def manifest_version(manifest_file: Path) -> str:
           try:
               manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
@@ -644,7 +611,6 @@ let
 
           return version.strip()
 
-
       def optional_manifest_version(manifest_file: Path) -> str | None:
           if not manifest_file.is_file():
               return None
@@ -653,7 +619,6 @@ let
               return manifest_version(manifest_file)
           except RuntimeError:
               return None
-
 
       def library_entries(library_type: LibraryType) -> list[LibraryEntry]:
           if not library_type.root.is_dir():
@@ -686,7 +651,6 @@ let
 
           return entries
 
-
       def latest_release(repository: str, cache: dict[str, dict[str, Any] | Exception]) -> dict[str, Any]:
           cached = cache.get(repository)
           if isinstance(cached, Exception):
@@ -703,7 +667,6 @@ let
           cache[repository] = release
           return release
 
-
       def release_assets(release: dict[str, Any]) -> dict[str, dict[str, Any]]:
           assets = release.get("assets")
           if not isinstance(assets, list):
@@ -717,7 +680,6 @@ let
               and isinstance(asset.get("id"), int)
               and not is_blocked_download_name(asset["name"])
           }
-
 
       def download_asset(repository: str, asset: dict[str, Any], destination: Path) -> None:
           asset_id = asset.get("id")
@@ -739,7 +701,6 @@ let
               raise RuntimeError(detail or f"could not download release asset {asset.get('name')}")
 
           destination.write_bytes(completed.stdout)
-
 
       def download_repository_file(repository: str, repository_path: str, destination: Path) -> None:
           metadata = gh_json(
@@ -775,7 +736,6 @@ let
                   f"downloaded repository file is empty: {repository_path}"
               )
 
-
       def find_matching_file(
           root: Path,
           filename: str,
@@ -800,7 +760,6 @@ let
                   continue
 
           return None
-
 
       def download_repository_readme(
           repository: str,
@@ -885,7 +844,6 @@ let
           return is_nonempty_file(
               destination
           )
-
 
       def download_repository_documentation(
               repository: str,
@@ -1158,7 +1116,6 @@ let
                   use_repository_subfolder,
               )
 
-
       def move_readme_to_repo_when_needed(
           directory: Path,
           downloaded: list[str],
@@ -1223,7 +1180,6 @@ let
           except OSError:
               pass
 
-
       def download_plugin_release_data(
           repository: str,
           assets: dict[str, dict[str, Any]],
@@ -1252,13 +1208,11 @@ let
 
           return [destination_name]
 
-
       def is_nonempty_file(path: Path) -> bool:
           try:
               return path.is_file() and path.stat().st_size > 0
           except OSError:
               return False
-
 
       def replace_file_if_changed(source: Path, destination: Path) -> bool:
           # Updates replace a file in place and never rearrange the entry.
@@ -1281,7 +1235,6 @@ let
               staging.unlink(missing_ok=True)
               raise
           return True
-
 
       # Normalize selected documentation and preview downloads after every
       # source has been staged, without replacing files that already exist.
@@ -1692,7 +1645,6 @@ let
               for file in files_below(directory)
           ]
 
-
       def manifest_is_valid(manifest_file: Path) -> bool:
           # Formatting is deliberately unrestricted: compact, tab-indented,
           # space-indented, CRLF, and trailing blank lines are all valid JSON.
@@ -1703,12 +1655,10 @@ let
 
           return isinstance(manifest, dict)
 
-
       def javascript_is_valid(script_file: Path) -> bool:
           if not is_nonempty_file(script_file) or script_file.is_symlink():
               return False
           return run([NODE_BIN, "--check", str(script_file)]).returncode == 0
-
 
       def stylesheet_is_valid(stylesheet_file: Path) -> bool:
           # CSS has no built-in parser in Python. This rejects the structural
@@ -1732,7 +1682,6 @@ let
           """
           return run([NODE_BIN, "-e", checker, str(stylesheet_file)]).returncode == 0
 
-
       def plugin_core_is_healthy(directory: Path) -> bool:
           stylesheet = directory / "styles.css"
           return (
@@ -1741,18 +1690,15 @@ let
               and (not stylesheet.exists() or stylesheet_is_valid(stylesheet))
           )
 
-
       def theme_core_is_healthy(directory: Path) -> bool:
           return (
               manifest_is_valid(directory / MANIFEST_FILE)
               and stylesheet_is_valid(directory / "theme.css")
           )
 
-
       def image_names(filenames: list[str]) -> list[str]:
           image_suffixes = {".gif", ".jpeg", ".jpg", ".png", ".webp"}
           return sorted(filename for filename in filenames if Path(filename).suffix.casefold() in image_suffixes)
-
 
       def theme_release_source(
           release: dict[str, Any],
@@ -1803,7 +1749,6 @@ let
               tuple(files),
           )
 
-
       def repository_files(
           repository: str,
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
@@ -1846,7 +1791,6 @@ let
 
           return cached
 
-
       def repository_root_files(
           repository: str,
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
@@ -1859,7 +1803,6 @@ let
               )
               if "/" not in item["path"]
           }
-
 
       def repository_file_path(
           repository: str,
@@ -1875,7 +1818,6 @@ let
               return None
           return next((path for path in matches if "/" not in path), matches[0])
 
-
       def existing_regular_files(directory: Path) -> list[Path]:
           # Only consider real files that already belong to this entry. This
           # never creates a folder or follows a symlink while refreshing files.
@@ -1890,7 +1832,6 @@ let
               ]
           except OSError:
               return []
-
 
       def matching_repository_file(
           entry: LibraryEntry,
@@ -1926,7 +1867,6 @@ let
           ]
           return name_matches[0] if len(name_matches) == 1 else None
 
-
       def existing_repository_updates(
           entry: LibraryEntry,
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
@@ -1955,7 +1895,6 @@ let
 
           return changed
 
-
       def update_existing_repository_files(
           entry: LibraryEntry,
           temporary_path: Path,
@@ -1981,14 +1920,12 @@ let
                   print(f"[SKIP] {entry.label}: could not refresh {remote_path}: {error}")
           return changed
 
-
       def normalized_image_match_name(value: str) -> str:
           return re.sub(
               r"[^0-9a-z]+",
               "",
               value.casefold(),
           )
-
 
       def is_theme_image_path(
           repository: str,
@@ -2061,7 +1998,6 @@ let
 
           return False
 
-
       def repository_theme_images(
           repository: str,
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
@@ -2098,7 +2034,6 @@ let
               )
 
           return files
-
 
       def theme_repository_source(
           repository: str,
@@ -2171,7 +2106,6 @@ let
               tuple(files),
           )
 
-
       def release_theme_source_with_repository_files(
           repository: str,
           source: ThemeSource,
@@ -2236,7 +2170,6 @@ let
               tuple(files),
           )
 
-
       def theme_source(
           repository: str,
           release_cache: dict[str, dict[str, Any] | Exception],
@@ -2251,7 +2184,6 @@ let
               pass
 
           return theme_repository_source(repository, repository_contents_cache)
-
 
       def download_theme_file(
           repository: str,
@@ -2340,7 +2272,6 @@ let
               f"theme source file {remote_file.source_name} is incomplete"
           )
 
-
       def release_manifest(
           entry: LibraryEntry,
           release: dict[str, Any],
@@ -2371,7 +2302,6 @@ let
           cache[cache_key] = (version, cached_manifest)
           return cache[cache_key]
 
-
       def compare_versions(local_version: str, remote_version: str) -> int | None:
           if local_version == remote_version:
               return 0
@@ -2399,7 +2329,6 @@ let
               return 0
           return 1 if local[1] else -1
 
-
       def check_plugin_entry(
           entry: LibraryEntry,
           release_cache: dict[str, dict[str, Any] | Exception],
@@ -2422,7 +2351,6 @@ let
           if comparison == 1:
               return CheckResult(entry, "LOCAL VERSION NEWER", remote_version, release=release)
           return CheckResult(entry, "VERSION DIFFERENT", remote_version, release=release)
-
 
       def theme_files_match(entry: LibraryEntry, source: ThemeSource) -> bool:
           # Images, snippets, and README are optional library material. Their
@@ -2449,7 +2377,6 @@ let
 
           return True
 
-
       def theme_remote_version(entry: LibraryEntry, source: ThemeSource) -> str:
           # A release tag is the best repository version. Repository-only
           # themes use their manifest version when one is available.
@@ -2472,7 +2399,6 @@ let
               download_theme_file(entry.repository, remote_manifest, staged_manifest)
               return optional_manifest_version(staged_manifest) or source.location
 
-
       def check_theme_entry(
           entry: LibraryEntry,
           release_cache: dict[str, dict[str, Any] | Exception],
@@ -2488,7 +2414,6 @@ let
           if matches:
               return CheckResult(entry, "UP TO DATE", remote_version, theme_source=source)
           return CheckResult(entry, "UPDATE AVAILABLE", remote_version, theme_source=source)
-
 
       def check_entry(
           entry: LibraryEntry,
@@ -2568,7 +2493,6 @@ let
 
           return source_result
 
-
       def show_checks(
           entries: list[LibraryEntry],
           release_cache: dict[str, dict[str, Any] | Exception],
@@ -2585,7 +2509,6 @@ let
               if result.status == "UNAVAILABLE":
                   report_error(f"Checking {entry.library_type.label.lower()} '{entry.label}' failed: {result.message}")
           return results
-
 
       def check_results(
           entries: list[LibraryEntry],
@@ -2635,7 +2558,6 @@ let
           print()
           return [result for result in results if result is not None]
 
-
       def offer_updates(
           results: list[CheckResult],
           release_cache: dict[str, dict[str, Any] | Exception],
@@ -2657,7 +2579,6 @@ let
           for result in updateable:
               update_entry(result, release_cache, manifest_cache, repository_contents_cache)
 
-
       def updateable_results(results: list[CheckResult], library_type: LibraryType) -> list[CheckResult]:
           if library_type.is_theme:
               allowed_statuses = {"UPDATE AVAILABLE"}
@@ -2670,11 +2591,9 @@ let
               if result.entry.library_type == library_type and result.status in allowed_statuses
           ]
 
-
       ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
       ANSI_UPDATE = "\x1b[32m"
       ANSI_RESET = "\x1b[0m"
-
 
       def update_result_row(result: CheckResult) -> str:
           # The interactive list intentionally contains only entries that can
@@ -2692,10 +2611,8 @@ let
               status = f"{ANSI_UPDATE}{status}{ANSI_RESET}"
           return f"{result.entry.label}\t{result.entry.version_label}\t{remote_version}\t{status}"
 
-
       def plain_fzf_row(row: str) -> str:
           return ANSI_ESCAPE.sub("", row)
-
 
       def update_selected_results(
           results: list[CheckResult],
@@ -2737,7 +2654,6 @@ let
           for result in selected_results:
               update_entry(result, release_cache, manifest_cache, repository_contents_cache)
 
-
       def update_all_results(
           results: list[CheckResult],
           library_type: LibraryType,
@@ -2763,7 +2679,6 @@ let
           for result in updateable:
               update_entry(result, release_cache, manifest_cache, repository_contents_cache)
 
-
       def check_library_type(
           library_type: LibraryType,
           release_cache: dict[str, dict[str, Any] | Exception],
@@ -2778,7 +2693,6 @@ let
 
           print(f"Checking {len(entries)} {library_type.label.lower()} for updates…")
           return check_results(entries, release_cache, manifest_cache, repository_contents_cache)
-
 
       def manage_updates(
           library_types: tuple[LibraryType, ...],
@@ -2830,7 +2744,6 @@ let
                   repository_contents_cache,
               )
 
-
       def archive_status(entry: LibraryEntry) -> None:
           if entry.repository is None:
               print(f"[SKIP] {entry.label}: {repository_field(entry.library_type)} is missing or has no GitHub URL")
@@ -2853,7 +2766,6 @@ let
               return
           status = "ARCHIVED" if archived else "ACTIVE"
           print(f"[{status}] {entry.library_type.label}: {entry.label} ({entry.repository})")
-
 
       def update_plugin_entry(
           result: CheckResult,
@@ -2922,7 +2834,6 @@ let
 
           changed = ", ".join(replaced) if replaced else "no changed existing files"
           print(f"[UPDATED] {entry.label}: {entry.version_label} -> {result.remote_version} ({changed})")
-
 
       def write_theme_source(
           directory: Path,
@@ -3020,7 +2931,6 @@ let
 
           return normalize_download_layout(directory)
 
-
       def update_theme_entry(
           result: CheckResult,
           release_cache: dict[str, dict[str, Any] | Exception],
@@ -3078,7 +2988,6 @@ let
           changed = ", ".join(replaced) if replaced else "no changed existing files"
           print(f"[UPDATED] {entry.label}: {entry.version_label} -> {result.remote_version} ({changed})")
 
-
       def update_entry(
           result: CheckResult,
           release_cache: dict[str, dict[str, Any] | Exception],
@@ -3089,7 +2998,6 @@ let
               update_theme_entry(result, release_cache, repository_contents_cache)
               return
           update_plugin_entry(result, release_cache, manifest_cache, repository_contents_cache)
-
 
       def select_release(repository: str) -> dict[str, Any] | None:
           try:
@@ -3123,7 +3031,6 @@ let
               if choice == "Latest release":
                   return available[0] if available else None
               return next((release for release in available if release.get("tag_name") == choice), None)
-
 
       def download_another_version(
           entry: LibraryEntry,
@@ -3230,7 +3137,6 @@ let
               return
           print(f"[DOWNLOADED] {entry.label}: {tag} -> {destination.name}")
 
-
       def github_repository_from_value(value: str) -> str:
           matches = re.findall(
               r"(?i)(?:https?://)?(?:www[.])?github[.]com[/:]([A-Za-z0-9][A-Za-z0-9-]*)/([A-Za-z0-9_.-]+)(?:[/?#>\s]|$)",
@@ -3244,7 +3150,6 @@ let
           if match is None:
               raise RuntimeError("provide a GitHub repository URL or owner/repository")
           return f"{match.group(1)}/{match.group(2).removesuffix('.git')}"
-
 
       def theme_display_name(value: str, fallback: str) -> str:
           generic_names = {
@@ -3301,7 +3206,6 @@ let
 
           raise RuntimeError("theme name cannot produce a folder name")
 
-
       def repository_fallback_name(repository: str) -> str:
           repository_name = repository.rsplit(
               "/",
@@ -3338,7 +3242,6 @@ let
               )
 
           return fallback_name
-
 
       def theme_identifier(repository: str, source: ThemeSource) -> str:
           manifest = next(
@@ -3382,13 +3285,11 @@ let
               repository
           )
 
-
       def theme_folder_name(repository: str, source: ThemeSource) -> str:
           return theme_display_name(
               theme_identifier(repository, source),
               repository_fallback_name(repository),
           )
-
 
       def plugin_folder_name(
           manifest_file: Path,
@@ -3425,7 +3326,6 @@ let
           return repository_fallback_name(
               repository
           )
-
 
       def download_plugin(
           library_type: LibraryType,
@@ -3636,7 +3536,6 @@ let
           action = "REDOWNLOADED" if refresh_existing_plugin else "DOWNLOADED"
           print(f"[{action}] Plugin: {folder_name} ({', '.join(downloaded)})")
 
-
       def download_theme(
           library_type: LibraryType,
           repository_value: str,
@@ -3712,7 +3611,6 @@ let
           action = "REDOWNLOADED" if refresh_existing_theme else "DOWNLOADED"
           print(f"[{action}] Theme: {folder_name} ({source.location}; {', '.join(downloaded)})")
 
-
       def repositories_from_list_file(path: Path, library_type: LibraryType) -> list[str]:
           repositories: list[str] = []
           active_section = "all"
@@ -3738,7 +3636,6 @@ let
 
           return repositories
 
-
       def repository_from_source_folder(path: Path, library_type: LibraryType) -> str:
           source_manifest = manifest_file(path)
           repository = manifest_repository(path, library_type)
@@ -3760,7 +3657,6 @@ let
 
           raise RuntimeError(f"{path}: could not resolve a GitHub repository from manifest metadata")
 
-
       def repositories_from_value(value: str, library_type: LibraryType) -> list[str]:
           path = Path(value).expanduser()
           if path.is_file():
@@ -3779,7 +3675,6 @@ let
                   return repositories
               raise RuntimeError(f"{path}: contains no usable plugin or theme source folders")
           return [github_repository_from_value(value)]
-
 
       def download_values(
           library_type: LibraryType,
@@ -3806,7 +3701,6 @@ let
           if len(values) > 1 or any(Path(value).is_file() or Path(value).is_dir() for value in values):
               write_batch_failure_report(library_type)
 
-
       def remove_entry(entry: LibraryEntry) -> None:
           expected_root = entry.library_type.root.resolve()
           try:
@@ -3828,7 +3722,6 @@ let
               return
 
           print(f"[TRASHED] {entry.label}")
-
 
       def fzf_select(
           lines: list[str],
@@ -3867,7 +3760,6 @@ let
 
           return [line for line in completed.stdout.splitlines() if line]
 
-
       def choose_entries(library_type: LibraryType) -> list[LibraryEntry]:
           try:
               entries = library_entries(library_type)
@@ -3892,7 +3784,6 @@ let
           selected = set(selected_rows)
           return [entry for entry, row in zip(entries, rows, strict=True) if row in selected]
 
-
       def choose_action(library_type: LibraryType) -> str | None:
           actions = [
               "Check for updates",
@@ -3903,7 +3794,6 @@ let
           ]
           selection = fzf_select(actions, f"{library_type.label.lower()} action> ", "Choose what to do with the selected entries.")
           return selection[0] if selection else None
-
 
       def manage_type(
           library_type: LibraryType,
@@ -3942,7 +3832,6 @@ let
 
               input("\nPress ENTER to return to the selection menu.")
 
-
       def all_entries(library_types: tuple[LibraryType, ...]) -> list[LibraryEntry]:
           entries: list[LibraryEntry] = []
           for library_type in library_types:
@@ -3952,11 +3841,9 @@ let
                   fail(str(error))
           return entries
 
-
       def audit_report_path() -> Path:
           stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
           return Path(os.environ.get("OBSIDIAN_LIBRARY_DOWNLOADS_DIR", DEFAULT_DOWNLOADS_DIR)) / f"obsidian-library-audit-{stamp}.txt"
-
 
       def audit_library(library_types: tuple[LibraryType, ...], remote: bool) -> None:
           lines = [f"Obsidian library audit ({'remote' if remote else 'local'})", ""]
@@ -4031,7 +3918,6 @@ let
                   if answer in {"y", "yes"}:
                       suffix = mark_repository_status(entry, field)
                       print(f"[{field}] {entry.label}{suffix}")
-
 
       def main() -> int:
           parser = argparse.ArgumentParser(description="Manage the local Obsidian plugin and theme library.")
@@ -4115,7 +4001,6 @@ let
           finally:
               for _, cached_manifest in manifest_cache.values():
                   shutil.rmtree(cached_manifest.parent, ignore_errors=True)
-
 
       if __name__ == "__main__":
           raise SystemExit(main())

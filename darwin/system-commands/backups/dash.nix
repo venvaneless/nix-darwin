@@ -1,101 +1,105 @@
 # darwin/system-commands/backups/dash.nix
 # Dash backup command: `dash-backup`.
 
+{ paths, ... }:
+
 {
-  appBackupHelper,
-  config,
-  paths,
-  ...
-}:
+  services.backups.apps.dash = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.appBackups.enabled for this app.
+    enable = true;
 
-let
-  # These entries resolve from applicationSupportDirectory. Add one entry for
-  # every Dash path stored in Application Support.
-  applicationSupportEntries = [
-    {
-      relativePath = "Dash";
-      destinationPath = "app-support/Dash";
-    }
-    {
-      relativePath = "com.kapeli.dash-setapp";
-      destinationPath = "app-support/com.kapeli.dash-setapp";
-    }
-  ];
-  # These entries resolve from preferencesDirectory. Add one entry for every
-  # Dash preference file or directory that should be backed up.
-  preferenceEntries = [
-    {
-      relativePath = "com.kapeli.dashdoc.plist";
-      destinationPath = "app-pref/com.kapeli.dashdoc.plist";
-    }
-    {
-      relativePath = "com.kapeli.dash-setapp.plist";
-      destinationPath = "app-pref/com.kapeli.dash-setapp.plist";
-    }
-  ];
-  configEntries = [
-    # { relativePath = "dash"; destinationPath = "user-config/dash"; }
-  ];
-  # Use this list for any additional absolute source outside the standard
-  # roots above; every item is copied to its own destinationPath.
-  additionalSources = [
-    # {
-    #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Dash";
-    #   destinationPath = "additional/Somewhere/Dash";
-    # }
-  ];
-
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
-
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 25;
-  showProgress = true;
-
-  # ---- INDIVIDUAL ARCHIVE CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "dash";
-  preserveSymlinks = true;
-
-  dashBackup = appBackupHelper.mkAppBackup {
-    inherit config;
+    # ---- IDENTITY
     appName = "Dash";
-    appSlug = "dash";
-    inherit
-      automatic
-      automaticIntervalSeconds
-      minimumIntervalSeconds
-      cpuLimitPercent
-      showProgress
-      ;
-    inherit
-      archive
-      stageInDownloads
-      archiveFilenameTemplate
-      archiveTimestampFormat
-      archivePrefix
-      preserveSymlinks
-      ;
-    inherit
-      applicationSupportEntries
-      preferenceEntries
-      configEntries
-      additionalSources
-      extraExcludePatterns
-      ;
+
+    # ---- PATHS ---- #
+
+    # -- Application Support
     applicationSupportRoot = paths.darwin.library.applicationSupport;
+
+    # -- Preferences
     preferencesRoot = paths.darwin.library.preferences;
+
+    # -- Config
     configRoot = paths.darwin.home.config;
+
+    # -- Destination
+    destinationRoot = paths.darwin.backups.apps;
+    destinationSegments = [ "dash" ];
+
+    # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    applicationSupportEntries = {
+      applicationSupportPaths = [
+        {
+          sourcePath = "Dash";
+          destinationPath = "app-support/Dash";
+
+          # Docsets and generated output are re-downloaded by Dash.
+          excludePatterns = [
+            "DocSets/"
+            "Docset Generator/"
+          ];
+        }
+        {
+          sourcePath = "com.kapeli.dash-setapp";
+          destinationPath = "app-support/com.kapeli.dash-setapp";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    preferenceEntries = {
+      preferencePaths = [
+        {
+          sourcePath = "com.kapeli.dashdoc.plist";
+          destinationPath = "pref/com.kapeli.dashdoc.plist";
+        }
+        {
+          sourcePath = "com.kapeli.dash-setapp.plist";
+          destinationPath = "pref/com.kapeli.dash-setapp.plist";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    configEntries = {
+      configPaths = [ ];
+
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    additionalSources = {
+      additionalPaths = [
+        # {
+        #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Dash";
+        #   destinationPath = "additional/Somewhere/Dash";
+        # }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "dash";
+    preserveSymlinks = true;
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
+    showProgress = true;
   };
-in
-dashBackup
+}

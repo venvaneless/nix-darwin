@@ -8,33 +8,6 @@
 
 { paths, ... }:
 
-let
-  # ---- EDITABLE BACKUP ROOTS
-  # ** Every backup root is read from options/paths.nix.
-  backupPaths = {
-    containerDirectory = paths.darwin.docker.data.root;
-    homeDirectory = paths.darwin.home.root;
-  };
-  containerDirectory = backupPaths.containerDirectory;
-
-  # ---- EDITABLE BACKUP PATHS
-  # These entries resolve from containerDirectory. Add as many Browsertrix
-  # directories or files as required, each with its archive destination.
-  containerEntries = [
-    {
-      relativePath = "browsertrix";
-      destinationPath = "browsertrix";
-    }
-  ];
-  # Use absolute sourcePath entries for data outside containerDirectory.
-  additionalSources = [
-    # {
-    #   sourcePath = "${backupPaths.homeDirectory}/Library/Somewhere/Browsertrix";
-    #   destinationPath = "additional/Somewhere/Browsertrix";
-    # }
-  ];
-  sourceEntries = containerEntries;
-in
 {
   services.backups.containers.browsertrix = {
     # ---- BACKUP TOGGLE
@@ -44,11 +17,30 @@ in
     # ---- IDENTITY
     appName = "Browsertrix";
 
-    # ---- SOURCE
-    # sourceEntries resolve from sourceRoot (the container-data root);
-    # additionalSources are absolute paths staged on top of them.
-    sourceRoot = containerDirectory;
-    inherit sourceEntries additionalSources;
+    # ---- PATHS ---- #
+
+    # -- Config
+    configRoot = paths.darwin.home.config;
+
+    # -- Containers
+    sourceRoot = paths.darwin.home.containers;
+
+    # -- Destination
+    destinationDir = paths.darwin.backups.perContainer.browsertrix.destination;
+
+    sourceEntries = [
+      {
+        sourcePath = "browsertrix";
+        destinationPath = "browsertrix";
+      }
+    ];
+
+    additionalSources = [
+      # {
+      #   sourcePath = [ "${paths.darwin.home.root}/Library/Somewhere/Browsertrix" ];
+      #   destinationPath = "additional/Somewhere/Browsertrix";
+      # }
+    ];
 
     # ---- INDIVIDUAL BACKUP CONTROLS
     archive = true;
@@ -57,13 +49,6 @@ in
     archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
     archivePrefix = "browsertrix";
     preserveSymlinks = true;
-
-    # ---- EDITABLE EXCLUSIONS
-    extraExcludePatterns = [
-      "sockets/"
-      "private/socket"
-      "*.sock"
-    ];
 
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;

@@ -17,9 +17,19 @@
     # ---- IDENTITY
     appName = "Vaultwarden";
 
-    # ---- SOURCE
-    # ** The source is defined centrally in options/paths.nix.
+    # ---- PATHS ---- #
+
+    # -- Config
+    configRoot = paths.darwin.home.config;
+
+    # -- Containers
+    sourceRoot = paths.darwin.home.containers;
+
+    # -- Container
     sourceDir = paths.darwin.docker.data.vaultwarden;
+
+    # -- Destination
+    destinationDir = paths.darwin.backups.perContainer.vaultwarden.destination;
 
     # ---- LIVE DATABASE
     # ** Vaultwarden writes to this database while it runs, so it is
@@ -32,7 +42,7 @@
     # here: it would bypass the live-database handling above.)
     additionalSources = [
       # {
-      #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Vaultwarden";
+      #   sourcePath = [ "${paths.darwin.home.root}/Library/Somewhere/Vaultwarden" ];
       #   destinationPath = "additional/Somewhere/Vaultwarden";
       # }
     ];
@@ -44,13 +54,6 @@
     archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
     archivePrefix = "vaultwarden";
     preserveSymlinks = true;
-
-    # ---- EDITABLE EXCLUSIONS
-    extraExcludePatterns = [
-      "sockets/"
-      "private/socket"
-      "*.sock"
-    ];
 
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;

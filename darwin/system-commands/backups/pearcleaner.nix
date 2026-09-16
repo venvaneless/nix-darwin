@@ -1,87 +1,93 @@
 # darwin/system-commands/backups/pearcleaner.nix
 # Pearcleaner backup command: `pearcleaner-backup`.
 
+{ paths, ... }:
+
 {
-  appBackupHelper,
-  config,
-  paths,
-  ...
-}:
+  services.backups.apps.pearcleaner = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.appBackups.enabled for this app.
+    enable = true;
 
-let
-  # ---- EDITABLE BACKUP CONTENTS
-  applicationSupportEntries = [
-    {
-      relativePath = "Pearcleaner";
-      destinationPath = "app-support/Pearcleaner";
-    }
-  ];
-  preferenceEntries = [
-    {
-      relativePath = "com.alienator88.Pearcleaner.plist";
-      destinationPath = "app-pref/com.alienator88.Pearcleaner.plist";
-    }
-    {
-      relativePath = "group.com.alienator88.Pearcleaner.plist";
-      destinationPath = "app-pref/group.com.alienator88.Pearcleaner.plist";
-    }
-  ];
-  configEntries = [
-    # { relativePath = "pearcleaner"; destinationPath = "user-config/pearcleaner"; }
-  ];
-  additionalSources = [ ];
-
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
-
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 25;
-  showProgress = true;
-
-  # ---- INDIVIDUAL ARCHIVE CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "pearcleaner";
-  preserveSymlinks = true;
-
-  pearcleanerBackup = appBackupHelper.mkAppBackup {
-    inherit config;
+    # ---- IDENTITY
     appName = "Pearcleaner";
-    appSlug = "pearcleaner";
-    inherit
-      automatic
-      automaticIntervalSeconds
-      minimumIntervalSeconds
-      cpuLimitPercent
-      showProgress
-      ;
-    inherit
-      archive
-      stageInDownloads
-      archiveFilenameTemplate
-      archiveTimestampFormat
-      archivePrefix
-      preserveSymlinks
-      ;
-    inherit
-      applicationSupportEntries
-      preferenceEntries
-      configEntries
-      additionalSources
-      extraExcludePatterns
-      ;
+
+    # ---- PATHS ---- #
+
+    # -- Application Support
     applicationSupportRoot = paths.darwin.library.applicationSupport;
+
+    # -- Preferences
     preferencesRoot = paths.darwin.library.preferences;
+
+    # -- Config
     configRoot = paths.darwin.home.config;
+
+    # -- Destination
+    destinationRoot = paths.darwin.backups.apps;
+    destinationSegments = [ "pearcleaner" ];
+
+    # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    applicationSupportEntries = {
+      applicationSupportPaths = [
+        {
+          sourcePath = "Pearcleaner";
+          destinationPath = "app-support/Pearcleaner";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    preferenceEntries = {
+      preferencePaths = [
+        {
+          sourcePath = "com.alienator88.Pearcleaner.plist";
+          destinationPath = "pref/com.alienator88.Pearcleaner.plist";
+        }
+        {
+          sourcePath = "group.com.alienator88.Pearcleaner.plist";
+          destinationPath = "pref/group.com.alienator88.Pearcleaner.plist";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    configEntries = {
+      configPaths = [ ];
+
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    additionalSources = {
+      additionalPaths = [
+        # {
+        #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/App";
+        #   destinationPath = "";
+        # }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "pearcleaner";
+    preserveSymlinks = true;
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
+    showProgress = true;
   };
-in
-pearcleanerBackup
+}

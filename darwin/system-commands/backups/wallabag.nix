@@ -17,16 +17,26 @@
     # ---- IDENTITY
     appName = "Wallabag";
 
-    # ---- SOURCE
-    # ** The source is defined centrally in options/paths.nix.
+    # ---- PATHS ---- #
+
+    # -- Config
+    configRoot = paths.darwin.home.config;
+
+    # -- Containers
+    sourceRoot = paths.darwin.home.containers;
+
+    # -- Container
     sourceDir = paths.darwin.docker.data.wallabag;
+
+    # -- Destination
+    destinationDir = paths.darwin.backups.perContainer.wallabag.destination;
 
     # ---- EDITABLE BACKUP PATHS
     # Absolute sourcePath entries for data outside sourceDir, staged on top
     # of the archive. Add as many as required.
     additionalSources = [
       # {
-      #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/Wallabag";
+      #   sourcePath = [ "${paths.darwin.home.root}/Library/Somewhere/Wallabag" ];
       #   destinationPath = "additional/Somewhere/Wallabag";
       # }
     ];
@@ -38,13 +48,6 @@
     archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
     archivePrefix = "wallabag";
     preserveSymlinks = true;
-
-    # ---- EDITABLE EXCLUSIONS
-    extraExcludePatterns = [
-      "sockets/"
-      "private/socket"
-      "*.sock"
-    ];
 
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;

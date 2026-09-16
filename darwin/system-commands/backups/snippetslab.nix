@@ -1,65 +1,78 @@
 # darwin/system-commands/backups/snippetslab.nix
 # SnippetsLab backup command: `snippetslab-backup`.
 
-{ appBackupHelper, config, paths, ... }:
+{ paths, ... }:
 
-let
-  # ---- SHARED PATHS ---- #
-  # macOS Library roots come from the centralized path definitions.
-  #
-  # ** SnippetsLab is sandboxed, so its data lives inside an Apple-managed
-  # ** app container. These entries are read-only backup sources; nothing
-  # ** here writes into the container.
-  # Sandbox container root for SnippetsLab
-  containerData = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library";
+{
+  services.backups.apps.snippetslab = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.appBackups.enabled for this app.
+    enable = true;
 
-  applicationSupportSources = [
-    {
-      sourcePath = "${containerData}/Application Support/Markdown Themes";
-      destinationPath = "assets/markdown-themes";
-    }
-    {
-      sourcePath = "${containerData}/Application Support/Themes";
-      destinationPath = "assets/themes";
-    }
-  ];
-  applicationPreferences = [
-    {
-      sourcePath = "${containerData}/Preferences/com.renfei.SnippetsLab.plist";
-      destinationPath = "com.renfei.SnippetsLab.plist";
-    }
-  ];
-  additionalSources = [ ];
-
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
-
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 25;
-  showProgress = true;
-
-  # ---- INDIVIDUAL ARCHIVE CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "snippetslab";
-  preserveSymlinks = true;
-
-  snippetslabBackup = appBackupHelper.mkAppBackup {
-    inherit config;
+    # ---- IDENTITY
     appName = "SnippetsLab";
-    appSlug = "snippetslab";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-    inherit applicationSupportSources applicationPreferences additionalSources extraExcludePatterns;
+
+    # ---- PATHS ---- #
+
+    # -- Destination
+    destinationRoot = paths.darwin.backups.apps;
+    destinationSegments = [ "snippetslab" ];
+
+    # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    applicationSupportSources = {
+      applicationSupportPaths = [
+        {
+          sourcePath = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library/Application Support/Markdown Themes";
+          destinationPath = "assets/markdown-themes";
+        }
+        {
+          sourcePath = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library/Application Support/Themes";
+          destinationPath = "assets/themes";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    applicationPreferences = {
+      preferencePaths = [
+        {
+          sourcePath = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library/Preferences/com.renfei.SnippetsLab.plist";
+          destinationPath = "com.renfei.SnippetsLab.plist";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    additionalSources = {
+      additionalPaths = [
+        # {
+        #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/App";
+        #   destinationPath = "";
+        # }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "snippetslab";
+    preserveSymlinks = true;
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
+    showProgress = true;
   };
-in
-snippetslabBackup
+}

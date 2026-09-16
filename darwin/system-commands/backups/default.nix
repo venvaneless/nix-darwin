@@ -30,6 +30,7 @@
     ./vaultwarden.nix
     ./vesktop.nix
     ./vlc.nix
+    ./vscode.nix
     ./wallabag.nix
     ./wezterm.nix
     ./yate.nix

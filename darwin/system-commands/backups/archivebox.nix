@@ -17,13 +17,19 @@
     # ---- IDENTITY
     appName = "ArchiveBox";
 
-    # ---- SOURCE
-    # ** The source is defined centrally in options/paths.nix.
-    #
-    # ** Destination and staging directories are registered under
-    # ** darwin.backups.perContainer in options/paths.nix and resolved
-    # ** from the slug. Change them there, not here.
+    # ---- PATHS ---- #
+
+    # -- Config
+    configRoot = paths.darwin.home.config;
+
+    # -- Containers
+    sourceRoot = paths.darwin.home.containers;
+
+    # -- Container
     sourceDir = paths.darwin.docker.data.archivebox;
+
+    # -- Destination
+    destinationDir = paths.darwin.backups.perContainer.archivebox.destination;
 
     # ---- LIVE DATABASE
     # ** ArchiveBox writes to this database while it runs, so it is
@@ -36,7 +42,7 @@
     # here: it would bypass the live-database handling above.)
     additionalSources = [
       # {
-      #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/ArchiveBox";
+      #   sourcePath = [ "${paths.darwin.home.root}/Library/Somewhere/ArchiveBox" ];
       #   destinationPath = "additional/Somewhere/ArchiveBox";
       # }
     ];
@@ -48,13 +54,6 @@
     archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
     archivePrefix = "archivebox";
     preserveSymlinks = true;
-
-    # ---- EDITABLE EXCLUSIONS
-    extraExcludePatterns = [
-      "sockets/"
-      "private/socket"
-      "*.sock"
-    ];
 
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;

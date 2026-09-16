@@ -1,79 +1,80 @@
 # darwin/system-commands/backups/espanso.nix
 # Espanso backup command: `espanso-backup`.
 
+{ paths, ... }:
+
 {
-  appBackupHelper,
-  config,
-  paths,
-  ...
-}:
+  services.backups.apps.espanso = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.appBackups.enabled for this app.
+    enable = true;
 
-let
-  # ---- EDITABLE BACKUP CONTENTS
-  configEntries = [
-    {
-      relativePath = "espanso";
-      destinationPath = "user-config/espanso";
-    }
-  ];
-  preferenceEntries = [
-    {
-      relativePath = "com.federicoterzi.espanso.plist";
-      destinationPath = "app-pref/com.federicoterzi.espanso.plist";
-    }
-  ];
-  additionalSources = [ ];
-
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
-
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 25;
-  showProgress = true;
-
-  # ---- INDIVIDUAL ARCHIVE CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "espanso";
-  preserveSymlinks = true;
-
-  espansoBackup = appBackupHelper.mkAppBackup {
-    inherit config;
+    # ---- IDENTITY
     appName = "Espanso";
-    appSlug = "espanso";
-    inherit
-      automatic
-      automaticIntervalSeconds
-      minimumIntervalSeconds
-      cpuLimitPercent
-      showProgress
-      ;
-    inherit
-      archive
-      stageInDownloads
-      archiveFilenameTemplate
-      archiveTimestampFormat
-      archivePrefix
-      preserveSymlinks
-      ;
-    inherit
-      configEntries
-      preferenceEntries
-      additionalSources
-      extraExcludePatterns
-      ;
-    applicationSupportRoot = paths.darwin.library.applicationSupport;
+
+    # ---- PATHS ---- #
+
+    # -- Preferences
     preferencesRoot = paths.darwin.library.preferences;
+
+    # -- Config
     configRoot = paths.darwin.home.config;
+
+    # -- Destination
+    destinationRoot = paths.darwin.backups.apps;
+    destinationSegments = [ "espanso" ];
+
+    # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    preferenceEntries = {
+      preferencePaths = [
+        {
+          sourcePath = "com.federicoterzi.espanso.plist";
+          destinationPath = "com.federicoterzi.espanso.plist";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    configEntries = {
+      configPaths = [
+        {
+          sourcePath = "espanso";
+          destinationPath = "config/espanso";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    additionalSources = {
+      additionalPaths = [
+        # {
+        #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/App";
+        #   destinationPath = "";
+        # }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "espanso";
+    preserveSymlinks = true;
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
+    showProgress = true;
   };
-in
-espansoBackup
+}

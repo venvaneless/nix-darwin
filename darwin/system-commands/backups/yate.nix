@@ -1,66 +1,80 @@
 # darwin/system-commands/backups/yate.nix
 # Yate backup command: `yate-backup`.
 
-{ appBackupHelper, config, paths, ... }:
+{ paths, ... }:
 
-let
-  # ---- EDITABLE BACKUP ROOTS
-  backupPaths = {
-    applicationSupportDirectory = paths.darwin.library.applicationSupport;
-    preferencesDirectory = paths.darwin.library.preferences;
-    configDirectory = paths.darwin.home.config;
-  };
-  applicationSupportDirectory = backupPaths.applicationSupportDirectory;
-  preferencesDirectory = backupPaths.preferencesDirectory;
-  configDirectory = backupPaths.configDirectory;
+{
+  services.backups.apps.yate = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.appBackups.enabled for this app.
+    enable = true;
 
-  # ---- EDITABLE BACKUP CONTENTS
-  applicationSupportEntries = [
-    {
-      relativePath = "Yate/Backups";
-      destinationPath = "app-support/Yate/Backups";
-    }
-  ];
-  preferenceEntries = [
-    {
-      relativePath = "com.2manyrobots.Yate.plist";
-      destinationPath = "app-pref/com.2manyrobots.Yate.plist";
-    }
-  ];
-  additionalSources = [ ];
-
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
-
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 25;
-  showProgress = true;
-
-  # ---- INDIVIDUAL ARCHIVE CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "yate";
-  preserveSymlinks = true;
-
-  yateBackup = appBackupHelper.mkAppBackup {
-    inherit config;
+    # ---- IDENTITY
     appName = "Yate";
-    appSlug = "yate";
-    inherit automatic automaticIntervalSeconds minimumIntervalSeconds cpuLimitPercent showProgress;
-    inherit archive stageInDownloads archiveFilenameTemplate archiveTimestampFormat archivePrefix preserveSymlinks;
-    inherit applicationSupportEntries preferenceEntries additionalSources extraExcludePatterns;
-    applicationSupportRoot = applicationSupportDirectory;
-    preferencesRoot = preferencesDirectory;
-    configRoot = configDirectory;
+
+    # ---- PATHS ---- #
+
+    # -- Application Support
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
+
+    # -- Preferences
+    preferencesRoot = paths.darwin.library.preferences;
+
+    # -- Destination
+    destinationRoot = paths.darwin.backups.apps;
+    destinationSegments = [ "yate" ];
+
+    # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    applicationSupportEntries = {
+      applicationSupportPaths = [
+        {
+          sourcePath = "Yate/Backups";
+          destinationPath = "app-support/Yate/Backups";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    preferenceEntries = {
+      preferencePaths = [
+        {
+          sourcePath = "com.2manyrobots.Yate.plist";
+          destinationPath = "com.2manyrobots.Yate.plist";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    additionalSources = {
+      additionalPaths = [
+        # {
+        #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/App";
+        #   destinationPath = "";
+        # }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "yate";
+    preserveSymlinks = true;
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
+    showProgress = true;
   };
-in
-yateBackup
+}

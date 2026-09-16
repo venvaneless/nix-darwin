@@ -8,33 +8,6 @@
 
 { paths, ... }:
 
-let
-  # ---- EDITABLE BACKUP ROOTS
-  # ** Every backup root is read from options/paths.nix.
-  backupPaths = {
-    containerDirectory = paths.darwin.docker.data.root;
-    homeDirectory = paths.darwin.home.root;
-  };
-  containerDirectory = backupPaths.containerDirectory;
-
-  # ---- EDITABLE BACKUP PATHS
-  # These entries resolve from containerDirectory. Add every Karakeep data
-  # directory or file that should be included in the same backup.
-  containerEntries = [
-    {
-      relativePath = "karakeep";
-      destinationPath = "karakeep";
-    }
-  ];
-  # Use absolute sourcePath entries for data outside containerDirectory.
-  additionalSources = [
-    # {
-    #   sourcePath = "${backupPaths.homeDirectory}/Library/Somewhere/Karakeep";
-    #   destinationPath = "additional/Somewhere/Karakeep";
-    # }
-  ];
-  sourceEntries = containerEntries;
-in
 {
   services.backups.containers.karakeep = {
     # ---- BACKUP TOGGLE
@@ -44,11 +17,30 @@ in
     # ---- IDENTITY
     appName = "Karakeep";
 
-    # ---- SOURCE
-    # sourceEntries resolve from sourceRoot (the container-data root);
-    # additionalSources are absolute paths staged on top of them.
-    sourceRoot = containerDirectory;
-    inherit sourceEntries additionalSources;
+    # ---- PATHS ---- #
+
+    # -- Config
+    configRoot = paths.darwin.home.config;
+
+    # -- Containers
+    sourceRoot = paths.darwin.home.containers;
+
+    # -- Destination
+    destinationDir = paths.darwin.backups.perContainer.karakeep.destination;
+
+    sourceEntries = [
+      {
+        sourcePath = "karakeep";
+        destinationPath = "karakeep";
+      }
+    ];
+
+    additionalSources = [
+      # {
+      #   sourcePath = [ "${paths.darwin.home.root}/Library/Somewhere/Karakeep" ];
+      #   destinationPath = "additional/Somewhere/Karakeep";
+      # }
+    ];
 
     # ---- INDIVIDUAL BACKUP CONTROLS
     archive = true;
@@ -57,13 +49,6 @@ in
     archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
     archivePrefix = "karakeep";
     preserveSymlinks = true;
-
-    # ---- EDITABLE EXCLUSIONS
-    extraExcludePatterns = [
-      "sockets/"
-      "private/socket"
-      "*.sock"
-    ];
 
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;

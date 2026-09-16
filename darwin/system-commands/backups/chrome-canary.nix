@@ -1,87 +1,89 @@
 # darwin/system-commands/backups/chrome-canary.nix
 # Chrome Canary browser backup command: `chrome-canary-backup`.
 
+{ paths, ... }:
+
 {
-  appBackupHelper,
-  config,
-  paths,
-  ...
-}:
+  services.backups.apps.chrome-canary = {
+    # ---- BACKUP TOGGLE
+    # Overrides the global services.appBackups.enabled for this app.
+    enable = true;
 
-let
-  # ---- EDITABLE BACKUP CONTENTS
-  destinationSegments = [ "chrome-canary" ];
-  applicationSupportEntries = [
-    {
-      relativePath = "Google/Chrome Canary";
-      destinationPath = "app-support/Google/Chrome Canary";
-    }
-  ];
-  preferenceEntries = [
-    {
-      relativePath = "com.google.Chrome.canary.plist";
-      destinationPath = "app-pref/com.google.Chrome.canary.plist";
-    }
-  ];
-  configEntries = [
-    # { relativePath = "chrome-canary"; destinationPath = "user-config/chrome-canary"; }
-  ];
-  additionalSources = [
-    # { sourcePath = "/Users/ven/Library/Somewhere/Chrome Canary"; destinationPath = "additional/Chrome Canary"; }
-  ];
-
-  # ---- EDITABLE EXCLUSIONS
-  extraExcludePatterns = [
-    "sockets/"
-    "private/socket"
-    "*.sock"
-  ];
-
-  # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
-  automatic = false;
-  automaticIntervalSeconds = 86400;
-  minimumIntervalSeconds = 28800;
-  cpuLimitPercent = 25;
-  showProgress = true;
-
-  # ---- INDIVIDUAL ARCHIVE CONTROLS
-  archive = true;
-  stageInDownloads = true;
-  archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
-  archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
-  archivePrefix = "chrome-canary";
-  preserveSymlinks = true;
-  chromeCanaryBackup = appBackupHelper.mkAppBackup {
-    inherit config;
+    # ---- IDENTITY
     appName = "Chrome Canary";
-    appSlug = "chrome-canary";
-    inherit
-      automatic
-      automaticIntervalSeconds
-      minimumIntervalSeconds
-      cpuLimitPercent
-      showProgress
-      ;
-    inherit
-      archive
-      stageInDownloads
-      archiveFilenameTemplate
-      archiveTimestampFormat
-      archivePrefix
-      preserveSymlinks
-      ;
-    destinationRoot = "browserBackups";
-    inherit
-      destinationSegments
-      applicationSupportEntries
-      preferenceEntries
-      configEntries
-      additionalSources
-      extraExcludePatterns
-      ;
+
+    # ---- PATHS ---- #
+
+    # -- Application Support
     applicationSupportRoot = paths.darwin.library.applicationSupport;
+
+    # -- Preferences
     preferencesRoot = paths.darwin.library.preferences;
+
+    # -- Config
     configRoot = paths.darwin.home.config;
+
+    # -- Destination
+    destinationRoot = paths.darwin.backups.browsers;
+    destinationSegments = [ "chrome-canary" ];
+
+    # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    applicationSupportEntries = {
+      applicationSupportPaths = [
+        {
+          sourcePath = "Google/Chrome Canary";
+          destinationPath = "app-support/Google/Chrome Canary";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    preferenceEntries = {
+      preferencePaths = [
+        {
+          sourcePath = "com.google.Chrome.canary.plist";
+          destinationPath = "com.google.Chrome.canary.plist";
+        }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    configEntries = {
+      configPaths = [ ];
+
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths outside the roots above. Uncomment to add one.
+
+    additionalSources = {
+      additionalPaths = [
+        # {
+        #   sourcePath = "${paths.darwin.home.root}/Library/Somewhere/App";
+        #   destinationPath = "";
+        # }
+      ];
+
+      excludePatterns = [ ];
+    };
+
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
+    archive = true;
+    stageInDownloads = true;
+    archiveFilenameTemplate = "{timestamp}-{prefix}.tar";
+    archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
+    archivePrefix = "chrome-canary";
+    preserveSymlinks = true;
+
+    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    automatic = false;
+    automaticIntervalSeconds = 86400;
+    minimumIntervalSeconds = 28800;
+    cpuLimitPercent = 25;
+    showProgress = true;
   };
-in
-chromeCanaryBackup
+}
