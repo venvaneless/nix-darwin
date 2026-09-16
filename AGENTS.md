@@ -406,15 +406,34 @@ config = {
   # All values a user may reasonably change stay here. The option module
   # owns platform selection, validation, JSON rendering, and theme files.
 
-  cli.micro = {
+  home.shared.cli.micro = {
     # User-facing Micro knobs.
   };
 };
 ```
 
-Use the same `cli.<tool>` path for every CLI/TUI tool, for example
-`cli.atuin` and `cli.gh`. Do not put implementation details or option
+Use the same `home.shared.cli.<tool>` path for every CLI/TUI tool, for example
+`home.shared.cli.atuin` and `home.shared.cli.gh`. Do not put implementation details or option
 declarations in the shared knobs file.
+
+#### Option namespaces
+
+Namespaces say the scope first, then whether the values are shared or belong
+to one platform, then the purpose:
+
+```text
+system.shared.<purpose>       every machine, system scope
+system.darwin.<purpose>       macOS only, system scope
+home.shared.<purpose>         every machine, Home Manager
+home.darwin.<purpose>         macOS only, Home Manager
+system.sharedPackages         shared package groups
+home.sharedPackages           the same groups when installed by Home Manager
+```
+
+Examples in this repository: `system.shared.nix.settings`,
+`system.darwin.nix.settings`, `system.sharedPackages.mediaPackages`,
+`home.shared.cli.television`, `home.shared.terminal.wezterm`,
+`home.shared.espanso`, `home.darwin.services.unison`.
 
 #### System package namespaces
 
@@ -472,10 +491,10 @@ A file in `options/` declares the shape. A machine file assigns values.
 
 ```nix
 # options/services/documents-sync.nix — declares
-options.ven.services.documentsSync = lib.mkOption { ... };
+options.home.darwin.services.documentsSync = lib.mkOption { ... };
 
 # darwin/home/services.nix — assigns
-ven.services.documentsSync = {
+home.darwin.services.documentsSync = {
   enable = true;
   localDirectory = paths.darwin.home.documents;
 };
@@ -529,11 +548,11 @@ Both appear in one file in `darwin/home/services.nix`:
 ```nix
 { paths, ... }:                  # paths is read, so it must be an argument
 {
-  ven.services.unison = {                 # written: needs no argument
+  home.darwin.services.unison = {                 # written: needs no argument
     enable = true;                        # literal value
   };
 
-  ven.services.documentsSync = {          # written
+  home.darwin.services.documentsSync = {          # written
     localDirectory = paths.darwin.home.documents;   # read: needs paths
   };
 }
@@ -556,7 +575,7 @@ at all.
 A mistyped or unreachable name fails differently for each kind:
 
 ```text
-error: The option `ven.services.documentsSink` does not exist.
+error: The option `home.darwin.services.documentsSink` does not exist.
 ```
 
 ```text
