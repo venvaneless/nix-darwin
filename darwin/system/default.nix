@@ -24,9 +24,8 @@
         paths.darwin.applications.bundles.zed
         paths.darwin.applications.bundles.snippetsLab
 
-        # Launcher tile: opens the chatgpt Codex profile. It shares the real
-        # app's bundle identifier, so the running-dot stays on this tile.
-        paths.darwin.applications.bundles.codexChatgpt
+        # Codex: real app; profile comes from the login environment.
+        paths.darwin.applications.bundles.chatgpt
       ];
     };
   };
