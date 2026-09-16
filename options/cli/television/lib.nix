@@ -75,8 +75,8 @@ let
   '';
 
   # ---- CLIPBOARD ACTIONS ---- #
-  # macOS supplies pbcopy. Linux selects Wayland first, then X11, and
-  # reports a clear failure instead of claiming success without a display.
+  # macOS supplies pbcopy. Linux uses Wayland and reports a clear failure
+  # instead of attempting an unavailable X11 clipboard fallback.
   clipboardCopy = mkFishHelper "television-nix-copy-to-clipboard" (
     platforms.valueForCurrentPlatform {
       darwin = ''
@@ -86,29 +86,16 @@ let
       linux = ''
         set clipboard_text (string collect)
 
-        if test -n "$WAYLAND_DISPLAY"
-          if printf '%s' "$clipboard_text" | command wl-copy
-            exit 0
-          end
-
-          if not test -n "$DISPLAY"
-            echo "Television: Wayland clipboard copy failed and no X11 display is available." >&2
-            exit 1
-          end
-
-          echo "Television: Wayland clipboard copy failed; trying X11." >&2
-        end
-
-        if test -n "$DISPLAY"
-          if printf '%s' "$clipboard_text" | command xclip -selection clipboard
-            exit 0
-          end
-
-          echo "Television: X11 clipboard copy failed." >&2
+        if not test -n "$WAYLAND_DISPLAY"
+          echo "Television: clipboard unavailable; requires WAYLAND_DISPLAY." >&2
           exit 1
         end
 
-        echo "Television: clipboard unavailable; requires WAYLAND_DISPLAY or DISPLAY." >&2
+        if printf '%s' "$clipboard_text" | command wl-copy
+          exit 0
+        end
+
+        echo "Television: Wayland clipboard copy failed." >&2
         exit 1
       '';
     }
