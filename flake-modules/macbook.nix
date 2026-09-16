@@ -68,13 +68,13 @@ let
     lib = inputs.nixpkgs.lib;
     pkgs = macbookPkgs;
     paths = backupPaths;
-    inherit backupExcludeHelper;
+    inherit backupExcludeHelper platforms;
   };
   appBackupHelper = import ../options/backups/app-backup-helper.nix {
     lib = inputs.nixpkgs.lib;
     pkgs = macbookPkgs;
     paths = backupPaths;
-    inherit backupExcludeHelper;
+    inherit backupExcludeHelper platforms;
   };
 
 in

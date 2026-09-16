@@ -7,19 +7,9 @@
 # selection, and theme rendering live in options/cli/bat.
 # =====================================================================
 
-{ lib, ... }:
+{ ... }:
 
 {
-  # Every theme file in ./themes, so adding a theme is dropping a file in
-  # rather than editing a list. The selected theme remains a normal Bat knob.
-  imports =
-    let
-      themeFiles = lib.filterAttrs (
-        name: type: type == "regular" && lib.hasSuffix ".nix" name
-      ) (builtins.readDir ./themes);
-    in
-    map (name: ./themes + "/${name}") (lib.attrNames themeFiles);
-
   home.shared.cli.bat = {
     enable = true;
 

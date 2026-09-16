@@ -10,9 +10,8 @@
 { ... }:
 {
   imports = [
-    # Atuin's theme values.
-    ./atuin/themes/catppuccin-mocha-mauve.nix
-    ./atuin/themes/gruvbox-dark.nix
+    # Atuin settings and its themes
+    ./atuin
 
     # Bat settings and its themes
     ./bat
@@ -139,41 +138,6 @@
         };
       };
     };
-
-    # ------------------------------------------------------------
-    # ------ ATUIN SETTINGS ------ #
-    # Atuin implementation, platform selection, and theme files live in
-    # options/cli/atuin/default.nix. Exactly one theme may be enabled at a time.
-
-    home.shared.cli.atuin = {
-      enable = true;
-
-      installOn = {
-        darwin = true;
-        linux = true;
-      };
-
-      # One of the themes declared under ./atuin/themes.
-      theme = "gruvboxDark";
-
-      settings = {
-        enter_accept = true;
-
-        sync = {
-          # Keep Atuin sync-v2 records enabled for existing history data.
-          records = true;
-        };
-      };
-
-      fish = {
-        # Prevent Atuin from automatically taking over keybindings.
-        preventAutomaticKeybindings = true;
-
-        # Bind Ctrl-R to Atuin search.
-        searchBinding = "\\cr";
-      };
-    };
-
     # ------------------------------------------------------------
     # ------ TELEVISION SETTINGS ------ #
     # Television logic, rendering, and channel implementation live in
