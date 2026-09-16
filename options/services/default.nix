@@ -3,7 +3,8 @@
 # =====================================================================
 # OPTIONS: SERVICES
 #
-# Glue for service-related options.
+# Glue for service-related options. Loaded by Home Manager and by the
+# system; each service keeps its logic to one through platforms.nix.
 #
 # Individual files declare available options and built-in defaults.
 # Values set here with lib.mkDefault become global defaults while still
@@ -18,6 +19,7 @@
    ./obsidian-sync.nix
    ./documents-sync.nix
    ./startpage-logic.nix
+   ./restic.nix
   ];
 
   # ------------------------------------------------------------
