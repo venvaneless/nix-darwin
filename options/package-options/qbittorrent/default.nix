@@ -8,26 +8,9 @@
 # service is owned by qbit-service.nix and configured below desktop.service.
 # =====================================================================
 
-{
-  config,
-  lib,
-  packageOptions,
-  platforms,
-  symlinks ? null,
-  ...
-}:
+{ lib, ... }:
 
 let
-  cfg = config.ven.packages.qbittorrent;
-
-  # The package helper reads every field of each entry, and package,
-  # appName, and installOn have no defaults. Hosts that import this module
-  # without setting its knobs (NixOS today) must not hand it disabled entries.
-  enabledPackages = lib.filterAttrs (_: package: package.enable) {
-    qbittorrent = cfg.desktop;
-    qbittorrentCli = cfg.cli;
-  };
-
   cliPathOptions = platformName: {
     profileRoot = lib.mkOption {
       type = lib.types.str;
@@ -55,73 +38,82 @@ in
     ./qbit-service.nix
   ];
 
-  options.ven.packages.qbittorrent = {
-    desktop = {
-      enable = lib.mkEnableOption "qBittorrent Enhanced desktop client";
+  # Installed and linked by the mediaPackages group.
+  options.system.sharedPackages.mediaPackages = lib.mkOption {
+    type = lib.types.submodule ({ config, ... }: {
+      options.qbittorrent = {
+        desktop = {
+          enable = lib.mkOption {
+            type = lib.types.bool;
+            default = config.enable;
+            description = "Install the qBittorrent Enhanced desktop client. Defaults to its group.";
+          };
 
-      installOn = lib.mkOption {
-        type = lib.types.attrsOf lib.types.bool;
-        description = "Platforms on which qBittorrent Enhanced is installed.";
-      };
+          installOn = lib.mkOption {
+            type = lib.types.attrsOf lib.types.bool;
+            default = config.installOn;
+            description = "Platforms on which qBittorrent Enhanced is installed. Defaults to its group.";
+          };
 
-      package = lib.mkOption {
-        type = lib.types.package;
-        description = "qBittorrent Enhanced desktop package.";
-      };
+          package = lib.mkOption {
+            type = lib.types.package;
+            description = "qBittorrent Enhanced desktop package.";
+          };
 
-      appName = lib.mkOption {
-        type = lib.types.str;
-        description = "qBittorrent application bundle name.";
-      };
+          appName = lib.mkOption {
+            type = lib.types.str;
+            description = "qBittorrent application bundle name.";
+          };
 
-      symlinkTools = lib.mkOption {
-        type = lib.types.bool;
-        description = "Link qBittorrent into the Darwin Tools application category.";
-      };
-    };
-
-    cli = {
-      enable = lib.mkEnableOption "qBittorrent command-line client";
-
-      installOn = lib.mkOption {
-        type = lib.types.attrsOf lib.types.bool;
-        description = "Platforms on which qBittorrent CLI is installed.";
-      };
-
-      package = lib.mkOption {
-        type = lib.types.package;
-        description = "qBittorrent command-line client package.";
-      };
-
-      # Home paths differ per platform, so each platform gets its own set.
-      # Read them with platforms.valueForCurrentPlatform cfg.cli.paths.
-      paths = {
-        darwin = cliPathOptions "macOS";
-        linux = cliPathOptions "Linux";
-      };
-
-      settings = {
-        webuiPort = lib.mkOption {
-          type = lib.types.port;
-          description = "qBittorrent CLI Web UI port.";
+          symlinkTools = lib.mkOption {
+            type = lib.types.bool;
+            description = "Link qBittorrent into the Darwin Tools application category.";
+          };
         };
 
-        torrentingPort = lib.mkOption {
-          type = lib.types.port;
-          description = "qBittorrent CLI incoming torrent port.";
-        };
+        cli = {
+          enable = lib.mkOption {
+            type = lib.types.bool;
+            default = config.enable;
+            description = "Install the qBittorrent command-line client. Defaults to its group.";
+          };
 
-        webuiUsername = lib.mkOption {
-          type = lib.types.str;
-          description = "qBittorrent CLI Web UI user name.";
+          installOn = lib.mkOption {
+            type = lib.types.attrsOf lib.types.bool;
+            default = config.installOn;
+            description = "Platforms on which qBittorrent CLI is installed. Defaults to its group.";
+          };
+
+          package = lib.mkOption {
+            type = lib.types.package;
+            description = "qBittorrent command-line client package.";
+          };
+
+          # Home paths differ per platform, so each platform gets its own set.
+          # Read them with platforms.valueForCurrentPlatform cfg.cli.paths.
+          paths = {
+            darwin = cliPathOptions "macOS";
+            linux = cliPathOptions "Linux";
+          };
+
+          settings = {
+            webuiPort = lib.mkOption {
+              type = lib.types.port;
+              description = "qBittorrent CLI Web UI port.";
+            };
+
+            torrentingPort = lib.mkOption {
+              type = lib.types.port;
+              description = "qBittorrent CLI incoming torrent port.";
+            };
+
+            webuiUsername = lib.mkOption {
+              type = lib.types.str;
+              description = "qBittorrent CLI Web UI user name.";
+            };
+          };
         };
       };
-    };
-  };
-
-  config = packageOptions.mkPackageModule {
-    name = "qbittorrent";
-    packages = enabledPackages;
-    inherit symlinks;
+    });
   };
 }
