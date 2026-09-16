@@ -35,8 +35,8 @@ let
   };
 
   # ------------------------------------------------------------
-  # ------ NVALIDATE COMMAND SETTINGS ------ #
-  # nvalidate has configurable command parts. The alias declaration
+  # ------ DRB COMMAND SETTINGS ------ #
+  # drb has configurable command parts. The alias declaration
   # provides those defaults; this module owns the Fish rendering.
   # ------------------------------------------------------------
 
@@ -476,6 +476,36 @@ let
       if not test -d "$downloads_dir"
         echo "Downloads folder does not exist: $downloads_dir" >&2
         return 1
+      end
+
+      # Git flakes omit untracked paths. Accept only explicit,
+      # repository-relative paths so this helper never discovers or stages
+      # unrelated files. Intent-to-add keeps their contents unstaged while
+      # making them visible to the flake source.
+      if test (count $argv) -gt 0
+        if not command git -C "$flake_path" rev-parse --is-inside-work-tree >/dev/null 2>&1
+          echo "Flake path is not a Git worktree: $flake_path" >&2
+          return 1
+        end
+
+        for source_path in $argv
+          if string match -q -- '/*' "$source_path"; or contains -- .. (string split / -- "$source_path")
+            echo "drb accepts repository-relative paths only: $source_path" >&2
+            return 2
+          end
+
+          if not test -f "$flake_path/$source_path"
+            echo "New file does not exist below the flake path: $source_path" >&2
+            return 2
+          end
+        end
+
+        echo "Making supplied files visible to the Git-backed flake:"
+        command printf '%s\n' $argv
+
+        if not command git -C "$flake_path" add -N -- $argv
+          return $status
+        end
       end
 
       set -l configuration_type "${configurationType}"
@@ -1533,7 +1563,7 @@ in
           darwin = "${config.home.homeDirectory}/${paths.relative.downloads}";
           linux = "${config.home.homeDirectory}/${paths.relative.downloads}";
         };
-        description = "Directory where nvalidate writes its timestamped log on each platform.";
+        description = "Directory where drb writes its timestamped log on each platform.";
       };
 
       flakeInputGCRoots = lib.mkOption {

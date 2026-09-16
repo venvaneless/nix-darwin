@@ -63,25 +63,6 @@ let
       };
     };
 
-    # ---- Build the system configuration without activating it
-    ## Builds the system without switching generations
-    ##
-    ## ** --no-link keeps the build from dropping a result symlink in
-    ## ** whichever directory it was run from. The build still lands in the
-    ## ** store; only the symlink, which is a garbage-collection root, is
-    ## ** skipped. nvalidate builds the same way.
-    drb = {
-      command = {
-        darwin = "sudo -H darwin-rebuild build --no-link --flake ${nixAliasValues.flakePath.darwin}#${nixAliasValues.flakeHost}";
-        linux = "sudo -H nixos-rebuild build --no-link --flake ${nixAliasValues.flakePath.linux}#${nixAliasValues.flakeHost}";
-      };
-      enable = true;
-      installOn = {
-        darwin = true;
-        linux = true;
-      };
-    };
-
     # ---- Build + check-mode activation
     ## Tests the configuration without permanently switching generations
     rcheck = {
@@ -194,7 +175,12 @@ let
   functions = {
 
     # ---------------------------------------------------------
-    # ---- nvalidate -> Evaluate, build, and save the output ---- #
+    # ---- drb -> Evaluate, build, and save the output ---- #
+    #
+    # When given repository-relative new files, records only those paths
+    # with Git's intent-to-add before evaluating and building. This makes
+    # their working-tree contents visible to a Git-backed flake without
+    # staging their contents.
     #
     # Evaluates and then builds the current system without switching
     # generations or running activation.
@@ -207,9 +193,9 @@ let
     # the user's Downloads folder.
     # ---------------------------------------------------------
 
-    nvalidate = {
+    drb = {
       enable = true;
-      help = "Evaluate and build the Nix system configuration with a Downloads log";
+      help = "Optionally intent-add new files, then evaluate and build the Nix system with a Downloads log";
       installOn = {
         darwin = true;
         linux = true;
