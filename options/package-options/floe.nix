@@ -46,6 +46,7 @@ stdenvNoCC.mkDerivation rec {
       -q \
       "$src" \
       "Floe.app/*" \
+      -x "*/._*" \
       -d "$out/Applications"
 
     if [ ! -d "$out/Applications/Floe.app" ]; then
