@@ -7,7 +7,7 @@
   inputs,
   paths,
   pkgs,
-  platforms,
+  settingsOptions,
   ...
 }: {
   home-manager = {
@@ -37,6 +37,122 @@
       # ------------------------------------------------------------
       # Darwin Home Manager defaults
       # ------------------------------------------------------------
+
+      home.darwin.settings.global = {
+        # Appearance: uses Dark mode; false switches to Light.
+        darkMode = true;
+
+        # Scroll direction: uses traditional rather than natural scrolling.
+        naturalScrolling = false;
+
+        # Press and hold: repeats keys instead of showing accent popups.
+        pressAndHold = false;
+
+        # Key repeat speed: 15 ms steps; 2 = 30 ms (macOS fastest slider is 2).
+        keyRepeat = 2;
+
+        # Key repeat delay: 15 ms steps; 15 = 225 ms (macOS shortest slider is 15).
+        initialKeyRepeat = 15;
+
+        # Alert volume: mutes the alert sound; 0–100 percent.
+        beepVolume = 0;
+
+        # Volume feedback: no sound when changing the volume.
+        beepFeedback = false;
+      };
+
+      home.darwin.settings.trackpad = {
+        # Tap to click: disabled; clicks need a physical press.
+        tapToClick = false;
+
+        # Silent clicking: keeps the normal click sound.
+        silentClicking = false;
+
+        # Click pressure: Values: "Light", "Medium", "Firm".
+        clickPressure = "Medium";
+
+        # Force click: enabled.
+        forceClick = true;
+
+        # Force click pressure: Values: "Light", "Medium", "Firm".
+        forceClickPressure = "Medium";
+
+        # Haptic detents: enabled while force clicking.
+        hapticFeedback = true;
+
+        # Two-finger secondary click: disabled.
+        twoFingerSecondaryClick = false;
+
+        # Secondary click corner: Values: "Off", "Bottom Left", "Bottom Right".
+        secondaryClickCorner = "Bottom Right";
+
+        # Tap to drag: double-tap and drag is enabled.
+        tapToDrag = true;
+
+        # Drag lock: stops dragging when the finger lifts.
+        dragLock = false;
+
+        # Three-finger drag: enabled.
+        threeFingerDrag = true;
+
+        # Momentum scrolling: enabled.
+        momentumScroll = true;
+
+        # Pinch to zoom: disabled.
+        pinchZoom = false;
+
+        # Rotate: disabled.
+        rotate = false;
+
+        # Smart zoom: two-finger double-tap zoom is enabled.
+        smartZoom = true;
+
+        gestures = {
+          # Three-finger horizontal swipe: Values: "Off", "Pages", "Full-Screen Apps".
+          threeFingerHorizontal = "Pages";
+
+          # Three-finger vertical swipe: disabled.
+          threeFingerVertical = false;
+
+          # Three-finger tap (Look Up): disabled.
+          threeFingerTap = false;
+
+          # Four-finger horizontal swipe: switches full-screen apps.
+          fourFingerHorizontal = true;
+
+          # Four-finger vertical swipe: opens Mission Control.
+          fourFingerVertical = true;
+
+          # Four-finger pinch: opens Launchpad and shows the desktop.
+          fourFingerPinch = true;
+
+          # Right-edge swipe: opens Notification Center.
+          twoFingersRightEdge = true;
+        };
+      };
+
+      home.darwin.settings.clock = {
+        # Clock style: digital instead of analog.
+        analog = false;
+
+        # Date: Values: "When Space Allows", "Always", "Never".
+        showDate = "When Space Allows";
+
+        # Day of week: shown.
+        dayOfWeek = true;
+
+        # Day of month: shown.
+        dayOfMonth = true;
+
+        # 24-hour clock: enabled.
+        hour24 = true;
+
+        # AM/PM: hidden.
+        amPm = false;
+
+        # Seconds: hidden.
+        seconds = false;
+      };
 
       targets.darwin.defaults = {
         NSGlobalDomain = {
@@ -80,8 +196,6 @@
           # Spell correction: disables automatic spelling corrections.
           NSAutomaticSpellingCorrectionEnabled = false;
 
-          # Scroll direction: uses traditional rather than natural scrolling.
-          "com.apple.swipescrolldirection" = false;
 
           # Global tap to click: leaves the system default unchanged.
           "com.apple.mouse.tapBehavior" = null;
@@ -97,58 +211,6 @@
 
           # Pointer size: sets the cursor to a larger-than-default size.
           mouseDriverCursorSize = 2.0;
-        };
-
-        # Trackpad preferences are written to both macOS user domains so
-        # the built-in and Bluetooth trackpads use the same behaviour.
-        "com.apple.AppleMultitouchTrackpad" = {
-          ActuateDetents = true;
-          ActuationStrength = 1;
-          Clicking = false;
-          DragLock = false;
-          Dragging = true;
-          FirstClickThreshold = 1;
-          ForceSuppressed = false;
-          SecondClickThreshold = 1;
-          TrackpadCornerSecondaryClick = 2;
-          TrackpadRightClick = false;
-          TrackpadThreeFingerDrag = true;
-          TrackpadMomentumScroll = true;
-          TrackpadTwoFingerDoubleTapGesture = true;
-          TrackpadPinch = false;
-          TrackpadRotate = false;
-          TrackpadFourFingerHorizSwipeGesture = 2;
-          TrackpadFourFingerPinchGesture = 2;
-          TrackpadFourFingerVertSwipeGesture = 2;
-          TrackpadThreeFingerHorizSwipeGesture = 1;
-          TrackpadThreeFingerTapGesture = 0;
-          TrackpadThreeFingerVertSwipeGesture = 0;
-          TrackpadTwoFingerFromRightEdgeSwipeGesture = 3;
-        };
-
-        "com.apple.driver.AppleBluetoothMultitouch.trackpad" = {
-          ActuateDetents = true;
-          ActuationStrength = 1;
-          Clicking = false;
-          DragLock = false;
-          Dragging = true;
-          FirstClickThreshold = 1;
-          ForceSuppressed = false;
-          SecondClickThreshold = 1;
-          TrackpadCornerSecondaryClick = 2;
-          TrackpadRightClick = false;
-          TrackpadThreeFingerDrag = true;
-          TrackpadMomentumScroll = true;
-          TrackpadTwoFingerDoubleTapGesture = true;
-          TrackpadPinch = false;
-          TrackpadRotate = false;
-          TrackpadFourFingerHorizSwipeGesture = 2;
-          TrackpadFourFingerPinchGesture = 2;
-          TrackpadFourFingerVertSwipeGesture = 2;
-          TrackpadThreeFingerHorizSwipeGesture = 1;
-          TrackpadThreeFingerTapGesture = 0;
-          TrackpadThreeFingerVertSwipeGesture = 0;
-          TrackpadTwoFingerFromRightEdgeSwipeGesture = 3;
         };
 
         # Mouse tracking speed: sets pointer movement speed for a physical mouse.
@@ -206,65 +268,76 @@
           static-only = false;
         };
 
-        "com.apple.finder" = {
-          # Hidden files: shows files and folders normally hidden by Finder.
-          AppleShowAllFiles = true;
+      };
 
-          # Empty Trash: disables automatic deletion of Trash items after 30 days.
-          FXRemoveOldTrashItems = false;
+      home.darwin.settings.finder = {
+        # New window target: opens new windows and tabs at a custom location.
+        # Values: "Computer", "OS volume", "Home", "Desktop", "Documents",
+        # "Recents", "iCloud Drive", "Other" (uses newWindowTargetPath).
+        newWindowTarget = "Other";
 
-          # New Finder window target: opens new windows at a custom location.
-          NewWindowTarget = "Other";
+        # New window location: uses the standard macOS Downloads folder.
+        newWindowTargetPath = paths.darwin.home.downloads;
 
-          # New Finder window location: uses the standard macOS Downloads folder.
-          NewWindowTargetPath = "file://${paths.darwin.home.downloads}/";
+        # Hidden files: shows files and folders normally hidden by Finder.
+        showHidden = true;
 
-          # Preferred view: uses List view for newly opened Finder windows.
-          FXPreferredViewStyle = "Nlsv";
+        # Empty Trash: disables automatic deletion of Trash items after 30 days.
+        removeOldTrash = false;
 
-          # Folder sorting: keeps folders before files in Finder lists.
-          _FXSortFoldersFirst = true;
+        # Preferred view: uses List view for newly opened Finder windows.
+        # Values: "Icon", "List", "Column", "Gallery".
+        viewStyle = "List";
 
-          # Default search scope: searches the current folder by default.
-          FXDefaultSearchScope = "SCcf";
+        # Folder sorting: keeps folders before files in Finder windows.
+        sortFoldersFirst = true;
 
-          # File extensions: always displays filename extensions.
-          AppleShowAllExtensions = true;
+        # Search scope: searches the current folder by default.
+        # Values: "This Mac", "Current Folder", "Previous Scope".
+        searchScope = "Current Folder";
 
-          # Extension warnings: disables warnings when changing file extensions.
-          FXEnableExtensionChangeWarning = false;
+        # File extensions: always displays filename extensions.
+        showExtensions = true;
 
-          # Path bar: displays the current folder hierarchy at the window bottom.
-          ShowPathbar = true;
+        # Extension warnings: disables warnings when changing file extensions.
+        extensionChangeWarning = false;
 
-          # Status bar: displays item counts and free storage at the window bottom.
-          ShowStatusBar = true;
+        # Path bar: displays the current folder hierarchy at the window bottom.
+        pathBar = true;
 
+        # Status bar: displays item counts and free storage at the window bottom.
+        statusBar = true;
+
+        # Relative dates: displays complete dates instead of relative dates.
+        relativeDates = false;
+
+        # Grouping: groups Finder window entries by their name.
+        # Values: "None", "Name", "Application", "Kind", "Date Last Opened",
+        # "Date Added", "Date Modified", "Date Created", "Size", "Tags".
+        arrangeGroupsView = "Name";
+
+        desktop = {
           # Desktop icons: permits items to be shown on the desktop.
-          CreateDesktop = true;
+          showIcons = true;
 
           # External disks: hides external hard drives from the desktop.
-          ShowExternalHardDrivesOnDesktop = false;
+          iconsExHDD = false;
 
           # Internal disks: hides hard drives from the desktop.
-          ShowHardDrivesOnDesktop = false;
+          iconsHDD = false;
 
           # Network servers: hides mounted servers from the desktop.
-          ShowMountedServersOnDesktop = false;
+          iconsServers = false;
 
           # Removable media: hides removable media from the desktop.
-          ShowRemovableMediaOnDesktop = false;
+          iconsRemovable = false;
 
-          # Desktop folder sorting: keeps folders before files on the desktop.
-          _FXSortFoldersFirstOnDesktop = true;
-
-          # Relative dates: displays complete dates instead of relative dates in Finder.
-          FXUseRelativeDates = false;
-
-          # Grouping: groups Finder list entries by their name.
-          FXArrangeGroupViewBy = "Name";
+          # Folder sorting: keeps folders before files on the desktop.
+          sortFoldersFirst = true;
         };
+      };
 
+      targets.darwin.defaults = {
         "com.apple.screencapture" = {
           # Filename dates: includes the capture date in screenshot filenames.
           include-date = true;
@@ -281,55 +354,31 @@
           # Screenshot location: saves captures to the iCloud Downloads folder.
           location = "${paths.darwin.icloud.docs}/Downloads";
         };
-
-        # ==========================================================
-        # CLOCK — com.apple.menuextra.clock
-        # ==========================================================
-        "com.apple.menuextra.clock" = {
-          # Use digital clock (not analog)
-          IsAnalog = false;
-
-          # Show full date
-          ShowDate = 2;
-
-          # Hide AM/PM
-          ShowAMPM = false;
-
-          # Use 24-hour clock
-          Show24Hour = true;
-
-          # Do not show seconds
-          ShowSeconds = false;
-
-          # Show day of week
-          ShowDayOfWeek = true;
-
-          # Show day of month
-          ShowDayOfMonth = true;
-        };
       };
 
       # Control Center values are specific to this Mac rather than a
       # networked account's defaults.
-      targets.darwin.currentHostDefaults."com.apple.controlcenter" = {
+      home.darwin.settings.controlCenter = {
         # Sound control: hides the Sound control from the menu bar.
-        Sound = false;
+        sound = false;
 
         # AirDrop control: hides the AirDrop control from the menu bar.
-        AirDrop = false;
+        airDrop = false;
 
         # Display control: hides the Display control from the menu bar.
-        Display = false;
+        display = false;
 
         # Bluetooth control: hides the Bluetooth control from the menu bar.
-        Bluetooth = false;
+        bluetooth = false;
 
         # Now Playing control: hides Now Playing from the menu bar.
-        NowPlaying = false;
+        nowPlaying = false;
 
         # Focus control: hides Focus Modes from the menu bar.
-        FocusModes = false;
+        focusModes = false;
+      };
 
+      targets.darwin.currentHostDefaults."com.apple.controlcenter" = {
         # Battery percentage: shows the battery percentage in the menu bar.
         BatteryShowPercentage = true;
       };
@@ -373,6 +422,9 @@
         # for the MacBook; portable terminal hosts do not import it.
         ../../options/obsidian/default.nix
         ../../shared/terminal/commands/obsidian.nix
+
+        # Readable knobs for macOS preferences stored as codes
+        settingsOptions
 
         # Shared Home Manager
         inputs.self.homeModules."shared.home"
