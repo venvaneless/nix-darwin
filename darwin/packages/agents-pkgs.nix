@@ -37,7 +37,9 @@ let
         inherit paths;
       };
       appName = "Codex ChatGPT.app";
-      symlinkApplications = true;
+
+      # Kept out of /Applications: the real ChatGPT.app already sits there.
+      symlinkApplications = false;
     };
   };
 in
