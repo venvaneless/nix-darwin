@@ -49,6 +49,22 @@ let
   # ------------------------------------------------------------
   # ------ NIX SETTINGS SHAPE ------ #
   # ------------------------------------------------------------
+  platformStringListType = lib.types.submodule {
+    options = {
+      darwin = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Values used on Darwin.";
+      };
+
+      linux = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Values used on Linux.";
+      };
+    };
+  };
+
   settingsType = lib.types.submodule {
     freeformType = lib.types.attrsOf settingType;
 
@@ -63,6 +79,12 @@ let
         type = nullable lib.types.str;
         default = null;
         description = "Nix build-users group used by nix-darwin or NixOS.";
+      };
+
+      allowed-impure-host-deps = lib.mkOption {
+        type = platformStringListType;
+        default = { };
+        description = "Host paths permitted for declared impure build dependencies.";
       };
 
       use-xdg-base-directories = lib.mkOption {
@@ -133,9 +155,18 @@ let
     lib.filterAttrs (_: value: value != null) (
       removeAttrs settings [
         "optimise"
+        "allowed-impure-host-deps"
         "_module"
       ]
     );
+
+  allowedImpureHostDeps = platforms.valueForCurrentPlatform cfg.settings.allowed-impure-host-deps;
+
+  sharedSettings =
+    (plainSettings cfg.settings)
+    // lib.optionalAttrs (allowedImpureHostDeps != [ ]) {
+      allowed-impure-host-deps = allowedImpureHostDeps;
+    };
 
   mergedSettings = lib.zipAttrsWith (_: values:
     if lib.length values == 1 then
@@ -144,7 +175,7 @@ let
       lib.unique (lib.concatLists values)
     else
       lib.last values
-  ) [ (plainSettings cfg.settings) (plainSettings darwinCfg.settings) ];
+  ) [ sharedSettings (plainSettings darwinCfg.settings) ];
 
   optimiseAutomatic =
     if darwinCfg.settings.optimise.automatic != null then
