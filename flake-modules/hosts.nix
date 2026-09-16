@@ -35,6 +35,7 @@ let
       inherit (sharedOptions)
         paths
         serviceOptions
+        settingsOptions
         containerBackupOptions
         terminalOptions
         weztermOptions
@@ -72,6 +73,7 @@ let
         pkgs
         platforms
         serviceOptions
+        settingsOptions
         sharedHomeModule
         sharedOptions
         terminalOptions
@@ -81,6 +83,14 @@ let
         qbittorrentOptions
         ;
     };
+
+  # ---- SHARED SERVICES SYSTEM MODULE ---- #
+  systemServicesModule = { serviceOptions, ... }: {
+    imports = [
+      serviceOptions
+      ../shared/services
+    ];
+  };
 in
 {
   # ---- HOME MANAGER FLAKE-PARTS OPTIONS ---- #
@@ -118,6 +128,10 @@ in
         serviceOptions
       ];
     };
+
+    # ---- SHARED SERVICES SYSTEM MODULE ---- #
+    # Same service options for nix-darwin and NixOS, plus the system service knobs.
+    systemModules."shared.services" = systemServicesModule;
 
     # ---- SHARED TERMINAL HOME MODULE ---- #
     # Every Home Manager host imports this and chooses terminal features locally.
@@ -184,6 +198,7 @@ in
             sharedPackageOptions
             vscodeOptions
             qbittorrentOptions
+            systemServicesModule
 
             # Home Manager is a separate module graph, so it does not
             # inherit nix-darwin's specialArgs. Pass the host context at
@@ -286,6 +301,7 @@ in
             nixSharedSettings
             sharedPackageOptions
             qbittorrentOptions
+            systemServicesModule
           ]
           ++ modules;
         };
