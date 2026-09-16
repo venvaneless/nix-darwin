@@ -21,13 +21,19 @@
   # ------ SHARED ESPANSO FEATURE SELECTION ------ #
   # These values apply to every Home Manager host that imports Espanso.
 
-  ven.espanso = {
+  home.shared.espanso = {
     enable = true;
     installOn = {
       darwin = true;
       linux = true;
     };
-    autostart.enable = true;
+    autostart = {
+      enable = true;
+
+      # Relaunch Espanso after a crash; a normal quit keeps it closed.
+      restartOnCrash = true;
+    };
+
     showNotifications = true;
 
     base.enable = true;

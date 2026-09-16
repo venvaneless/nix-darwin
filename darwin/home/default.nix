@@ -345,12 +345,12 @@
       # Shared terminal features
       # ------------------------------------------------------------
 
-      ven.features.terminal.nvim = {
+      home.shared.terminal.nvim = {
         enable = true;
         neovide.enable = true;
       };
 
-      shared.terminal.wezterm = {
+      home.shared.terminal.wezterm = {
         enable = true;
       };
 
@@ -359,7 +359,7 @@
       # ------------------------------------------------------------
 
       # The flake host name differs from macOS's networking host name.
-      ven.features.terminal.fish.nixProfile.flakeHost = "macbook";
+      home.shared.terminal.fish.nixProfile.flakeHost = "macbook";
 
       # ------------------------------------------------------------
       # Imports
@@ -368,7 +368,6 @@
       imports = [
         # Darwin-only Home Manager
         ../terminal
-        ./vscode-portable-environment.nix
 
         # The independent Obsidian command is declared and configured only
         # for the MacBook; portable terminal hosts do not import it.

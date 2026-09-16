@@ -100,7 +100,7 @@
   # ** Any of these may be written as default instead, which takes the
   # ** value declared in options/nix-config.nix. Written out here so the
   # ** file says what this Mac actually runs.
-  ven.nix.settings = {
+  system.darwin.nix.settings = {
     # System build group
     build-users-group = "nixbld";
 
