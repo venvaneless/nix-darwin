@@ -15,8 +15,7 @@
 
 {
   imports = [
-    ./themes/gruvbox.nix
-    ./themes/nord.nix
+    ./themes
   ];
 
   home.shared.terminal.nvim.theme = "gruvbox";
