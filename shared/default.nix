@@ -25,6 +25,10 @@
       # Host dependencies allowed in sandboxed builds
       allowed-impure-host-deps = {
         darwin = [
+          "/System/Library"
+          "/bin/sh"
+          "/dev"
+          "/usr/lib"
           "/usr/bin/codesign"
         ];
         linux = [ ];
