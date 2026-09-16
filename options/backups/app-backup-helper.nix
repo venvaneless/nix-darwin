@@ -8,7 +8,7 @@
 # exact application files or directories into the archive layout.
 # =====================================================================
 
-{ backupExcludeHelper, lib, pkgs, paths }:
+{ backupExcludeHelper, lib, paths, pkgs, platforms }:
 
 let
   # ---- SHARED PATHS ---- #
@@ -16,7 +16,10 @@ let
   # LaunchAgent log directory come from the centralized path definitions.
   # default.nix sets the same values explicitly; these defaults keep the
   # option surface usable on its own.
-  userPaths = paths.darwin.home;
+  userPaths = platforms.valueForCurrentPlatform {
+    darwin = paths.darwin.home;
+    linux = paths.linux.home;
+  };
   libraryPaths = paths.darwin.library;
   backupPaths = paths.darwin.backups;
   systemPaths = paths.darwin.system;
@@ -25,7 +28,59 @@ let
   # ---- GLOBAL APPLICATION BACKUP CONTROLS
   # Constructed once by the MacBook host. Individual app modules keep their own
   # toggles below, while this switch controls every automatic app schedule.
-  settingsModule = { lib, ... }: {
+  # ---- ONE BACKUP SOURCE ---- #
+  # sourcePath resolves from that entry's root, or is absolute for
+  # additionalSources. destinationPath is where it lands in the archive.
+  # ---- ONE BACKUP KNOB ---- #
+  # Each knob holds the paths it backs up, each with where it lands in
+  # the archive, and the exclusions shared by all of them. A path may add
+  # its own exclusions. Everything not named is kept.
+  pathType = relativeTo: lib.types.submodule {
+    options = {
+      sourcePath = lib.mkOption {
+        type = lib.types.str;
+        description = "Path ${relativeTo}.";
+      };
+
+      destinationPath = lib.mkOption {
+        type = lib.types.str;
+        description = "Path inside the archive it is written to.";
+      };
+
+      excludePatterns = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Subpaths of this one path that are left out, on top of the knob's own.";
+      };
+    };
+  };
+
+  groupType = key: relativeTo: lib.types.submodule {
+    options = {
+      ${key} = lib.mkOption {
+        type = lib.types.listOf (pathType relativeTo);
+        default = [ ];
+        description = "Paths ${relativeTo} and where each one lands in the archive.";
+      };
+
+      excludePatterns = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        description = "Subpaths and patterns left out of every path in this knob.";
+      };
+    };
+  };
+
+  entryType = groupType;
+
+  entrySources = key: resolve: entry:
+    map (path: {
+      path = resolve path.sourcePath;
+      destination = path.destinationPath;
+      excludePatterns = entry.excludePatterns ++ path.excludePatterns;
+    }) entry.${key};
+
+  settingsModule = { config, lib, ... }: {
     options.services.appBackups = {
       paths = {
         homeDirectory = lib.mkOption {
@@ -103,12 +158,8 @@ let
 
       defaultExtraExcludePatterns = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        default = [
-          "sockets/"
-          "private/socket"
-          "*.sock"
-        ];
-        description = "Socket paths excluded from every application backup unless its module adds more patterns.";
+        default = [ ];
+        description = "Patterns excluded from every application backup. Each application lists what it actually has instead.";
       };
 
       defaultAutomaticIntervalSeconds = lib.mkOption {
@@ -147,101 +198,315 @@ let
         description = "Show rsync transfer progress for application backups unless an individual backup overrides it.";
       };
     };
+
+    options.services.backups = {
+      apps = lib.mkOption {
+        default = { };
+        description = ''
+          Application backups, keyed by slug. Each entry is values only;
+          this helper owns what they mean and how the backup runs.
+        '';
+        type = lib.types.attrsOf (lib.types.submodule ({ name, ... }: {
+          options = {
+            # ---- BACKUP TOGGLE
+            enable = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+              description = "Install this application's backup command.";
+            };
+
+            # ---- IDENTITY
+            appName = lib.mkOption {
+              type = lib.types.str;
+              example = "Visual Studio Code";
+              description = "Application name used in messages and descriptions.";
+            };
+
+            commandName = lib.mkOption {
+              type = lib.types.str;
+              default = "${name}-backup";
+              description = "Command that runs this backup.";
+            };
+
+            # ---- DESTINATION
+            destinationRoot = lib.mkOption {
+              type = lib.types.str;
+              default = config.services.appBackups.paths.appBackupsDirectory;
+              description = "Directory on the external volume holding this application's archives.";
+            };
+
+            destinationSegments = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [ name ];
+              description = "Path below the destination root, one list entry per directory.";
+            };
+
+            destinationDir = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "Absolute destination directory, replacing destinationRoot and destinationSegments.";
+            };
+
+            destinationMarkerFile = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "File recording the last successful backup. Defaults to .last-backup in the destination.";
+            };
+
+            externalBackupVolume = lib.mkOption {
+              type = lib.types.str;
+              default = config.services.appBackups.paths.externalBackupVolume;
+              description = "Mounted volume the archives are written to.";
+            };
+
+            localStagingDir = lib.mkOption {
+              type = lib.types.str;
+              default = "${config.services.appBackups.paths.stagingDirectory}/${name}";
+              description = "Working directory used while this application's archive is built.";
+            };
+
+            globalLockDir = lib.mkOption {
+              type = lib.types.str;
+              default = backupPaths.archiveLock;
+              description = "Lock directory that keeps archive work serialised across backups.";
+            };
+
+            # ---- SOURCES
+            # Entries resolve from their root; additionalSources are absolute.
+            applicationSupportEntries = lib.mkOption {
+              type = entryType "applicationSupportPaths" "relative to applicationSupportRoot";
+              default = { };
+              example = lib.literalExpression ''[ { sourcePath = "Code"; destinationPath = "app-support/Code"; } ]'';
+              description = "Application Support paths, each relative to applicationSupportRoot.";
+            };
+
+            preferenceEntries = lib.mkOption {
+              type = entryType "preferencePaths" "relative to preferencesRoot";
+              default = { };
+              example = lib.literalExpression ''[ { sourcePath = "com.microsoft.VSCode.plist"; destinationPath = "com.microsoft.VSCode.plist"; } ]'';
+              description = "Preference files, each relative to preferencesRoot.";
+            };
+
+            configEntries = lib.mkOption {
+              type = entryType "configPaths" "relative to configRoot";
+              default = { };
+              example = lib.literalExpression ''[ { sourcePath = "vscode/user-data/User/settings.json"; destinationPath = "config/user-settings.json"; } ]'';
+              description = "Configuration paths, each relative to configRoot.";
+            };
+
+            additionalSources = lib.mkOption {
+              type = entryType "additionalPaths" "absolute";
+              default = { };
+              example = lib.literalExpression ''[ { sourcePath = "/Users/ven/Library/Somewhere"; destinationPath = "additional/Somewhere"; } ]'';
+              description = "Absolute paths, for anything outside the roots above.";
+            };
+
+            sources = lib.mkOption {
+              type = lib.types.listOf lib.types.attrs;
+              default = [ ];
+              description = "Fully resolved sources, each with path and destination.";
+            };
+
+            applicationSupportSources = lib.mkOption {
+              type = entryType "applicationSupportPaths" "absolute";
+              default = { };
+              description = "Absolute Application Support paths.";
+            };
+
+            applicationPreferences = lib.mkOption {
+              type = entryType "preferencePaths" "absolute";
+              default = { };
+              description = "Absolute preference paths.";
+            };
+
+            applicationConfig = lib.mkOption {
+              type = entryType "configPaths" "absolute";
+              default = { };
+              description = "Absolute configuration paths.";
+            };
+
+            sourceMarkerFiles = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [ ];
+              description = "Files touched after a successful backup, so the source records when it last ran.";
+            };
+
+            requiredAny = lib.mkOption {
+              type = lib.types.listOf (lib.types.listOf lib.types.str);
+              default = [ ];
+              description = "Groups of paths where at least one member of each group must exist.";
+            };
+
+            # ---- SOURCE ROOTS
+            applicationSupportRoot = lib.mkOption {
+              type = lib.types.str;
+              default = config.services.appBackups.paths.applicationSupportDirectory;
+              description = "Root that applicationSupportEntries resolve from.";
+            };
+
+            preferencesRoot = lib.mkOption {
+              type = lib.types.str;
+              default = config.services.appBackups.paths.preferencesDirectory;
+              description = "Root that preferenceEntries resolve from.";
+            };
+
+            configRoot = lib.mkOption {
+              type = lib.types.str;
+              default = config.services.appBackups.paths.configDirectory;
+              description = "Root that configEntries resolve from.";
+            };
+
+            # ---- EDITABLE EXCLUSIONS
+            extraExcludePatterns = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [ ];
+              description = "Paths and patterns left out of this application's backup.";
+            };
+
+            # ---- INDIVIDUAL ARCHIVE CONTROLS
+            archive = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+              description = "Create a TAR archive; false keeps an unarchived copy at the destination.";
+            };
+
+            stageInDownloads = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+              description = "Build and verify the archive in the staging directory before moving it to the volume.";
+            };
+
+            archiveFilenameTemplate = lib.mkOption {
+              type = lib.types.str;
+              default = "{timestamp}-{appSlug}.tar";
+              description = "Archive name template; use {timestamp}, {prefix}, and {appSlug}.";
+            };
+
+            archiveTimestampFormat = lib.mkOption {
+              type = lib.types.str;
+              default = "%Y-%m-%d-%H%M%S";
+              description = "strftime format substituted for {timestamp}.";
+            };
+
+            archivePrefix = lib.mkOption {
+              type = lib.types.str;
+              default = name;
+              description = "Prefix substituted for {prefix}.";
+            };
+
+            preserveSymlinks = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+              description = "Preserve symbolic links rather than following them.";
+            };
+
+            # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+            automatic = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = "Run automatically, when services.appBackups.automaticEnabled is also true.";
+            };
+
+            notifyOnAutomatic = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+              description = "Notify when an automatic backup starts and finishes.";
+            };
+
+            automaticIntervalSeconds = lib.mkOption {
+              type = lib.types.ints.positive;
+              default = config.services.appBackups.defaultAutomaticIntervalSeconds;
+              description = "Seconds between automatic backup attempts.";
+            };
+
+            minimumIntervalSeconds = lib.mkOption {
+              type = lib.types.ints.positive;
+              default = config.services.appBackups.defaultMinimumIntervalSeconds;
+              description = "Minimum seconds between successful scheduled backups.";
+            };
+
+            cpuLimitPercent = lib.mkOption {
+              type = lib.types.ints.between 1 100;
+              default = config.services.appBackups.defaultCpuLimitPercent;
+              description = "CPU percentage used for archive work.";
+            };
+
+            transferLimitKiBps = lib.mkOption {
+              type = lib.types.nullOr lib.types.ints.positive;
+              default = config.services.appBackups.defaultTransferLimitKiBps;
+              description = "Maximum local copy rate in KiB/s.";
+            };
+
+            showProgress = lib.mkOption {
+              type = lib.types.bool;
+              default = config.services.appBackups.defaultShowProgress;
+              description = "Show rsync transfer progress.";
+            };
+          };
+        }));
+      };
+    };
+
+    config =
+      let
+        backups = lib.mapAttrsToList (appBackup config) config.services.backups.apps;
+      in
+      {
+        environment.systemPackages = lib.concatMap (backup: backup.systemPackages) backups;
+        launchd.user.agents = lib.mkMerge (map (backup: backup.launchdAgents) backups);
+      };
   };
 
-  mkAppBackup = {
-    config,
-    appName,
-    appSlug,
-    commandName ? "${appSlug}-backup",
-    destinationRoot ? "appBackups",
-    destinationSegments ? [ appSlug ],
-    destinationDir ? null,
-    externalBackupVolume ? config.services.appBackups.paths.externalBackupVolume,
-    localStagingDir ? "${config.services.appBackups.paths.stagingDirectory}/${appSlug}",
-    globalLockDir ? backupPaths.archiveLock,
-    sourceMarkerFiles ? [ ],
-    destinationMarkerFile ? null,
-    sources ? [ ],
-    additionalSources ? [ ],
-    applicationSupportSources ? [ ],
-    applicationPreferences ? [ ],
-    applicationConfig ? [ ],
-    applicationSupportEntries ? [ ],
-    preferenceEntries ? [ ],
-    configEntries ? [ ],
-    applicationSupportRoot ? config.services.appBackups.paths.applicationSupportDirectory,
-    preferencesRoot ? config.services.appBackups.paths.preferencesDirectory,
-    configRoot ? config.services.appBackups.paths.configDirectory,
-    requiredAny ? [ ],
-    extraExcludePatterns ? [ ],
-    archive ? true,
-    stageInDownloads ? true,
-    archiveFilenameTemplate ? "{timestamp}-{appSlug}.tar",
-    archiveTimestampFormat ? "%Y-%m-%d-%H%M%S",
-    archivePrefix ? appSlug,
-    preserveSymlinks ? true,
-    automatic ? false,
-    notifyOnAutomatic ? true,
-    automaticIntervalSeconds ? config.services.appBackups.defaultAutomaticIntervalSeconds,
-    minimumIntervalSeconds ? config.services.appBackups.defaultMinimumIntervalSeconds,
-    cpuLimitPercent ? config.services.appBackups.defaultCpuLimitPercent,
-    transferLimitKiBps ? config.services.appBackups.defaultTransferLimitKiBps,
-    showProgress ? config.services.appBackups.defaultShowProgress,
-  }:
+  # ------------------------------------------------------------
+  # ------ REGISTERED APPLICATION BACKUPS ------ #
+  # Every registered application contributes its command and its
+  # optional LaunchAgent.
+  # ------------------------------------------------------------
+
+  appBackup = config: appSlug: app:
   let
-    cfg = config.services.appBackups.${appSlug};
+    cfg = app;
+
+    inherit (app)
+      appName
+      commandName
+      destinationRoot
+      destinationSegments
+      destinationDir
+      externalBackupVolume
+      localStagingDir
+      globalLockDir
+      sourceMarkerFiles
+      destinationMarkerFile
+      sources
+      additionalSources
+      applicationSupportSources
+      applicationPreferences
+      applicationConfig
+      applicationSupportEntries
+      preferenceEntries
+      configEntries
+      applicationSupportRoot
+      preferencesRoot
+      configRoot
+      requiredAny
+      extraExcludePatterns
+      ;
+
   effectiveCpuLimitPercent = lib.min cfg.cpuLimitPercent config.services.appBackups.maximumCpuLimitPercent;
   destinationSuffix = lib.concatStringsSep "/" destinationSegments;
   backupPaths = config.services.appBackups.paths;
   localStagingUsesSharedRoot = lib.hasPrefix "${backupPaths.stagingDirectory}/" localStagingDir;
-  resolvedApplicationSupportEntries = map (entry: {
-    path = "${applicationSupportRoot}/${entry.relativePath}";
-    destination = entry.destinationPath or entry.destination;
-    excludePatterns = entry.excludePatterns or [ ];
-  }) applicationSupportEntries;
-  preferenceSources = map (entry: {
-    path = "${preferencesRoot}/${entry.relativePath}";
-    destination = entry.destinationPath or entry.destination;
-    excludePatterns = entry.excludePatterns or [ ];
-  }) preferenceEntries;
-  configSources = map (entry: {
-    path = "${configRoot}/${entry.relativePath}";
-    destination = entry.destinationPath or entry.destination;
-    excludePatterns = entry.excludePatterns or [ ];
-  }) configEntries;
-  readableApplicationSupportSources = map (entry: {
-    path = entry.sourcePath;
-    destination = entry.destinationPath;
-    excludePatterns = entry.excludePatterns or [ ];
-  }) applicationSupportSources;
-  readableApplicationPreferences = map (entry: {
-    path = entry.sourcePath;
-    destination = entry.destinationPath;
-    excludePatterns = entry.excludePatterns or [ ];
-  }) applicationPreferences;
-  readableApplicationConfig = map (entry: {
-    path = entry.sourcePath;
-    destination = entry.destinationPath;
-    excludePatterns = entry.excludePatterns or [ ];
-  }) applicationConfig;
-  readableAdditionalSources = map (entry: {
-    path = entry.sourcePath;
-    destination = entry.destinationPath;
-    excludePatterns = entry.excludePatterns or [ ];
-  }) additionalSources;
+  resolvedApplicationSupportEntries = entrySources "applicationSupportPaths" (path: "${applicationSupportRoot}/${path}") applicationSupportEntries;
+  preferenceSources = entrySources "preferencePaths" (path: "${preferencesRoot}/${path}") preferenceEntries;
+  configSources = entrySources "configPaths" (path: "${configRoot}/${path}") configEntries;
+  readableApplicationSupportSources = entrySources "applicationSupportPaths" (path: path) applicationSupportSources;
+  readableApplicationPreferences = entrySources "preferencePaths" (path: path) applicationPreferences;
+  readableApplicationConfig = entrySources "configPaths" (path: path) applicationConfig;
+  readableAdditionalSources = entrySources "additionalPaths" (path: path) additionalSources;
   resolvedSources = sources ++ readableAdditionalSources ++ resolvedApplicationSupportEntries ++ preferenceSources ++ configSources ++ readableApplicationSupportSources ++ readableApplicationPreferences ++ readableApplicationConfig;
   resolvedDestinationDir =
-    if destinationDir != null then
-      destinationDir
-    else if destinationRoot == "appBackups" then
-      "${backupPaths.appBackupsDirectory}/${destinationSuffix}"
-    else if destinationRoot == "browserBackups" then
-      "${backupPaths.browserBackupsDirectory}/${destinationSuffix}"
-    else if destinationRoot == "terminalBackups" then
-      "${backupPaths.terminalBackupsDirectory}/${destinationSuffix}"
-    else
-      throw "Unsupported app backup destination root: ${destinationRoot}";
+    if destinationDir != null then destinationDir else "${destinationRoot}/${destinationSuffix}";
   resolvedDestinationMarkerFile =
     if destinationMarkerFile == null then
       "${resolvedDestinationDir}/.last-backup"
@@ -522,120 +787,31 @@ ${lib.optionalString localStagingUsesSharedRoot ''
     log "DONE $archive_path"
   '';
   };
-in
-{
-  options.services.appBackups.${appSlug} = {
-    enable = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Install the ${appName} backup command.";
-    };
+  in
+  {
+    systemPackages = lib.optional (config.services.appBackups.enabled && app.enable) backupRunner;
 
-    automatic = lib.mkOption {
-      type = lib.types.bool;
-      default = automatic;
-      description = "Run the ${appName} backup automatically only when services.appBackups.automaticEnabled is also true.";
-    };
-
-    notifyOnAutomatic = lib.mkOption {
-      type = lib.types.bool;
-      default = notifyOnAutomatic;
-      description = "Show macOS notifications when an automatic ${appName} backup starts and completes or fails.";
-    };
-
-    automaticIntervalSeconds = lib.mkOption {
-      type = lib.types.ints.positive;
-      default = automaticIntervalSeconds;
-      description = "Seconds between automatic ${appName} backup attempts.";
-    };
-
-    minimumIntervalSeconds = lib.mkOption {
-      type = lib.types.ints.positive;
-      default = minimumIntervalSeconds;
-      description = "Minimum seconds between successful scheduled ${appName} backups.";
-    };
-
-    cpuLimitPercent = lib.mkOption {
-      type = lib.types.ints.between 1 100;
-      default = cpuLimitPercent;
-      description = "Maximum CPU percentage used for ${appName} backup archive work.";
-    };
-
-    transferLimitKiBps = lib.mkOption {
-      type = lib.types.nullOr lib.types.ints.positive;
-      default = transferLimitKiBps;
-      description = "Maximum local copy rate in KiB/s for ${appName} backups.";
-    };
-
-    showProgress = lib.mkOption {
-      type = lib.types.bool;
-      default = showProgress;
-      description = "Show rsync transfer progress for ${appName} backups.";
-    };
-
-    archive = lib.mkOption {
-      type = lib.types.bool;
-      default = archive;
-      description = "Create a TAR archive for ${appName}; false keeps an unarchived rsync copy at its destination.";
-    };
-
-    stageInDownloads = lib.mkOption {
-      type = lib.types.bool;
-      default = stageInDownloads;
-      description = "Create and verify ${appName} archives in its Downloads staging directory before moving them to the external destination; false creates them directly on the external volume.";
-    };
-
-    archiveFilenameTemplate = lib.mkOption {
-      type = lib.types.str;
-      default = archiveFilenameTemplate;
-      description = "Archive name template for ${appName}; use {timestamp}, {prefix}, and {appSlug}.";
-    };
-
-    archiveTimestampFormat = lib.mkOption {
-      type = lib.types.str;
-      default = archiveTimestampFormat;
-      description = "strftime timestamp format for ${appName} archives, for example %Y-%m-%d or %Y-%m-%d-%H%M%S.";
-    };
-
-    archivePrefix = lib.mkOption {
-      type = lib.types.str;
-      default = archivePrefix;
-      description = "Prefix substituted for {prefix} in ${appName} archive names.";
-    };
-
-    preserveSymlinks = lib.mkOption {
-      type = lib.types.bool;
-      default = preserveSymlinks;
-      description = "Preserve symbolic links while backing up ${appName}.";
-    };
-  };
-
-  config = lib.mkIf (config.services.appBackups.enabled && cfg.enable) (lib.mkMerge [
-    {
-      environment.systemPackages = [ backupRunner ];
-    }
-
-    (lib.mkIf (config.services.appBackups.automaticEnabled && cfg.automatic) {
-      launchd.user.agents."backup-${appSlug}" = {
-        serviceConfig = {
-          Label = "com.ven.backup.${appSlug}";
-          ProgramArguments = [ "${backupRunner}/bin/${commandName}" "--scheduled" ];
-          RunAtLoad = false;
-          KeepAlive = false;
-          StartInterval = cfg.automaticIntervalSeconds;
-          ProcessType = "Background";
-          Nice = 20;
-          LowPriorityIO = true;
-          LowPriorityBackgroundIO = true;
-          StandardOutPath = "${libraryPaths.logs}/${commandName}.log";
-          StandardErrorPath = "${libraryPaths.logs}/${commandName}-error.log";
+    launchdAgents = lib.optionalAttrs
+      (config.services.appBackups.enabled && app.enable && config.services.appBackups.automaticEnabled && app.automatic)
+      {
+        "backup-${appSlug}" = {
+          serviceConfig = {
+            Label = "com.ven.backup.${appSlug}";
+            ProgramArguments = [ "${backupRunner}/bin/${commandName}" "--scheduled" ];
+            RunAtLoad = false;
+            KeepAlive = false;
+            StartInterval = app.automaticIntervalSeconds;
+            ProcessType = "Background";
+            Nice = 20;
+            LowPriorityIO = true;
+            LowPriorityBackgroundIO = true;
+            StandardOutPath = "${libraryPaths.logs}/${commandName}.log";
+            StandardErrorPath = "${libraryPaths.logs}/${commandName}-error.log";
+          };
         };
       };
-    })
-  ]);
-}
-;
+  };
 in
 {
-  inherit mkAppBackup settingsModule;
+  inherit settingsModule;
 }
