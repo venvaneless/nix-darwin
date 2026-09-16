@@ -15,6 +15,9 @@
     inputs.self.homeModules."shared.services"
     inputs.self.homeModules."shared.terminal"
     inputs.self.homeModules."shared.terminal.wezterm"
+
+    # User-scoped packages without dedicated Home Manager program modules.
+    ./packages.nix
   ];
 
   # ------------------------------------------------------------
