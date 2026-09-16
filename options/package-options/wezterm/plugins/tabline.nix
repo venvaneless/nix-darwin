@@ -118,8 +118,8 @@ let
                             process_to_icon = process_to_icon,
                         },
 
-                        { Foreground = { Color = palette[section_colors.tab_active.divider.foreground] } },
-                        { Background = { Color = palette[section_colors.tab_active.divider.background] } },
+                        { Foreground = { Color = palette[section_colors.tabActive.divider.foreground] } },
+                        { Background = { Color = palette[section_colors.tabActive.divider.background] } },
                         { Text = wezterm.nerdfonts.pl_left_hard_divider },
                     },
 
@@ -132,12 +132,12 @@ let
                     },
 
                     tabline_x = {
-                        { Foreground = { Color = palette[section_colors.tabline_x.divider.foreground] } },
-                        { Background = { Color = palette[section_colors.tabline_x.divider.background] } },
+                        { Foreground = { Color = palette[section_colors.tablineX.divider.foreground] } },
+                        { Background = { Color = palette[section_colors.tablineX.divider.background] } },
                         { Text = wezterm.nerdfonts.pl_right_hard_divider },
 
-                        { Foreground = { Color = palette[section_colors.tabline_x.content.foreground] } },
-                        { Background = { Color = palette[section_colors.tabline_x.content.background] } },
+                        { Foreground = { Color = palette[section_colors.tablineX.content.foreground] } },
+                        { Background = { Color = palette[section_colors.tablineX.content.background] } },
 
                         {
                             "hostname",
@@ -146,12 +146,12 @@ let
                     },
 
                     tabline_y = {
-                        { Foreground = { Color = palette[section_colors.tabline_y.divider.foreground] } },
-                        { Background = { Color = palette[section_colors.tabline_y.divider.background] } },
+                        { Foreground = { Color = palette[section_colors.tablineY.divider.foreground] } },
+                        { Background = { Color = palette[section_colors.tablineY.divider.background] } },
                         { Text = wezterm.nerdfonts.pl_right_hard_divider },
 
-                        { Foreground = { Color = palette[section_colors.tabline_y.content.foreground] } },
-                        { Background = { Color = palette[section_colors.tabline_y.content.background] } },
+                        { Foreground = { Color = palette[section_colors.tablineY.content.foreground] } },
+                        { Background = { Color = palette[section_colors.tablineY.content.background] } },
 
                         {
                             "datetime",
@@ -160,12 +160,12 @@ let
                     },
 
                     tabline_z = {
-                        { Foreground = { Color = palette[section_colors.tabline_z.divider.foreground] } },
-                        { Background = { Color = palette[section_colors.tabline_z.divider.background] } },
+                        { Foreground = { Color = palette[section_colors.tablineZ.divider.foreground] } },
+                        { Background = { Color = palette[section_colors.tablineZ.divider.background] } },
                         { Text = wezterm.nerdfonts.pl_right_hard_divider },
 
-                        { Foreground = { Color = palette[section_colors.tabline_z.content.foreground] } },
-                        { Background = { Color = palette[section_colors.tabline_z.content.background] } },
+                        { Foreground = { Color = palette[section_colors.tablineZ.content.foreground] } },
+                        { Background = { Color = palette[section_colors.tablineZ.content.background] } },
 
                         {
                             "battery",

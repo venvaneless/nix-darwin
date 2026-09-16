@@ -53,7 +53,7 @@ in
         darwin = true;
         linux = true;
       };
-      description = "Platforms on which Home Manager installs and starts Espanso.";
+      description = "Platforms on which Home Manager configures and starts Espanso.";
     };
 
     autostart = {
@@ -91,10 +91,9 @@ in
     {
       # ------------------------------------------------------------
       # ------ ESPANSO BASE CONFIGURATION ------ #
-      # Espanso is a user-scoped application, so Home Manager owns its
-      # installation alongside its generated configuration and launcher.
-
-      home.packages = lib.optional enabledForCurrentPlatform pkgs.espanso;
+      # Espanso's mutable configuration and user launcher are Home Manager
+      # concerns. Its package and Darwin application bundle stay system-owned
+      # in shared/packages.nix.
 
       # Home Manager links these immutable, Nix-generated files into
       # Espanso's portable configuration directory.

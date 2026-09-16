@@ -58,6 +58,20 @@ in
         appName = "LibreWolf.app";
         symlinkApplications = true;
       };
+
+      # ---- Espanso
+      # Cross-platform text expander. Its configuration and user LaunchAgent
+      # remain in Home Manager; the application bundle stays system-owned.
+      espanso = {
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+        package = pkgs.espanso;
+        appName = "Espanso.app";
+        symlinkApplications = true;
+      };
     };
 
     # ------------------------------------------------------------
@@ -937,6 +951,20 @@ in
       installOn = {
         darwin = true;
         linux = true;
+      };
+
+      # ---- WezTerm
+      # GPU-accelerated terminal emulator. Its configuration lives in
+      # shared/terminal/wezterm, while this system package owns the app bundle.
+      wezterm = {
+        enable = true;
+        installOn = {
+          darwin = true;
+          linux = true;
+        };
+        package = pkgs.wezterm;
+        appName = "WezTerm.app";
+        symlinkProgramming = true;
       };
 
       # ---- Visual Studio Code
