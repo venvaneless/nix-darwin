@@ -10,8 +10,13 @@
 { ... }:
 {
   imports = [
-    # Bat settings and the theme selected in bat.nix
-    ./bat/bat.nix
+    # Atuin's theme values.
+    ./atuin/themes/catppuccin-mocha-mauve.nix
+    ./atuin/themes/gruvbox-dark.nix
+
+    # Bat's theme values.
+    ./bat/themes/gruvbox-dark.nix
+    ./bat/themes/rose-pine.nix
 
     # Btop settings and the theme selected in btop.nix
     ./btop/btop.nix
@@ -40,6 +45,36 @@
   ];
 
   config = {
+    # ------------------------------------------------------------
+    # ------ BAT SETTINGS ------ #
+    # Bat's implementation, platform selection, and theme rendering live
+    # in options/cli/bat.
+
+    home.shared.cli.bat = {
+      enable = true;
+
+      installOn = {
+        darwin = true;
+        linux = true;
+      };
+
+      # One of the themes declared under ./bat/themes.
+      theme = "gruvboxDark";
+
+      settings = {
+        # Line numbers, Git change markers, and the file header.
+        style = "numbers,changes,header";
+
+        # Wrap long lines at the terminal width.
+        wrap = "auto";
+
+        # Keep bat's output plain when it is piped into another command.
+        paging = "auto";
+      };
+
+      rebuildCache = true;
+    };
+
     # ------------------------------------------------------------
     # ------ MICRO SETTINGS ------ #
     # All values a user may reasonably change stay here. The option module
@@ -149,10 +184,8 @@
         linux = true;
       };
 
-      themes = {
-        catppuccinMochaMauve.enable = false;
-        gruvboxDark.enable = true;
-      };
+      # One of the themes declared under ./atuin/themes.
+      theme = "gruvboxDark";
 
       settings = {
         enter_accept = true;
