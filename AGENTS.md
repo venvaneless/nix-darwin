@@ -343,7 +343,6 @@ Prefer extending an existing module over creating a second module for the same p
 Treat the archive and working tree as source material, not as a cleanup target.
 
 Do not edit or package repository noise such as:
-
 ```text
 .git/
 result
@@ -354,10 +353,11 @@ __MACOSX/
 ```
 
 - Make sure that any backup, folder, downloader, if they exclude files, also exclude the above files.
-
-Do not modify `flake.lock` unless the task explicitly changes inputs or requests an update. Never run `nix flake update` as part of routine validation.
-
-Before finishing, use `git status` and `git diff` to make sure only intended files changed.
+- Do not modify `flake.lock` unless the task explicitly changes inputs or requests an update. Never run `nix flake update` as part of routine validation.
+- Before finishing, use `git status` and `git diff` to make sure only intended files changed. Do it only after you edited all the intended files.
+- Don't run nix eval and build as part of routine validation; only do so when necessary to verify changes afterf you finished editing all the intended files and the user did not indicate that more changes will come.
+- If that's possible one way or another, for packages that by default create config and user-data folders, ensure they have their directories in the './config' folder if they don't already do so.
+- If that's possible one way or another, ensure that any packages that create config files such as *.toml, *.yaml, or *.json have their configuration stored in the './config' folder instead of scattered across the home directory.
 
 ---
 
