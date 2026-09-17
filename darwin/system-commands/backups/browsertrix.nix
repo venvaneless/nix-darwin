@@ -65,19 +65,13 @@
     archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
     archiveTimestampFormat = "%Y-%m-%d-%H%M%S";
     archivePrefix = "browsertrix";
-    preserveSymlinks = true;
 
-    # ---- ENCRYPTION
-    # The public key comes from the identity file on every run.
-    encrypt = false;
-    encryptionIdentityFile = paths.darwin.home.sopsAgeKeys;
-
-    # ---- ICLOUD
+    /* iCloud */
     storeiCloud = false;
     cleanOldestiCloud = true;
     iCloudBackupsToKeep = 3;
 
-    # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
+    # ---- BACKUP CONTROLS
     automatic = false;
     notifyOnAutomatic = true;
     automaticIntervalSeconds = 86400;
@@ -88,19 +82,25 @@
     transferLimitKiBps = 4096;
     runOnRebuild = false;
 
-    # ---- SCHEDULE
+    /* Schedule */
     scheduledHour = 2;
     scheduledMinute = 0;
 
-    # ---- OUTPUT
-    showProgress = true;
+    /* Encryption */
+    encrypt = false;
+    encryptionIdentityFile = paths.darwin.home.sopsAgeKeys;
+    # The public key comes from the identity file on every run
 
-    # ---- PROCESS PRIORITY
+    # ---- BACKUP ARCHITECTURE
+    preserveSymlinks = true;
+
+    /* Backup Process */
+    showProgress = true;
     processType = "Background";
     niceLevel = 20;
     lowPriorityIO = true;
 
-    # ---- LOGS
+    /* Logs */
     logDirectory = paths.darwin.backups.logs;
     logFilenameTemplate = "{appSlug}-{timestamp}.log";
     errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";

@@ -124,7 +124,8 @@
 
     /* iCloud */
     storeiCloud = false;
-    cleanOldestiCloud = true;iCloudBackupsToKeep = 3;
+    cleanOldestiCloud = true;
+    iCloudBackupsToKeep = 3;
 
     # ---- BACKUP CONTROLS
     automatic = false;
