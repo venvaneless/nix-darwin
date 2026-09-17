@@ -108,7 +108,7 @@
 
     # ---- ENCRYPTION
     # The public key comes from the identity file on every run.
-    encrypt = true;
+    encrypt = false;
     encryptionIdentityFile = paths.darwin.home.sopsAgeKeys;
 
     # ---- ICLOUD
