@@ -474,15 +474,9 @@ in
       apiKeyFile = "${api}/auth.json";
       chatgpt = "${root}/chatgpt";
       sqlite = "${chatgpt}/sqlite";
-      electronUserData = "${chatgpt}/electron-user-data";
-
-      # Default Electron data dir of ChatGPT.app, linked to electronUserData.
-      appUserData = "${darwinLibrary}/Application Support/Codex";
       shared = "${root}/shared";
       sharedSkills = "${shared}/skills";
       sharedPlugins = "${shared}/plugins";
-      sharedSessions = "${shared}/sessions";
-      sharedArchivedSessions = "${shared}/archived_sessions";
 
       # codex-profile's own configuration, kept beside the profile tree.
       profileConfig = "${darwinHomePaths.config}/codex-profile";
