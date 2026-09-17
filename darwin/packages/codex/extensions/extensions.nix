@@ -237,6 +237,8 @@ in
     if ! /usr/bin/sudo -u ven /usr/bin/env \
       HOME=/Users/ven \
       CODEX_PROFILE_HOME_ROOT=/Users/ven/.config/codex \
+      CODEX_HOME=/Users/ven/.config/codex/chatgpt \
+      CODEX_SQLITE_HOME=/Users/ven/.config/codex/chatgpt/sqlite \
       CODEX_PROFILE_CONFIG_HOME=/Users/ven/.config/codex-profile \
       ${codexSyncExtensions}/bin/codex-sync-extensions; then
       echo "[nix-darwin][codex] extension synchronization failed; inspect the command output above." >&2

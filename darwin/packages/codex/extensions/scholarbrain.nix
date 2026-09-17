@@ -200,6 +200,8 @@ in
       /usr/bin/env \
       HOME=${homeDir} \
       CODEX_PROFILE_HOME_ROOT=${codexRoot} \
+      CODEX_HOME=${codexRoot}/chatgpt \
+      CODEX_SQLITE_HOME=${codexRoot}/chatgpt/sqlite \
       CODEX_PROFILE_CONFIG_HOME=${homeDir}/.config/codex-profile \
       ${syncScholarBrain}/bin/codex-sync-scholarbrain
   '';
