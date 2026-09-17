@@ -1,5 +1,5 @@
 # options/backups/backup-exclude-helper.nix
-# Shared exclusions, run logs, and iCloud copies for every backup runner.
+# Shared exclusions, run logs, encryption, and iCloud copies for every backup runner.
 
 { lib }:
 
@@ -64,6 +64,36 @@ let
     fi
   '';
 
+  # ---- ENCRYPTION
+  # The public key is read from the identity file on every run, so no key
+  # is stored in the repository.
+  archiveSuffix = cfg: lib.optionalString cfg.encrypt ".age";
+
+  # Fails before any copying when the identity file is missing. Needs fail.
+  mkEncryptionPreflight = { pkgs, cfg }:
+    lib.optionalString cfg.encrypt ''
+      age_identity_file=${lib.escapeShellArg cfg.encryptionIdentityFile}
+      if [ ! -r "$age_identity_file" ]; then
+        fail "age identity file is missing or unreadable: $age_identity_file"
+      fi
+      age_recipient="$(${pkgs.age}/bin/age-keygen -y "$age_identity_file")" \
+        || fail "could not read the public key from: $age_identity_file"
+    '';
+
+  # Encrypts a verified archive in place, then proves it decrypts back to
+  # the same bytes. Needs log, fail, and mkEncryptionPreflight run first.
+  mkEncryptArchive = { pkgs, cfg, archivePath }:
+    lib.optionalString cfg.encrypt ''
+      log "ENCRYPT archive with age"
+      ${pkgs.age}/bin/age -r "$age_recipient" -o "${archivePath}.encrypting" "${archivePath}" \
+        || fail "could not encrypt archive: ${archivePath}"
+      log "VERIFY encrypted archive decrypts to the original"
+      ${pkgs.age}/bin/age -d -i "$age_identity_file" "${archivePath}.encrypting" \
+        | ${pkgs.diffutils}/bin/cmp -s - "${archivePath}" \
+        || fail "encrypted archive does not decrypt to the original: ${archivePath}"
+      ${pkgs.coreutils}/bin/mv -f -- "${archivePath}.encrypting" "${archivePath}"
+    '';
+
   # ---- ICLOUD COPY
   # Copies a finished archive into <iCloudRoot>/<appName in lowercase> and
   # optionally prunes that folder to the newest iCloudBackupsToKeep files.
@@ -88,7 +118,7 @@ let
       fi
       ${pkgs.coreutils}/bin/mv -- "$icloud_temporary" "$icloud_dir/${archiveName}"
       log "ICLOUD stored $icloud_dir/${archiveName}"
-${lib.optionalString cfg.keepiCloudBackup ''
+${lib.optionalString cfg.cleanOldestiCloud ''
       ${pkgs.findutils}/bin/find "$icloud_dir" -maxdepth 1 -type f ! -name '.*' -printf '%T@\t%p\n' \
         | ${pkgs.coreutils}/bin/sort -rn \
         | ${pkgs.coreutils}/bin/tail -n +${toString (cfg.iCloudBackupsToKeep + 1)} \
@@ -108,5 +138,8 @@ in
     mkRunLogSetup
     mkRunLogClose
     mkICloudCopy
+    archiveSuffix
+    mkEncryptionPreflight
+    mkEncryptArchive
     ;
 }

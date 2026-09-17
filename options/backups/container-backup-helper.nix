@@ -277,8 +277,10 @@ ${stageAdditionalSources}
     name = commandName;
 
     runtimeInputs = with pkgs; [
+      age
       cpulimit
       coreutils
+      diffutils
       findutils
       pv
       rsync
@@ -383,6 +385,7 @@ ${runLogSetup}
       cleanup() {
         if [ -n "$temporary_archive" ]; then
           ${pkgs.coreutils}/bin/rm -f -- "$temporary_archive" 2>/dev/null || true
+          ${pkgs.coreutils}/bin/rm -f -- "$temporary_archive.encrypting" 2>/dev/null || true
         fi
 
         if [ -n "$temporary_marker" ]; then
@@ -467,6 +470,7 @@ ${runLogClose}
           " on $external_backup_volume "; then
         fail "external backup volume is not mounted: $external_backup_volume"
       fi
+${excludeHelper.mkEncryptionPreflight { inherit pkgs cfg; }}
 
       # Create only this explicitly configured external backup directory.
       ${pkgs.coreutils}/bin/mkdir -p -- "$destination_dir"
@@ -607,7 +611,7 @@ ${runLogClose}
       )"
       archive_name="''${archive_name_template//\{timestamp\}/$timestamp}"
       archive_name="''${archive_name//\{prefix\}/$archive_prefix}"
-      archive_name="''${archive_name//\{appSlug\}/$app_slug}"
+      archive_name="''${archive_name//\{appSlug\}/$app_slug}${excludeHelper.archiveSuffix cfg}"
       archive="$destination_dir/$archive_name"
       temporary_marker="$destination_dir/.last-backup-$$.incomplete"
 
@@ -661,6 +665,7 @@ ${lib.optionalString cfg.storeiCloud ''
 
       log "verifying archive: $temporary_archive"
       backup_process ${pkgs.unzip}/bin/unzip -t "$temporary_archive" >/dev/null
+${excludeHelper.mkEncryptArchive { inherit pkgs cfg; archivePath = "$temporary_archive"; }}
       if [ "$archive_in_downloads" -eq 1 ]; then
         ${pkgs.coreutils}/bin/mv -- "$temporary_archive" "$local_archive"
       else
@@ -1208,7 +1213,7 @@ in
             description = "Also copy each finished archive to this app's iCloud folder.";
           };
 
-          keepiCloudBackup = lib.mkOption {
+          cleanOldestiCloud = lib.mkOption {
             type = lib.types.bool;
             default = true;
             description = "Keep only the newest iCloudBackupsToKeep archives in the iCloud folder. Needs storeiCloud.";
@@ -1217,13 +1222,26 @@ in
           iCloudBackupsToKeep = lib.mkOption {
             type = lib.types.ints.positive;
             default = 3;
-            description = "Archives kept in the iCloud folder when keepiCloudBackup is on.";
+            description = "Archives kept in the iCloud folder when cleanOldestiCloud is on.";
           };
 
           logOnlyOnErrors = lib.mkOption {
             type = lib.types.bool;
             default = true;
             description = "Delete the run log after a successful run that wrote no errors.";
+          };
+
+          # ---- ENCRYPTION
+          encrypt = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Encrypt the archive with age; the file gains a .age suffix.";
+          };
+
+          encryptionIdentityFile = lib.mkOption {
+            type = lib.types.str;
+            default = paths.darwin.home.sopsAgeKeys;
+            description = "age identity file; its public key encrypts, the file itself verifies.";
           };
 
           runOnRebuild = lib.mkOption {

@@ -24,6 +24,7 @@ let
     logFilenameTemplate = "{appSlug}-{timestamp}.log";
     errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
     logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
+    logOnlyOnErrors = true;
   };
   progressEnabled = config.services.appBackups.obsidian.showProgress;
   defaultMetadataExcludes = excludeHelper.mkRsyncExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
@@ -109,7 +110,7 @@ ${excludeHelper.mkRunLogSetup { inherit pkgs; cfg = runLog; }}
           ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid" 2>/dev/null || true
           ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" 2>/dev/null || true
         fi
-${excludeHelper.mkRunLogClose { inherit pkgs; }}
+${excludeHelper.mkRunLogClose { inherit pkgs; cfg = runLog; }}
         return "$exit_status"
       }
 

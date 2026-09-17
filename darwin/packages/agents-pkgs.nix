@@ -42,6 +42,9 @@ in
 
     # Codex backup command
     ./codex/codex-backup.nix
+
+    # Claude backup command
+    ./claude/claude-backup.nix
   ];
 }
 // packageOptions.mkPackageModule {

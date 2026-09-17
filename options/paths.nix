@@ -56,6 +56,9 @@ let
     containers = "${home}/.config/containers";
     secrets = "${home}/.config/secrets";
 
+    # Private age identity used by SOPS and encrypted backups. Never in Git.
+    sopsAgeKeys = "${home}/.config/sops/age/keys.txt";
+
     # ---- Espanso
     espanso = rec {
       root = "${home}/.config/espanso";
@@ -712,6 +715,10 @@ in
 
     # ---- Logs
     logs = "${darwinHome}/Downloads/logs";
+
+    # ---- iCloud
+    # Each backup keeps its own folder below this, named after its appName.
+    icloud = "${iCloudDrive}/Documents/system/backup-files";
 
     # ---- Per-container locations
     # One entry per container backup command: where its finished archive

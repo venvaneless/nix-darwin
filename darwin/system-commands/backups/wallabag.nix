@@ -62,9 +62,14 @@
     archivePrefix = "wallabag";
     preserveSymlinks = true;
 
+    # ---- ENCRYPTION
+    # The public key comes from the identity file on every run.
+    encrypt = false;
+    encryptionIdentityFile = paths.darwin.home.sopsAgeKeys;
+
     # ---- ICLOUD
     storeiCloud = false;
-    keepiCloudBackup = true;
+    cleanOldestiCloud = true;
     iCloudBackupsToKeep = 3;
 
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS

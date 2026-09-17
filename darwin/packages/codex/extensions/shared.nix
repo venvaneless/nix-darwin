@@ -24,7 +24,7 @@ let
     { name = "plugins"; target = codex.sharedPlugins; }
   ];
 
-  profileRoots = [ codex.api codex.chatgpt ];
+  profileRoots = [ codex.chatgpt ];
 
   # Only the directories this module creates are given to the user. The
   # previous chown -R walked 5336 paths on every activation to change

@@ -500,7 +500,7 @@ let
               description = "Also copy each finished archive to this app's iCloud folder.";
             };
 
-            keepiCloudBackup = lib.mkOption {
+            cleanOldestiCloud = lib.mkOption {
               type = lib.types.bool;
               default = true;
               description = "Keep only the newest iCloudBackupsToKeep archives in the iCloud folder. Needs storeiCloud.";
@@ -509,13 +509,26 @@ let
             iCloudBackupsToKeep = lib.mkOption {
               type = lib.types.ints.positive;
               default = 3;
-              description = "Archives kept in the iCloud folder when keepiCloudBackup is on.";
+              description = "Archives kept in the iCloud folder when cleanOldestiCloud is on.";
             };
 
             logOnlyOnErrors = lib.mkOption {
               type = lib.types.bool;
               default = true;
               description = "Delete the run log after a successful run that wrote no errors.";
+            };
+
+            # ---- ENCRYPTION
+            encrypt = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = "Encrypt the archive with age; the file gains a .age suffix.";
+            };
+
+            encryptionIdentityFile = lib.mkOption {
+              type = lib.types.str;
+              default = paths.darwin.home.sopsAgeKeys;
+              description = "age identity file; its public key encrypts, the file itself verifies.";
             };
           };
         }));
@@ -634,6 +647,8 @@ let
   runtimeInputs = with pkgs; [
     cpulimit
     coreutils
+    age
+    diffutils
     gnutar
     pv
     rsync
@@ -657,7 +672,7 @@ let
     archive_name_template="$(printf '%s' ${lib.escapeShellArg cfg.archiveFilenameTemplate})"
     archive_name="''${archive_name_template//\{timestamp\}/$timestamp}"
     archive_name="''${archive_name//\{prefix\}/$archive_prefix}"
-    archive_name="''${archive_name//\{appSlug\}/$app_slug}"
+    archive_name="''${archive_name//\{appSlug\}/$app_slug}${excludeHelper.archiveSuffix cfg}"
     archive_path="$destination_dir/$archive_name"
     marker_file="$(printf '%s' ${lib.escapeShellArg resolvedDestinationMarkerFile})"
     archive_in_downloads=${if cfg.stageInDownloads then "1" else "0"}
@@ -710,6 +725,7 @@ ${runLogSetup}
 
     cleanup() {
       ${pkgs.coreutils}/bin/rm -f -- "$temporary_archive" 2>/dev/null || true
+      ${pkgs.coreutils}/bin/rm -f -- "$temporary_archive.encrypting" 2>/dev/null || true
       ${pkgs.coreutils}/bin/rm -rf -- "$staging_dir" 2>/dev/null || true
 
       # A failed handoff deliberately leaves its verified local archive in
@@ -805,6 +821,7 @@ ${runLogClose}
     ${checkRequiredGroups}
 
     ensure_volume_mounted
+${excludeHelper.mkEncryptionPreflight { inherit pkgs cfg; }}
 
     if ! ${pkgs.coreutils}/bin/mkdir -- "$global_lock_dir" 2>/dev/null; then
       previous_pid=""
@@ -885,6 +902,7 @@ ${lib.optionalString cfg.storeiCloud ''
 
     ${pkgs.coreutils}/bin/nice -n ${toString cfg.niceLevel} ${pkgs.cpulimit}/bin/cpulimit -l "$cpu_limit_percent" -- \
       ${pkgs.gnutar}/bin/tar --list --file "$archive_work_path" >/dev/null
+${excludeHelper.mkEncryptArchive { inherit pkgs cfg; archivePath = "$archive_work_path"; }}
     ${pkgs.coreutils}/bin/mv -- "$archive_work_path" "$archive_path"
     temporary_archive=""
     ${pkgs.coreutils}/bin/touch -- "$marker_file"
