@@ -58,9 +58,11 @@ let
     wait "$error_log_pid" 2>/dev/null || true
     if [ ! -s "$error_log_file" ]; then
       ${pkgs.coreutils}/bin/rm -f -- "$error_log_file"
-      if [ ${if cfg.logOnlyOnErrors then "1" else "0"} -eq 1 ] && [ "$exit_status" -eq 0 ]; then
+${lib.optionalString cfg.logOnlyOnErrors ''
+      if [ "$exit_status" -eq 0 ]; then
         ${pkgs.coreutils}/bin/rm -f -- "$log_file"
       fi
+''}
     fi
   '';
 
