@@ -217,7 +217,12 @@ let
   zipExtraExcludes = excludeHelper.mkZipExcludeArguments (backupCfg.defaultExtraExcludePatterns ++ extraExcludePatterns);
   rsyncSymlinkArguments = if cfg.preserveSymlinks then "-a" else "-aL";
   runLogSetup = excludeHelper.mkRunLogSetup { inherit pkgs cfg; };
-  runLogClose = excludeHelper.mkRunLogClose { inherit pkgs; };
+  runLogClose = excludeHelper.mkRunLogClose { inherit pkgs cfg; };
+  iCloudCopy = excludeHelper.mkICloudCopy {
+    inherit pkgs cfg;
+    archivePath = "$archive";
+    archiveName = "$archive_name";
+  };
   stageSourceEntries = lib.concatMapStringsSep "\n" (entry: ''
         log_part ${lib.escapeShellArg entry.sourcePath} ${lib.escapeShellArg entry.destinationPath}
         ${pkgs.coreutils}/bin/mkdir -p -- "$staged_source/${entry.destinationPath}"
@@ -626,6 +631,9 @@ ${runLogClose}
         backup_process ${pkgs.rsync}/bin/rsync ${rsyncSymlinkArguments} --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- \
           "$archive_source_parent/$archive_source_name/" "$destination_dir/"
         ${pkgs.coreutils}/bin/touch -- "$marker_file" "$source_marker_file"
+${lib.optionalString cfg.storeiCloud ''
+        log "SKIP iCloud copy: archive is off, so there is no archive to copy"
+''}
         log "completed successfully: $destination_dir"
         exit 0
       fi
@@ -690,6 +698,7 @@ ${runLogClose}
 
       temporary_marker=""
       ${pkgs.coreutils}/bin/touch -- "$source_marker_file"
+${iCloudCopy}
       log "completed successfully: $archive"
     '';
   };
@@ -1184,6 +1193,37 @@ in
             type = lib.types.str;
             default = "%Y-%m-%d-%H-%M-%S";
             description = "strftime format substituted for {timestamp} in log names.";
+          };
+
+          # ---- ICLOUD
+          iCloudRoot = lib.mkOption {
+            type = lib.types.str;
+            default = backupPaths.icloud;
+            description = "iCloud folder holding one backup folder per app, named after appName in lowercase.";
+          };
+
+          storeiCloud = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = "Also copy each finished archive to this app's iCloud folder.";
+          };
+
+          keepiCloudBackup = lib.mkOption {
+            type = lib.types.bool;
+            default = true;
+            description = "Keep only the newest iCloudBackupsToKeep archives in the iCloud folder. Needs storeiCloud.";
+          };
+
+          iCloudBackupsToKeep = lib.mkOption {
+            type = lib.types.ints.positive;
+            default = 3;
+            description = "Archives kept in the iCloud folder when keepiCloudBackup is on.";
+          };
+
+          logOnlyOnErrors = lib.mkOption {
+            type = lib.types.bool;
+            default = true;
+            description = "Delete the run log after a successful run that wrote no errors.";
           };
 
           runOnRebuild = lib.mkOption {

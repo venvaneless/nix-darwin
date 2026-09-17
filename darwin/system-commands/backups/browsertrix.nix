@@ -25,8 +25,22 @@
     # -- Containers
     sourceRoot = paths.darwin.home.containers;
 
+    # -- Container
+    sourceDir = null;
+
     # -- Destination
     destinationDir = paths.darwin.backups.perContainer.browsertrix.destination;
+
+    # -- iCloud
+    # Backups go to <iCloudRoot>/<appName in lowercase>.
+    iCloudRoot = paths.darwin.backups.icloud;
+
+    # ---- LIVE DATABASE
+    sqliteDatabase = null;
+
+    # ---- EDITABLE BACKUP PATHS
+    # sourceEntries resolve from sourceRoot, configEntries from configRoot;
+    # additionalSources are absolute.
 
     sourceEntries = [
       {
@@ -35,6 +49,9 @@
       }
     ];
 
+    configEntries = [ ];
+
+    # Absolute paths for data outside the roots above. Uncomment to add one.
     additionalSources = [
       # {
       #   sourcePath = [ "${paths.darwin.home.root}/Library/Somewhere/Browsertrix" ];
@@ -42,7 +59,7 @@
       # }
     ];
 
-    # ---- INDIVIDUAL BACKUP CONTROLS
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
     archive = true;
     stageInDownloads = true;
     archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
@@ -50,14 +67,27 @@
     archivePrefix = "browsertrix";
     preserveSymlinks = true;
 
+    # ---- ICLOUD
+    storeiCloud = false;
+    keepiCloudBackup = true;
+    iCloudBackupsToKeep = 3;
+
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;
+    notifyOnAutomatic = true;
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 35;
     minimumCpuLimitPercent = 5;
     maximumCpuLimitPercent = 50;
     transferLimitKiBps = 4096;
+    runOnRebuild = false;
+
+    # ---- SCHEDULE
+    scheduledHour = 2;
+    scheduledMinute = 0;
+
+    # ---- OUTPUT
     showProgress = true;
 
     # ---- PROCESS PRIORITY
@@ -70,10 +100,6 @@
     logFilenameTemplate = "{appSlug}-{timestamp}.log";
     errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
     logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
-    runOnRebuild = false;
-
-    # ---- SCHEDULE
-    scheduledHour = 2;
-    scheduledMinute = 0;
+    logOnlyOnErrors = true;
   };
 }

@@ -11,24 +11,39 @@
 
     # ---- IDENTITY
     appName = "SnippetsLab";
+    commandName = "snippetslab-backup";
 
     # ---- PATHS ---- #
+
+    # -- Application Support
+    # ** SnippetsLab is sandboxed, so its Library lives in its container.
+    applicationSupportRoot = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library/Application Support";
+
+    # -- Preferences
+    preferencesRoot = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library/Preferences";
+
+    # -- Config
+    configRoot = paths.darwin.home.config;
 
     # -- Destination
     destinationRoot = paths.darwin.backups.apps;
     destinationSegments = [ "snippetslab" ];
 
+    # -- iCloud
+    # Backups go to <iCloudRoot>/<appName in lowercase>.
+    iCloudRoot = paths.darwin.backups.icloud;
+
     # ---- EDITABLE BACKUP CONTENTS
     # Entries resolve from the roots above; additionalSources are absolute.
 
-    applicationSupportSources = {
+    applicationSupportEntries = {
       applicationSupportPaths = [
         {
-          sourcePath = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library/Application Support/Markdown Themes";
+          sourcePath = "Markdown Themes";
           destinationPath = "assets/markdown-themes";
         }
         {
-          sourcePath = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library/Application Support/Themes";
+          sourcePath = "Themes";
           destinationPath = "assets/themes";
         }
       ];
@@ -36,10 +51,10 @@
       excludePatterns = [ ];
     };
 
-    applicationPreferences = {
+    preferenceEntries = {
       preferencePaths = [
         {
-          sourcePath = "${paths.darwin.library.containers}/com.renfei.SnippetsLab/Data/Library/Preferences/com.renfei.SnippetsLab.plist";
+          sourcePath = "com.renfei.SnippetsLab.plist";
           destinationPath = "com.renfei.SnippetsLab.plist";
         }
       ];
@@ -47,8 +62,13 @@
       excludePatterns = [ ];
     };
 
-    # Absolute paths outside the roots above. Uncomment to add one.
+    configEntries = {
+      configPaths = [ ];
 
+      excludePatterns = [ ];
+    };
+
+    # Absolute paths for data outside the roots above. Uncomment to add one.
     additionalSources = {
       additionalPaths = [
         # {
@@ -60,6 +80,8 @@
       excludePatterns = [ ];
     };
 
+    requiredAny = [ ];
+
     # ---- INDIVIDUAL ARCHIVE CONTROLS
     archive = true;
     stageInDownloads = true;
@@ -68,11 +90,20 @@
     archivePrefix = "snippetslab";
     preserveSymlinks = true;
 
+    # ---- ICLOUD
+    storeiCloud = false;
+    keepiCloudBackup = true;
+    iCloudBackupsToKeep = 3;
+
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;
+    notifyOnAutomatic = true;
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+    transferLimitKiBps = 4096;
+
+    # ---- OUTPUT
     showProgress = true;
 
     # ---- PROCESS PRIORITY
@@ -85,5 +116,6 @@
     logFilenameTemplate = "{appSlug}-{timestamp}.log";
     errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
     logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
+    logOnlyOnErrors = true;
   };
 }

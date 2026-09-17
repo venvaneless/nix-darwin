@@ -15,8 +15,15 @@
 
     # ---- IDENTITY
     appName = "Visual Studio Code";
+    commandName = "vscode-backup";
 
     # ---- PATHS ---- #
+
+    # -- Application Support
+    applicationSupportRoot = paths.darwin.library.applicationSupport;
+
+    # -- Preferences
+    preferencesRoot = paths.darwin.library.preferences;
 
     # -- Config
     configRoot = paths.darwin.home.config;
@@ -25,11 +32,28 @@
     destinationRoot = paths.darwin.backups.apps;
     destinationSegments = [ "vscode" ];
 
+    # -- iCloud
+    # Backups go to <iCloudRoot>/<appName in lowercase>.
+    iCloudRoot = paths.darwin.backups.icloud;
+
     # ---- EDITABLE BACKUP CONTENTS
+    # Entries resolve from the roots above; additionalSources are absolute.
+
+    applicationSupportEntries = {
+      applicationSupportPaths = [ ];
+
+      excludePatterns = [ ];
+    };
+
+    preferenceEntries = {
+      preferencePaths = [ ];
+
+      excludePatterns = [ ];
+    };
+
     # ** Everything VS Code uses lives in ~/.config/vscode. Each part lands
     # ** at the same relative path in the archive root, so extracting the
     # ** archive into ~/.config/vscode restores it.
-
     configEntries = {
       configPaths = [
         {
@@ -63,11 +87,9 @@
       ];
     };
 
+    # Absolute paths for data outside the roots above. Uncomment to add one.
     # ** Workspace settings live in each project's own .vscode/settings.json.
     # ** List the projects here to include them.
-
-    # Absolute paths outside the roots above. Uncomment to add one.
-
     additionalSources = {
       additionalPaths = [
         # {
@@ -79,6 +101,8 @@
       excludePatterns = [ ];
     };
 
+    requiredAny = [ ];
+
     # ---- INDIVIDUAL ARCHIVE CONTROLS
     archive = true;
     stageInDownloads = true;
@@ -87,11 +111,18 @@
     archivePrefix = "vscode";
     preserveSymlinks = true;
 
+    # ---- ICLOUD
+    storeiCloud = false;
+    keepiCloudBackup = true;
+    iCloudBackupsToKeep = 3;
+
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;
+    notifyOnAutomatic = true;
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+    transferLimitKiBps = 4096;
 
     # ---- OUTPUT
     showProgress = true;
@@ -106,5 +137,6 @@
     logFilenameTemplate = "{appSlug}-{timestamp}.log";
     errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
     logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
+    logOnlyOnErrors = true;
   };
 }

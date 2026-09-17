@@ -11,6 +11,7 @@
 
     # ---- IDENTITY
     appName = "Helium";
+    commandName = "helium-backup";
 
     # ---- PATHS ---- #
 
@@ -27,11 +28,15 @@
     destinationRoot = paths.darwin.backups.browsers;
     destinationSegments = [ "helium" ];
 
+    # -- iCloud
+    # Backups go to <iCloudRoot>/<appName in lowercase>.
+    iCloudRoot = paths.darwin.backups.icloud;
+
     # ---- EDITABLE BACKUP CONTENTS
     # Entries resolve from the roots above; additionalSources are absolute.
+
     # ** Helium keeps its data in the profile below, not in Application
     # ** Support, so nothing is taken from there.
-
     applicationSupportEntries = {
       applicationSupportPaths = [ ];
       excludePatterns = [ ];
@@ -96,10 +101,7 @@
       excludePatterns = [ ];
     };
 
-    # Absolute paths outside the roots above. Uncomment to add one.
-
-    # Absolute paths outside the roots above. Uncomment to add one.
-
+    # Absolute paths for data outside the roots above. Uncomment to add one.
     additionalSources = {
       additionalPaths = [
         # {
@@ -111,6 +113,8 @@
       excludePatterns = [ ];
     };
 
+    requiredAny = [ ];
+
     # ---- INDIVIDUAL ARCHIVE CONTROLS
     archive = true;
     stageInDownloads = true;
@@ -119,11 +123,20 @@
     archivePrefix = "helium";
     preserveSymlinks = true;
 
+    # ---- ICLOUD
+    storeiCloud = false;
+    keepiCloudBackup = true;
+    iCloudBackupsToKeep = 3;
+
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;
+    notifyOnAutomatic = true;
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+    transferLimitKiBps = 4096;
+
+    # ---- OUTPUT
     showProgress = true;
 
     # ---- PROCESS PRIORITY
@@ -136,5 +149,6 @@
     logFilenameTemplate = "{appSlug}-{timestamp}.log";
     errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
     logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
+    logOnlyOnErrors = true;
   };
 }

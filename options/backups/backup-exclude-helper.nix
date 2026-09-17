@@ -1,5 +1,5 @@
 # options/backups/backup-exclude-helper.nix
-# Shared exclusions and run logs for every backup runner.
+# Shared exclusions, run logs, and iCloud copies for every backup runner.
 
 { lib }:
 
@@ -51,14 +51,54 @@ let
     error_log_pid=$!
   '';
 
-  # Flushes the error log and drops it when the run wrote no errors.
-  mkRunLogClose = { pkgs }: ''
+  # Needs $exit_status. Flushes the error log and drops it when empty; with
+  # logOnlyOnErrors, a successful run without errors leaves no logs at all.
+  mkRunLogClose = { pkgs, cfg }: ''
     exec 2>&4
     wait "$error_log_pid" 2>/dev/null || true
     if [ ! -s "$error_log_file" ]; then
       ${pkgs.coreutils}/bin/rm -f -- "$error_log_file"
+      if [ ${if cfg.logOnlyOnErrors then "1" else "0"} -eq 1 ] && [ "$exit_status" -eq 0 ]; then
+        ${pkgs.coreutils}/bin/rm -f -- "$log_file"
+      fi
     fi
   '';
+
+  # ---- ICLOUD COPY
+  # Copies a finished archive into <iCloudRoot>/<appName in lowercase> and
+  # optionally prunes that folder to the newest iCloudBackupsToKeep files.
+  # Needs log, fail, $show_progress, and the archive path and name.
+  mkICloudCopy = { pkgs, cfg, archivePath, archiveName }:
+    lib.optionalString cfg.storeiCloud ''
+      icloud_dir=${lib.escapeShellArg "${cfg.iCloudRoot}/${lib.toLower cfg.appName}"}
+      icloud_temporary="$icloud_dir/.${archiveName}.$$.incomplete"
+
+      if [ ! -d "$icloud_dir" ]; then
+        log "ICLOUD create folder: $icloud_dir"
+        ${pkgs.coreutils}/bin/mkdir -p -- "$icloud_dir" || fail "could not create iCloud folder: $icloud_dir"
+      fi
+
+      log "ICLOUD copy ${archiveName} -> $icloud_dir"
+      if [ "$show_progress" -eq 1 ]; then
+        ${pkgs.pv}/bin/pv -N "$app_slug iCloud" -- "${archivePath}" 2>&4 > "$icloud_temporary" \
+          || fail "could not copy archive to iCloud: $icloud_dir"
+      else
+        ${pkgs.coreutils}/bin/cp -- "${archivePath}" "$icloud_temporary" \
+          || fail "could not copy archive to iCloud: $icloud_dir"
+      fi
+      ${pkgs.coreutils}/bin/mv -- "$icloud_temporary" "$icloud_dir/${archiveName}"
+      log "ICLOUD stored $icloud_dir/${archiveName}"
+${lib.optionalString cfg.keepiCloudBackup ''
+      ${pkgs.findutils}/bin/find "$icloud_dir" -maxdepth 1 -type f ! -name '.*' -printf '%T@\t%p\n' \
+        | ${pkgs.coreutils}/bin/sort -rn \
+        | ${pkgs.coreutils}/bin/tail -n +${toString (cfg.iCloudBackupsToKeep + 1)} \
+        | ${pkgs.coreutils}/bin/cut -f2- \
+        | while IFS= read -r old_icloud_backup; do
+            log "ICLOUD remove old backup: $old_icloud_backup"
+            ${pkgs.coreutils}/bin/rm -f -- "$old_icloud_backup"
+          done
+''}
+    '';
 in
 {
   inherit
@@ -67,5 +107,6 @@ in
     mkZipExcludeArguments
     mkRunLogSetup
     mkRunLogClose
+    mkICloudCopy
     ;
 }

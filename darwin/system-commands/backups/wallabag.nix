@@ -31,9 +31,22 @@
     # -- Destination
     destinationDir = paths.darwin.backups.perContainer.wallabag.destination;
 
+    # -- iCloud
+    # Backups go to <iCloudRoot>/<appName in lowercase>.
+    iCloudRoot = paths.darwin.backups.icloud;
+
+    # ---- LIVE DATABASE
+    sqliteDatabase = null;
+
     # ---- EDITABLE BACKUP PATHS
-    # Absolute sourcePath entries for data outside sourceDir, staged on top
-    # of the archive. Add as many as required.
+    # sourceEntries resolve from sourceRoot, configEntries from configRoot;
+    # additionalSources are absolute.
+
+    sourceEntries = [ ];
+
+    configEntries = [ ];
+
+    # Absolute paths for data outside the roots above. Uncomment to add one.
     additionalSources = [
       # {
       #   sourcePath = [ "${paths.darwin.home.root}/Library/Somewhere/Wallabag" ];
@@ -41,7 +54,7 @@
       # }
     ];
 
-    # ---- INDIVIDUAL BACKUP CONTROLS
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
     archive = true;
     stageInDownloads = true;
     archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
@@ -49,14 +62,27 @@
     archivePrefix = "wallabag";
     preserveSymlinks = true;
 
+    # ---- ICLOUD
+    storeiCloud = false;
+    keepiCloudBackup = true;
+    iCloudBackupsToKeep = 3;
+
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;
+    notifyOnAutomatic = true;
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 35;
     minimumCpuLimitPercent = 5;
     maximumCpuLimitPercent = 50;
     transferLimitKiBps = 4096;
+    runOnRebuild = false;
+
+    # ---- SCHEDULE
+    scheduledHour = 5;
+    scheduledMinute = 0;
+
+    # ---- OUTPUT
     showProgress = true;
 
     # ---- PROCESS PRIORITY
@@ -69,10 +95,6 @@
     logFilenameTemplate = "{appSlug}-{timestamp}.log";
     errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
     logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
-    runOnRebuild = false;
-
-    # ---- SCHEDULE
-    scheduledHour = 5;
-    scheduledMinute = 0;
+    logOnlyOnErrors = true;
   };
 }

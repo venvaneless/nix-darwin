@@ -11,6 +11,7 @@
 
     # ---- IDENTITY
     appName = "A Better Finder Attributes";
+    commandName = "better-attributes-backup";
 
     # ---- PATHS ---- #
 
@@ -27,7 +28,9 @@
     destinationRoot = paths.darwin.backups.apps;
     destinationSegments = [ "better-finder-attributes" ];
 
-    commandName = "better-attributes-backup";
+    # -- iCloud
+    # Backups go to <iCloudRoot>/<appName in lowercase>.
+    iCloudRoot = paths.darwin.backups.icloud;
 
     # ---- EDITABLE BACKUP CONTENTS
     # Entries resolve from the roots above; additionalSources are absolute.
@@ -60,10 +63,7 @@
       excludePatterns = [ ];
     };
 
-    # Absolute paths outside the roots above. Uncomment to add one.
-
-    # Absolute paths outside the roots above. Uncomment to add one.
-
+    # Absolute paths for data outside the roots above. Uncomment to add one.
     additionalSources = {
       additionalPaths = [
         # {
@@ -75,6 +75,8 @@
       excludePatterns = [ ];
     };
 
+    requiredAny = [ ];
+
     # ---- INDIVIDUAL ARCHIVE CONTROLS
     archive = true;
     stageInDownloads = true;
@@ -83,11 +85,20 @@
     archivePrefix = "better-finder-attributes";
     preserveSymlinks = true;
 
+    # ---- ICLOUD
+    storeiCloud = false;
+    keepiCloudBackup = true;
+    iCloudBackupsToKeep = 3;
+
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;
+    notifyOnAutomatic = true;
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 25;
+    transferLimitKiBps = 4096;
+
+    # ---- OUTPUT
     showProgress = true;
 
     # ---- PROCESS PRIORITY
@@ -100,5 +111,6 @@
     logFilenameTemplate = "{appSlug}-{timestamp}.log";
     errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
     logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
+    logOnlyOnErrors = true;
   };
 }

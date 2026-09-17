@@ -31,15 +31,26 @@
     # -- Destination
     destinationDir = paths.darwin.backups.perContainer.vaultwarden.destination;
 
+    # -- iCloud
+    # Backups go to <iCloudRoot>/<appName in lowercase>.
+    iCloudRoot = paths.darwin.backups.icloud;
+
     # ---- LIVE DATABASE
     # ** Vaultwarden writes to this database while it runs, so it is
     # ** named rather than copied with the rest of the directory.
     sqliteDatabase = "db.sqlite3";
 
     # ---- EDITABLE BACKUP PATHS
-    # Absolute sourcePath entries for data outside sourceDir, staged on top
-    # of the archive. Add as many as required. (sourceEntries is not used
-    # here: it would bypass the live-database handling above.)
+    # sourceEntries resolve from sourceRoot, configEntries from configRoot;
+    # additionalSources are absolute.
+
+    # ** Leave empty when sqliteDatabase is set: entries bypass the
+    # ** live-database handling above.
+    sourceEntries = [ ];
+
+    configEntries = [ ];
+
+    # Absolute paths for data outside the roots above. Uncomment to add one.
     additionalSources = [
       # {
       #   sourcePath = [ "${paths.darwin.home.root}/Library/Somewhere/Vaultwarden" ];
@@ -47,7 +58,7 @@
       # }
     ];
 
-    # ---- INDIVIDUAL BACKUP CONTROLS
+    # ---- INDIVIDUAL ARCHIVE CONTROLS
     archive = true;
     stageInDownloads = true;
     archiveFilenameTemplate = "{timestamp}-{prefix}.zip";
@@ -55,14 +66,27 @@
     archivePrefix = "vaultwarden";
     preserveSymlinks = true;
 
+    # ---- ICLOUD
+    storeiCloud = false;
+    keepiCloudBackup = true;
+    iCloudBackupsToKeep = 3;
+
     # ---- INDIVIDUAL AUTOMATIC BACKUP CONTROLS
     automatic = false;
+    notifyOnAutomatic = true;
     automaticIntervalSeconds = 86400;
     minimumIntervalSeconds = 28800;
     cpuLimitPercent = 35;
     minimumCpuLimitPercent = 5;
     maximumCpuLimitPercent = 50;
     transferLimitKiBps = 4096;
+    runOnRebuild = false;
+
+    # ---- SCHEDULE
+    scheduledHour = 4;
+    scheduledMinute = 0;
+
+    # ---- OUTPUT
     showProgress = true;
 
     # ---- PROCESS PRIORITY
@@ -75,10 +99,6 @@
     logFilenameTemplate = "{appSlug}-{timestamp}.log";
     errorLogFilenameTemplate = "{appSlug}-{timestamp}-error.log";
     logTimestampFormat = "%Y-%m-%d-%H-%M-%S";
-    runOnRebuild = false;
-
-    # ---- SCHEDULE
-    scheduledHour = 4;
-    scheduledMinute = 0;
+    logOnlyOnErrors = true;
   };
 }

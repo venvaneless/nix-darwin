@@ -28,6 +28,7 @@ let
   sourceDir = paths.darwin.home.mkcert;
   destinationDir = backupPaths.certificates;
   showProgress = true;
+  stageInDownloads = true;
   progressEnabled = config.services.appBackups.mkcert.showProgress;
   defaultMetadataExcludes = excludeHelper.mkRsyncExcludeArguments excludeHelper.defaultMetadataExcludePatterns;
 
@@ -43,9 +44,11 @@ let
       cpu_limit_percent=10
       transfer_limit_kibps=4096
       show_progress=${if progressEnabled then "1" else "0"}
+      stage_in_downloads=${if config.services.appBackups.mkcert.stageInDownloads then "1" else "0"}
+      staging_dir="${backupPaths.staging}/mkcert"
       rsync_progress_args=()
       if [ "$show_progress" -eq 1 ]; then
-        rsync_progress_args+=(--info=progress2)
+        rsync_progress_args+=(--info=progress2 --no-inc-recursive)
       fi
       exclude_args=(
 ${defaultMetadataExcludes}
@@ -63,6 +66,8 @@ ${defaultMetadataExcludes}
       }
 
       release_backup_lock() {
+        ${pkgs.coreutils}/bin/rm -rf -- "$staging_dir" 2>/dev/null || true
+        ${pkgs.coreutils}/bin/rmdir -- "${backupPaths.staging}" 2>/dev/null || true
         if [ "$global_lock_acquired" -eq 1 ]; then
           ${pkgs.coreutils}/bin/rm -f -- "$global_lock_dir/pid" 2>/dev/null || true
           ${pkgs.coreutils}/bin/rmdir -- "$global_lock_dir" 2>/dev/null || true
@@ -133,7 +138,18 @@ ${defaultMetadataExcludes}
         echo "[mkcert backup]   $change"
       done
 
-      backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- "$source_dir/" "$destination_dir/"
+      # Stage a verified local copy in Downloads before touching the volume.
+      sync_source="$source_dir"
+      if [ "$stage_in_downloads" -eq 1 ]; then
+        ${pkgs.coreutils}/bin/rm -rf -- "$staging_dir"
+        ${pkgs.coreutils}/bin/mkdir -p -- "$staging_dir"
+        echo "[mkcert backup] STAGE $source_dir -> $staging_dir"
+        backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- "$source_dir/" "$staging_dir/"
+        sync_source="$staging_dir"
+      fi
+
+      echo "[mkcert backup] COPY $sync_source -> $destination_dir"
+      backup_process ${pkgs.rsync}/bin/rsync -a --bwlimit="$transfer_limit_kibps" --human-readable "''${rsync_progress_args[@]}" "''${exclude_args[@]}" -- "$sync_source/" "$destination_dir/"
       echo "[mkcert backup] DONE $destination_dir"
     '';
   };
@@ -144,6 +160,12 @@ in
       type = lib.types.bool;
       default = showProgress;
       description = "Show rsync transfer progress for the mkcert backup.";
+    };
+
+    stageInDownloads = lib.mkOption {
+      type = lib.types.bool;
+      default = stageInDownloads;
+      description = "Copy the certificates to the Downloads staging folder before mirroring them to the volume.";
     };
   };
 
