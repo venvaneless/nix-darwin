@@ -479,6 +479,42 @@ Always consider:
 { paths, packageOptions, platforms, ... }:
 ```
 
+### Upstream options versus custom knobs
+
+Before declaring a knob, check whether nixpkgs, nix-darwin, Home Manager, or
+another upstream module already declares the same option. A custom knob that
+only renames an upstream option adds a second name for one setting.
+
+When upstream already declares it and the option name is clear, assign the
+upstream option directly in the shared or machine file:
+
+```nix
+# shared/home/agents.nix — upstream options, assigned directly
+programs.claude-code = {
+  configDir = "/Users/ven/.config/claude";
+  settings.model = "opus";
+};
+```
+
+Add a module in `options/` only for what upstream does not cover, for example:
+
+- swapping in a module from another source;
+- platform gating such as `installOn`;
+- passing one program's values into another;
+- generated files, scripts, services, and every other implementation detail.
+
+A custom knob wrapping an upstream option is still correct when:
+
+- the upstream names do not say what they do;
+- related settings from several packages belong together under one namespace;
+- the user asks for it.
+
+The user decides those cases. Do not add the wrapping layer on your own. Where
+no upstream option exists, custom knobs in `options/` remain the rule.
+
+Assigning an upstream option is a value, so it belongs in `shared/` or the
+machine file, exactly like a `ven.*` knob value.
+
 ### The two kinds of modularisation
 
 This repository modularises in two different ways. They are not
