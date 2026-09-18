@@ -68,7 +68,8 @@ let
             -a ${lib.escapeShellArg chatgptApp}
           ;;
         cli)
-          CODEX_API_KEY="$key" exec /run/current-system/sw/bin/codex "$@"
+          # -p layers $CODEX_HOME/api.config.toml over config.toml.
+          CODEX_API_KEY="$key" exec /run/current-system/sw/bin/codex -p api "$@"
           ;;
         *)
           echo "Usage: codex-api [app|cli] [codex args...]" >&2
