@@ -19,12 +19,6 @@
 
     # ---- PATHS ---- #
 
-    # -- Application Support
-    applicationSupportRoot = paths.darwin.library.applicationSupport;
-
-    # -- Preferences
-    preferencesRoot = paths.darwin.library.preferences;
-
     # -- Config
     configRoot = paths.darwin.home.config;
 
@@ -39,46 +33,59 @@
     # ---- EDITABLE BACKUP CONTENTS
     # Entries resolve from the roots above; additionalSources are absolute.
 
-    applicationSupportEntries = {
-      applicationSupportPaths = [ ];
-
-      excludePatterns = [ ];
-    };
-
-    preferenceEntries = {
-      preferencePaths = [ ];
-
-      excludePatterns = [ ];
-    };
-
     # ** Everything VS Code uses lives in ~/.config/vscode. Each part lands
     # ** at the same relative path in the archive root, so extracting the
     # ** archive into ~/.config/vscode restores it.
     configEntries = {
       configPaths = [
         {
-          sourcePath = "vscode/argv.json";
-          destinationPath = "argv.json";
-        }
-        {
-          sourcePath = "vscode/user-data/User";
-          destinationPath = "user-data/User";
+          sourcePath = "vscode/cli";
+          destinationPath = "cli";
         }
         {
           sourcePath = "vscode/extensions";
           destinationPath = "extensions";
         }
         {
-          sourcePath = "vscode/agent-plugins";
-          destinationPath = "agent-plugins";
-        }
-        {
           sourcePath = "vscode/shared-data";
           destinationPath = "shared-data";
         }
         {
-          sourcePath = "vscode/backup-configs";
-          destinationPath = "backup-configs";
+          sourcePath = "vscode/user-data";
+          destinationPath = "user-data";
+
+          # Electron rebuilds these on the next start.
+          excludePatterns = [
+            "Cache/"
+            "CachedData/"
+            "CachedConfigurations/"
+            "CachedExtensionVSIXs/"
+            "CachedProfilesData/"
+            "Code Cache/"
+            "GPUCache/"
+            "DawnGraphiteCache/"
+            "DawnWebGPUCache/"
+            "Service Worker/"
+            "Session Storage/"
+            "Shared Dictionary/"
+            "blob_storage/"
+            "Crashpad/"
+            "logs/"
+
+            # Rewritten constantly while the app runs.
+            "*.sock"
+            "code.lock"
+            "*-journal"
+            "*-wal"
+          ];
+        }
+        {
+          sourcePath = "vscode/agent-plugins";
+          destinationPath = "agent-plugins";
+        }
+        {
+          sourcePath = "vscode/argv.json";
+          destinationPath = "argv.json";
         }
       ];
 
