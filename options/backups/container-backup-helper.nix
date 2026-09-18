@@ -403,8 +403,12 @@ ${runLogSetup}
         # A failed handoff deliberately leaves its verified local archive in
         # place. rmdir therefore removes only an empty helper-owned directory.
         if [ "$archive_in_downloads" -eq 1 ]; then
+          # Finder leaves .DS_Store behind, which stops rmdir.
+          ${pkgs.coreutils}/bin/rm -f -- "$local_staging_dir/.DS_Store" 2>/dev/null || true
           ${pkgs.coreutils}/bin/rmdir -- "$local_staging_dir" 2>/dev/null || true
 ${lib.optionalString localStagingUsesSharedRoot ''
+          # Finder leaves .DS_Store behind, which stops rmdir.
+          ${pkgs.coreutils}/bin/rm -f -- ${lib.escapeShellArg backupCfg.paths.stagingDirectory}/.DS_Store 2>/dev/null || true
           ${pkgs.coreutils}/bin/rmdir -- ${lib.escapeShellArg backupCfg.paths.stagingDirectory} 2>/dev/null || true
 ''}
         fi
