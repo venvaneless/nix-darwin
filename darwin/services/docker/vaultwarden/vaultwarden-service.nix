@@ -35,6 +35,20 @@ let
   # Environment variables for Vaultwarden container
   envVars = config.ven.vaultwarden.envVars or [ ];
 
+  # Pinned image for the Vaultwarden container
+  image = config.ven.vaultwarden.image or "vaultwarden/server:1.37.3";
+
+  # Recreate marker
+  # ** Docker cannot change the image or environment of an existing
+  # ** container. The spec is hashed into a label so the runner can tell
+  # ** a stale container apart from a current one and rebuild it.
+  specHash = builtins.hashString "sha256" (lib.concatStringsSep "\n" ([
+    image
+    (toString hostPort)
+    (toString internalPort)
+    dataDir
+  ] ++ envVars));
+
   # User-specific directory for container data
   containersRoot = paths.darwin.docker.data.root;
 
@@ -106,11 +120,23 @@ let
         # Docker is ready; proceed with starting the Vaultwarden container
         echo ">>> [vaultwarden] Docker engine ready"
 
-        # Check if the Vaultwarden image is present; if not, pull it
-        if ! "${dockerBin}" image inspect vaultwarden/server:latest >/dev/null 2>&1; then
-          echo ">>> [vaultwarden] Pulling image"
-          # Pull the latest Vaultwarden image from Docker Hub
-          "${dockerBin}" pull vaultwarden/server:latest
+        # Pull the pinned image when it is not present locally
+        if ! "${dockerBin}" image inspect ${lib.escapeShellArg image} >/dev/null 2>&1; then
+          echo ">>> [vaultwarden] Pulling ${image}"
+          "${dockerBin}" pull ${lib.escapeShellArg image}
+        fi
+
+        # Drop the container when its recorded spec no longer matches.
+        # ** Without this the container keeps its original image and
+        # ** environment forever, and config changes never take effect.
+        if "${dockerBin}" ps -a --format '{{.Names}}' | grep -qx "${appName}"; then
+          running_spec=$("${dockerBin}" inspect "${appName}" \
+            --format '{{index .Config.Labels "com.ven.spec"}}' 2>/dev/null || echo "")
+
+          if [ "$running_spec" != "${specHash}" ]; then
+            echo ">>> [vaultwarden] Image or settings changed; recreating container"
+            "${dockerBin}" rm -f "${appName}" >/dev/null
+          fi
         fi
 
         # Create the container when it does not exist.
@@ -119,11 +145,12 @@ let
 
           "${dockerBin}" run -d \
             --name "${appName}" \
+            --label "com.ven.spec=${specHash}" \
             --restart unless-stopped \
             -p "${toString hostPort}:${toString internalPort}" \
             -v "${dataDir}:/data" \
             ${envArgs} \
-            vaultwarden/server:latest
+            ${lib.escapeShellArg image}
         else
           echo ">>> [vaultwarden] Container exists; updating restart policy"
 

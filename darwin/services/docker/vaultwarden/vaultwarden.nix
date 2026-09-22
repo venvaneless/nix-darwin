@@ -20,10 +20,14 @@ let
   # Host port used by nginx
   hostPort = 8080;
 
+  # Pinned container image
+  # ** Never ':latest': the tag silently freezes at whatever was pulled first.
+  image = "vaultwarden/server:1.37.3";
+
   # Container environment variables
   envVars = [
-  	# Set the domain for Vaultwarden (used for generating links, etc.)
-    "DOMAIN=https://vaultwarden.local"
+  	# Set the domain for Vaultwarden (must match the URL clients connect to)
+    "DOMAIN=https://192.168.2.125"
 
     # Enable WebSocket support for real-time updates
     "WEBSOCKET_ENABLED=true"
@@ -56,6 +60,19 @@ in
 
       # Description for the data directory option
       description = "Data directory for Vaultwarden.";
+    };
+
+    # ---- CONTAINER IMAGE
+    image = lib.mkOption {
+
+      # Pinned Vaultwarden Docker image
+      type = lib.types.str;
+
+      # Default pinned image
+      default = image;
+
+      # Description for the image option
+      description = "Pinned Vaultwarden Docker image.";
     };
 
     # ---- PORT CONFIGURATION
