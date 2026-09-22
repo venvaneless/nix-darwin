@@ -703,6 +703,12 @@ Everything in the current `settings.json` moves over as-is: permissions, `additi
 - **`mcpServers` and `lspServers`** are wired up (claude-mem brings its own MCP server, so none is needed for it). See section 9 for how they reach VS Code.
 - **Not needed:** `outputStyles`. `syncClaudeAiSkills` stays on (it provides pdf, docx, skill-creator).
 - **claude-powerline caveat:** the status line likely shows only in the terminal CLI, not the VS Code panel.
+- **`~/.local/bin/claude` link,** so tools like Obsidian's Copilot plugin detect Claude (they search npm/volta/asdf/Homebrew paths, never `/run/current-system/sw/bin`). Declare it once, after deleting the hand-made link from 2026-09-23, since home-manager refuses to replace an existing symlink:
+  ```nix
+  home.file.".local/bin/claude".source =
+    config.lib.file.mkOutOfStoreSymlink "${paths.darwin.system.currentSystemBin}/claude";
+  ```
+- **Those tools also read `CLAUDE_CONFIG_DIR`,** falling back to `~/.claude`. Section 8 B drops the launchd export, so Obsidian needs the variable another way.
 
 ## 6. Backing up chats and memory
 Restoring probably won't be needed. The folder location doesn't change, and home-manager only replaces `settings.json`, `plugins/known_marketplaces.json` and `hooks/guard.py`. With `backupFileExtension = "bak"` it renames those to `.bak` instead of overwriting. Chats, history, `.claude.json`, login and the claude-mem database aren't touched.
