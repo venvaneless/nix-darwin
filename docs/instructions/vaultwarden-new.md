@@ -148,12 +148,31 @@ Rules:
   No other module performs platform detection, and no knob file contains an `if`.
 - The knob declares the values; the logic layer decides which one applies.
 
-For values that differ by **machine** rather than by platform — mainly filesystem
-paths — the differing prefix comes from `paths.nix`, and the knob composes on top:
+### 4.3 Data paths are always written out per platform
+
+Any path pointing at **real data** is written in the explicit `{ mac, linux }` form in the
+knob file, even where `paths.nix` could resolve the prefix by itself:
 
 ```nix
-dataDir = "${paths.podman.data}/vaultwarden";
+# where the Vaultwarden password database lives
+dataDir = { mac   = "${paths.mac.podman.data}/vaultwarden";
+            linux = "${paths.linux.podman.data}/vaultwarden"; };
+
+# where Karakeep stores saved content
+dataDir = { mac   = "${paths.mac.podman.data}/karakeep";
+            linux = "${paths.linux.podman.data}/karakeep"; };
 ```
+
+The same applies to certificate and CA directories (§7), backup sources and destinations,
+and any other location holding data that must survive.
+
+The reason is legibility, not necessity: for a path that holds a password vault or a
+personal archive, both destinations should be readable at a glance in the knob file,
+rather than inferred from a selector in another module. `paths.nix` still supplies the
+prefixes — the knob composes on top of them — but the per-platform choice stays visible.
+
+Paths that hold no data (log locations, runtime directories, store-backed config) may
+use the resolved form.
 
 `paths.nix` is the home for every path, on **all platforms** — it defines
 `darwinHome` / `linuxHome`, parallel home and backup trees, and a `forPlatform`
@@ -166,10 +185,16 @@ Rules for paths in this rewrite:
 - Read existing entries wherever they already cover the case; only add what is missing.
 - Where the value depends on which platform is running, resolution comes from
   `platforms.nix`, the same as any other path.
-- The knobs then reference the `paths` tree rather than repeating literals:
+- The knobs then reference the `paths` tree rather than repeating literals — in the
+  explicit per-platform form for data paths (§4.3), in the resolved form otherwise:
 
 ```nix
-dataDir = "${paths.podman.data}/vaultwarden";
+# data path — both platforms spelled out
+dataDir = { mac   = "${paths.mac.podman.data}/vaultwarden";
+            linux = "${paths.linux.podman.data}/vaultwarden"; };
+
+# non-data path — resolved form is fine
+runtimeDir = "${paths.podman.runtime}";
 ```
 
 Do not mirror the old `paths.darwin.docker.*` subtree into a Podman-shaped copy. It is
@@ -294,8 +319,10 @@ Knobs must state where certificates are generated, stored and installed:
 
 ```nix
 system.shared.packages.mkcert = {
-  caRoot  = "${paths.home.config}/mkcert";
-  certDir = "${paths.home.ssl}/vaultwarden";
+  caRoot  = { mac   = "${paths.mac.home.config}/mkcert";
+              linux = "${paths.linux.home.config}/mkcert"; };
+  certDir = { mac   = "${paths.mac.home.ssl}/vaultwarden";
+              linux = "${paths.linux.home.ssl}/vaultwarden"; };
 
   certName = "vaultwarden.local.pem";
   keyName  = "vaultwarden.local-key.pem";
@@ -306,9 +333,8 @@ system.shared.packages.mkcert = {
 };
 ```
 
-The paths carry no `{ mac, linux }` split here because `paths.nix` already resolves the
-home prefix per platform (§4). Only write the split form for values that genuinely differ
-beyond their path prefix, such as a port.
+These are written in the explicit `{ mac, linux }` form on purpose, even though
+`paths.nix` could resolve the prefix on its own — see §4.3.
 
 ### nginx
 
@@ -321,7 +347,8 @@ system.shared.services.nginx = {
   virtualHosts.vaultwarden = {
     serverNames = [ "vaultwarden.local" "192.168.2.125" ];
     proxyPort   = 8080;          # the container's hostPort
-    certDir     = "${paths.home.ssl}/vaultwarden";
+    certDir     = { mac   = "${paths.mac.home.ssl}/vaultwarden";
+                    linux = "${paths.linux.home.ssl}/vaultwarden"; };
     websockets  = true;
   };
 };
