@@ -1,0 +1,20 @@
+How do I update my self-packaged apps? or can I update them in-app too?
+
+In-app updates: no. A Nix-installed app lives in the read-only store, and /Applications/… is only a link into it. Sparkle-style updaters can't replace anything, so they either fail or nag. That's the trade for having the version declared. It's also why your Claude module sets DISABLE_AUTOUPDATER=1 for the CLI.
+
+How you update them today — you already have both mechanisms:
+
+Per-app commands built into the derivation. hammerspoon.nix contains update-hammerspoon, a writeShellApplication that reads GitHub's latest release, computes the hash and rewrites the version, URL and hash in the file itself. update-claude-desktop does the same against Anthropic's release list. So run the command, then rebuild.
+
+The generic tool. nix-update is already installed (shared/packages.nix:279) and every app is exposed as a flake package, which is what the comment in flake-modules/packages.nix refers to:
+
+
+nix-update hammerspoon --flake            # finds the newest GitHub release itself
+nix-update floe --flake --version 0.1.6   # when the version can't be detected
+It rewrites version and hash in place, same as the custom commands.
+
+So the routine is: run one of those, then drs. Nothing updates by itself, by design — the version is part of your configuration.
+
+If you want one command for all of them, a small update-apps could loop nix-update over the flake packages, so you'd run it next to nix flake update and rebuild once. Worth adding when we do the derivations/ move, if you like the idea.
+
+And since you're taking chatgpt from unstable, that one needs none of this: nix flake update moves it with everything else.
