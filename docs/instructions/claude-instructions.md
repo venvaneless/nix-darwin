@@ -599,6 +599,8 @@ The knobs will be in:
 shared/home/agents.nix
 ```
 
+Since I want Codex and Claude to work on all machines, make sure where needed there's platform detection taken from `platforms.nix`. Nix-provided HM options and custom knobs go to shared/home/agents.nix
+
 Let me know if anything will be installed via system and not HM so we think about restructuring the architecture accordingly.
 
 Also let me know what else should I think about adding or not adding.
@@ -631,8 +633,8 @@ I want to keep the memories and chats I already have. Just let me know how we ba
 | Global `CLAUDE.md`                                         | home-manager                                                                      | `programs.claude-code.context`                                              |
 | obsidian-skills, claude-mem, later marketplaces            | home-manager                                                                      | `programs.claude-code.marketplaces` + `settings.enabledPlugins` (section 2) |
 | MCP and LSP servers                                        | home-manager                                                                      | `programs.claude-code.mcpServers` / `lspServers`, **but see section 9**     |
-| claude-powerline                                           | home-manager (`home.packages` + `settings.statusLine`)                            | Only in `nixpkgs-unstable` (1.30.3), not in 26.05                           |
-| `CLAUDE_CONFIG_DIR`                                        | home-manager: `home.sessionVariables` (fish) + Claude extension setting (VS Code) | See section 8 B                                                             |
+| claude-powerline                                           | home-manager (`home.packages` + `settings.statusLine`)                            | A package, not a `programs.claude-code` option; unstable only (1.30.3)      |
+| `CLAUDE_CONFIG_DIR`                                        | nix-darwin `launchd.user.envVariables` + home-manager `home.sessionVariables`     | See section 8 B                                                             |
 | `CLAUDE_MEM_DATA_DIR`, npm paths, `DISABLE_AUTOUPDATER`    | home-manager: `settings.json` `env` block                                         | Applies to every Claude session and its hooks, however started              |
 | `claude-backup` command                                    | nix-darwin, stays where it is                                                     | Uses the darwin backup helpers                                              |
 | macOS permissions for computer use                         | **Can't be declared**                                                             | Toggled once in System Settings                                             |
@@ -640,7 +642,7 @@ I want to keep the memories and chats I already have. Just let me know how we ba
 Nothing has to be installed at system level, so the architecture doesn't need to change.
 
 ## 2. Plugins and marketplaces
-- **Why not `plugins`:** the VS Code extension runs its own bundled `claude`, so it never sees wrapper flags. claude-mem also can't run from the read-only Nix store, because it installs its own `node_modules` next to its scripts.
+- **`plugins` and `marketplaces` are both used, for different sources.** With master's module and Claude Code 2.1.157+, `plugins` links a plugin straight from the store into `configDir/skills/`, which suits anything that runs as-is: obsidian-skills, and later skill-only plugins. `marketplaces` is for anything needing a writable install — claude-mem installs its own `node_modules` beside its scripts, so it must be fetched into `plugins/cache` by Claude itself.
 - **How:** same pattern as the Codex setup. A marketplace points at a pinned flake input, and Claude Code installs its own writable copy into `plugins/cache`:
   - `marketplaces.claude-mem = inputs.claude-mem;` (already a flake input)
   - `marketplaces.obsidian-skills = inputs.obsidian-skills;` (**new flake input**, `github:kepano/obsidian-skills`, `flake = false`)
@@ -681,34 +683,38 @@ options/agents/claude/
 options/agents/claude-mem/   # shared by Claude + Codex
 ```
 - **MCP and LSP servers, settings and marketplaces** are plain values, so they live in `agents.nix`. `inputs` is already in scope for shared home modules, as the WezTerm plugins show.
-- **Rules, agents, commands, `CLAUDE.md`: open choice.** Each can be inline text in `agents.nix` (`rules`, `agents`, `commands`, `context`) or a folder of `.md` files (`rulesDir`, `agentsDir`, `commandsDir`). The module refuses both forms for the same type. None exist yet, so nothing needs a folder until one is written.
+- **`…Dir` for rules, agents, commands and hooks; inline for `context`.** The module refuses an option and its `…Dir` twin at the same time, so one form per type. The folder form wins because all four are prompt text: markdown files keep `${…}`, backticks and code blocks out of Nix strings, render in the editor, and are moved or renamed without touching `agents.nix`. `context` stays inline since it's one short block. Switching any type to the inline form later is a one-line change.
 - **A `ven.*` option is added only if** Claude needs per-platform gating (`installOn`) later; today each host decides by importing the module.
 - **`hooks` vs `settings.hooks`:** `hooksDir` only places the script files; the `PreToolUse` entry that runs `guard.py` still goes in `settings.hooks`.
 Everything in the current `settings.json` moves over as-is: permissions, `additionalDirectories`, the hook, `disableClaudeAiConnectors`, `effortLevel`, `model`, `theme` and the notification settings. The `env` block gets `DISABLE_AUTOUPDATER=1`, `CLAUDE_MEM_DATA_DIR`, `NPM_CONFIG_USERCONFIG` and `NPM_CONFIG_CACHE` (moved from the old launchd export). `CLAUDE_CODE_PATH` is dropped unless something still reads it (check claude-mem and Codex before removing).
 
-## 4. Removed
-- **Code:** `darwin/packages/claude/{default.nix, claude-desktop.nix, claude-desktop-release.nix, update-claude-desktop.sh}` and the `./claude` import in `agents-pkgs.nix`.
-- **In `claude-backup.nix`:** the Desktop Application Support and preferences entries.
+## 4. Replaced — the old modules are disabled, not edited
+
+**The old files are not touched at all,** not even their comments. They are disabled by commenting out their import lines in [darwin/packages/agents-pkgs.nix](darwin/packages/agents-pkgs.nix) (`./claude`, and the Claude package entries), so the previous setup can be re-enabled by uncommenting one line. The files themselves are deleted only once the new Claude is confirmed working, as a separate change.
+
+- **Disabled by commenting out the import:** `darwin/packages/claude/` (`default.nix`, `claude-desktop.nix`, `claude-desktop-release.nix`, `update-claude-desktop.sh`).
+- **Backups are not touched.** `claude-backup.nix` stays imported and keeps working exactly as it does now, Desktop entries included. Any backup change is a later, separate task.
 - **One-time commands for the user** (not activation): remove the `/Applications/Claude.app` link and `~/Library/Application Support/Claude`, run `tccutil reset All com.anthropic.claudefordesktop`, delete the stray `~/.claude.json`, and delete old claude-mem versions from `plugins/cache`.
-- **The launchd export** (`launchd.user.envVariables`) goes with the old module. The values stay in launchd until logout, so after the rebuild run `launchctl unsetenv` for `CLAUDE_CONFIG_DIR`, `CLAUDE_MEM_DATA_DIR`, `CLAUDE_CODE_PATH`, `NPM_CONFIG_USERCONFIG`, `NPM_CONFIG_CACHE` and `DISABLE_AUTOUPDATER`, then restart VS Code to confirm the extension setting alone is enough.
+- **The launchd export stays** (section 8 B), moved into `options/agents/claude/`. Only `CLAUDE_CODE_PATH` is dropped, unless claude-mem or Codex still read it — check before removing.
 
 ## 5. Also added
 - **`cleanupPeriodDays = 36500`.** Without it Claude Code deletes chats older than 30 days, and `.last-cleanup` shows that cleanup is already running.
-- **claude-mem in `claude-backup`:** `claude-mem.db` (with its `-wal` file), `chroma/` and `settings.json`.
+- **claude-mem in `claude-backup`:** worth adding (`claude-mem.db` with its `-wal` file, `chroma/`, `settings.json`) — but only after the rewrite is verified, since backups stay untouched during it.
 - **Letting Claude act on the Mac:**
   - Computer use: enable once in `/mcp`. That state lives in `.claude.json`, which stays editable.
   - Grant Accessibility and Screen Recording to VS Code and WezTerm by hand.
   - Add `Bash(open -a:*)` to the allow list; keep `osascript` on the ask list.
 - **Global `CLAUDE.md`** through `context`, and `rulesDir` for repo conventions.
 - **`mcpServers` and `lspServers`** are wired up (claude-mem brings its own MCP server, so none is needed for it). See section 9 for how they reach VS Code.
-- **Not needed:** `outputStyles`. `syncClaudeAiSkills` stays on (it provides pdf, docx, skill-creator).
+- **`outputStyles`** gets at least one style declared, so the option is in use and a style can be picked with `/output-style`.
+- **`skills`** points at a repo folder for your own Claude skills, alongside the ones `syncClaudeAiSkills` pulls from claude.ai (pdf, docx, skill-creator), which stays on. The module writes each skill on its own, so synced skills keep working.
 - **claude-powerline caveat:** the status line likely shows only in the terminal CLI, not the VS Code panel.
 - **`~/.local/bin/claude` link,** so tools like Obsidian's Copilot plugin detect Claude (they search npm/volta/asdf/Homebrew paths, never `/run/current-system/sw/bin`). Declare it once, after deleting the hand-made link from 2026-09-23, since home-manager refuses to replace an existing symlink:
   ```nix
   home.file.".local/bin/claude".source =
     config.lib.file.mkOutOfStoreSymlink "${paths.darwin.system.currentSystemBin}/claude";
   ```
-- **Those tools also read `CLAUDE_CONFIG_DIR`,** falling back to `~/.claude`. Section 8 B drops the launchd export, so Obsidian needs the variable another way.
+- **Those tools also read `CLAUDE_CONFIG_DIR`,** falling back to `~/.claude`, which is why the launchd export stays (section 8 B).
 
 ## 6. Backing up chats and memory
 Restoring probably won't be needed. The folder location doesn't change, and home-manager only replaces `settings.json`, `plugins/known_marketplaces.json` and `hooks/guard.py`. With `backupFileExtension = "bak"` it renames those to `.bak` instead of overwriting. Chats, history, `.claude.json`, login and the claude-mem database aren't touched.
@@ -737,13 +743,13 @@ home-manager links `settings.json` into the Nix store, so Claude Code can't writ
 - **Trial permissions go in the project file.** Claude Code merges permissions from every settings file, and "Yes, don't ask again" saves to the project's `.claude/settings.local.json`, which stays writable. New rules are collected and tested there (approved or edited by hand). Once they work, they move into the permissions knob and are deleted from the local file. While being tested, they apply only in that project.
 - **Rejected:** `mkOutOfStoreSymlink` (settings.json becomes a hand-kept JSON file instead of generated from knobs), and an extra user-level `.json` (Claude Code has none; `--settings` would need a wrapper the VS Code extension doesn't use).
 
-### B. `CLAUDE_CONFIG_DIR`: home-manager only, no launchd
-Claude is used only through the CLI (always from a terminal) and the official VS Code extension. No Claude desktop app, and no other GUI app runs Claude.
+### B. `CLAUDE_CONFIG_DIR`: the launchd export stays
+The Claude desktop app is dropped, but other GUI apps do run the CLI: Obsidian's Copilot plugin reads `CLAUDE_CONFIG_DIR` and falls back to `~/.claude` without it. A Dock-launched app gets the variable only from launchd, so that export stays in nix-darwin and is the one system-level piece.
 
-- **Terminals:** `programs.claude-code.configDir` adds `CLAUDE_CONFIG_DIR` to `home.sessionVariables`. home-manager's generated `config.fish` loads those on every fish start (login or not), so WezTerm and every tool started from fish get it.
-- **VS Code:** the Claude extension's environment-variables setting (`claudeCode.environmentVariables`; confirm the exact name) sets `CLAUDE_CONFIG_DIR`, written by the home-manager VS Code module from the same path.
+- **GUI apps (VS Code, Obsidian, Raycast):** `launchd.user.envVariables` in nix-darwin, fed from `paths.nix`, exactly as Codex does it.
+- **Terminals:** `programs.claude-code.configDir` also adds it to `home.sessionVariables`, which home-manager's `config.fish` loads on every fish start. Both paths set the same value.
 - **Everything else** (`CLAUDE_MEM_DATA_DIR`, npm paths, `DISABLE_AUTOUPDATER`) goes in the `settings.json` `env` block, which Claude Code applies to every session and its hooks. Only `CLAUDE_CONFIG_DIR` needs outside help, because Claude needs it to find `settings.json`.
-- **Adding a GUI app later that runs Claude:** give it the path through its own env setting from Nix, or a Nix wrapper that sets the variable. A launchd agent gets it in its own `EnvironmentVariables`. A missed app fails quietly by using `~/.claude`.
+- **Any GUI app added later** is covered by the same export, with no per-app setting.
 - **To check while building:** whether the Codex VS Code extension runs claude-mem hooks that need `CLAUDE_MEM_DATA_DIR`. If so, set it through Codex's own setting or have claude-mem's settings name the data path.
 
 ## 9. `mcpServers` / `lspServers`: use the home-manager master module
