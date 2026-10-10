@@ -6,6 +6,7 @@
   inputs,
   lib,
   pkgs,
+  paths,
   unstablePkgs,
   ...
 }:
@@ -16,6 +17,7 @@ let
 
   userName = "ven";
   homeDir = "/Users/${userName}";
+  flakeRoot = paths.darwin.home.nixConfig;
 
   codexRoot = "${homeDir}/.config/codex";
   sharedPlugins = "${codexRoot}/shared/plugins";
@@ -180,8 +182,49 @@ let
       ${lib.concatMapStringsSep "\n" (profile: "sync_profile ${lib.escapeShellArg profile}") profiles}
     '';
   };
+
+  # UPDATE
+  # =========================
+  # Update only ScholarBrain's pinned source. update-codex-extensions
+  # performs the single rebuild after every declared extension updater succeeds.
+
+  updateScholarBrain = pkgs.writeShellApplication {
+    name = "update-codex-scholarbrain";
+
+    runtimeInputs = [
+      pkgs.git
+      pkgs.nix
+    ];
+
+    text = ''
+      set -Eeuo pipefail
+
+      flake_root=${lib.escapeShellArg flakeRoot}
+      lock_file="$flake_root/flake.lock"
+
+      if ! git -C "$flake_root" diff --quiet -- "$lock_file"; then
+        printf 'Refusing to update ScholarBrain: flake.lock has uncommitted changes.\n' >&2
+        printf 'Review or commit the lock-file changes, then run this command again.\n' >&2
+        exit 1
+      fi
+
+      nix flake lock \
+        --update-input scholarbrain \
+        "$flake_root"
+    '';
+  };
 in
 {
+  # COMMANDS
+  # =========================
+  # The synchronizer repairs the plugin registration without a rebuild;
+  # the updater is discovered by update-codex-extensions.
+
+  environment.systemPackages = [
+    syncScholarBrain
+    updateScholarBrain
+  ];
+
   system.activationScripts.extraActivation.text = lib.mkAfter ''
     mkdir -p "${sharedPlugins}"
 

@@ -6,6 +6,7 @@
   inputs,
   lib,
   pkgs,
+  paths,
   unstablePkgs,
   ...
 }:
@@ -16,6 +17,7 @@ let
 
   userName = "ven";
   homeDir = "/Users/${userName}";
+  flakeRoot = paths.darwin.home.nixConfig;
 
   codexRoot = "${homeDir}/.config/codex";
   dataDir = "${codexRoot}/shared/codebase-memory-mcp";
@@ -147,11 +149,57 @@ let
       ${lib.concatMapStringsSep "\n" (profile: "sync_profile ${lib.escapeShellArg profile}") profiles}
     '';
   };
+
+  # UPDATE
+  # =========================
+  # Pin the latest verified Darwin ARM64 release in the source tree.
+
+  updateCodebaseMemory = pkgs.writeShellApplication {
+    name = "update-codex-codebase-memory-mcp";
+
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gh
+      pkgs.git
+      pkgs.jq
+    ];
+
+    text = ''
+      set -Eeuo pipefail
+
+      flake_root=${lib.escapeShellArg flakeRoot}
+      release_lock="$flake_root/darwin/packages/codex/codebase-memory-mcp-release.json"
+
+      if ! git -C "$flake_root" diff --quiet -- "$release_lock"; then
+        printf 'Refusing to update Codebase Memory MCP: its release lock has uncommitted changes.\n' >&2
+        printf 'Review or commit the release-lock changes, then run this command again.\n' >&2
+        exit 1
+      fi
+
+      release_json="$(gh api repos/DeusData/codebase-memory-mcp/releases/latest)"
+      release_tag="$(printf '%s' "$release_json" | jq -r '.tag_name')"
+      release_url="$(printf '%s' "$release_json" | jq -r '.assets[] | select(.name == "codebase-memory-mcp-darwin-arm64.tar.gz") | .browser_download_url')"
+      release_digest="$(printf '%s' "$release_json" | jq -r '.assets[] | select(.name == "codebase-memory-mcp-darwin-arm64.tar.gz") | .digest // empty')"
+
+      if test -z "$release_url" || test -z "$release_digest" || test "$release_digest" = "null"; then
+        printf 'Upstream latest release has no checksum-bearing Darwin ARM64 archive.\n' >&2
+        exit 1
+      fi
+
+      release_hash="''${release_digest#sha256:}"
+      temporary_lock="$(mktemp "$release_lock.XXXXXXXX")"
+
+      printf '{\n  "version": "%s",\n  "url": "%s",\n  "fileSha256": "%s"\n}\n' \
+        "''${release_tag#v}" "$release_url" "$release_hash" >"$temporary_lock"
+      mv -- "$temporary_lock" "$release_lock"
+    '';
+  };
 in
 {
   environment.systemPackages = [
     codebaseMemoryMcp
     syncCodebaseMemory
+    updateCodebaseMemory
   ];
 
   system.activationScripts.extraActivation.text = lib.mkAfter ''
