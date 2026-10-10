@@ -9,12 +9,58 @@
 {
   config,
   lib,
+  paths,
   platforms,
   ...
 }:
 
 let
   cfg = config.home.shared.terminal.fish.downloads;
+  obsidianCfg = config.home.shared.terminal.commands.obsidian;
+
+  bool = description: lib.mkOption {
+    type = lib.types.bool;
+    inherit description;
+  };
+
+  platformPath = description: lib.mkOption {
+    type = lib.types.submodule {
+      options = {
+        darwin = lib.mkOption { type = lib.types.str; };
+        linux = lib.mkOption { type = lib.types.str; };
+      };
+    };
+    inherit description;
+  };
+
+  flag = description: {
+    enable = bool "Enable ${description}.";
+    name = lib.mkOption {
+      type = lib.types.str;
+      description = "Flag name for ${description}.";
+    };
+  };
+
+  repository = description: {
+    enable = bool "Process ${description}.";
+    path = platformPath "Path to ${description}";
+    stage = bool "Stage ${description}.";
+    commit = bool "Commit ${description}.";
+    push = bool "Push ${description}.";
+    message = lib.mkOption {
+      type = lib.types.str;
+      description = "Commit message for ${description}.";
+    };
+  };
+
+  enabledObsidianFlags = lib.concatMapStringsSep " "
+    (flagCfg: lib.optionalString flagCfg.enable (lib.escapeShellArg flagCfg.name))
+    [
+      obsidianCfg.flags.plugin
+      obsidianCfg.flags.plugins
+      obsidianCfg.flags.theme
+      obsidianCfg.flags.themes
+    ];
 
   # ------------------------------------------------------------
   # ------ PLATFORM COMMAND FLAGS ------ #
@@ -32,11 +78,86 @@ let
 
 in
 {
-  options.home.shared.terminal.fish.downloads.enable =
-    lib.mkEnableOption "portable Fish download helpers";
+  options = {
+    home.shared.terminal.fish.downloads.enable =
+      lib.mkEnableOption "portable Fish download helpers";
 
-  config = lib.mkIf cfg.enable {
-    programs.fish.functions = {
+    home.shared.terminal.commands.obsidian = {
+      flags = {
+        plugin = flag "the GitDLL plugin flag";
+        plugins = flag "the GitDLL plugins flag";
+        theme = flag "the GitDLL theme flag";
+        themes = flag "the GitDLL themes flag";
+      };
+
+      gitHelper = {
+        enable = lib.mkEnableOption "the Obsidian backup Git helper";
+        command = lib.mkOption {
+          type = lib.types.str;
+          description = "Backup Git helper command name.";
+        };
+        pushAll = bool "Allow pushes for all backup repositories.";
+        repositories = {
+          extensions = repository "the Obsidian extensions backup";
+          themes = repository "the Obsidian themes backup";
+          dotfiles = repository "the Obsidian dotfiles backup";
+          randomFiles = repository "the Obsidian random-files backup";
+        };
+      };
+    };
+  };
+
+  config = {
+    home.shared.terminal.commands.obsidian = {
+      flags = {
+        plugin = { enable = true; name = "--plugin"; };
+        plugins = { enable = true; name = "--plugins"; };
+        theme = { enable = true; name = "--theme"; };
+        themes = { enable = true; name = "--themes"; };
+      };
+
+      gitHelper = {
+        enable = true;
+        command = "obsidian-files-git";
+        pushAll = true;
+        repositories = {
+          extensions = {
+            enable = true;
+            path = { darwin = paths.darwin.backups.obsidianExtensions; linux = paths.linux.backups.obsidianExtensions; };
+            stage = true;
+            commit = true;
+            push = true;
+            message = "Update Obsidian extensions";
+          };
+          themes = {
+            enable = true;
+            path = { darwin = paths.darwin.backups.obsidianThemes; linux = paths.linux.backups.obsidianThemes; };
+            stage = true;
+            commit = true;
+            push = true;
+            message = "Update Obsidian themes";
+          };
+          dotfiles = {
+            enable = true;
+            path = { darwin = paths.darwin.backups.obsidianDotfiles; linux = paths.linux.backups.obsidianDotfiles; };
+            stage = true;
+            commit = true;
+            push = true;
+            message = "Update Obsidian dotfiles";
+          };
+          randomFiles = {
+            enable = true;
+            path = { darwin = paths.darwin.backups.obsidianRandomFiles; linux = paths.linux.backups.obsidianRandomFiles; };
+            stage = true;
+            commit = true;
+            push = true;
+            message = "Update Obsidian random files";
+          };
+        };
+      };
+    };
+
+    programs.fish.functions = lib.mkIf cfg.enable {
 
       # -----------------------------------------------------------------
       # ---- Obsidian -> Shared download rules ---- #
@@ -1127,16 +1248,15 @@ in
           end
 
           if test (count $argv) -gt 0; and \
-              contains -- "$argv[1]" --plugin --plugins --theme --themes
+              contains -- "$argv[1]" ${enabledObsidianFlags}
 
             set --local mode "$argv[1]"
 
-            # Accept singular and plural mode flags, while keeping one internal
-            # representation for the rest of the downloader.
-            if test "$mode" = "--plugin"
-              set mode --plugins
-            else if test "$mode" = "--theme"
-              set mode --themes
+            # Use plural flags as the downloader's internal modes.
+            if test "$mode" = ${lib.escapeShellArg obsidianCfg.flags.plugin.name}
+              set mode ${lib.escapeShellArg obsidianCfg.flags.plugins.name}
+            else if test "$mode" = ${lib.escapeShellArg obsidianCfg.flags.theme.name}
+              set mode ${lib.escapeShellArg obsidianCfg.flags.themes.name}
             end
             set --local source_inputs
             set --local include_paths
@@ -1192,8 +1312,8 @@ in
               echo "Error: At least one repository URL, source folder, or link file is required."
               echo
               echo "Usage:"
-              echo '  gitdll --plugin "https://github.com/owner/plugin" [...]'
-              echo '  gitdll --theme links.txt [...]'
+              echo '  gitdll ${obsidianCfg.flags.plugin.name} "https://github.com/owner/plugin" [...]'
+              echo '  gitdll ${obsidianCfg.flags.theme.name} links.txt [...]'
               return 1
             end
 
@@ -1233,7 +1353,7 @@ in
             set --local manifest_url_field
             set --local failed_report_name
 
-            if test "$mode" = "--plugins"
+            if test "$mode" = ${lib.escapeShellArg obsidianCfg.flags.plugins.name}
               if not functions -q __gitdll_plugins
                 echo "Error: the plugin downloader is not available."
                 return 1
@@ -2497,8 +2617,8 @@ in
             echo "  gitdll <links.txt> [more-links-or-files ...]"
             echo
             echo "Obsidian library modes:"
-            echo '  gitdll --plugin "https://github.com/owner/plugin" [...]'
-            echo '  gitdll --theme links.txt [...]'
+            echo '  gitdll ${obsidianCfg.flags.plugin.name} "https://github.com/owner/plugin" [...]'
+            echo '  gitdll ${obsidianCfg.flags.theme.name} links.txt [...]'
             return 1
           end
 
@@ -3861,7 +3981,7 @@ in
         description = "Download Obsidian plugins with gitdll's plugin mode";
 
         body = ''
-          gitdll --plugins $argv
+          gitdll ${lib.escapeShellArg obsidianCfg.flags.plugins.name} $argv
         '';
       };
 
@@ -3869,7 +3989,7 @@ in
         description = "Download Obsidian themes with gitdll's theme mode";
 
         body = ''
-          gitdll --themes $argv
+          gitdll ${lib.escapeShellArg obsidianCfg.flags.themes.name} $argv
         '';
       };
       # -----------------------------------------------------------------
