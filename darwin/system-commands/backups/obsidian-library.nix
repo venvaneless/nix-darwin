@@ -1005,10 +1005,11 @@ let
                       and not is_root_readme
                   )
 
-                  # Every file inside recognized documentation folders is
-                  # preserved, including helper scripts such as Lua filters.
+                  # Documentation folders keep only notes and images; site
+                  # tooling such as .mjs, .ps1, or package.json is dropped.
                   is_documentation_folder_file = (
                       not is_root_readme
+                      and suffix in documentation_suffixes | image_suffixes | {".svg", ".txt"}
                       and any(
                           part in documentation_folders
                           for part in path_parts[:-1]
@@ -1487,13 +1488,14 @@ let
               )
               merge(candidate, destination)
 
-          # Flatten only disposable one-file wrappers. Keep assets/ and docs/
-          # intact for now; docs/ is deliberately unwrapped into repo/ below.
+          # Flatten only disposable one-file wrappers. Documentation folders
+          # keep their original structure.
+          documentation_folder_names = {"doc", "docs", "documentation", "wiki"}
           for candidate in directories_below(directory):
               if (
-                  candidate.name.casefold() in {"assets", "docs"}
+                  candidate.name.casefold() in {"assets"} | documentation_folder_names
                   or any(
-                      parent.name.casefold() in {"asset", "assets", "_asset", "_assets"}
+                      parent.name.casefold() in {"asset", "assets", "_asset", "_assets"} | documentation_folder_names
                       for parent in candidate.parents
                   )
               ):
@@ -1512,17 +1514,6 @@ let
 
           repository_directory = directory / "repo"
           if repository_directory.is_dir() and not repository_directory.is_symlink():
-              docs_directory = repository_directory / "docs"
-              if docs_directory.is_dir() and not docs_directory.is_symlink():
-                  for child in entries(docs_directory):
-                      destination = repository_directory / child.name
-                      if not destination.exists() and not destination.is_symlink():
-                          move(child, destination)
-                      elif child.is_dir() and destination.is_dir():
-                          merge(child, destination)
-                  if not entries(docs_directory):
-                      docs_directory.rmdir()
-
               # Image subfolders below assets/ are redundant wrappers. Fold
               # them into assets/, then fold a lone image into repo/.
               assets_directory = repository_directory / "assets"
@@ -1574,7 +1565,7 @@ let
                   len(wrapper_directories) == 1
                   and wrapper_files
                   and all("readme" in child.name.casefold() for child in wrapper_files)
-                  and wrapper_directories[0].name.casefold() not in {"assets", "docs"}
+                  and wrapper_directories[0].name.casefold() not in {"assets"} | documentation_folder_names
               ):
                   wrapper = wrapper_directories[0]
                   wrapper_content = entries(wrapper)

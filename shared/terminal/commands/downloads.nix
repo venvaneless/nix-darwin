@@ -706,6 +706,11 @@ in
             }
 
             const imageWrapperNames = new Set(["af", "img", "imgs", "image", "images"]);
+            // Documentation folders always keep their original structure.
+            const documentationFolderPattern = /(^|[\\/])(doc|docs|documentation|wiki)([\\/]|$)/i;
+            function isDocumentation(directory) {
+              return documentationFolderPattern.test(path.relative(root, directory));
+            }
             const assetNames = new Set(["asset", "assets", "_asset", "_assets"]);
             const essentialRootFiles = new Set([
               "manifest.json", "data.json", "styles.css", "theme.css", "obsidian.css", "main.js",
@@ -764,7 +769,7 @@ in
             // empty wrapper such as src/ is redundant. Merge it first so
             // imgs/assets and src/assets become the compact assets/ layout.
             for (const directory of directoriesBelow(root).sort((left, right) => right.length - left.length)) {
-              if (!fs.existsSync(directory)) continue;
+              if (!fs.existsSync(directory) || isDocumentation(directory)) continue;
               const name = path.basename(directory).toLowerCase();
               const parent = path.dirname(directory);
               if (!assetNames.has(name) || !isImageOnlyDirectory(directory)) continue;
@@ -779,7 +784,7 @@ in
             // is also just an assets/ wrapper; descriptive folders remain
             // nested everywhere else.
             for (const directory of directoriesBelow(root).sort((left, right) => right.length - left.length)) {
-              if (!fs.existsSync(directory)) continue;
+              if (!fs.existsSync(directory) || isDocumentation(directory)) continue;
               const name = path.basename(directory).toLowerCase();
               if (name === "repo" || name === "docs" || name === "assets" || !isImageOnlyDirectory(directory)) continue;
               const parent = path.dirname(directory);
@@ -815,42 +820,17 @@ in
             }
 
             // A small non-asset wrapper inside repo/ only obscures the files.
-            // Keep docs/ and assets/ intact during this intermediate pass;
-            // docs/ is deliberately unwrapped into repo/ below.
+            // assets/ and documentation folders keep their structure.
             if (fs.existsSync(repositoryDirectory) && fs.statSync(repositoryDirectory).isDirectory()) {
               for (const directory of directoriesBelow(repositoryDirectory).sort((left, right) => right.length - left.length)) {
                 if (!fs.existsSync(directory)) continue;
                 const name = path.basename(directory).toLowerCase();
-                if (name === "assets" || name === "docs" || directory.includes(path.sep + "assets" + path.sep)) continue;
+                if (name === "assets" || directory.includes(path.sep + "assets" + path.sep) || isDocumentation(directory)) continue;
                 const content = entries(directory);
                 if (content.length === 0 || content.length >= 3 || !content.every((entry) => entry.isFile())) continue;
                 if (content.some((entry) => fs.existsSync(path.join(path.dirname(directory), entry.name)))) continue;
                 for (const entry of content) move(path.join(directory, entry.name), path.join(path.dirname(directory), entry.name));
                 if (entries(directory).length === 0) fs.rmdirSync(directory);
-              }
-
-              // Documentation is useful beside the repository files, not
-              // behind an otherwise redundant repo/docs/ wrapper. Merge
-              // rather than overwrite when a destination already exists.
-              const docsDirectory = path.join(repositoryDirectory, "docs");
-              let documentationAssetsWereMoved = false;
-              if (fs.existsSync(docsDirectory) && fs.statSync(docsDirectory).isDirectory()) {
-                // docs/assets/ is never a meaningful second asset root. Merge
-                // it before unwrapping docs/ so a repository that has only
-                // documentation assets still receives repo/assets/.
-                const documentationAssetsDirectory = path.join(docsDirectory, "assets");
-                const repositoryAssetsDirectory = path.join(repositoryDirectory, "assets");
-                if (fs.existsSync(documentationAssetsDirectory) && fs.statSync(documentationAssetsDirectory).isDirectory()) {
-                  merge(documentationAssetsDirectory, repositoryAssetsDirectory);
-                  documentationAssetsWereMoved = true;
-                }
-                for (const entry of entries(docsDirectory)) {
-                  const source = path.join(docsDirectory, entry.name);
-                  const destination = path.join(repositoryDirectory, entry.name);
-                  if (!fs.existsSync(destination)) move(source, destination);
-                  else if (entry.isDirectory() && fs.statSync(destination).isDirectory()) merge(source, destination);
-                }
-                if (fs.existsSync(docsDirectory) && entries(docsDirectory).length === 0) fs.rmdirSync(docsDirectory);
               }
 
               // assets/screenshots/ and assets/previews/ are only wrappers:
@@ -865,9 +845,7 @@ in
                 const assetContent = entries(assetsDirectory);
                 const fewerThanThreeImagesOnly = assetContent.length > 0 && assetContent.length < 3 &&
                   assetContent.every((entry) => entry.isFile() && isImage(entry.name));
-                const imageDestination = documentationAssetsWereMoved
-                  ? ""
-                  : repositoryHasOnlyReadmeAndFewerThanThreeImages()
+                const imageDestination = repositoryHasOnlyReadmeAndFewerThanThreeImages()
                   ? repositoryDirectory
                   : repositoryHasFewerThanThreeImagesOnly() && rootHasOnlyCoreFilesReadmeAndImages()
                     ? root
@@ -3823,10 +3801,10 @@ in
                   set auxiliary_name \
                       (string split -r -m 1 / -- "$auxiliary_path")[-1]
 
-                  # Preserve every file inside documentation folders because
-                  # supporting scripts and other files may be required by docs.
+                  # Documentation folders keep only notes and images,
+                  # never site tooling such as .mjs or .ps1.
                   if string match -rq \
-                          '(?i)(^|/)(doc|docs|documentation|wiki)/' \
+                          '(?i)(^|/)(doc|docs|documentation|wiki)/.*\.(md|markdown|org|txt|png|jpe?g|gif|webp|svg)$' \
                           "$auxiliary_path"
 
                       set auxiliary_path_supported 1
@@ -4987,7 +4965,7 @@ in
                       (basename "$repository_path")
 
                   if string match -rq \
-                          '(?i)(^|/)(doc|docs|documentation|wiki)/' \
+                          '(?i)(^|/)(doc|docs|documentation|wiki)/.*\.(md|markdown|org|txt|png|jpe?g|gif|webp|svg)$' \
                           "$repository_path"
 
                       if not contains \
@@ -5246,10 +5224,10 @@ in
                   set auxiliary_name \
                       (basename "$auxiliary_path")
 
-                  # Preserve every file inside documentation folders because
-                  # supporting scripts and other files may be required by docs.
+                  # Documentation folders keep only notes and images,
+                  # never site tooling such as .mjs or .ps1.
                   if string match -rq \
-                          '(?i)(^|/)(doc|docs|documentation|wiki)/' \
+                          '(?i)(^|/)(doc|docs|documentation|wiki)/.*\.(md|markdown|org|txt|png|jpe?g|gif|webp|svg)$' \
                           "$auxiliary_path"
 
                       set auxiliary_path_supported 1
@@ -7014,9 +6992,9 @@ in
                 continue
               end
 
-              # Preserve every file inside documentation folders.
+              # Documentation folders keep only notes and images.
               if string match -rq \
-                  '(?i)(^|/)(doc|docs|documentation|wiki)/' \
+                  '(?i)(^|/)(doc|docs|documentation|wiki)/.*\.(md|markdown|org|txt|png|jpe?g|gif|webp|svg)$' \
                   "$auxiliary_path"
 
                 set auxiliary_path_supported 1
