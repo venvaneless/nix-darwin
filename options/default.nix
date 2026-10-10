@@ -18,10 +18,11 @@ let
   nixpkgsSettings = sharedSettings.system.shared.nix.nixpkgs;
   nixpkgsConfig = nixpkgsSettings.config;
 
-  # Only read when unstablePkgs is used, so hosts that call this without
-  # pkgs never evaluate it.
+  # Platform detection and filesystem paths.
   platforms = import ./platforms.nix { inherit pkgs; };
+  paths = import ./paths.nix { };
 
+  # Unstable packages remain lazy unless the current platform enables them.
   unstableEnabled = platforms.enabledForCurrentPlatform nixpkgsSettings.unstable;
 
   unstablePkgs =
@@ -32,10 +33,10 @@ let
       }
     else throw "system.shared.nix.nixpkgs.unstable is disabled for this platform.";
 
-  paths = import ./paths.nix { };
 in
 {
   inherit nixpkgsConfig paths unstablePkgs;
+  obsGitHelper = import ./obsidian/obs-git-helper.nix { };
 
   # ------------------------------------------------------------
   # ------ MODULE PATHS ------ #
