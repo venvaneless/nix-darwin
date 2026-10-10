@@ -36,7 +36,6 @@ let
 in
 {
   inherit nixpkgsConfig paths unstablePkgs;
-  obsGitHelper = import ./obsidian/obs-git-helper.nix { };
 
   # ------------------------------------------------------------
   # ------ MODULE PATHS ------ #
