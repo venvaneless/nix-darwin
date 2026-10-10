@@ -76,6 +76,12 @@ let
 
   statSizeArguments = if platforms.isDarwin then "-f %z" else "-c %s";
 
+  # ---- Download root from paths.nix ---- #
+  downloadsDir = platforms.valueForCurrentPlatform {
+    darwin = paths.darwin.home.downloads;
+    linux = paths.linux.home.downloads;
+  };
+
 in
 {
   options = {
@@ -244,7 +250,7 @@ in
 
           # ---- FILE NAME ---- #
           set --local filename \
-              (string lower -- (basename "$argv[1]"))
+              (string split -r -m 1 / -- "$argv[1]" | string lower)[-1]
           set --local filename_stem \
               (string replace -r '\.[^.]*$' "" -- "$filename")
           set --local normalized_filename_stem \
@@ -312,7 +318,7 @@ in
         body = ''
           set --local download_path "$argv[1]"
 
-          if __obsidian_download_name_blocked (basename "$download_path")
+          if __obsidian_download_name_blocked "$download_path"
             return 0
           end
 
@@ -419,6 +425,144 @@ in
           else
             command gh api "$endpoint" 2>/dev/null
           end
+        '';
+      };
+
+      # ---- Obsidian -> Raw repository file URL ---- #
+      # Raw downloads do not count against the GitHub API rate limit.
+      __obsidian_github_raw_url = {
+        description = "Build an encoded raw.githubusercontent.com file URL";
+
+        body = ''
+          set --local repository "$argv[1]"
+          set --local repository_path "$argv[2]"
+          set --local reference "$argv[3]"
+
+          if not string match -rq \
+              '^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$' \
+              "$repository"; or \
+              test -z "$repository_path"; or \
+              string match -rq '(^|/)\.\.?(?:/|$)|^/|/$|//' "$repository_path"
+            return 1
+          end
+
+          if test -z "$reference"
+            set reference HEAD
+          end
+
+          command node -e '
+            const [repository, repositoryPath, reference] = process.argv.slice(1);
+            const encode = (value) => value.split("/").map(encodeURIComponent).join("/");
+            process.stdout.write(
+              "https://raw.githubusercontent.com/" + repository + "/" + encode(reference) + "/" + encode(repositoryPath),
+            );
+          ' "$repository" "$repository_path" "$reference" 2>/dev/null
+        '';
+      };
+
+      # ---- Obsidian -> Bulk repository folders ---- #
+      # Demo, example, test, and vault folders with notes or images are
+      # offered one by one; declined folders leave repository_paths and
+      # repository_sizes of the calling downloader.
+      __obsidian_ask_bulk_folders = {
+        description = "Ask before downloading notes and images from demo, test, or vault folders";
+        noScopeShadowing = true;
+
+        body = ''
+          set --local bulk_folders
+          set --local bulk_counts
+
+          for bulk_path in $repository_paths
+            if not string match -rqi '\.(md|markdown|org|png|jpe?g|gif|webp)$' -- "$bulk_path"
+              continue
+            end
+
+            set --local bulk_folder (
+              string match -ri --groups-only \
+                '^((?:[^/]+/)*?(?:demo|demos|example|examples|sample|samples|test|tests|testing|__tests__|e2e|fixtures?|sandbox|playground|[^/]*vault[^/]*))/' \
+                -- "$bulk_path"
+            )
+
+            if test -z "$bulk_folder"
+              continue
+            end
+
+            set --local bulk_index (contains -i -- "$bulk_folder" $bulk_folders)
+            if test -z "$bulk_index"
+              set --append bulk_folders "$bulk_folder"
+              set --append bulk_counts 1
+            else
+              set bulk_counts[$bulk_index] (math "$bulk_counts[$bulk_index] + 1")
+            end
+          end
+
+          if test (count $bulk_folders) -eq 0
+            return 0
+          end
+
+          set --local declined_folders
+          for bulk_index in (seq (count $bulk_folders))
+            set --local bulk_answer
+            if isatty stdin
+              read --local --prompt-str "Folder $bulk_folders[$bulk_index]/ has $bulk_counts[$bulk_index] notes/images. Download it too? [y/N] " bulk_answer
+            else
+              echo "Notice: Skipping $bulk_folders[$bulk_index]/ ($bulk_counts[$bulk_index] notes/images); no terminal to ask."
+            end
+
+            if not contains -- (string lower -- "$bulk_answer") y yes
+              set --append declined_folders "$bulk_folders[$bulk_index]"
+            end
+          end
+
+          if test (count $declined_folders) -eq 0
+            return 0
+          end
+
+          set --local kept_paths
+          set --local kept_sizes
+          for path_index in (seq (count $repository_paths))
+            set --local declined 0
+            for declined_folder in $declined_folders
+              if string match -q -- "$declined_folder/*" "$repository_paths[$path_index]"
+                set declined 1
+                break
+              end
+            end
+
+            if test "$declined" -eq 0
+              set --append kept_paths "$repository_paths[$path_index]"
+              set --append kept_sizes "$repository_sizes[$path_index]"
+            end
+          end
+
+          set repository_paths $kept_paths
+          set repository_sizes $kept_sizes
+        '';
+      };
+
+      # ---- Obsidian -> GitHub rate limit ---- #
+      # The rate_limit endpoint itself is free. Prints the reset time.
+      __obsidian_github_rate_limited = {
+        description = "Report whether the GitHub API rate limit is exhausted";
+
+        body = ''
+          set --local rate_parts (
+            command gh api rate_limit \
+              --jq '.resources.core | "\(.remaining)\t\(.reset)"' \
+              2>/dev/null |
+            string split \t
+          )
+
+          if test (count $rate_parts) -ne 2; or test "$rate_parts[1]" != 0
+            return 1
+          end
+
+          set --local reset_time (
+            command node -e 'process.stdout.write(new Date(Number(process.argv[1]) * 1000).toLocaleTimeString())' \
+              "$rate_parts[2]" 2>/dev/null
+          )
+          echo "Error: GitHub API rate limit reached. It resets at $reset_time."
+          return 0
         '';
       };
 
@@ -570,13 +714,6 @@ in
 
             function isReadme(entry) {
               return entry.isFile() && /^readme(?:\.[a-z0-9]+)?$/i.test(entry.name);
-            }
-
-            function isReadmeAndTwoImages(content) {
-              const readmes = content.filter(isReadme);
-              const images = content.filter((entry) => entry.isFile() && isImage(entry.name));
-              return readmes.length === 1 && images.length === 2 &&
-                readmes.length + images.length === content.length;
             }
 
             function rootHasOnlyCoreFilesReadmeAndImages() {
@@ -743,15 +880,14 @@ in
                 }
               }
 
-              // One Markdown file and up to two non-image files are clearer
-              // beside the core payload than in an otherwise empty repo/.
-              // A README plus two images stays together in repo/.
-              const finalRepositoryContent = entries(repositoryDirectory);
-              const markdownCount = finalRepositoryContent.filter((entry) => entry.isFile() && path.extname(entry.name).toLowerCase() === ".md").length;
-              if (finalRepositoryContent.length <= 3 && markdownCount === 1 && !isReadmeAndTwoImages(finalRepositoryContent) && finalRepositoryContent.every((entry) => entry.isFile()) && finalRepositoryContent.every((entry) => !fs.existsSync(path.join(root, entry.name)))) {
+              // repo/ is only kept for three or more files besides the
+              // README. Fewer files sit beside the core payload instead.
+              const finalRepositoryContent = entries(repositoryDirectory).filter((entry) => !isDesktopMetadata(entry));
+              const nonReadmeCount = finalRepositoryContent.filter((entry) => !isReadme(entry)).length;
+              if (finalRepositoryContent.length > 0 && nonReadmeCount < 3 && finalRepositoryContent.every((entry) => entry.isFile()) && finalRepositoryContent.every((entry) => !fs.existsSync(path.join(root, entry.name)))) {
                 for (const entry of finalRepositoryContent) move(path.join(repositoryDirectory, entry.name), path.join(root, entry.name));
-                fs.rmdirSync(repositoryDirectory);
-              } else if (entries(repositoryDirectory).length === 0) {
+              }
+              if (entries(repositoryDirectory).length === 0) {
                 fs.rmdirSync(repositoryDirectory);
               }
             }
@@ -963,7 +1099,7 @@ in
         description = "Interactively download selected repository files without plugin detection";
 
         body = ''
-          set --local destination "$HOME/Downloads/gitdll"
+          set --local destination "${downloadsDir}/gitdll"
           set --local source
           set --local argument_index 1
 
@@ -1095,7 +1231,7 @@ in
         description = "Select and download separate Obsidian plugins from one repository";
 
         body = ''
-          set --local destination "$HOME/Downloads/gitdll-plugins"
+          set --local destination "${downloadsDir}/gitdll-plugins"
           set --local source
           set --local argument_index 1
 
@@ -1365,7 +1501,7 @@ in
               set failed_report_name \
                 failed-plugin-downloads.txt
               if test -z "$destination"
-                set destination "$HOME/Downloads/gitdll-plugins"
+                set destination "${downloadsDir}/gitdll-plugins"
               end
             else
               if not functions -q __gitdll_themes
@@ -1379,7 +1515,7 @@ in
               set failed_report_name \
                 failed-theme-downloads.txt
               if test -z "$destination"
-                set destination "$HOME/Downloads/gitdll-themes"
+                set destination "${downloadsDir}/gitdll-themes"
               end
             end
 
@@ -1424,10 +1560,28 @@ in
             set --local function_file \
               "$temporary_directory/downloader.fish"
 
-            set --local downloader_temporary_directory \
-              "$destination/.gitdll-tmp"
+            # ---- Per-run staging folder ---- #
+            # Unique per run so parallel or nested runs never delete each
+            # other's staging. Leftovers from interrupted runs are removed.
+            command rm -rf -- "$destination/.gitdll-tmp"
+            command find "$destination" \
+              -mindepth 1 \
+              -maxdepth 1 \
+              -type d \
+              -name '.gitdll-tmp.*' \
+              -mmin +60 \
+              -exec rm -rf -- '{}' + \
+              2>/dev/null
 
-            command mkdir -p -- "$downloader_temporary_directory"
+            set --local downloader_temporary_directory (
+              command mktemp -d "$destination/.gitdll-tmp.XXXXXXXXXX"
+            )
+
+            if test -z "$downloader_temporary_directory"
+              echo "Error: Could not create a staging folder in $destination."
+              command rm -rf -- "$temporary_directory"
+              return 1
+            end
 
             command touch \
               "$repositories_file" \
@@ -1630,6 +1784,9 @@ in
               __obsidian_download_url_encode \
               __obsidian_github_contents_endpoint \
               __obsidian_github_contents_api \
+              __obsidian_github_raw_url \
+              __obsidian_ask_bulk_folders \
+              __obsidian_github_rate_limited \
               __obsidian_download_file_is_present \
               __obsidian_normalize_download_layout \
               __obsidian_repository_fallback_name \
@@ -1643,6 +1800,7 @@ in
             if not test -s "$function_file"
               echo "Error: Could not export $downloader_function."
               command rm -rf -- "$temporary_directory"
+              command rm -rf -- "$downloader_temporary_directory"
               return 1
             end
 
@@ -2359,6 +2517,10 @@ in
                     "$original_name" \
                     "$library_type" \
                     >>"$failed_file"
+                else if __obsidian_github_rate_limited >/dev/null
+                  printf '%s — not downloaded: GitHub API rate limit reached\n' \
+                    "$original_name" \
+                    >>"$failed_file"
                 else
                   printf '%s — repository unavailable (wrong URL, private repository, or connection error)\n' \
                     "$original_name" \
@@ -2472,7 +2634,9 @@ in
               end
               set --append watched_arguments --to "$destination"
 
-              gitdll $watched_arguments
+              # A separate fish process keeps this run's helper functions
+              # intact; the nested run erases its own copies when it ends.
+              fish --command 'gitdll $argv' -- $watched_arguments
               if test $status -ne 0
                 set watched_download_status 1
               end
@@ -2525,7 +2689,7 @@ in
             return 0
           end
 
-          set --local destination "$HOME/Downloads/gitdll"
+          set --local destination "${downloadsDir}/gitdll"
 
           # Generic partial-download mode: `gitdll REPOSITORY --include path`.
           # It fetches individual GitHub blobs and never clones or archives a repo.
@@ -2748,7 +2912,7 @@ in
 
         body = ''
           # Parse repository URLs and an optional destination path.
-          set --local destination "$HOME/Downloads/gitdll-plugins"
+          set --local destination "${downloadsDir}/gitdll-plugins"
           set --local repository_inputs
           set --local expecting_destination 0
 
@@ -2991,6 +3155,10 @@ in
               if not command gh api \
                       "repos/$repository_owner/$repository_name" \
                       >/dev/null 2>&1
+                  # Stop the batch; unfinished links stay in the source list.
+                  if __obsidian_github_rate_limited
+                      return 1
+                  end
                   echo "Notice: GitHub repository was not found."
                   continue
               end
@@ -3012,18 +3180,22 @@ in
 
               command mkdir -p -- "$repository_extract"
 
-              # Fetch repository file paths using the original working mechanism.
-              set repository_paths (
+              # Fetch repository file paths and sizes in one request.
+              set repository_entries (
                   command gh api \
                       "repos/$repository_owner/$repository_name/git/trees/$package_reference?recursive=1" \
-                      --jq '.tree[]? | select(.type == "blob") | .path' \
+                      --jq '.tree[]? | select(.type == "blob") | [.path, (.size | tostring)] | @tsv' \
                       2>/dev/null
               )
 
               # Filter only what may be considered for download.
               set filtered_repository_paths
+              set repository_sizes
 
-              for repository_path in $repository_paths
+              for repository_entry in $repository_entries
+                  set repository_entry_parts (string split -r -m 1 \t -- "$repository_entry")
+                  set repository_path "$repository_entry_parts[1]"
+
                   if string match -rq \
                           '(^|/)\.[^/]+' \
                           "$repository_path"; or \
@@ -3047,24 +3219,31 @@ in
                   end
 
                   set --append filtered_repository_paths "$repository_path"
+                  set --append repository_sizes "$repository_entry_parts[2]"
               end
 
               set repository_paths \
                   $filtered_repository_paths
 
+              # Demo, test, and vault folders can hold thousands of notes.
+              __obsidian_ask_bulk_folders
+
               # Prefer standard files from the newest release before repository fallback.
+              # The release is fetched once and reused for the asset pass below.
               set release_theme_css 0
               set release_obsidian_css 0
               set release_json
+              set release_status 1
               if test -z "$package_path"
                   set release_json (
                       command gh api \
                           "repos/$repository_owner/$repository_name/releases/latest" \
                           2>/dev/null
                   )
+                  set release_status $status
               end
 
-              if test $status -eq 0; and test -n "$release_json"
+              if test "$release_status" -eq 0; and test -n "$release_json"
                   set release_assets (
                       printf "%s" "$release_json" |
                       command jq -r \
@@ -3445,16 +3624,7 @@ in
                   set saved_files manifest.json
               end
 
-              set release_json
-              if test -z "$package_path"
-                  set release_json (
-                      command gh api \
-                          "repos/$repository_owner/$repository_name/releases/latest" \
-                          2>/dev/null
-                  )
-              end
-
-              if test $status -eq 0; and test -n "$release_json"
+              if test "$release_status" -eq 0; and test -n "$release_json"
                   set release_assets (
                       printf "%s" "$release_json" |
                       command jq -r \
@@ -3512,7 +3682,7 @@ in
                                       "$release_asset_name" \
                                       "$plugin_folder_name" \
                                       "$repository_name"
-                                  if string match -ri '\\.zip$' "$release_asset_name"
+                                  if string match -qri '\\.zip$' "$release_asset_name"
                                       set --append deferred_plugin_archives \
                                           "$release_asset"
                                   end
@@ -3548,6 +3718,10 @@ in
                       end
                   end
               else if test -z "$package_path"
+                  if __obsidian_github_rate_limited
+                      command rm -rf -- "$temporary_directory"
+                      return 1
+                  end
                   echo "Notice: No GitHub release was found."
               end
 
@@ -3631,6 +3805,10 @@ in
               # supplied through a plugin list.
               if not test -r "$plugin_stage/main.js"; or \
                       not test -s "$plugin_stage/main.js"
+                  if __obsidian_github_rate_limited
+                      command rm -rf -- "$temporary_directory"
+                      return 1
+                  end
                   echo "Error: This repository does not provide an Obsidian plugin main.js."
                   command rm -rf -- "$temporary_directory"
                   continue
@@ -3643,7 +3821,7 @@ in
               for auxiliary_path in $repository_paths
                   set auxiliary_path_supported 0
                   set auxiliary_name \
-                      (basename "$auxiliary_path")
+                      (string split -r -m 1 / -- "$auxiliary_path")[-1]
 
                   # Preserve every file inside documentation folders because
                   # supporting scripts and other files may be required by docs.
@@ -3747,30 +3925,21 @@ in
                           "$plugin_stage/repo/$auxiliary_path"
                   end
 
-                  # GitHub CLI's raw response transform can fail for binary
-                  # images and GIFs. Resolve the raw URL as metadata, then
-                  # use curl to download a staged file before replacing it.
+                  # Size comes from the tree listing and the file from its raw
+                  # URL, so optional files cost no GitHub API requests.
                   set remote_auxiliary_path "$auxiliary_path"
                   if test -n "$package_path"
                       set remote_auxiliary_path "$package_path/$auxiliary_path"
                   end
 
-                  set auxiliary_metadata (
-                      __obsidian_github_contents_api \
+                  set auxiliary_index (contains -i -- "$auxiliary_path" $repository_paths)
+                  set auxiliary_size "$repository_sizes[$auxiliary_index]"
+                  set auxiliary_url (
+                      __obsidian_github_raw_url \
                           "$repository_owner/$repository_name" \
                           "$remote_auxiliary_path" \
-                          "$package_reference" \
-                          '[.size, .download_url] | @tsv'
+                          "$package_reference"
                   )
-
-                  set auxiliary_parts (string split \t "$auxiliary_metadata")
-                  if test (count $auxiliary_parts) -ne 2
-                      echo "Notice: Could not resolve plugin repository file: $auxiliary_path"
-                      continue
-                  end
-
-                  set auxiliary_size "$auxiliary_parts[1]"
-                  set auxiliary_url (__obsidian_download_url_encode "$auxiliary_parts[2]")
 
                   # Empty optional repository files have a valid raw URL but no
                   # content to save. Avoid treating the required non-empty check
@@ -4002,7 +4171,7 @@ in
 
         body = ''
           # Parse repository URLs and an optional destination path.
-          set --local destination "$HOME/Downloads/gitdll-themes"
+          set --local destination "${downloadsDir}/gitdll-themes"
           set --local repository_inputs
           set --local expecting_destination 0
 
@@ -4167,18 +4336,28 @@ in
 
               command mkdir -p "$extracted"
 
-              # Fetch repository file paths using the original working mechanism.
-              set repository_paths (
+              # Fetch repository file paths and sizes in one request.
+              set repository_entries (
                   command gh api \
                       "repos/$repository_owner/$repository_name/git/trees/HEAD?recursive=1" \
-                      --jq '.tree[]? | select(.type == "blob") | .path' \
+                      --jq '.tree[]? | select(.type == "blob") | [.path, (.size | tostring)] | @tsv' \
                       2>/dev/null
               )
 
+              # Stop the batch; unfinished links stay in the source list.
+              if test (count $repository_entries) -eq 0; and __obsidian_github_rate_limited
+                  command rm -rf -- "$temporary_directory"
+                  return 1
+              end
+
               # Filter only what may be considered for download.
               set filtered_repository_paths
+              set repository_sizes
 
-              for repository_path in $repository_paths
+              for repository_entry in $repository_entries
+                  set repository_entry_parts (string split -r -m 1 \t -- "$repository_entry")
+                  set repository_path "$repository_entry_parts[1]"
+
                   if string match -rq \
                           '(^|/)\.[^/]+' \
                           "$repository_path"; or \
@@ -4193,12 +4372,17 @@ in
 
                   set --append filtered_repository_paths \
                       "$repository_path"
+                  set --append repository_sizes "$repository_entry_parts[2]"
               end
 
               set repository_paths \
                   $filtered_repository_paths
 
+              # Demo, test, and vault folders can hold thousands of notes.
+              __obsidian_ask_bulk_folders
+
               # Prefer standard files from the newest release before repository fallback.
+              # The release is fetched once and reused for archive fallbacks below.
               set release_theme_css 0
               set release_obsidian_css 0
 
@@ -4207,8 +4391,9 @@ in
                       "repos/$repository_owner/$repository_name/releases/latest" \
                       2>/dev/null
               )
+              set release_status $status
 
-              if test $status -eq 0; and test -n "$release_json"
+              if test "$release_status" -eq 0; and test -n "$release_json"
                   set release_assets (
                       printf "%s" "$release_json" |
                       command jq -r \
@@ -4376,13 +4561,7 @@ in
 
               set deferred_theme_archives
 
-              set release_json (
-                  command gh api \
-                      "repos/$repository_owner/$repository_name/releases/latest" \
-                      2>/dev/null
-              )
-
-              if test $status -eq 0; and test -n "$release_json"
+              if test "$release_status" -eq 0; and test -n "$release_json"
                   set release_assets (
                       printf "%s" "$release_json" |
                       command jq -r \
@@ -4428,7 +4607,7 @@ in
                                       "$release_asset_name" \
                                       "$release_theme_archive_name" \
                                       "$repository_name"
-                                  if string match -ri '\\.zip$' "$release_asset_name"
+                                  if string match -qri '\\.zip$' "$release_asset_name"
                                       set --append deferred_theme_archives \
                                           "$release_asset"
                                   end
@@ -4613,6 +4792,11 @@ in
 
               if not test -f "$source_theme_css"; and \
                       not test -f "$source_obsidian_css"
+
+                  if __obsidian_github_rate_limited
+                      command rm -rf -- "$temporary_directory"
+                      return 1
+                  end
 
                   echo \
                       "Error: Neither theme.css nor obsidian.css was found."
@@ -4968,23 +5152,14 @@ in
 
               for repository_image_path in $repository_image_paths
 
-                  set repository_image_metadata (
-                      __obsidian_github_contents_api \
+                  set repository_image_index (contains -i -- "$repository_image_path" $repository_paths)
+                  set repository_image_size "$repository_sizes[$repository_image_index]"
+                  set repository_image_url (
+                      __obsidian_github_raw_url \
                           "$repository_owner/$repository_name" \
                           "$repository_image_path" \
-                          "" \
-                          '[.size, .download_url] | @tsv'
+                          ""
                   )
-
-                  set repository_image_parts \
-                      (string split \t "$repository_image_metadata")
-
-                  if test (count $repository_image_parts) -ne 2
-                      continue
-                  end
-
-                  set repository_image_size "$repository_image_parts[1]"
-                  set repository_image_url (__obsidian_download_url_encode "$repository_image_parts[2]")
                   set image_destination "$repository_asset_root/$repository_image_path"
                   if test -s "$image_destination"; or \
                           __obsidian_download_file_is_present \
@@ -5020,21 +5195,14 @@ in
                       continue
                   end
 
-                  set snippet_metadata (
-                      __obsidian_github_contents_api \
+                  set snippet_index (contains -i -- "$snippet_path" $repository_paths)
+                  set snippet_size "$repository_sizes[$snippet_index]"
+                  set snippet_url (
+                      __obsidian_github_raw_url \
                           "$repository_owner/$repository_name" \
                           "$snippet_path" \
-                          "" \
-                          '[.size, .download_url] | @tsv'
+                          ""
                   )
-
-                  set snippet_parts (string split \t "$snippet_metadata")
-                  if test (count $snippet_parts) -ne 2
-                      continue
-                  end
-
-                  set snippet_size "$snippet_parts[1]"
-                  set snippet_url (__obsidian_download_url_encode "$snippet_parts[2]")
 
                   set snippet_destination \
                       "$repository_asset_root/$snippet_path"
@@ -5127,22 +5295,14 @@ in
                   set auxiliary_destination \
                       "$repository_asset_root/$auxiliary_path"
 
-                  set auxiliary_metadata (
-                      __obsidian_github_contents_api \
+                  set auxiliary_index (contains -i -- "$auxiliary_path" $repository_paths)
+                  set auxiliary_size "$repository_sizes[$auxiliary_index]"
+                  set auxiliary_url (
+                      __obsidian_github_raw_url \
                           "$repository_owner/$repository_name" \
                           "$auxiliary_path" \
-                          "" \
-                          '[.size, .download_url] | @tsv'
+                          ""
                   )
-                  set auxiliary_parts (string split \t "$auxiliary_metadata")
-                  if test (count $auxiliary_parts) -ne 2
-                      echo \
-                          "Notice: Could not resolve theme repository file: $auxiliary_path"
-                      continue
-                  end
-
-                  set auxiliary_size "$auxiliary_parts[1]"
-                  set auxiliary_url (__obsidian_download_url_encode "$auxiliary_parts[2]")
 
                   # Empty optional repository files have a valid raw URL but no
                   # content to save. Avoid treating the required non-empty check
@@ -5320,8 +5480,50 @@ in
                                   $saved_files \
                                   (string replace "$theme_stage/" "" -- "$repository_asset_root/$relative_image_path")
                           else
-                              echo \
-                                  "Notice: README preview image was not found in the repository: $image_reference"
+                              # The image pass above may already have saved it;
+                              # fetch only a reference that is still missing.
+                              set relative_image_path (
+                                  string replace "$extracted/" "" -- "$local_image" |
+                                  string replace -ra '(^|/)\./' '$1' |
+                                  string unescape --style=url
+                              )
+                              set image_name (string split -r -m 1 / -- "$relative_image_path")[-1]
+
+                              if test -s "$repository_asset_root/$relative_image_path"; or \
+                                      test -s "$theme_stage/$relative_image_path"; or \
+                                      command find "$theme_stage" \
+                                          -type f \
+                                          -name "$image_name" \
+                                          -size +0c \
+                                          -print \
+                                          -quit | read --local existing_image
+                                  continue
+                              end
+
+                              set image_destination "$repository_asset_root/$relative_image_path"
+                              set image_url (
+                                  __obsidian_github_raw_url \
+                                      "$repository_owner/$repository_name" \
+                                      "$relative_image_path" \
+                                      ""
+                              )
+                              command mkdir -p (dirname "$image_destination")
+
+                              if test -n "$image_url"; and command curl \
+                                      --fail \
+                                      --location \
+                                      --silent \
+                                      --output "$image_destination" \
+                                      "$image_url"; and \
+                                      test -s "$image_destination"
+                                  set saved_files \
+                                      $saved_files \
+                                      (string replace "$theme_stage/" "" -- "$image_destination")
+                              else
+                                  command rm -f -- "$image_destination"
+                                  echo \
+                                      "Notice: README preview image was not found in the repository: $image_reference"
+                              end
                           end
                       else
                           echo \
@@ -6459,7 +6661,7 @@ in
                   "$release_asset_name" \
                   (basename "$library_entry") \
                   (basename "$repository")
-                if string match -ri '\\.zip$' "$release_asset_name"
+                if string match -qri '\\.zip$' "$release_asset_name"
                   set --append deferred_library_archives \
                     "$release_asset"
                 end
@@ -7079,7 +7281,7 @@ in
 
           set --local missing_entries
           set --local missing_repository_entries
-          set --local missing_report "$HOME/Downloads/obsidian-missing.txt"
+          set --local missing_report "${downloadsDir}/obsidian-missing.txt"
           set --local library_root_name (
             basename "$library_root" | string lower
           )

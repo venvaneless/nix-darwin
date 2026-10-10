@@ -19,6 +19,7 @@ let
   # ** which stops runtime shell expansion, but Nix still substitutes
   # ** ${...} while the derivation is built.
   backupPaths = paths.darwin.backups;
+  homePaths = paths.darwin.home;
 
   # ---- Obsidian library manager
   # Python is included with this command. GitHub CLI and fzf are already
@@ -60,6 +61,7 @@ let
       import subprocess
       import sys
       import tempfile
+      import threading
       from concurrent.futures import ThreadPoolExecutor, as_completed
       from dataclasses import dataclass
       from datetime import datetime
@@ -79,7 +81,8 @@ let
       ABANDONED_FIELD = "abandoned"
       ARCHIVED_FIELD = "archived"
       README_FILE = "README.md"
-      DEFAULT_DOWNLOADS_DIR = Path.home() / "Downloads"
+      DEFAULT_DOWNLOADS_DIR = Path("${homePaths.downloads}")
+      DEFAULT_CHECK_CACHE_FILE = Path("${homePaths.cache}/obsidian-library/update-check.json")
       GH_BIN = os.environ["OBSIDIAN_LIBRARY_GH"]
       FZF_BIN = os.environ["OBSIDIAN_LIBRARY_FZF"]
       CURL_BIN = os.environ["OBSIDIAN_LIBRARY_CURL"]
@@ -318,10 +321,27 @@ let
       def run(command: list[str], *, text: bool = True) -> subprocess.CompletedProcess[Any]:
           return subprocess.run(command, capture_output=True, text=text, check=False)
 
+      # ---- GitHub rate limit ---- #
+      # Set once GitHub refuses requests; pending checks then stop early.
+      RATE_LIMITED = threading.Event()
+
+      def note_rate_limit(detail: str) -> None:
+          if re.search(r"rate limit", detail, flags=re.IGNORECASE):
+              RATE_LIMITED.set()
+
+      def rate_limit_reset_message() -> str:
+          completed = run([GH_BIN, "api", "rate_limit", "--jq", ".resources.core.reset"])
+          try:
+              reset = datetime.fromtimestamp(int(completed.stdout.strip()))
+          except ValueError:
+              return "GitHub API rate limit reached."
+          return f"GitHub API rate limit reached. It resets at {reset:%H:%M}."
+
       def gh_value(endpoint: str) -> Any:
           completed = run([GH_BIN, "api", endpoint])
           if completed.returncode != 0:
               detail = completed.stderr.strip() or completed.stdout.strip()
+              note_rate_limit(detail)
               raise RuntimeError(detail or f"GitHub request failed: {endpoint}")
 
           try:
@@ -649,6 +669,8 @@ let
                   )
               )
 
+          # Sort by the displayed name; folder names often differ from it.
+          entries.sort(key=lambda entry: (entry.label.casefold(), entry.path.name.casefold()))
           return entries
 
       def latest_release(repository: str, cache: dict[str, dict[str, Any] | Exception]) -> dict[str, Any]:
@@ -681,7 +703,22 @@ let
               and not is_blocked_download_name(asset["name"])
           }
 
+      def curl_download(url: str, destination: Path) -> bool:
+          completed = run(
+              [CURL_BIN, "--fail", "--location", "--silent", "--output", str(destination), url],
+          )
+          if completed.returncode == 0 and is_nonempty_file(destination):
+              return True
+          destination.unlink(missing_ok=True)
+          return False
+
       def download_asset(repository: str, asset: dict[str, Any], destination: Path) -> None:
+          # The public download URL costs no API request; the API is the
+          # fallback for private repositories.
+          download_url = asset.get("browser_download_url")
+          if isinstance(download_url, str) and download_url and curl_download(download_url, destination):
+              return
+
           asset_id = asset.get("id")
           if not isinstance(asset_id, int):
               raise RuntimeError("release asset has no usable GitHub asset ID")
@@ -698,11 +735,17 @@ let
           )
           if completed.returncode != 0:
               detail = completed.stderr.decode("utf-8", errors="replace").strip()
+              note_rate_limit(detail)
               raise RuntimeError(detail or f"could not download release asset {asset.get('name')}")
 
           destination.write_bytes(completed.stdout)
 
       def download_repository_file(repository: str, repository_path: str, destination: Path) -> None:
+          # Raw files cost no API request; the Contents API is the fallback.
+          raw_url = f"https://raw.githubusercontent.com/{repository}/HEAD/{quote(repository_path, safe='/')}"
+          if curl_download(raw_url, destination):
+              return
+
           metadata = gh_json(
               repository_contents_endpoint(repository, repository_path)
           )
@@ -1333,19 +1376,6 @@ let
                   re.IGNORECASE,
               ) is not None
 
-          def is_readme_and_two_images(content: list[Path]) -> bool:
-              readmes = [child for child in content if is_readme(child)]
-              images = [
-                  child
-                  for child in content
-                  if child.is_file() and child.suffix.casefold() in image_suffixes
-              ]
-              return (
-                  len(readmes) == 1
-                  and len(images) == 2
-                  and len(readmes) + len(images) == len(content)
-              )
-
           def root_has_only_core_files_readme_and_images() -> bool:
               content = [
                   child
@@ -1556,12 +1586,17 @@ let
                           move(child, repository_directory / child.name)
                       wrapper.rmdir()
 
-              repository_content = entries(repository_directory)
+              # repo/ is only kept for three or more files besides the
+              # README. Fewer files sit beside the core payload instead.
+              repository_content = [
+                  child
+                  for child in entries(repository_directory)
+                  if child.name != ".DS_Store"
+              ]
               if (
-                  len(repository_content) <= 3
+                  repository_content
+                  and sum(not is_readme(child) for child in repository_content) < 3
                   and all(child.is_file() for child in repository_content)
-                  and sum(child.suffix.casefold() == ".md" for child in repository_content) == 1
-                  and not is_readme_and_two_images(repository_content)
                   and all(
                       not (directory / child.name).exists()
                       for child in repository_content
@@ -1569,8 +1604,7 @@ let
               ):
                   for child in repository_content:
                       move(child, directory / child.name)
-                  repository_directory.rmdir()
-              elif not entries(repository_directory):
+              if not entries(repository_directory):
                   repository_directory.rmdir()
 
           def remap(source: Path) -> Path:
@@ -2215,13 +2249,20 @@ let
 
           remote_size: int | None = None
 
+          should_deduplicate = (
+              suffix in image_suffixes
+              or filename.casefold() in readme_names
+          )
+
           if remote_file.release_asset is not None:
               asset_size = remote_file.release_asset.get("size")
 
               if isinstance(asset_size, int):
                   remote_size = asset_size
 
-          elif remote_file.repository_path is not None:
+          # The size lookup costs an API request, so only ask when it can
+          # actually prevent a duplicate download.
+          elif remote_file.repository_path is not None and should_deduplicate and search_roots:
               metadata = gh_json(
                   repository_contents_endpoint(
                       repository,
@@ -2233,11 +2274,6 @@ let
 
               if isinstance(repository_size, int):
                   remote_size = repository_size
-
-          should_deduplicate = (
-              suffix in image_suffixes
-              or filename.casefold() in readme_names
-          )
 
           if should_deduplicate and remote_size is not None:
               for search_root in search_roots:
@@ -2410,7 +2446,10 @@ let
           except (OSError, RuntimeError) as error:
               return CheckResult(entry, "UNAVAILABLE", message=str(error))
 
+          try:
               remote_version = theme_remote_version(entry, source)
+          except (OSError, RuntimeError) as error:
+              return CheckResult(entry, "UNAVAILABLE", message=str(error))
           if matches:
               return CheckResult(entry, "UP TO DATE", remote_version, theme_source=source)
           return CheckResult(entry, "UPDATE AVAILABLE", remote_version, theme_source=source)
@@ -2429,6 +2468,8 @@ let
                   "REPOSITORY URL REQUIRED",
                   message=f"{repository_field(entry.library_type)} is missing or has no GitHub URL",
               )
+          if RATE_LIMITED.is_set():
+              return CheckResult(entry, "UNAVAILABLE", message="skipped: GitHub API rate limit reached")
 
           # A successful release/source check already establishes that the
           # repository is reachable. Inspect repository metadata only when the
@@ -2473,9 +2514,13 @@ let
                   )
               return source_result
 
+          if RATE_LIMITED.is_set():
+              return source_result
+
           completed = run([GH_BIN, "api", f"repos/{entry.repository}"])
           if completed.returncode != 0:
               detail = completed.stderr.strip() or completed.stdout.strip()
+              note_rate_limit(detail)
               if re.search(r"(?:HTTP[ ]*)?404|not found", detail, flags=re.IGNORECASE):
                   suffix = mark_repository_status(entry, ABANDONED_FIELD)
                   return CheckResult(entry, "ABANDONED", message=f"GitHub returned 404; marked abandoned{suffix}")
@@ -2499,16 +2544,116 @@ let
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> list[CheckResult]:
-          results: list[CheckResult] = []
-          for entry in entries:
-              result = check_entry(entry, release_cache, manifest_cache, repository_contents_cache)
-              results.append(result)
+          results = check_results(entries, release_cache, manifest_cache, repository_contents_cache)
+          for result in results:
+              entry = result.entry
               remote = result.remote_version or "-"
               suffix = f" — {result.message}" if result.message else ""
               print(f"[{result.status}] {entry.library_type.label}: {entry.label} ({entry.version_label} -> {remote}){suffix}")
               if result.status == "UNAVAILABLE":
                   report_error(f"Checking {entry.library_type.label.lower()} '{entry.label}' failed: {result.message}")
           return results
+
+      # ---- Persistent update list ---- #
+      # Results survive restarts. One batched GitHub query per 50 entries
+      # tells which repositories changed; unchanged entries reuse their
+      # last result when the local files are unchanged as well.
+      CHECK_CACHE_VERSION = 1
+      CACHEABLE_STATUSES = {
+          "UP TO DATE",
+          "UPDATE AVAILABLE",
+          "LOCAL VERSION NEWER",
+          "VERSION DIFFERENT",
+          "ARCHIVED",
+      }
+
+      def check_cache_path() -> Path:
+          return Path(os.environ.get("OBSIDIAN_LIBRARY_CHECK_CACHE", DEFAULT_CHECK_CACHE_FILE))
+
+      def load_check_cache() -> dict[str, dict[str, Any]]:
+          try:
+              data = json.loads(check_cache_path().read_text(encoding="utf-8"))
+          except (OSError, json.JSONDecodeError):
+              return {}
+          if (
+              not isinstance(data, dict)
+              or data.get("version") != CHECK_CACHE_VERSION
+              or not isinstance(data.get("entries"), dict)
+          ):
+              return {}
+          return {key: value for key, value in data["entries"].items() if isinstance(value, dict)}
+
+      def save_check_cache(cache: dict[str, dict[str, Any]]) -> None:
+          path = check_cache_path()
+          staging = path.with_name(f".{path.name}.obsidian-library-new")
+          try:
+              path.parent.mkdir(parents=True, exist_ok=True)
+              staging.write_text(
+                  json.dumps({"version": CHECK_CACHE_VERSION, "entries": cache}, ensure_ascii=False) + "\n",
+                  encoding="utf-8",
+              )
+              os.replace(staging, path)
+          except OSError as error:
+              staging.unlink(missing_ok=True)
+              fail(f"could not save the update list: {error}")
+
+      def local_fingerprint(entry: LibraryEntry) -> str:
+          # Any added, removed, resized, or rewritten local file invalidates
+          # the saved result for this entry.
+          digest = hashlib.sha256()
+          for local_file in existing_regular_files(entry.path):
+              try:
+                  stat = local_file.stat()
+              except OSError:
+                  continue
+              relative = local_file.relative_to(entry.path).as_posix()
+              digest.update(
+                  f"{relative}\0{stat.st_size}\0{stat.st_mtime_ns}\n".encode("utf-8", errors="surrogateescape")
+              )
+          return digest.hexdigest()
+
+      def remote_fingerprints(repositories: list[str]) -> dict[str, str]:
+          # GraphQL answers 50 repositories per request for about one point,
+          # instead of several REST requests per repository.
+          fingerprints: dict[str, str] = {}
+          unique = sorted(set(repositories), key=str.casefold)
+          for start in range(0, len(unique), 50):
+              progress_line(f"Asking GitHub which repositories changed: {start}/{len(unique)}")
+              batch = unique[start:start + 50]
+              fields = []
+              for index, repository in enumerate(batch):
+                  owner, name = repository.split("/", 1)
+                  fields.append(
+                      f"r{index}: repository(owner: {json.dumps(owner)}, name: {json.dumps(name)}) "
+                      "{ pushedAt isArchived latestRelease { tagName updatedAt } }"
+                  )
+              # Missing repositories make gh exit non-zero while the other
+              # results are still present in the response body.
+              completed = run([GH_BIN, "api", "graphql", "-f", "query=query { " + " ".join(fields) + " }"])
+              try:
+                  payload = json.loads(completed.stdout)
+              except json.JSONDecodeError:
+                  continue
+              data = payload.get("data") if isinstance(payload, dict) else None
+              if not isinstance(data, dict):
+                  continue
+              for index, repository in enumerate(batch):
+                  node = data.get(f"r{index}")
+                  if isinstance(node, dict):
+                      fingerprints[repository] = json.dumps(
+                          [node.get("pushedAt"), node.get("isArchived"), node.get("latestRelease")],
+                          sort_keys=True,
+                      )
+          if unique:
+              progress_line(f"Asking GitHub which repositories changed: {len(unique)}/{len(unique)}")
+              print()
+          return fingerprints
+
+      def progress_line(text: str) -> None:
+          # Clear and rewrite one terminal line; text wider than the terminal
+          # would wrap and pile up instead of being overwritten.
+          width = max(20, shutil.get_terminal_size((80, 20)).columns - 1)
+          print(f"\r\x1b[2K{text[:width]}", end="", flush=True)
 
       def check_results(
           entries: list[LibraryEntry],
@@ -2519,13 +2664,48 @@ let
           if not entries:
               return []
 
-          # Network-bound checks can run independently. Keep the pool modest
-          # enough for GitHub's secondary rate limits while avoiding thousands
-          # of sequential command launches.
-          worker_count = min(6, len(entries))
+          cache = load_check_cache()
           results: list[CheckResult | None] = [None] * len(entries)
+          fingerprints = remote_fingerprints(
+              [
+                  entry.repository
+                  for entry in entries
+                  if entry.repository is not None and not entry.abandoned
+              ]
+          )
 
-          with ThreadPoolExecutor(max_workers=worker_count) as executor:
+          pending: list[tuple[int, LibraryEntry, str | None]] = []
+          for index, entry in enumerate(entries):
+              remote = fingerprints.get(entry.repository) if entry.repository is not None else None
+              cached = cache.get(str(entry.path))
+              if (
+                  remote is not None
+                  and cached is not None
+                  and cached.get("repository") == entry.repository
+                  and cached.get("remote") == remote
+                  and cached.get("status") in CACHEABLE_STATUSES
+                  and cached.get("local") == local_fingerprint(entry)
+              ):
+                  results[index] = CheckResult(
+                      entry,
+                      cached["status"],
+                      cached.get("remote_version"),
+                      cached.get("message") or "",
+                  )
+              else:
+                  pending.append((index, entry, remote))
+
+          reused_count = len(entries) - len(pending)
+          if reused_count:
+              print(f"Reused {reused_count} unchanged result(s) from the last check.")
+          if pending:
+              print(f"Checking {len(pending)} new or changed entr{'y' if len(pending) == 1 else 'ies'}…")
+
+          # Network-bound checks can run independently. Keep the pool modest
+          # enough for GitHub's secondary rate limits.
+          executor = ThreadPoolExecutor(max_workers=max(1, min(6, len(pending))))
+          unsaved_count = 0
+          try:
               futures = {
                   executor.submit(
                       check_entry,
@@ -2533,12 +2713,12 @@ let
                       release_cache,
                       manifest_cache,
                       repository_contents_cache,
-                  ): (index, entry)
-                  for index, entry in enumerate(entries)
+                  ): (index, entry, remote)
+                  for index, entry, remote in pending
               }
 
               for completed_count, future in enumerate(as_completed(futures), start=1):
-                  index, entry = futures[future]
+                  index, entry, remote = futures[future]
                   try:
                       result = future.result()
                   except Exception as error:
@@ -2549,13 +2729,39 @@ let
                       )
 
                   results[index] = result
-                  progress = (
-                      f"Checked {completed_count}/{len(entries)}: "
-                      "building the selectable update list…"
-                  )
-                  print(f"\r{progress[:180]:<180}", end="", flush=True)
+                  if remote is not None and result.status in CACHEABLE_STATUSES:
+                      cache[str(entry.path)] = {
+                          "repository": entry.repository,
+                          "remote": remote,
+                          "local": local_fingerprint(entry),
+                          "status": result.status,
+                          "remote_version": result.remote_version,
+                          "message": result.message,
+                          "checked_at": datetime.now().isoformat(timespec="seconds"),
+                      }
+                      unsaved_count += 1
+                      # Save as the list grows, so closing the terminal keeps
+                      # everything checked so far.
+                      if unsaved_count >= 25:
+                          save_check_cache(cache)
+                          unsaved_count = 0
 
-          print()
+                  progress_line(f"Checked {completed_count}/{len(pending)}: building the selectable update list…")
+          finally:
+              executor.shutdown(wait=False, cancel_futures=True)
+              if unsaved_count:
+                  save_check_cache(cache)
+              if pending:
+                  print()
+
+          if RATE_LIMITED.is_set():
+              skipped = sum(
+                  1
+                  for result in results
+                  if result is not None and result.message == "skipped: GitHub API rate limit reached"
+              )
+              print(f"{rate_limit_reset_message()} {skipped} entr{'y was' if skipped == 1 else 'ies were'} not checked; run the check again afterwards.")
+
           return [result for result in results if result is not None]
 
       def offer_updates(
@@ -2595,11 +2801,31 @@ let
       ANSI_UPDATE = "\x1b[32m"
       ANSI_RESET = "\x1b[0m"
 
-      def update_result_row(result: CheckResult) -> str:
+      # ---- Aligned fzf columns ---- #
+      def fit(value: str, width: int) -> str:
+          value = re.sub(r"\s+", " ", value).strip()
+          if len(value) > width:
+              value = value[: max(width - 1, 0)] + "…"
+          return value.ljust(width)
+
+      def column_width(header: str, values: list[str], limit: int) -> int:
+          return min(limit, max([len(header), *(len(value) for value in values)]))
+
+      def entry_notes(entry: LibraryEntry) -> str:
+          notes = []
+          if entry.repository_status_label:
+              notes.append(entry.repository_status_label)
+          if entry.manifest_missing:
+              notes.append("no manifest")
+          if entry.repository is None:
+              notes.append("no URL")
+          return ", ".join(notes)
+
+      def update_result_row(result: CheckResult, local_width: int, remote_width: int) -> str:
           # The interactive list intentionally contains only entries that can
           # be updated. The empty status for current entries therefore never
           # clutters the chooser with every installed plugin or theme.
-          remote_version = result.remote_version or "-"
+          remote_version = fit(result.remote_version or "-", remote_width)
           status = "Needs updating"
           repository_is_newer = (
               result.entry.local_version is not None
@@ -2609,7 +2835,7 @@ let
           if repository_is_newer:
               remote_version = f"{ANSI_UPDATE}{remote_version}{ANSI_RESET}"
               status = f"{ANSI_UPDATE}{status}{ANSI_RESET}"
-          return f"{result.entry.label}\t{result.entry.version_label}\t{remote_version}\t{status}"
+          return f"{fit(result.entry.version_label, local_width)}  {remote_version}  {status}"
 
       def plain_fzf_row(row: str) -> str:
           return ANSI_ESCAPE.sub("", row)
@@ -2628,19 +2854,27 @@ let
 
           print(f"{len(updateable)} {library_type.label.lower()} need an update. Select one or more entries:")
 
-          rows = [update_result_row(result) for result in updateable]
+          name_width = column_width("Name", [result.entry.label for result in updateable], 40)
+          local_width = column_width("My version", [result.entry.version_label for result in updateable], 16)
+          remote_width = column_width("Repo version", [result.remote_version or "-" for result in updateable], 16)
+          header = f"{fit('Name', name_width)} {fit('My version', local_width)}  {fit('Repo version', remote_width)}  Status"
+          rows = [
+              f"{index}\t{fit(result.entry.label, name_width)}\t{update_result_row(result, local_width, remote_width)}"
+              for index, result in enumerate(updateable)
+          ]
           selected_rows = fzf_select(
               rows,
               f"update {library_type.label.lower()}> ",
-              "Name | My version | Repo version | Status\nTAB selects entries; ENTER updates selected entries.",
+              f"{header}\nSearch matches names. TAB selects entries; ENTER updates selected entries.",
               multi=True,
               ansi=True,
+              columns=True,
           )
-          selected = {plain_fzf_row(row) for row in selected_rows}
+          selected = {int(plain_fzf_row(row).split("\t", 1)[0]) for row in selected_rows}
           selected_results = [
               result
-              for result, row in zip(updateable, rows, strict=True)
-              if plain_fzf_row(row) in selected
+              for index, result in enumerate(updateable)
+              if index in selected
           ]
           if not selected_results:
               return
@@ -2994,6 +3228,10 @@ let
           manifest_cache: dict[tuple[str, str], tuple[str, Path]],
           repository_contents_cache: dict[str, list[dict[str, Any]] | Exception],
       ) -> None:
+          # A result reused from the saved update list carries no release
+          # data, so fetch it now for just this entry.
+          if result.release is None and result.theme_source is None:
+              result = check_entry(result.entry, release_cache, manifest_cache, repository_contents_cache)
           if result.entry.library_type.is_theme:
               update_theme_entry(result, release_cache, repository_contents_cache)
               return
@@ -3730,6 +3968,7 @@ let
           *,
           multi: bool = False,
           ansi: bool = False,
+          columns: bool = False,
       ) -> list[str]:
           if not lines:
               return []
@@ -3747,6 +3986,10 @@ let
               command.extend(["--multi", "--bind=tab:toggle+down"])
           if ansi:
               command.append("--ansi")
+          if columns:
+              # Rows are "index<TAB>name<TAB>details". Search only the name,
+              # as exact text, and keep the index hidden.
+              command.extend(["--delimiter=\t", "--with-nth=2..", "--nth=1", "--tabstop=1", "--exact"])
 
           completed = subprocess.run(
               command,
@@ -3771,18 +4014,35 @@ let
               print(f"No {library_type.label.lower()} folders were found in {library_type.root}.")
               return []
 
+          notes = [entry_notes(entry) for entry in entries]
+          name_width = column_width("Name", [entry.label for entry in entries], 40)
+          version_width = column_width("Version", [entry.version_label for entry in entries], 14)
+          notes_width = column_width("Notes", notes, 24)
+          author_width = column_width("Author", [entry.author for entry in entries], 20)
+          # The description takes whatever width is left, or is dropped.
+          used_width = name_width + version_width + notes_width + author_width + 12
+          description_width = shutil.get_terminal_size((120, 20)).columns - used_width
+
+          def details(version: str, note: str, author: str, description: str) -> str:
+              text = f"{fit(version, version_width)}  {fit(note, notes_width)}  {fit(author, author_width)}"
+              if description_width >= 12:
+                  text += f"  {fit(description, description_width)}"
+              return text
+
+          header = f"{fit('Name', name_width)} {details('Version', 'Notes', 'Author', 'Description')}"
           rows = [
-              f"{entry.label}\t{entry.repository_status_label}\t{entry.manifest_missing_label}\t{entry.author}\t{entry.description}\t{entry.version_label}\t{entry.repository_url_label}"
-              for entry in entries
+              f"{index}\t{fit(entry.label, name_width)}\t{details(entry.version_label, note, entry.author, entry.description)}"
+              for index, (entry, note) in enumerate(zip(entries, notes, strict=True))
           ]
           selected_rows = fzf_select(
               rows,
               f"{library_type.label.lower()}> ",
-              "Columns: name, repository status, manifest missing, author, description, version, repository URL. TAB selects entries; ENTER continues.",
+              f"{header}\nSearch matches names. TAB selects entries; ENTER continues.",
               multi=True,
+              columns=True,
           )
-          selected = set(selected_rows)
-          return [entry for entry, row in zip(entries, rows, strict=True) if row in selected]
+          selected = {int(row.split("\t", 1)[0]) for row in selected_rows}
+          return [entry for index, entry in enumerate(entries) if index in selected]
 
       def choose_action(library_type: LibraryType) -> str | None:
           actions = [
