@@ -1530,7 +1530,7 @@ in
       abbreviations = entryCollection;
     };
 
-    home.shared.terminal.commands = entryCollection;
+    home.shared.terminal.commandEntries = entryCollection;
 
 
     home.shared.terminal.fish.nixProfile = {
@@ -1597,7 +1597,7 @@ in
       shellAliases = enabledCommands config.home.shared.terminal.aliases.shell;
       functions =
         enabledFunctions config.home.shared.terminal.aliases.functions
-        // enabledFunctions config.home.shared.terminal.commands;
+        // enabledFunctions config.home.shared.terminal.commandEntries;
       shellAbbrs = enabledCommands config.home.shared.terminal.aliases.abbreviations;
     };
 
