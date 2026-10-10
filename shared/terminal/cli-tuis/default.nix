@@ -105,9 +105,9 @@
       bindings = {
         "Alt-/" = "lua:comment.comment";
         CtrlUnderscore = "lua:comment.comment";
-        CtrlC = "Copy";
-        CtrlW = "Paste";
-        CtrlX = "Cut";
+        CtrlCmdC = "Copy";
+        CtrlCmdV = "Paste";
+        CtrlCmdX = "Cut";
         CtrlA = "SelectAll";
       };
     };
